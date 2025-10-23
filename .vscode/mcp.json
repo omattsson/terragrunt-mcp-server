@@ -1,0 +1,10 @@
+{
+	"servers": {
+		"terragrunt": {
+			"type": "stdio",
+			"command": "node",
+			"args": ["/Users/olofm/git/terragrunt-mcp-server/dist/index.js"],
+		}
+	},
+	"inputs": []
+}

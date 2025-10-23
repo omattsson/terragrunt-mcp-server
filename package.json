@@ -9,7 +9,6 @@
     "build": "tsc",
     "test": "jest",
     "test:server": "node test/server-test.js",
-    "setup:wsl": "./setup-wsl.sh",
     "test:mcp": "./test-mcp.sh"
   },
   "dependencies": {
