@@ -118,7 +118,10 @@ export class ToolHandler {
         try {
             switch (name) {
                 case 'search_terragrunt_docs':
-                    return await this.searchTerragruntDocs(args?.query, args?.limit);
+                    if (!args?.query) {
+                        return { error: 'query parameter is required' };
+                    }
+                    return await this.searchTerragruntDocs(args.query, args?.limit);
 
                 case 'get_terragrunt_sections':
                     return await this.getTerragruntSections();
