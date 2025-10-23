@@ -308,4 +308,101 @@ export class TerragruntDocsManager {
     const docs = await this.fetchLatestDocs();
     return Array.from(new Set(docs.map(doc => doc.section))).sort();
   }
+
+  async getCliCommandHelp(command: string): Promise<TerragruntDoc | null> {
+    const docs = await this.fetchLatestDocs();
+    
+    // Search in reference section for CLI commands
+    const cliDocs = docs.filter(doc => 
+      doc.section === 'reference' && 
+      doc.url.includes('/cli/commands/')
+    );
+
+    // Try exact match first
+    const exactMatch = cliDocs.find(doc => 
+      doc.title.toLowerCase() === command.toLowerCase() ||
+      doc.url.toLowerCase().includes(`/${command.toLowerCase()}/`) ||
+      doc.url.toLowerCase().endsWith(`/${command.toLowerCase()}`)
+    );
+
+    if (exactMatch) {
+      return exactMatch;
+    }
+
+    // Try partial match
+    const partialMatch = cliDocs.find(doc =>
+      doc.title.toLowerCase().includes(command.toLowerCase()) ||
+      doc.content.toLowerCase().includes(`${command} `)
+    );
+
+    return partialMatch || null;
+  }
+
+  async getHclConfigReference(blockOrAttribute: string): Promise<TerragruntDoc[]> {
+    const docs = await this.fetchLatestDocs();
+    const query = blockOrAttribute.toLowerCase();
+
+    // Search in reference section for HCL configuration
+    const hclDocs = docs.filter(doc =>
+      doc.section === 'reference' && (
+        doc.url.includes('/hcl/blocks') ||
+        doc.url.includes('/hcl/attributes') ||
+        doc.url.includes('/hcl/functions') ||
+        doc.url.includes('/config-blocks-and-attributes')
+      )
+    );
+
+    // Find relevant docs
+    return hclDocs.filter(doc =>
+      doc.title.toLowerCase().includes(query) ||
+      doc.content.toLowerCase().includes(query)
+    );
+  }
+
+  async getCodeExamples(topic: string): Promise<Array<{ doc: TerragruntDoc, examples: string[] }>> {
+    const docs = await this.fetchLatestDocs();
+    const query = topic.toLowerCase();
+    const results: Array<{ doc: TerragruntDoc, examples: string[] }> = [];
+
+    // Search docs that match the topic
+    const relevantDocs = docs.filter(doc =>
+      doc.title.toLowerCase().includes(query) ||
+      doc.content.toLowerCase().includes(query)
+    );
+
+    // Extract code examples from each relevant doc
+    for (const doc of relevantDocs.slice(0, 10)) { // Limit to 10 docs
+      const examples = this.extractCodeBlocks(doc.content);
+      if (examples.length > 0) {
+        results.push({ doc, examples });
+      }
+    }
+
+    return results;
+  }
+
+  private extractCodeBlocks(content: string): string[] {
+    const examples: string[] = [];
+    
+    // Match code blocks patterns in markdown-like content
+    // Looking for common patterns like: "terragrunt", "terraform {", "remote_state {", etc.
+    const codePatterns = [
+      /terragrunt\s+\w+[^\n]{0,100}/gi,
+      /terraform\s*{[^}]{0,500}}/gi,
+      /remote_state\s*{[^}]{0,500}}/gi,
+      /dependency\s*"[^"]+"\s*{[^}]{0,500}}/gi,
+      /include\s*"[^"]+"\s*{[^}]{0,500}}/gi,
+      /inputs\s*=\s*{[^}]{0,500}}/gi,
+    ];
+
+    for (const pattern of codePatterns) {
+      const matches = content.match(pattern);
+      if (matches) {
+        examples.push(...matches.map(m => m.trim()));
+      }
+    }
+
+    // Remove duplicates and limit
+    return Array.from(new Set(examples)).slice(0, 5);
+  }
 }

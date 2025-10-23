@@ -16,7 +16,7 @@ export class ToolHandler {
         this.docsManager = new TerragruntDocsManager();
     }
 
-    getAvailableTools(): Tool[] {
+    getAvailableTools(): any[] {
         return [
             {
                 name: 'search_terragrunt_docs',
@@ -61,21 +61,84 @@ export class ToolHandler {
                     },
                     required: ['section']
                 }
+            },
+            {
+                name: 'get_cli_command_help',
+                description: 'Get detailed help documentation for a specific Terragrunt CLI command',
+                inputSchema: {
+                    type: 'object',
+                    properties: {
+                        command: {
+                            type: 'string',
+                            description: 'The Terragrunt CLI command name (e.g., "plan", "apply", "run-all", "hclfmt")'
+                        }
+                    },
+                    required: ['command']
+                }
+            },
+            {
+                name: 'get_hcl_config_reference',
+                description: 'Get documentation for HCL configuration blocks, attributes, or functions used in terragrunt.hcl',
+                inputSchema: {
+                    type: 'object',
+                    properties: {
+                        config: {
+                            type: 'string',
+                            description: 'HCL block, attribute, or function name (e.g., "terraform", "remote_state", "dependency", "inputs")'
+                        }
+                    },
+                    required: ['config']
+                }
+            },
+            {
+                name: 'get_code_examples',
+                description: 'Find code examples and snippets related to a specific Terragrunt topic or pattern',
+                inputSchema: {
+                    type: 'object',
+                    properties: {
+                        topic: {
+                            type: 'string',
+                            description: 'Topic or pattern to find examples for (e.g., "remote state", "dependencies", "before hooks")'
+                        },
+                        limit: {
+                            type: 'number',
+                            description: 'Maximum number of documents with examples to return',
+                            default: 5,
+                            minimum: 1,
+                            maximum: 10
+                        }
+                    },
+                    required: ['topic']
+                }
             }
         ];
     }
 
-    async executeTool(name: string, args: any): Promise<any> {
+    async executeTool(name: string, args?: any): Promise<any> {
         try {
             switch (name) {
                 case 'search_terragrunt_docs':
-                    return this.searchTerragruntDocs(args.query, args.limit || 5);
+                    return await this.searchTerragruntDocs(args?.query, args?.limit);
+
                 case 'get_terragrunt_sections':
-                    return this.getTerragruntSections();
+                    return await this.getTerragruntSections();
+
                 case 'get_section_docs':
-                    return this.getSectionDocs(args.section);
+                    return await this.getSectionDocs(args?.section);
+
+                case 'get_cli_command_help':
+                    return await this.getCliCommandHelp(args?.command);
+
+                case 'get_hcl_config_reference':
+                    return await this.getHclConfigReference(args?.config);
+
+                case 'get_code_examples':
+                    return await this.getCodeExamples(args?.topic, args?.limit);
+
                 default:
-                    throw new Error(`Unknown tool: ${name}`);
+                    return {
+                        error: `Unknown tool: ${name}`
+                    };
             }
         } catch (error) {
             console.error(`Error executing tool ${name}:`, error);
@@ -140,6 +203,76 @@ export class ToolHandler {
                 lastUpdated: doc.lastUpdated
             })),
             totalDocs: docs.length
+        };
+    }
+
+    private async getCliCommandHelp(command: string): Promise<any> {
+        const doc = await this.docsManager.getCliCommandHelp(command);
+
+        if (!doc) {
+            return {
+                command,
+                error: `No CLI command documentation found for: ${command}`,
+                suggestion: 'Try searching with search_terragrunt_docs or use get_section_docs with section "reference" to see all available CLI commands'
+            };
+        }
+
+        return {
+            command,
+            title: doc.title,
+            url: doc.url,
+            content: doc.content,
+            lastUpdated: doc.lastUpdated
+        };
+    }
+
+    private async getHclConfigReference(config: string): Promise<any> {
+        const docs = await this.docsManager.getHclConfigReference(config);
+
+        if (docs.length === 0) {
+            return {
+                config,
+                error: `No HCL configuration documentation found for: ${config}`,
+                suggestion: 'Try searching with search_terragrunt_docs or use get_section_docs with section "reference" to see all available HCL configurations'
+            };
+        }
+
+        return {
+            config,
+            results: docs.map(doc => ({
+                title: doc.title,
+                url: doc.url,
+                content: doc.content.length > 800
+                    ? doc.content.substring(0, 800) + '...'
+                    : doc.content,
+                lastUpdated: doc.lastUpdated
+            })),
+            totalResults: docs.length
+        };
+    }
+
+    private async getCodeExamples(topic: string, limit: number = 5): Promise<any> {
+        const results = await this.docsManager.getCodeExamples(topic);
+
+        if (results.length === 0) {
+            return {
+                topic,
+                error: `No code examples found for: ${topic}`,
+                suggestion: 'Try a broader search term or use search_terragrunt_docs to find relevant documentation'
+            };
+        }
+
+        return {
+            topic,
+            examples: results.slice(0, limit).map(result => ({
+                documentTitle: result.doc.title,
+                documentUrl: result.doc.url,
+                section: result.doc.section,
+                codeSnippets: result.examples,
+                snippetCount: result.examples.length
+            })),
+            totalDocuments: results.length,
+            hasMore: results.length > limit
         };
     }
 }
