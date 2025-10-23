@@ -133,7 +133,10 @@ export class ToolHandler {
                     return await this.getSectionDocs(args.section);
 
                 case 'get_cli_command_help':
-                    return await this.getCliCommandHelp(args?.command);
+                    if (!args?.command) {
+                        return { error: 'command parameter is required' };
+                    }
+                    return await this.getCliCommandHelp(args.command);
 
                 case 'get_hcl_config_reference':
                     return await this.getHclConfigReference(args?.config);
