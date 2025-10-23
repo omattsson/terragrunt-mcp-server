@@ -9,7 +9,12 @@
     "build": "tsc",
     "test": "jest",
     "test:server": "node test/server-test.js",
-    "test:mcp": "./test-mcp.sh"
+    "test:mcp": "./test-mcp.sh",
+    "docker:build": "docker build -t terragrunt-mcp-server:latest .",
+    "docker:run": "docker run -i terragrunt-mcp-server:latest",
+    "docker:compose:up": "docker-compose up -d",
+    "docker:compose:down": "docker-compose down",
+    "docker:compose:logs": "docker-compose logs -f"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.20.1",
