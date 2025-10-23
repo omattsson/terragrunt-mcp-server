@@ -40,6 +40,7 @@
     "server",
     "typescript"
   ],
-  "author": "Your Name",
+  "author": "Olof Mattsson",
+  "maintainers": ["omattsson"],
   "license": "MIT"
 }
