@@ -139,8 +139,10 @@ export class ToolHandler {
                     return await this.getCliCommandHelp(args.command);
 
                 case 'get_hcl_config_reference':
-                    return await this.getHclConfigReference(args?.config);
-
+                    if (!args?.config) {
+                        return { error: 'config parameter is required' };
+                    }
+                    return await this.getHclConfigReference(args.config);
                 case 'get_code_examples':
                     if (!args?.topic) {
                         return { error: 'topic parameter is required' };
