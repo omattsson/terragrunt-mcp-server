@@ -232,7 +232,7 @@ export class TerragruntDocsManager {
           if (doc) {
             this.docsCache.set(doc.url, doc);
           }
-        } catch (error) {
+        } catch (_error) {
           console.warn(`Skipping page ${page.url} after retries failed`);
         }
       }
