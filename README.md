@@ -7,9 +7,12 @@ A Model Context Protocol (MCP) server that provides comprehensive Terragrunt doc
 ### 📚 Documentation Access
 
 - **Live Documentation**: Automatically fetches the latest Terragrunt documentation from the official website
+- **Resilient Fetching**: Retry mechanism with exponential backoff (3 retries, up to 10s delay)
+- **Multiple Fallbacks**: Disk cache → Network with retry → Stale cache → Local fixture
 - **Searchable Content**: Full-text search across all Terragrunt documentation
 - **Organized by Sections**: Browse documentation by categories (getting-started, reference, features, etc.)
 - **Cached for Performance**: Smart caching system with 24-hour refresh cycle
+- **CI-Friendly**: Uses local fixtures when network is unavailable for deterministic tests
 
 ### 🔧 Available Tools
 
