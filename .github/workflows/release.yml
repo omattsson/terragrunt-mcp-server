@@ -1,0 +1,125 @@
+name: Create Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g., 0.2.0)'
+        required: true
+        default: '0.2.0'
+      prerelease:
+        description: 'Mark as pre-release'
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  create-release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24.x'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Run tests
+        run: |
+          npm run build
+          npm run lint
+          npm run test:server
+      
+      - name: Update package.json version
+        run: |
+          npm version ${{ github.event.inputs.version }} --no-git-tag-version
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add package.json package-lock.json
+          git commit -m "chore: Bump version to ${{ github.event.inputs.version }}"
+          git push
+      
+      - name: Build Docker image
+        run: |
+          docker build -t terragrunt-mcp-server:${{ github.event.inputs.version }} .
+          docker tag terragrunt-mcp-server:${{ github.event.inputs.version }} terragrunt-mcp-server:latest
+      
+      - name: Generate changelog
+        id: changelog
+        run: |
+          # Get the previous tag
+          PREV_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          
+          if [ -z "$PREV_TAG" ]; then
+            echo "First release - generating full changelog"
+            CHANGELOG=$(git log --pretty=format:"- %s (%h)" --no-merges)
+          else
+            echo "Generating changelog since $PREV_TAG"
+            CHANGELOG=$(git log $PREV_TAG..HEAD --pretty=format:"- %s (%h)" --no-merges)
+          fi
+          
+          # Write to file to handle multiline
+          echo "$CHANGELOG" > /tmp/changelog.txt
+          
+          # Set output
+          echo "changelog<<EOF" >> $GITHUB_OUTPUT
+          cat /tmp/changelog.txt >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+      
+      - name: Create Git tag
+        run: |
+          git tag -a v${{ github.event.inputs.version }} -m "Release v${{ github.event.inputs.version }}"
+          git push origin v${{ github.event.inputs.version }}
+      
+      - name: Create GitHub Release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v${{ github.event.inputs.version }}
+          release_name: Release v${{ github.event.inputs.version }}
+          body: |
+            ## What's New in v${{ github.event.inputs.version }}
+            
+            ### Changes
+            ${{ steps.changelog.outputs.changelog }}
+            
+            ### Installation
+            
+            ```bash
+            npm install
+            npm run build
+            ```
+            
+            ### Docker
+            
+            ```bash
+            docker build -t terragrunt-mcp-server:${{ github.event.inputs.version }} .
+            docker run -i terragrunt-mcp-server:${{ github.event.inputs.version }}
+            ```
+            
+            ### VS Code Configuration
+            
+            ```json
+            {
+              "mcp.servers": {
+                "terragrunt": {
+                  "command": "node",
+                  "args": ["/path/to/terragrunt-mcp-server/dist/index.js"]
+                }
+              }
+            }
+            ```
+          draft: false
+          prerelease: ${{ github.event.inputs.prerelease }}

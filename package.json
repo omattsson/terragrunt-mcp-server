@@ -1,6 +1,6 @@
 {
   "name": "terragrunt-mcp-server",
-  "version": "1.0.0",
+  "version": "0.2.0",
   "description": "MCP Server for Terragrunt integration with comprehensive documentation support",
   "main": "dist/index.js",
   "scripts": {
