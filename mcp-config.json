@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "terragrunt": {
+      "command": "node",
+      "args": [
+        "dist/index.js"
+      ],
+      "cwd": ".",
+      "env": {}
+    }
+  }
+}

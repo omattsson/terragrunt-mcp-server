@@ -1,0 +1,36 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MCP Protocol",
+  "type": "object",
+  "properties": {
+    "version": {
+      "type": "string",
+      "description": "The version of the MCP protocol."
+    },
+    "messageType": {
+      "type": "string",
+      "enum": ["request", "response", "notification"],
+      "description": "The type of message being sent."
+    },
+    "payload": {
+      "type": "object",
+      "description": "The data being sent in the message.",
+      "additionalProperties": true
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "The time at which the message was sent."
+    },
+    "source": {
+      "type": "string",
+      "description": "The source of the message, typically the sender's identifier."
+    },
+    "destination": {
+      "type": "string",
+      "description": "The intended recipient of the message."
+    }
+  },
+  "required": ["version", "messageType", "payload", "timestamp", "source", "destination"],
+  "additionalProperties": false
+}
