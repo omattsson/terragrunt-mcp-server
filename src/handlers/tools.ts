@@ -133,7 +133,10 @@ export class ToolHandler {
                     return await this.getHclConfigReference(args?.config);
 
                 case 'get_code_examples':
-                    return await this.getCodeExamples(args?.topic, args?.limit);
+                    if (!args?.topic) {
+                        return { error: 'topic parameter is required' };
+                    }
+                    return await this.getCodeExamples(args.topic, args?.limit);
 
                 default:
                     return {
