@@ -388,11 +388,11 @@ export class TerragruntDocsManager {
     // Looking for common patterns like: "terragrunt", "terraform {", "remote_state {", etc.
     const codePatterns = [
       /terragrunt\s+\w+[^\n]*/gi,
-      /terraform\s*{[^}]{0,500}}/gi,
-      /remote_state\s*{[^}]{0,500}}/gi,
-      /dependency\s*"[^"]+"\s*{[^}]{0,500}}/gi,
-      /include\s*"[^"]+"\s*{[^}]{0,500}}/gi,
-      /inputs\s*=\s*{[^}]{0,500}}/gi,
+      /terraform\s*{[\s\S]*?}/gi,
+      /remote_state\s*{[\s\S]*?}/gi,
+      /dependency\s*"[^"]+"\s*{[\s\S]*?}/gi,
+      /include\s*"[^"]+"\s*{[\s\S]*?}/gi,
+      /inputs\s*=\s*{[\s\S]*?}/gi,
     ];
 
     for (const pattern of codePatterns) {
