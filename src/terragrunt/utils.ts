@@ -1,7 +1,7 @@
 export const parseConfig = (config: string): object => {
     try {
         return JSON.parse(config);
-    } catch (error) {
+    } catch (_error) {
         throw new Error('Invalid configuration format');
     }
 };

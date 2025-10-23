@@ -7,6 +7,8 @@
     "start": "node dist/index.js",
     "dev": "ts-node src/index.ts",
     "build": "tsc",
+    "lint": "eslint src/**/*.ts",
+    "lint:fix": "eslint src/**/*.ts --fix",
     "test": "jest",
     "test:server": "node test/server-test.js",
     "docker:build": "docker build -t terragrunt-mcp-server:latest .",
