@@ -63,10 +63,10 @@ jobs:
           
           if [ -z "$PREV_TAG" ]; then
             echo "First release - generating full changelog"
-            CHANGELOG=$(git log --pretty=format:"- %s (%h)" --no-merges)
+            CHANGELOG=$(git log --pretty=format:"- %s (%h)" --no-merges --grep='^chore: Bump version' --invert-grep)
           else
             echo "Generating changelog since $PREV_TAG"
-            CHANGELOG=$(git log $PREV_TAG..HEAD --pretty=format:"- %s (%h)" --no-merges)
+            CHANGELOG=$(git log $PREV_TAG..HEAD --pretty=format:"- %s (%h)" --no-merges --grep='^chore: Bump version' --invert-grep)
           fi
           
           # Write to file to handle multiline
