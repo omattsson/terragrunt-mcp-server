@@ -387,7 +387,7 @@ export class TerragruntDocsManager {
     // Match code blocks patterns in markdown-like content
     // Looking for common patterns like: "terragrunt", "terraform {", "remote_state {", etc.
     const codePatterns = [
-      /terragrunt\s+\w+[^\n]{0,100}/gi,
+      /terragrunt\s+\w+[^\n]*/gi,
       /terraform\s*{[^}]{0,500}}/gi,
       /remote_state\s*{[^}]{0,500}}/gi,
       /dependency\s*"[^"]+"\s*{[^}]{0,500}}/gi,
