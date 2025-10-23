@@ -1,5 +1,8 @@
 import fetch from 'node-fetch';
 import * as cheerio from 'cheerio';
+import * as fs from 'fs/promises';
+import * as path from 'path';
+import { fileURLToPath } from 'url';
 
 export interface TerragruntDoc {
   title: string;
@@ -9,16 +12,116 @@ export interface TerragruntDoc {
   lastUpdated?: string;
 }
 
+interface CacheMetadata {
+  lastFetchTime: string;
+  docsCount: number;
+}
+
 export class TerragruntDocsManager {
   private readonly baseUrl = 'https://terragrunt.gruntwork.io';
   private docsCache: Map<string, TerragruntDoc> = new Map();
   private lastFetchTime: Date | null = null;
   private readonly cacheExpiry = 24 * 60 * 60 * 1000; // 24 hours
+  private readonly cacheDir: string;
+  private readonly cacheFile: string;
+  private readonly metadataFile: string;
+
+  constructor() {
+    // Get the directory where this file is located
+    const __filename = fileURLToPath(import.meta.url);
+    const __dirname = path.dirname(__filename);
+    
+    // Store cache in project root under .cache/terragrunt-docs
+    this.cacheDir = path.join(__dirname, '..', '..', '.cache', 'terragrunt-docs');
+    this.cacheFile = path.join(this.cacheDir, 'docs-cache.json');
+    this.metadataFile = path.join(this.cacheDir, 'metadata.json');
+  }
+
+  private async ensureCacheDir(): Promise<void> {
+    try {
+      await fs.mkdir(this.cacheDir, { recursive: true });
+    } catch (error) {
+      console.error('Failed to create cache directory:', error);
+    }
+  }
+
+  private async loadCacheFromDisk(): Promise<boolean> {
+    try {
+      // Check if cache files exist
+      const [docsExists, metadataExists] = await Promise.all([
+        fs.access(this.cacheFile).then(() => true).catch(() => false),
+        fs.access(this.metadataFile).then(() => true).catch(() => false)
+      ]);
+
+      if (!docsExists || !metadataExists) {
+        console.log('No disk cache found');
+        return false;
+      }
+
+      // Read metadata first
+      const metadataContent = await fs.readFile(this.metadataFile, 'utf-8');
+      const metadata: CacheMetadata = JSON.parse(metadataContent);
+
+      // Check if cache is expired
+      const cacheAge = Date.now() - new Date(metadata.lastFetchTime).getTime();
+      if (cacheAge > this.cacheExpiry) {
+        console.log('Disk cache expired');
+        return false;
+      }
+
+      // Load docs from disk
+      const docsContent = await fs.readFile(this.cacheFile, 'utf-8');
+      const docs: TerragruntDoc[] = JSON.parse(docsContent);
+
+      // Populate in-memory cache
+      this.docsCache.clear();
+      docs.forEach(doc => this.docsCache.set(doc.url, doc));
+      this.lastFetchTime = new Date(metadata.lastFetchTime);
+
+      console.log(`Loaded ${docs.length} docs from disk cache (age: ${Math.round(cacheAge / 1000 / 60)} minutes)`);
+      return true;
+    } catch (error) {
+      console.error('Failed to load cache from disk:', error);
+      return false;
+    }
+  }
+
+  private async saveCacheToDisk(): Promise<void> {
+    try {
+      await this.ensureCacheDir();
+
+      const docs = Array.from(this.docsCache.values());
+      const metadata: CacheMetadata = {
+        lastFetchTime: this.lastFetchTime?.toISOString() || new Date().toISOString(),
+        docsCount: docs.length
+      };
+
+      // Write both files atomically
+      await Promise.all([
+        fs.writeFile(this.cacheFile, JSON.stringify(docs, null, 2), 'utf-8'),
+        fs.writeFile(this.metadataFile, JSON.stringify(metadata, null, 2), 'utf-8')
+      ]);
+
+      console.log(`Saved ${docs.length} docs to disk cache`);
+    } catch (error) {
+      console.error('Failed to save cache to disk:', error);
+    }
+  }
 
   async fetchLatestDocs(): Promise<TerragruntDoc[]> {
+    // Try loading from disk cache first if in-memory cache is empty
+    if (this.docsCache.size === 0) {
+      const loaded = await this.loadCacheFromDisk();
+      if (loaded && !this.shouldRefreshCache()) {
+        return Array.from(this.docsCache.values());
+      }
+    }
+
+    // Refresh if needed
     if (this.shouldRefreshCache()) {
       await this.refreshDocsCache();
     }
+    
     return Array.from(this.docsCache.values());
   }
 
@@ -42,6 +145,9 @@ export class TerragruntDocsManager {
 
       this.lastFetchTime = new Date();
       console.log(`Cached ${this.docsCache.size} documentation pages`);
+      
+      // Save to disk after successful fetch
+      await this.saveCacheToDisk();
     } catch (error) {
       console.error('Failed to refresh Terragrunt docs cache:', error);
     }
