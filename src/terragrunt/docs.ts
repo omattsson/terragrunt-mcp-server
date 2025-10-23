@@ -17,6 +17,13 @@ interface CacheMetadata {
   docsCount: number;
 }
 
+interface RetryConfig {
+  maxRetries: number;
+  initialDelayMs: number;
+  maxDelayMs: number;
+  backoffMultiplier: number;
+}
+
 export class TerragruntDocsManager {
   private readonly baseUrl = 'https://terragrunt.gruntwork.io';
   private docsCache: Map<string, TerragruntDoc> = new Map();
@@ -25,6 +32,13 @@ export class TerragruntDocsManager {
   private readonly cacheDir: string;
   private readonly cacheFile: string;
   private readonly metadataFile: string;
+  private readonly fixtureFile: string;
+  private readonly retryConfig: RetryConfig = {
+    maxRetries: 3,
+    initialDelayMs: 1000,
+    maxDelayMs: 10000,
+    backoffMultiplier: 2
+  };
 
   constructor() {
     // Get the directory where this file is located
@@ -35,6 +49,7 @@ export class TerragruntDocsManager {
     this.cacheDir = path.join(__dirname, '..', '..', '.cache', 'terragrunt-docs');
     this.cacheFile = path.join(this.cacheDir, 'docs-cache.json');
     this.metadataFile = path.join(this.cacheDir, 'metadata.json');
+    this.fixtureFile = path.join(__dirname, '..', '..', 'fixtures', 'terragrunt-docs-fixture.json');
   }
 
   private async ensureCacheDir(): Promise<void> {
@@ -42,6 +57,60 @@ export class TerragruntDocsManager {
       await fs.mkdir(this.cacheDir, { recursive: true });
     } catch (error) {
       console.error('Failed to create cache directory:', error);
+    }
+  }
+
+  private async sleep(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  private async retryWithBackoff<T>(
+    operation: () => Promise<T>,
+    context: string
+  ): Promise<T> {
+    let lastError: Error | null = null;
+    let delay = this.retryConfig.initialDelayMs;
+
+    for (let attempt = 0; attempt <= this.retryConfig.maxRetries; attempt++) {
+      try {
+        return await operation();
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error(String(error));
+        
+        if (attempt < this.retryConfig.maxRetries) {
+          console.warn(`${context} failed (attempt ${attempt + 1}/${this.retryConfig.maxRetries + 1}): ${lastError.message}`);
+          console.log(`Retrying in ${delay}ms...`);
+          await this.sleep(delay);
+          delay = Math.min(delay * this.retryConfig.backoffMultiplier, this.retryConfig.maxDelayMs);
+        }
+      }
+    }
+
+    throw lastError || new Error(`${context} failed after ${this.retryConfig.maxRetries + 1} attempts`);
+  }
+
+  private async loadFixture(): Promise<boolean> {
+    try {
+      console.log('Attempting to load fixture as fallback...');
+      const fixtureExists = await fs.access(this.fixtureFile).then(() => true).catch(() => false);
+      
+      if (!fixtureExists) {
+        console.warn('No fixture file found at:', this.fixtureFile);
+        return false;
+      }
+
+      const fixtureContent = await fs.readFile(this.fixtureFile, 'utf-8');
+      const docs: TerragruntDoc[] = JSON.parse(fixtureContent);
+
+      this.docsCache.clear();
+      docs.forEach(doc => this.docsCache.set(doc.url, doc));
+      this.lastFetchTime = new Date(); // Mark as fresh to prevent immediate re-fetch
+
+      console.log(`Loaded ${docs.length} docs from fixture (fallback mode)`);
+      return true;
+    } catch (error) {
+      console.error('Failed to load fixture:', error);
+      return false;
     }
   }
 
@@ -119,7 +188,18 @@ export class TerragruntDocsManager {
 
     // Refresh if needed
     if (this.shouldRefreshCache()) {
-      await this.refreshDocsCache();
+      try {
+        await this.refreshDocsCache();
+      } catch (error) {
+        console.error('All documentation fetch methods failed:', error);
+        // If we have any docs in cache (even stale), return them
+        if (this.docsCache.size > 0) {
+          console.log('Returning stale cached docs');
+          return Array.from(this.docsCache.values());
+        }
+        // Last resort: try fixture
+        await this.loadFixture();
+      }
     }
     
     return Array.from(this.docsCache.values());
@@ -133,14 +213,32 @@ export class TerragruntDocsManager {
   private async refreshDocsCache(): Promise<void> {
     try {
       console.log('Refreshing Terragrunt documentation cache...');
-      const docPages = await this.getDocumentationPages();
+      
+      // Use retry logic for fetching docs
+      const docPages = await this.retryWithBackoff(
+        () => this.getDocumentationPages(),
+        'Fetching documentation pages'
+      );
+      
       this.docsCache.clear();
 
+      // Fetch each page with retry logic
       for (const page of docPages) {
-        const doc = await this.fetchDocumentPage(page);
-        if (doc) {
-          this.docsCache.set(doc.url, doc);
+        try {
+          const doc = await this.retryWithBackoff(
+            () => this.fetchDocumentPage(page),
+            `Fetching ${page.url}`
+          );
+          if (doc) {
+            this.docsCache.set(doc.url, doc);
+          }
+        } catch (_error) {
+          console.warn(`Skipping page ${page.url} after retries failed`);
         }
+      }
+
+      if (this.docsCache.size === 0) {
+        throw new Error('No documentation pages were successfully fetched');
       }
 
       this.lastFetchTime = new Date();
@@ -150,6 +248,19 @@ export class TerragruntDocsManager {
       await this.saveCacheToDisk();
     } catch (error) {
       console.error('Failed to refresh Terragrunt docs cache:', error);
+      
+      // Try loading from disk cache if available
+      const diskCacheLoaded = await this.loadCacheFromDisk();
+      if (diskCacheLoaded) {
+        console.log('Using stale disk cache due to fetch failure');
+        return;
+      }
+      
+      // Fall back to fixture as last resort
+      const fixtureLoaded = await this.loadFixture();
+      if (!fixtureLoaded) {
+        throw new Error('Failed to load documentation from any source (network, disk cache, or fixture)');
+      }
     }
   }
 
@@ -307,5 +418,102 @@ export class TerragruntDocsManager {
   async getAvailableSections(): Promise<string[]> {
     const docs = await this.fetchLatestDocs();
     return Array.from(new Set(docs.map(doc => doc.section))).sort();
+  }
+
+  async getCliCommandHelp(command: string): Promise<TerragruntDoc | null> {
+    const docs = await this.fetchLatestDocs();
+    
+    // Search in reference section for CLI commands
+    const cliDocs = docs.filter(doc => 
+      doc.section === 'reference' && 
+      doc.url.includes('/cli/commands/')
+    );
+
+    // Try exact match first
+    const exactMatch = cliDocs.find(doc => 
+      doc.title.toLowerCase() === command.toLowerCase() ||
+      doc.url.toLowerCase().includes(`/${command.toLowerCase()}/`) ||
+      doc.url.toLowerCase().endsWith(`/${command.toLowerCase()}`)
+    );
+
+    if (exactMatch) {
+      return exactMatch;
+    }
+
+    // Try partial match
+    const partialMatch = cliDocs.find(doc =>
+      doc.title.toLowerCase().includes(command.toLowerCase()) ||
+      doc.content.toLowerCase().includes(`${command} `)
+    );
+
+    return partialMatch || null;
+  }
+
+  async getHclConfigReference(blockOrAttribute: string): Promise<TerragruntDoc[]> {
+    const docs = await this.fetchLatestDocs();
+    const query = blockOrAttribute.toLowerCase();
+
+    // Search in reference section for HCL configuration
+    const hclDocs = docs.filter(doc =>
+      doc.section === 'reference' && (
+        doc.url.includes('/hcl/blocks') ||
+        doc.url.includes('/hcl/attributes') ||
+        doc.url.includes('/hcl/functions') ||
+        doc.url.includes('/config-blocks-and-attributes')
+      )
+    );
+
+    // Find relevant docs
+    return hclDocs.filter(doc =>
+      doc.title.toLowerCase().includes(query) ||
+      doc.content.toLowerCase().includes(query)
+    );
+  }
+
+  async getCodeExamples(topic: string): Promise<Array<{ doc: TerragruntDoc, examples: string[] }>> {
+    const docs = await this.fetchLatestDocs();
+    const query = topic.toLowerCase();
+    const results: Array<{ doc: TerragruntDoc, examples: string[] }> = [];
+
+    // Search docs that match the topic
+    const relevantDocs = docs.filter(doc =>
+      doc.title.toLowerCase().includes(query) ||
+      doc.content.toLowerCase().includes(query)
+    );
+
+    // Extract code examples from each relevant doc
+    for (const doc of relevantDocs.slice(0, 10)) { // Limit to 10 docs
+      const examples = this.extractCodeBlocks(doc.content);
+      if (examples.length > 0) {
+        results.push({ doc, examples });
+      }
+    }
+
+    return results;
+  }
+
+  private extractCodeBlocks(content: string): string[] {
+    const examples: string[] = [];
+    
+    // Match code blocks patterns in markdown-like content
+    // Looking for common patterns like: "terragrunt", "terraform {", "remote_state {", etc.
+    const codePatterns = [
+      /terragrunt\s+\w+[^\n]*/gi,
+      /terraform\s*{[\s\S]*?}/gi,
+      /remote_state\s*{[\s\S]*?}/gi,
+      /dependency\s*"[^"]+"\s*{[\s\S]*?}/gi,
+      /include\s*"[^"]+"\s*{[\s\S]*?}/gi,
+      /inputs\s*=\s*{[\s\S]*?}/gi,
+    ];
+
+    for (const pattern of codePatterns) {
+      const matches = content.match(pattern);
+      if (matches) {
+        examples.push(...matches.map(m => m.trim()));
+      }
+    }
+
+    // Remove duplicates and limit
+    return Array.from(new Set(examples)).slice(0, 5);
   }
 }

@@ -80,7 +80,7 @@ export const validateTerragruntConfig = async (configPath: string): Promise<{
                 result.errors.push(`Terragrunt validation failed: ${validateResult.error}`);
                 result.valid = false;
             }
-        } catch (error) {
+        } catch (_error) {
             result.warnings.push('Could not run terragrunt validate-inputs');
         }
 
@@ -162,7 +162,7 @@ export const getTerragruntVersion = async (): Promise<string> => {
     try {
         const result = await runTerragruntCommand('--version');
         return result.success ? result.output.trim() : 'Unknown';
-    } catch (error) {
+    } catch (_error) {
         return 'Not installed';
     }
 };

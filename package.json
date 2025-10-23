@@ -7,6 +7,8 @@
     "start": "node dist/index.js",
     "dev": "ts-node src/index.ts",
     "build": "tsc",
+    "lint": "eslint src/**/*.ts",
+    "lint:fix": "eslint src/**/*.ts --fix",
     "test": "jest",
     "test:server": "node test/server-test.js",
     "docker:build": "docker build -t terragrunt-mcp-server:latest .",
@@ -17,19 +19,19 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.20.1",
-    "node-fetch": "^3.3.2",
     "cheerio": "^1.0.0-rc.12",
-    "typescript": "^5.0.0",
-    "ts-node": "^10.9.0"
+    "node-fetch": "^3.3.2",
+    "ts-node": "^10.9.0",
+    "typescript": "^5.0.0"
   },
   "devDependencies": {
-    "@types/node": "^20.0.0",
-    "@types/jest": "^29.0.0",
+    "@types/jest": "^30.0.0",
+    "@types/node": "^24.9.1",
     "@typescript-eslint/eslint-plugin": "^8.0.0",
     "@typescript-eslint/parser": "^8.0.0",
     "eslint": "^9.0.0",
-    "jest": "^29.0.0",
-    "ts-jest": "^29.0.0"
+    "jest": "^30.2.0",
+    "ts-jest": "^29.4.5"
   },
   "type": "module",
   "keywords": [

@@ -33,10 +33,13 @@ Resources follow URI scheme `terragrunt://docs/{type}/{identifier}`:
 - `terragrunt://docs/page/{encoded-url}` - Individual pages
 
 ### Tool Pattern  
-Three core tools with specific input schemas:
-- `search_terragrunt_docs` - Query with limit parameter
-- `get_terragrunt_sections` - No parameters 
-- `get_section_docs` - Section parameter
+Six core tools with specific input schemas:
+- `search_terragrunt_docs` - Query with limit parameter (general search across all docs)
+- `get_terragrunt_sections` - No parameters (returns list of documentation sections)
+- `get_section_docs` - Section parameter (retrieves all docs from a section)
+- `get_cli_command_help` - Command parameter (finds CLI command documentation)
+- `get_hcl_config_reference` - Config parameter (finds HCL blocks/attributes/functions)
+- `get_code_examples` - Topic and limit parameters (extracts code snippets with context)
 
 ## Development Workflow
 
