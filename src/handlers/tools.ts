@@ -127,7 +127,10 @@ export class ToolHandler {
                     return await this.getTerragruntSections();
 
                 case 'get_section_docs':
-                    return await this.getSectionDocs(args?.section);
+                    if (!args?.section) {
+                        return { error: 'section parameter is required' };
+                    }
+                    return await this.getSectionDocs(args.section);
 
                 case 'get_cli_command_help':
                     return await this.getCliCommandHelp(args?.command);
