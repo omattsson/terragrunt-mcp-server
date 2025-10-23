@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  terragrunt-mcp:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: terragrunt-mcp-server:latest
+    container_name: terragrunt-mcp-server
+    stdin_open: true
+    tty: true
+    volumes:
+      # Mount cache directory to persist documentation cache
+      - mcp-cache:/app/.cache
+    environment:
+      - NODE_ENV=production
+    restart: unless-stopped
+    # For stdio-based MCP, we rely on docker exec or stdin/stdout
+    # If you need HTTP/SSE transport, uncomment:
+    # ports:
+    #   - "3000:3000"
+
+volumes:
+  mcp-cache:
+    driver: local

@@ -1,0 +1,45 @@
+# Node modules (will be installed in container)
+node_modules/
+
+# Build output (will be generated in container)
+dist/
+
+# Cache directories
+.cache/
+
+# Git files
+.git/
+.gitignore
+
+# IDE/Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Test files
+test/
+*.test.js
+*.spec.js
+
+# Documentation
+*.md
+!README.md
+
+# Scripts
+*.sh
+*.ps1
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Environment files
+.env
+.env.*
