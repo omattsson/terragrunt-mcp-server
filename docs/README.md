@@ -1,6 +1,6 @@
-# Terragrunt MCP Server Wiki
+# Terragrunt MCP Server Documentation
 
-Welcome to the comprehensive documentation for the Terragrunt MCP Server! This wiki provides detailed information about installation, configuration, usage, and development.
+Welcome to the comprehensive documentation for the Terragrunt MCP Server! This documentation provides detailed information about installation, configuration, usage, and development.
 
 ## What is Terragrunt MCP Server?
 
