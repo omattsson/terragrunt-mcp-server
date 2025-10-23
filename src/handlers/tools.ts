@@ -16,7 +16,7 @@ export class ToolHandler {
         this.docsManager = new TerragruntDocsManager();
     }
 
-    getAvailableTools(): any[] {
+    getAvailableTools(): Tool[] {
         return [
             {
                 name: 'search_terragrunt_docs',
