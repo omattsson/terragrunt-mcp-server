@@ -237,18 +237,56 @@ npm run test:server    # Run integration tests
 
 ### Testing
 
-The project includes comprehensive tests:
+The project includes comprehensive test coverage (268 tests):
 
-- **Integration tests** (`test/server-test.js`): Tests all tools, resources, and documentation fetching
-- **Resilience tests** (`test/test-retry-fallback.mjs`): Validates retry logic and fallback mechanisms
-- **MCP protocol tests** (`test-mcp.sh`): Direct JSON-RPC protocol testing
+- **Unit Tests** (115 tests): Core functionality validation
+- **Integration Tests** (24 tests): End-to-end tool and resource testing
+- **Error Handling** (24 tests): Resilience and fallback mechanisms
+- **Performance Tests** (24 tests): Benchmark critical operations
+- **Edge Case Tests** (48 tests): Validate robust input handling
+- **MCP Protocol Tests** (57 tests): Full protocol compliance validation
 
-Run tests with:
+#### Running Tests Locally
 
 ```bash
-npm run test:server    # Recommended for development
-npm test               # Full test suite
+npm test                          # Run all tests (~92 seconds)
+npm run test:server              # Integration tests only
+npm test -- test/unit            # Unit tests only
+npm test -- test/performance     # Performance benchmarks
+npm test -- test/integration     # All integration tests
 ```
+
+#### GitHub Actions Workflows
+
+Two CI/CD workflows are available:
+
+1. **Automatic Tests** (`.github/workflows/test.yml`):
+   - Runs on all pull requests
+   - Tests on Node.js 18 and 20
+   - Generates coverage reports
+   - Uses npm caching for speed
+
+2. **Manual Tests** (`.github/workflows/manual-test.yml`):
+   - Manual trigger via GitHub UI
+   - Choose specific test suite:
+     - All tests
+     - Unit tests
+     - Integration tests
+     - Performance tests
+     - Edge case tests
+     - MCP protocol tests
+     - Error handling tests
+   - Uploads test artifacts
+   - Generates test summaries
+
+#### Test Documentation
+
+For detailed testing information, see:
+
+- [Performance Testing Guide](docs/Performance-Testing.md)
+- [Edge Cases Testing Guide](docs/Edge-Cases-Testing.md)
+- [MCP Protocol Compliance](docs/MCP-Protocol-Compliance.md)
+
 
 ### Docker Support
 
