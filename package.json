@@ -9,8 +9,17 @@
     "build": "tsc",
     "lint": "eslint src/**/*.ts",
     "lint:fix": "eslint src/**/*.ts --fix",
-    "test": "jest",
+    "test": "vitest run",
+    "test:unit": "vitest run test/unit",
+    "test:integration": "node test/server-test.js",
+    "test:integration:cache": "node test/integration/cache-persistence.test.js",
+    "test:integration:errors": "node test/integration/error-handling.test.js",
+    "test:integration:all": "node test/server-test.js && node test/integration/cache-persistence.test.js && node test/integration/error-handling.test.js",
     "test:server": "node test/server-test.js",
+    "test:all": "npm run test:unit && npm run test:integration:all",
+    "test:coverage": "vitest run --coverage",
+    "test:watch": "vitest",
+    "test:ui": "vitest --ui",
     "docker:build": "docker build -t terragrunt-mcp-server:latest .",
     "docker:run": "docker run -i terragrunt-mcp-server:latest",
     "docker:compose:up": "docker-compose up -d",
@@ -25,13 +34,12 @@
     "typescript": "^5.0.0"
   },
   "devDependencies": {
-    "@types/jest": "^30.0.0",
     "@types/node": "^24.9.1",
     "@typescript-eslint/eslint-plugin": "^8.0.0",
     "@typescript-eslint/parser": "^8.0.0",
+    "@vitest/ui": "^4.0.3",
     "eslint": "^9.0.0",
-    "jest": "^30.2.0",
-    "ts-jest": "^29.4.5"
+    "vitest": "^4.0.3"
   },
   "type": "module",
   "keywords": [
@@ -41,6 +49,8 @@
     "typescript"
   ],
   "author": "Olof Mattsson",
-  "maintainers": ["omattsson"],
+  "maintainers": [
+    "omattsson"
+  ],
   "license": "MIT"
 }
