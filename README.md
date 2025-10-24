@@ -1,47 +1,79 @@
 # Terragrunt MCP Server
 
-A Model Context Protocol (MCP) server that provides comprehensive Terragrunt documentation and tooling integration for VS Code with GitHub Copilot.
+A Model Context Protocol (MCP) server that provides comprehensive Terragrunt documentation and tooling integration for AI assistants like GitHub Copilot in VS Code.
+
+## Overview
+
+This MCP server enables AI assistants to access and search the complete Terragrunt documentation, providing intelligent assistance for working with Terragrunt configurations, CLI commands, and HCL syntax. It features a robust caching system with network resilience and multiple fallback mechanisms.
 
 ## Features
 
 ### 📚 Documentation Access
 
 - **Live Documentation**: Automatically fetches the latest Terragrunt documentation from the official website
-- **Resilient Fetching**: Retry mechanism with exponential backoff (3 retries, up to 10s delay)
-- **Multiple Fallbacks**: Disk cache → Network with retry → Stale cache → Local fixture
-- **Searchable Content**: Full-text search across all Terragrunt documentation
-- **Organized by Sections**: Browse documentation by categories (getting-started, reference, features, etc.)
-- **Cached for Performance**: Smart caching system with 24-hour refresh cycle
-- **CI-Friendly**: Uses local fixtures when network is unavailable for deterministic tests
+- **Smart Caching**: Two-tier caching system (in-memory + disk) with 24-hour refresh cycle
+- **Network Resilience**: Retry mechanism with exponential backoff (3 retries, up to 10s delay)
+- **Multiple Fallbacks**: Network → Disk cache → Stale cache → Local fixture (for offline/CI use)
+- **Fast Search**: Full-text search across all cached documentation
+- **Organized Sections**: Browse documentation by categories (getting-started, reference, features, etc.)
+- **Persistent Cache**: Cache survives server restarts (stored in `.cache/terragrunt-docs/`)
 
 ### 🔧 Available Tools
 
-1. **`search_terragrunt_docs`** - Search Terragrunt documentation for specific topics
-   - Parameters: `query` (string), `limit` (number, optional)
-   - Example: Search for "dependencies", "remote state", "generate block"
+Six specialized tools for different documentation needs:
 
-2. **`get_terragrunt_sections`** - List all available documentation sections
-   - No parameters required
-   - Returns all sections with document counts
+#### 1. **`search_terragrunt_docs`** - General Documentation Search
 
-3. **`get_section_docs`** - Get all documentation for a specific section
-   - Parameters: `section` (string)
-   - Example sections: "getting-started", "reference", "features"
+Search across all Terragrunt documentation for specific topics, commands, or concepts.
 
-4. **`get_cli_command_help`** - Get detailed help for a specific Terragrunt CLI command
-   - Parameters: `command` (string)
-   - Example: "plan", "apply", "run-all", "hclfmt"
-   - Searches reference/cli documentation for command details
+- **Parameters**:
+  - `query` (string, required): Search query text
+  - `limit` (number, optional): Maximum results (default: 5, max: 20)
+- **Use cases**: General questions, broad topic searches, discovering documentation
 
-5. **`get_hcl_config_reference`** - Get documentation for HCL configuration elements
-   - Parameters: `config` (string)
-   - Example: "terraform", "remote_state", "dependency", "inputs"
-   - Finds HCL blocks, attributes, and functions documentation
+#### 2. **`get_terragrunt_sections`** - List Documentation Sections
 
-6. **`get_code_examples`** - Find code examples and snippets for specific topics
-   - Parameters: `topic` (string), `limit` (number, optional)
-   - Example: "remote state", "dependencies", "before hooks"
-   - Extracts code snippets with context from documentation
+Get a complete list of all available documentation sections with document counts.
+
+- **Parameters**: None
+- **Returns**: Array of sections (e.g., "getting-started", "reference", "features")
+- **Use cases**: Understanding documentation structure, browsing by category
+
+#### 3. **`get_section_docs`** - Retrieve Section Documentation
+
+Get all documentation pages from a specific section.
+
+- **Parameters**:
+  - `section` (string, required): Section name (e.g., "getting-started", "reference")
+- **Use cases**: Deep diving into a specific topic area, reading sequential guides
+
+#### 4. **`get_cli_command_help`** - CLI Command Documentation
+
+Get detailed help documentation for specific Terragrunt CLI commands.
+
+- **Parameters**:
+  - `command` (string, required): Command name (e.g., "plan", "apply", "run-all", "hclfmt")
+- **Returns**: Command documentation with usage, options, and examples
+- **Use cases**: Learning command syntax, understanding command options, CLI troubleshooting
+
+#### 5. **`get_hcl_config_reference`** - HCL Configuration Reference
+
+Get documentation for HCL configuration blocks, attributes, and functions used in `terragrunt.hcl`.
+
+- **Parameters**:
+  - `config` (string, required): Config element name (e.g., "terraform", "remote_state", "dependency", "inputs")
+- **Returns**: Configuration reference with syntax and usage details
+- **Use cases**: Writing terragrunt.hcl files, understanding configuration options
+
+#### 6. **`get_code_examples`** - Find Code Examples
+
+Find code examples and snippets related to specific Terragrunt topics or patterns.
+
+- **Parameters**:
+  - `topic` (string, required): Topic or pattern (e.g., "remote state", "dependencies", "before hooks")
+  - `limit` (number, optional): Max documents to return (default: 5, max: 10)
+- **Returns**: Code snippets with context from relevant documentation
+- **Use cases**: Learning by example, implementation patterns, quick references
 
 ### 📖 Resources
 
@@ -52,51 +84,67 @@ A Model Context Protocol (MCP) server that provides comprehensive Terragrunt doc
 
 ## Installation
 
-1. **Clone and build the server:**
+1. Clone the repository
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+3. Build the server:
+   ```bash
+   npm run build
+   ```
 
-```bash
-git clone <your-repo>
-cd terragrunt-mcp-server
-npm install
-npm run build
-```
+### Running with Docker
 
-2. **Configure VS Code to use the MCP server:**
+For containerized deployment, see the [Docker Deployment Guide](DOCKER.md) for instructions on building and running the server in a local Docker container.
 
-Add the following to your VS Code `settings.json`:
+### VS Code Configuration
+
+Add this to your VS Code `settings.json`:
 
 ```json
 {
   "mcp.servers": {
     "terragrunt": {
       "command": "node",
-      "args": ["/path/to/terragrunt-mcp-server/dist/index.js"]
+      "args": ["dist/index.js"],
+      "cwd": "/absolute/path/to/terragrunt-mcp-server"
     }
   }
 }
 ```
 
-Or if you want to run in development mode:
+Or use the Docker configuration (see [Docker guide](DOCKER.md)):
 
 ```json
 {
   "mcp.servers": {
     "terragrunt": {
-      "command": "npm",
-      "args": ["run", "dev"],
-      "cwd": "/path/to/terragrunt-mcp-server"
+      "command": "docker",
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "-v", "mcp-cache:/app/.cache",
+        "terragrunt-mcp-server:latest"
+      ]
     }
   }
 }
 ```
 
+4. **Restart VS Code** to activate the MCP server
+
+5. **Verify installation**: Ask GitHub Copilot: *"Search Terragrunt docs for getting started"*
+
 ## Usage with GitHub Copilot
 
-Once configured, you can interact with Terragrunt documentation directly through Copilot:
+Once configured, interact with Terragrunt documentation directly through Copilot in VS Code. The server provides intelligent context for all your Terragrunt questions.
 
-### Example Prompts
+### Example Prompts by Category
 
 #### General Documentation Search
+
 - *"Search for Terragrunt documentation about dependencies"*
 - *"Show me the getting started guide for Terragrunt"*
 - *"What are the available configuration options in Terragrunt?"*
@@ -104,18 +152,21 @@ Once configured, you can interact with Terragrunt documentation directly through
 - *"Find documentation about Terragrunt generate blocks"*
 
 #### CLI Command Help
+
 - *"What options are available for the terragrunt plan command?"*
 - *"How do I use terragrunt run-all?"*
 - *"Show me help for the hclfmt command"*
 - *"What does terragrunt validate-inputs do?"*
 
 #### HCL Configuration Reference
+
 - *"Show me how to configure the terraform block in terragrunt.hcl"*
 - *"What are the available remote_state options?"*
 - *"How do I use the dependency block?"*
 - *"What attributes can I use in the inputs block?"*
 
 #### Code Examples
+
 - *"Show me examples of using dependencies in Terragrunt"*
 - *"Find code snippets for remote state configuration"*
 - *"What are some examples of before_hook usage?"*
@@ -125,74 +176,196 @@ Once configured, you can interact with Terragrunt documentation directly through
 
 - *"Compare different approaches for Terragrunt module organization"*
 - *"Show me best practices for Terragrunt project structure"*
-- *"What's new in the latest Terragrunt documentation?"*
+- *"Explain the difference between dependency and dependencies blocks"*
+- *"What's the recommended way to handle environment-specific configurations?"*
 
 ## Project Structure
 
-```
-terragrunt-mcp-server
-├── src
-│   ├── index.ts          # Entry point for the application
-│   ├── server.ts         # Main server logic
-│   ├── handlers          # Contains various request handlers
-│   │   ├── tools.ts      # Tool management functions
-│   │   ├── resources.ts   # Resource management functions
-│   │   └── prompts.ts    # User interaction functions
-│   ├── terragrunt        # Terragrunt-related functionalities
-│   │   ├── commands.ts   # Wrapper for Terragrunt commands
-│   │   ├── config.ts     # Configuration loading and validation
-│   │   └── utils.ts      # Utility functions for Terragrunt
-│   └── types             # Type definitions
-│       ├── mcp.ts        # MCP protocol types
-│       └── terragrunt.ts  # Terragrunt types
-├── schemas
-│   └── mcp-protocol.json  # JSON schema for MCP protocol
-├── package.json           # npm configuration file
-├── tsconfig.json          # TypeScript configuration file
-├── .gitignore             # Git ignore file
-└── README.md              # Project documentation
-```
-
-## Getting Started
-
-### Prerequisites
-
-- Node.js (version X.X.X or higher)
-- npm (version X.X.X or higher)
-- TypeScript (version X.X.X or higher)
-
-### Installation
-
-1. Clone the repository:
-
-   ```
-   git clone <repository-url>
-   cd terragrunt-mcp-server
-   ```
-
-2. Install dependencies:
-
-   ```
-   npm install
-   ```
-
-### Running the Server
-
-To start the server, run:
-
-```
-npm start
+```text
+terragrunt-mcp-server/
+├── src/
+│   ├── index.ts                 # MCP server entry point
+│   ├── server.ts                # Server initialization and setup
+│   ├── handlers/
+│   │   ├── tools.ts             # Tool execution handlers (6 tools)
+│   │   ├── resources.ts         # Resource access handlers
+│   │   └── prompts.ts           # Prompt templates (future)
+│   ├── terragrunt/
+│   │   ├── docs.ts              # Documentation fetching and caching
+│   │   ├── commands.ts          # Terragrunt CLI wrapper (future)
+│   │   ├── config.ts            # Configuration management
+│   │   └── utils.ts             # Utility functions
+│   └── types/
+│       ├── mcp.ts               # MCP protocol type definitions
+│       └── terragrunt.ts        # Terragrunt-specific types
+├── test/
+│   ├── server-test.js           # Integration tests
+│   └── test-retry-fallback.mjs  # Resilience tests
+├── fixtures/
+│   └── terragrunt-docs-fixture.json  # Offline documentation cache
+├── .cache/                      # Auto-generated cache (gitignored)
+│   └── terragrunt-docs/
+│       ├── docs-cache.json      # Cached documentation (~1.1MB)
+│       └── metadata.json        # Cache timestamps
+├── schemas/
+│   └── mcp-protocol.json        # MCP protocol schema
+├── package.json                 # Node.js dependencies
+├── tsconfig.json                # TypeScript configuration
+└── README.md                    # This file
 ```
 
-### Usage
+### Key Files
 
-- The server exposes various endpoints for managing tools and resources.
-- Use the provided handlers to interact with the MCP protocol and Terragrunt commands.
+- **`src/index.ts`**: Main entry point that initializes the MCP server with stdio transport
+- **`src/handlers/tools.ts`**: Implements all 6 tools for documentation access
+- **`src/terragrunt/docs.ts`**: Core documentation manager with caching, retry logic, and fallbacks
+- **`test/server-test.js`**: Comprehensive test suite validating all functionality
+
+## Development
+
+### Available Scripts
+
+```bash
+npm run build          # Compile TypeScript to dist/
+npm run dev            # Run in development mode with ts-node
+npm start              # Run compiled server from dist/
+npm run lint           # Check code style with ESLint
+npm run lint:fix       # Auto-fix linting issues
+npm test               # Run all tests (Jest)
+npm run test:server    # Run integration tests
+```
+
+### Testing
+
+The project includes comprehensive test coverage (268 tests):
+
+- **Unit Tests** (115 tests): Core functionality validation
+- **Integration Tests** (24 tests): End-to-end tool and resource testing
+- **Error Handling** (24 tests): Resilience and fallback mechanisms
+- **Performance Tests** (24 tests): Benchmark critical operations
+- **Edge Case Tests** (48 tests): Validate robust input handling
+- **MCP Protocol Tests** (57 tests): Full protocol compliance validation
+
+#### Running Tests Locally
+
+```bash
+npm test                          # Run all tests (~92 seconds)
+npm run test:server              # Integration tests only
+npm test -- test/unit            # Unit tests only
+npm test -- test/performance     # Performance benchmarks
+npm test -- test/integration     # All integration tests
+```
+
+#### GitHub Actions Workflows
+
+Two CI/CD workflows are available:
+
+1. **Automatic Tests** (`.github/workflows/test.yml`):
+   - Runs on all pull requests
+   - Tests on Node.js 18 and 20
+   - Generates coverage reports
+   - Uses npm caching for speed
+
+2. **Manual Tests** (`.github/workflows/manual-test.yml`):
+   - Manual trigger via GitHub UI
+   - Choose specific test suite:
+     - All tests
+     - Unit tests
+     - Integration tests
+     - Performance tests
+     - Edge case tests
+     - MCP protocol tests
+     - Error handling tests
+   - Uploads test artifacts
+   - Generates test summaries
+
+#### Test Documentation
+
+For detailed testing information, see:
+
+- [Performance Testing Guide](docs/Performance-Testing.md)
+- [Edge Cases Testing Guide](docs/Edge-Cases-Testing.md)
+- [MCP Protocol Compliance](docs/MCP-Protocol-Compliance.md)
+
+
+### Docker Support
+
+Build and run in Docker for isolated testing:
+
+```bash
+# Build Docker image
+npm run docker:build
+
+# Run with docker-compose
+npm run docker:compose:up
+npm run docker:compose:logs
+npm run docker:compose:down
+```
+
+See [DOCKER.md](DOCKER.md) for detailed Docker usage.
 
 ### Contributing
 
-Contributions are welcome! Please submit a pull request or open an issue for any enhancements or bug fixes.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development guidelines and contribution process.
 
-### License
+## Technical Architecture
 
-This project is licensed under the MIT License. See the LICENSE file for details.
+### MCP Protocol Implementation
+
+This server implements the [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) using the official SDK (`@modelcontextprotocol/sdk`). It provides:
+
+- **Stdio Transport**: Direct integration with VS Code and other MCP clients
+- **Resource Handlers**: Expose documentation as structured resources
+- **Tool Handlers**: Six specialized tools for different documentation queries
+- **Prompt Handlers**: Future support for guided workflows
+
+### Documentation Caching System
+
+The `TerragruntDocsManager` implements a sophisticated multi-tier caching strategy:
+
+1. **In-Memory Cache**: Fast access to frequently used documentation
+2. **Disk Cache**: Persistent storage in `.cache/terragrunt-docs/` (~1.1MB)
+3. **24-Hour Expiry**: Automatic refresh to keep documentation current
+4. **Stale Cache Fallback**: Uses expired cache when network fails
+5. **Local Fixture**: Embedded documentation for complete offline support
+
+### Network Resilience
+
+Built-in retry mechanism with exponential backoff:
+
+- **3 retry attempts** with increasing delays (1s → 2s → 4s)
+- **10-second maximum delay** to prevent excessive waiting
+- **Graceful degradation** through multiple fallback layers
+- **CI/Test-friendly** with deterministic fixture fallback
+
+### Web Scraping
+
+Uses Cheerio to parse the official Terragrunt documentation site:
+
+- Extracts all documentation pages from `https://terragrunt.gruntwork.io/docs/`
+- Preserves document structure (sections, titles, URLs)
+- Cleans HTML content for better AI consumption
+- Updates automatically based on cache expiry
+
+## Version History
+
+See [RELEASE.md](RELEASE.md) for detailed version history and changelog.
+
+**Current Version**: 0.2.0
+
+- 6 specialized documentation tools
+- Multi-tier caching with network resilience
+- Docker support
+- Comprehensive test coverage
+
+## License
+
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+
+## Related Resources
+
+- [Model Context Protocol Documentation](https://modelcontextprotocol.io/)
+- [Terragrunt Official Documentation](https://terragrunt.gruntwork.io/)
+- [GitHub Repository](https://github.com/omattsson/terragrunt-mcp-server)
+- [Setup Guide](SETUP.md)
+- [Docker Guide](DOCKER.md)

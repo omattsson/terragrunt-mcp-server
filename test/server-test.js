@@ -105,6 +105,129 @@ async function testServer() {
     if (!badSection.error) console.log('ℹ️  No docs for invalid section (expected)');
     else console.log('✅ Error returned for invalid section as expected');
 
+    // Test tool execution: get_cli_command_help
+    console.log('\n📖 Testing CLI Command Help Tool...');
+    const cliHelp = await toolHandler.executeTool('get_cli_command_help', { command: 'plan' });
+    if (cliHelp.error) {
+      console.log(`⚠️  CLI help returned error (may be expected if docs don't have command): ${cliHelp.error}`);
+    } else if (cliHelp.help) {
+      console.log(`✅ CLI command help tool returned help for 'plan'`);
+    } else {
+      console.log('ℹ️  No CLI help found for "plan" command');
+    }
+
+    // Test with another common command
+    const cliHelpApply = await toolHandler.executeTool('get_cli_command_help', { command: 'apply' });
+    if (!cliHelpApply.error && cliHelpApply.help) {
+      console.log(`✅ CLI command help tool returned help for 'apply'`);
+    }
+
+    // Test with run-all command
+    const cliHelpRunAll = await toolHandler.executeTool('get_cli_command_help', { command: 'run-all' });
+    if (!cliHelpRunAll.error && cliHelpRunAll.help) {
+      console.log(`✅ CLI command help tool returned help for 'run-all'`);
+    }
+
+    // Test tool execution: get_hcl_config_reference
+    console.log('\n🔧 Testing HCL Config Reference Tool...');
+    const hclRefTerraform = await toolHandler.executeTool('get_hcl_config_reference', { config: 'terraform' });
+    if (hclRefTerraform.error) {
+      console.log(`⚠️  HCL config returned error (may be expected): ${hclRefTerraform.error}`);
+    } else if (hclRefTerraform.docs && hclRefTerraform.docs.length > 0) {
+      console.log(`✅ HCL config reference tool returned ${hclRefTerraform.docs.length} docs for 'terraform' block`);
+    } else {
+      console.log('ℹ️  No HCL docs found for "terraform" config');
+    }
+
+    // Test with other common HCL blocks
+    const hclRefDependency = await toolHandler.executeTool('get_hcl_config_reference', { config: 'dependency' });
+    if (!hclRefDependency.error && hclRefDependency.docs && hclRefDependency.docs.length > 0) {
+      console.log(`✅ HCL config reference tool returned ${hclRefDependency.docs.length} docs for 'dependency' block`);
+    }
+
+    const hclRefRemoteState = await toolHandler.executeTool('get_hcl_config_reference', { config: 'remote_state' });
+    if (!hclRefRemoteState.error && hclRefRemoteState.docs && hclRefRemoteState.docs.length > 0) {
+      console.log(`✅ HCL config reference tool returned ${hclRefRemoteState.docs.length} docs for 'remote_state' block`);
+    }
+
+    // Test tool execution: get_code_examples
+    console.log('\n💻 Testing Code Examples Tool...');
+    const codeExamples = await toolHandler.executeTool('get_code_examples', { 
+      topic: 'dependencies',
+      limit: 5
+    });
+    if (codeExamples.error) {
+      console.log(`⚠️  Code examples returned error (may be expected): ${codeExamples.error}`);
+    } else if (codeExamples.examples && codeExamples.examples.length > 0) {
+      console.log(`✅ Code examples tool returned ${codeExamples.examples.length} examples for 'dependencies'`);
+    } else {
+      console.log('ℹ️  No code examples found for "dependencies" topic');
+    }
+
+    // Test with other topics
+    const codeExamplesRemoteState = await toolHandler.executeTool('get_code_examples', { 
+      topic: 'remote state',
+      limit: 3
+    });
+    if (!codeExamplesRemoteState.error && codeExamplesRemoteState.examples && codeExamplesRemoteState.examples.length > 0) {
+      console.log(`✅ Code examples tool returned ${codeExamplesRemoteState.examples.length} examples for 'remote state'`);
+    }
+
+    const codeExamplesHooks = await toolHandler.executeTool('get_code_examples', { 
+      topic: 'before hooks',
+      limit: 3
+    });
+    if (!codeExamplesHooks.error && codeExamplesHooks.examples && codeExamplesHooks.examples.length > 0) {
+      console.log(`✅ Code examples tool returned ${codeExamplesHooks.examples.length} examples for 'before hooks'`);
+    }
+
+    // Test edge cases
+    console.log('\n🧪 Testing Edge Cases...');
+    
+    // Search with special characters
+    const specialSearch = await toolHandler.executeTool('search_terragrunt_docs', {
+      query: 'S3 bucket & DynamoDB',
+      limit: 5
+    });
+    if (!specialSearch.error) {
+      console.log(`✅ Search with special characters returned ${specialSearch.results?.length || 0} results`);
+    }
+
+    // Very long search query
+    const longQuery = 'terragrunt configuration file dependency management remote state backend S3 DynamoDB locking'.repeat(5);
+    const longSearch = await toolHandler.executeTool('search_terragrunt_docs', {
+      query: longQuery,
+      limit: 1
+    });
+    if (!longSearch.error) {
+      console.log(`✅ Very long search query handled successfully`);
+    }
+
+    // Limit at boundaries
+    const limitZero = await toolHandler.executeTool('search_terragrunt_docs', {
+      query: 'test',
+      limit: 0
+    });
+    if (limitZero.results) {
+      console.log(`✅ Limit=0 handled: returned ${limitZero.results.length} results`);
+    }
+
+    const limitOne = await toolHandler.executeTool('search_terragrunt_docs', {
+      query: 'test',
+      limit: 1
+    });
+    if (limitOne.results && limitOne.results.length <= 1) {
+      console.log(`✅ Limit=1 respected: returned ${limitOne.results.length} results`);
+    }
+
+    const limitTwenty = await toolHandler.executeTool('get_code_examples', {
+      topic: 'terraform',
+      limit: 20
+    });
+    if (!limitTwenty.error) {
+      console.log(`✅ Limit=20 handled for code examples`);
+    }
+
     console.log('\n✨ All extended tests passed! Server is working correctly.');
 
   } catch (error) {

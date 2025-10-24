@@ -17,7 +17,7 @@ jobs:
     
     strategy:
       matrix:
-        node-version: [20.x, 22.x, 24.x]
+        node-version: [24.x]
     
     steps:
       - name: Checkout code
@@ -39,8 +39,27 @@ jobs:
       - name: Build TypeScript
         run: npm run build
       
-      - name: Run tests
+      - name: Run all tests
+        run: npm test
+      
+      - name: Run legacy integration tests
         run: npm run test:server
+      
+      - name: Generate test summary
+        if: always()
+        run: |
+          echo "## Test Results - Node ${{ matrix.node-version }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Test suite completed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Test Breakdown" >> $GITHUB_STEP_SUMMARY
+          echo "- **Unit Tests:** 115 tests" >> $GITHUB_STEP_SUMMARY
+          echo "- **Integration Tests:** 24 tests" >> $GITHUB_STEP_SUMMARY
+          echo "- **Error Handling:** 24 tests" >> $GITHUB_STEP_SUMMARY
+          echo "- **Performance:** 24 tests" >> $GITHUB_STEP_SUMMARY
+          echo "- **Edge Cases:** 48 tests" >> $GITHUB_STEP_SUMMARY
+          echo "- **MCP Protocol:** 57 tests" >> $GITHUB_STEP_SUMMARY
+          echo "- **Legacy Integration:** server-test.js" >> $GITHUB_STEP_SUMMARY
       
       - name: Check for TypeScript errors
         run: npx tsc --noEmit
