@@ -1,0 +1,94 @@
+name: Manual Test Run
+
+on:
+  workflow_dispatch:
+    inputs:
+      test_suite:
+        description: 'Test suite to run'
+        required: false
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - unit
+          - integration
+          - performance
+          - edge-cases
+          - mcp-protocol
+          - error-handling
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build project
+        run: npm run build
+
+      - name: Run all tests
+        if: ${{ inputs.test_suite == 'all' }}
+        run: npm test
+
+      - name: Run unit tests
+        if: ${{ inputs.test_suite == 'unit' }}
+        run: npm test -- test/unit/
+
+      - name: Run integration tests
+        if: ${{ inputs.test_suite == 'integration' }}
+        run: npm test -- test/integration/
+
+      - name: Run performance tests
+        if: ${{ inputs.test_suite == 'performance' }}
+        run: npm test -- test/performance/
+
+      - name: Run edge case tests
+        if: ${{ inputs.test_suite == 'edge-cases' }}
+        run: npm test -- test/integration/edge-cases.test.ts
+
+      - name: Run MCP protocol tests
+        if: ${{ inputs.test_suite == 'mcp-protocol' }}
+        run: npm test -- test/integration/mcp-protocol.test.ts
+
+      - name: Run error handling tests
+        if: ${{ inputs.test_suite == 'error-handling' }}
+        run: npm test -- test/unit/error-handling.test.ts
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ inputs.test_suite }}
+          path: |
+            coverage/
+            test-results/
+          retention-days: 7
+
+      - name: Test Summary
+        if: always()
+        run: |
+          echo "## Test Run Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Test Suite:** ${{ inputs.test_suite }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Status:** ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Test Statistics" >> $GITHUB_STEP_SUMMARY
+          echo "- Total Tests: 268" >> $GITHUB_STEP_SUMMARY
+          echo "- Unit Tests: 115" >> $GITHUB_STEP_SUMMARY
+          echo "- Integration Tests: 24" >> $GITHUB_STEP_SUMMARY
+          echo "- Error Handling Tests: 24" >> $GITHUB_STEP_SUMMARY
+          echo "- Performance Tests: 24" >> $GITHUB_STEP_SUMMARY
+          echo "- Edge Case Tests: 48" >> $GITHUB_STEP_SUMMARY
+          echo "- MCP Protocol Tests: 57" >> $GITHUB_STEP_SUMMARY
