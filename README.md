@@ -84,55 +84,58 @@ Find code examples and snippets related to specific Terragrunt topics or pattern
 
 ## Installation
 
-### Prerequisites
-
-- Node.js 18+
-- npm or yarn
-- VS Code with GitHub Copilot (or other MCP-compatible client)
-
-### Setup Steps
-
-1. **Clone and build the server:**
-
+1. Clone the repository
+2. Install dependencies:
    ```bash
-   git clone https://github.com/omattsson/terragrunt-mcp-server.git
-   cd terragrunt-mcp-server
    npm install
+   ```
+3. Build the server:
+   ```bash
    npm run build
    ```
 
-2. **Configure VS Code to use the MCP server:**
+### Running with Docker
 
-   Add to your VS Code `settings.json` (Command Palette → "Preferences: Open User Settings (JSON)"):
+For containerized deployment, see the [Docker Deployment Guide](DOCKER.md) for instructions on building and running the server in a local Docker container.
 
-   ```json
-   {
-     "mcp.servers": {
-       "terragrunt": {
-         "command": "node",
-         "args": ["/absolute/path/to/terragrunt-mcp-server/dist/index.js"]
-       }
-     }
-   }
-   ```
+### VS Code Configuration
 
-   Or for development mode with hot-reload:
+Add this to your VS Code `settings.json`:
 
-   ```json
-   {
-     "mcp.servers": {
-       "terragrunt": {
-         "command": "npm",
-         "args": ["run", "dev"],
-         "cwd": "/absolute/path/to/terragrunt-mcp-server"
-       }
-     }
-   }
-   ```
+```json
+{
+  "mcp.servers": {
+    "terragrunt": {
+      "command": "node",
+      "args": ["dist/index.js"],
+      "cwd": "/absolute/path/to/terragrunt-mcp-server"
+    }
+  }
+}
+```
 
-3. **Restart VS Code** to activate the MCP server
+Or use the Docker configuration (see [Docker guide](DOCKER.md)):
 
-4. **Verify installation**: Ask GitHub Copilot: *"Search Terragrunt docs for getting started"*
+```json
+{
+  "mcp.servers": {
+    "terragrunt": {
+      "command": "docker",
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "-v", "mcp-cache:/app/.cache",
+        "terragrunt-mcp-server:latest"
+      ]
+    }
+  }
+}
+```
+
+4. **Restart VS Code** to activate the MCP server
+
+5. **Verify installation**: Ask GitHub Copilot: *"Search Terragrunt docs for getting started"*
 
 ## Usage with GitHub Copilot
 
