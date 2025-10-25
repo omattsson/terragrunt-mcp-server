@@ -155,8 +155,8 @@ If you want to publish to a container registry:
 
 ```bash
 # Tag for registry
-docker tag terragrunt-mcp-server:latest ghcr.io/omattsson/terragrunt-mcp-server:latest
+docker tag terragrunt-mcp-server:latest olofdevopsninja/terragrunt-mcp-server:latest
 
-# Push to GitHub Container Registry
-docker push ghcr.io/omattsson/terragrunt-mcp-server:latest
+# Push to Docker Hub
+docker push olofdevopsninja/terragrunt-mcp-server:latest
 ```

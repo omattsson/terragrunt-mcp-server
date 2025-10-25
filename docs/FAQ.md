@@ -34,38 +34,7 @@ Instead of switching between VS Code and browser documentation, you can:
 
 See the [Installation Guide](Installation-Guide) for detailed steps. Quick version:
 
-```bash
-npm install -g terragrunt-mcp-server
-```
-
-Then configure VS Code `settings.json`:
-
-```json
-{
-  "mcp.servers": {
-    "terragrunt": {
-      "command": "terragrunt-mcp-server"
-    }
-  }
-}
-```
-
-### Can I use it without installing globally?
-
-Yes! You can use npx:
-
-```json
-{
-  "mcp.servers": {
-    "terragrunt": {
-      "command": "npx",
-      "args": ["terragrunt-mcp-server"]
-    }
-  }
-}
-```
-
-Or clone and build locally:
+Clone and build locally:
 
 ```json
 {
@@ -87,7 +56,7 @@ Yes! See [Docker Deployment](Docker-Deployment) for full instructions:
   "mcp.servers": {
     "terragrunt": {
       "command": "docker",
-      "args": ["run", "-i", "--rm", "omattsson/terragrunt-mcp-server:latest"]
+      "args": ["run", "-i", "--rm", "olofdevopsninja/terragrunt-mcp-server:latest"]
     }
   }
 }
@@ -311,7 +280,7 @@ const retryConfig = {
 
 **Solution**:
 ```bash
-docker run -i omattsson/terragrunt-mcp-server:latest
+docker run -i olofdevopsninja/terragrunt-mcp-server:latest
 ```
 
 The `-i` (interactive) flag is **required** for MCP stdio communication.
@@ -495,8 +464,11 @@ For automated testing with Terragrunt docs:
 # GitHub Actions example
 - name: Setup Terragrunt MCP Server
   run: |
-    npm install -g terragrunt-mcp-server
-    terragrunt-mcp-server <<< '{"method":"initialize"}'
+    git clone https://github.com/omattsson/terragrunt-mcp-server.git
+    cd terragrunt-mcp-server
+    npm install
+    npm run build
+    node dist/index.js <<< '{"method":"initialize"}'
 ```
 
 ### Can I run multiple instances?

@@ -8,10 +8,10 @@ This guide covers running the Terragrunt MCP Server using Docker, including both
 
 ```bash
 # Pull the latest image
-docker pull omattsson/terragrunt-mcp-server:latest
+docker pull olofdevopsninja/terragrunt-mcp-server:latest
 
 # Run the container
-docker run -i omattsson/terragrunt-mcp-server:latest
+docker run -i olofdevopsninja/terragrunt-mcp-server:latest
 ```
 
 ### Using Docker Compose
@@ -339,7 +339,7 @@ docker buildx create --use
 # Build for multiple platforms
 docker buildx build \
   --platform linux/amd64,linux/arm64 \
-  -t omattsson/terragrunt-mcp-server:latest \
+  -t olofdevopsninja/terragrunt-mcp-server:latest \
   --push \
   .
 ```
@@ -356,7 +356,7 @@ docker buildx build \
 
 1. **Use specific version tags**:
    ```bash
-   docker pull omattsson/terragrunt-mcp-server:0.2.0
+   docker pull olofdevopsninja/terragrunt-mcp-server:0.2.0
    ```
 
 2. **Persist cache**:
@@ -425,7 +425,7 @@ spec:
     spec:
       containers:
       - name: server
-        image: omattsson/terragrunt-mcp-server:0.2.0
+        image: olofdevopsninja/terragrunt-mcp-server:0.2.0
         stdin: true
         resources:
           requests:
