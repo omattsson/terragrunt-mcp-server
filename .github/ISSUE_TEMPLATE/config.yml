@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Question or Discussion
+    url: https://github.com/omattsson/terragrunt-mcp-server/discussions
+    about: Ask questions or discuss ideas in GitHub Discussions
+  - name: Terragrunt Documentation
+    url: https://terragrunt.gruntwork.io/docs/
+    about: Official Terragrunt documentation
