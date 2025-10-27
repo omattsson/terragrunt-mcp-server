@@ -13,11 +13,25 @@ describe('TerragruntFunctionsManager', () => {
 
   beforeEach(() => {
     const content = [
-      // Function 1: arrow style
-      'abspath(path) -> string Returns the absolute path to a given path. Parameters: - path (string): The path to resolve. Example: abspath("./foo") See also: dirname(), basename()',
-      // Function 2: returns wording
-      'concat(list1, list2) returns list Parameters: list1 (list), list2 (list) Usage: concat([1],[2])',
-      // Inline call only
+      // Function 1: arrow style with description
+      '## abspath',
+      'Returns the absolute path to a given path.',
+      'abspath(path) -> string',
+      'Parameters: path (string): The path to resolve.',
+      'Example: abspath("./foo")',
+      'See also: dirname(), basename()',
+      '',
+      '## concat',
+      'Concatenates two lists into a single list.',
+      'concat(list1, list2) returns list',
+      'Parameters: list1 (list), list2 (list)',
+      'Usage: concat([1],[2])',
+      '',
+      '## get_env',
+      'Description: Retrieves an environment variable value.',
+      'get_env(name, default) -> string',
+      'Parameters: name (string), default (string)',
+      '',
       'You can also use account() to get cloud account info.',
     ].join(' ');
 
@@ -104,5 +118,22 @@ describe('TerragruntFunctionsManager', () => {
   it('handles empty or whitespace-only function names', async () => {
     expect(await mgr.extractFunctionFromDocs('')).toBeNull();
     expect(await mgr.extractFunctionFromDocs('   ')).toBeNull();
+  });
+
+  it('extracts function descriptions from documentation', async () => {
+    await mgr.loadFunctions();
+    
+    const abspath = mgr.getFunction('abspath');
+    expect(abspath?.description).toBeTruthy();
+    expect(abspath?.description.length).toBeGreaterThan(0);
+    expect(abspath?.description.toLowerCase()).toContain('absolute');
+    
+    const concat = mgr.getFunction('concat');
+    expect(concat?.description).toBeTruthy();
+    expect(concat?.description.toLowerCase()).toContain('concatenate');
+    
+    const getEnv = mgr.getFunction('get_env');
+    expect(getEnv?.description).toBeTruthy();
+    expect(getEnv?.description.toLowerCase()).toContain('environment');
   });
 });

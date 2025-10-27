@@ -229,10 +229,11 @@ export class TerragruntFunctionsManager {
     // Use non-capturing negative lookbehind to avoid matching mid-identifier
   const signatureRegex = /(?:^|[^a-zA-Z0-9_])(?<name>[a-zA-Z_][a-zA-Z0-9_]*)\s*\((?<params>[^)]*)\)\s*(?:->|→)\s*(?<ret>[^\s.,;:(){}[\]]+)?/g;
   // Alternate: name(params) [ -|—|–|:] (returns|return type) Type
-  const altSignatureRegex = /(?:^|[^a-zA-Z0-9_])(?<name>[a-zA-Z_][a-zA-Z0-9_]*)\s*\((?<params>[^)]*)\)\s*(?:[-–—,:])?\s*(?:returns?|return\s+type)\s+(?<ret2>[A-Za-z0-9_{}<>|.\][[]]+)/gi;
+  const altSignatureRegex = /(?:^|[^a-zA-Z0-9_])(?<name>[a-zA-Z_][a-zA-Z0-9_]*)\s*\((?<params>[^)]*)\)\s*(?:[-–—,:])?\s*(?:returns?|return\s+type)\s+(?<ret2>[A-Za-z0-9_<>|[\]{}]+)/gi;
     
-    // Fallback: register function names that appear as calls
-    const inlineCallRegex = /\b([a-zA-Z_][a-zA-Z0-9_]*)\s*\(/g;
+    // Fallback: register function names that appear in explicit usage context (more selective)
+    // Look for patterns like "use function_name()", "call function_name()", "function_name() function", etc.
+    const inlineCallRegex = /(?:use|call|invoke|function)\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\(/gi;
 
     const seen = new Set<string>();
 
@@ -274,6 +275,70 @@ export class TerragruntFunctionsManager {
         });
       }
       return out;
+    };
+
+    // Helper to extract description from context around a function signature
+    const extractDescription = (context: string, functionName: string, matchIndex: number): string => {
+      // Look for description BEFORE the signature match
+      // Split context at the match point
+      const beforeMatch = context.slice(0, matchIndex);
+      const afterMatch = context.slice(matchIndex);
+      
+      const lowerBefore = beforeMatch.toLowerCase();
+      const lowerName = functionName.toLowerCase();
+      
+      // Try to find "Description:" label before the signature
+      const descIdx = lowerBefore.lastIndexOf('description:');
+      if (descIdx !== -1) {
+        const start = descIdx + 'description:'.length;
+        const slice = beforeMatch.slice(start).trim();
+        // Extract until we hit the signature or section marker
+        const endMarkers = ['parameters:', functionName.toLowerCase() + '(', '##', '\n\n'];
+        let end = slice.length;
+        for (const marker of endMarkers) {
+          const pos = slice.toLowerCase().indexOf(marker);
+          if (pos !== -1 && pos > 0 && pos < end) {
+            end = pos;
+          }
+        }
+        const desc = slice.slice(0, end).trim();
+        if (desc && desc.length > 10 && desc.length < 500) {
+          return desc.replace(/\s+/g, ' ');
+        }
+      }
+      
+      // Try to find text between function name heading (##) and signature
+      const headingPattern = new RegExp(`##\\s*${functionName}\\s*`, 'i');
+      const headingMatch = headingPattern.exec(beforeMatch);
+      if (headingMatch) {
+        // Get text after the heading but before the signature
+        const afterHeading = beforeMatch.slice(headingMatch.index + headingMatch[0].length).trim();
+        // Look for complete sentences
+        const sentences = afterHeading.match(/[A-Z][^.!?]{10,300}[.!?]/g);
+        if (sentences && sentences.length > 0) {
+          const firstSent = sentences[0].trim();
+          if (!firstSent.toLowerCase().includes(functionName.toLowerCase() + '(')) {
+            return firstSent;
+          }
+        }
+      }
+      
+      // Fallback: look for descriptive sentence immediately before the signature
+      // Get last 200 chars before match
+      const beforeSig = beforeMatch.slice(Math.max(0, beforeMatch.length - 200)).trim();
+      const sentences = beforeSig.match(/[A-Z][^.!?]{15,250}[.!?]/g);
+      if (sentences && sentences.length > 0) {
+        // Take the last substantial sentence
+        const lastSent = sentences[sentences.length - 1].trim();
+        if (lastSent.length > 20 && 
+            !lastSent.toLowerCase().includes('parameters:') &&
+            !lastSent.toLowerCase().includes('example:') &&
+            !lastSent.toLowerCase().includes(functionName.toLowerCase() + '(')) {
+          return lastSent;
+        }
+      }
+      
+      return '';
     };
 
     // Fallback: parse parameters from context block following a "Parameters" label
@@ -367,6 +432,10 @@ export class TerragruntFunctionsManager {
         parameters = ctxParams;
       }
 
+      // Extract description from context before/around the signature
+      const descCtx = text.slice(Math.max(0, match.index - 500), match.index + 200);
+      const description = extractDescription(descCtx, name, Math.min(500, match.index));
+
       // Try to extract small inline example usage within the nearby context
       const examples: FunctionExample[] = [];
       const usageCtx = text.slice(match.index, match.index + 240);
@@ -394,7 +463,7 @@ export class TerragruntFunctionsManager {
       results.push({
         name,
         signature: `${name}(${paramsRaw})${returnType !== 'unknown' ? ` -> ${returnType}` : ''}`.trim(),
-        description: '',
+        description,
         parameters,
         returnType,
         category: 'functions',
@@ -420,6 +489,11 @@ export class TerragruntFunctionsManager {
       if (parameters.length === 0 || ctxParams.length > parameters.length) {
         parameters = ctxParams;
       }
+      
+      // Extract description from context before/around the signature
+      const descCtx = text.slice(Math.max(0, match.index - 500), match.index + 200);
+      const description = extractDescription(descCtx, name, Math.min(500, match.index));
+      
       const examples: FunctionExample[] = [];
       const usageCtx = text.slice(match.index, match.index + 240);
       const usageRe = new RegExp(`${name}\\s*\\(([^)]{0,120})\\)`, 'i');
@@ -441,7 +515,7 @@ export class TerragruntFunctionsManager {
       results.push({
         name,
         signature: `${name}(${paramsRaw})${returnType !== 'unknown' ? ` -> ${returnType}` : ''}`.trim(),
-        description: '',
+        description,
         parameters,
         returnType,
         category: 'functions',
@@ -458,6 +532,11 @@ export class TerragruntFunctionsManager {
       if (seen.has(key)) continue;
       
       seen.add(key);
+      
+      // Extract description from surrounding context
+      const descCtx = text.slice(Math.max(0, match.index - 500), match.index + 200);
+      const description = extractDescription(descCtx, name, Math.min(500, match.index));
+      
       // Try to capture a tiny inline example of invocation
       const usageCtx = text.slice(match.index, match.index + 200);
       const usageRe = new RegExp(`${name}\\s*\\(([^)]{0,120})\\)`, 'i');
@@ -474,7 +553,7 @@ export class TerragruntFunctionsManager {
       results.push({
         name,
         signature: `${name}(...)`,
-        description: '',
+        description,
         parameters: inferredParams,
         returnType: 'unknown',
         category: 'functions',
