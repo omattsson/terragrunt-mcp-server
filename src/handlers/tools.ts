@@ -1,5 +1,6 @@
 import { ResourceHandler } from './resources.js';
 import { TerragruntDocsManager } from '../terragrunt/docs.js';
+import { TerragruntFunctionsManager } from '../terragrunt/functions.js';
 
 export interface Tool {
     name: string;
@@ -10,10 +11,13 @@ export interface Tool {
 export class ToolHandler {
     private resourceHandler: ResourceHandler;
     private docsManager: TerragruntDocsManager;
+    private functionsManager: TerragruntFunctionsManager;
+    private functionsLoaded: boolean = false;
 
     constructor() {
         this.resourceHandler = new ResourceHandler();
         this.docsManager = new TerragruntDocsManager();
+        this.functionsManager = new TerragruntFunctionsManager(this.docsManager);
     }
 
     getAvailableTools(): Tool[] {
@@ -37,6 +41,41 @@ export class ToolHandler {
                         }
                     },
                     required: ['query']
+                }
+            },
+            {
+                name: 'get_terragrunt_function',
+                description: 'Get a specific Terragrunt built-in function by name',
+                inputSchema: {
+                    type: 'object',
+                    properties: {
+                        name: {
+                            type: 'string',
+                            description: 'The Terragrunt function name (e.g., "get_env", "find_in_parent_folders")'
+                        }
+                    },
+                    required: ['name']
+                }
+            },
+            {
+                name: 'list_terragrunt_functions',
+                description: 'List Terragrunt built-in functions, optionally filtered by category',
+                inputSchema: {
+                    type: 'object',
+                    properties: {
+                        category: {
+                            type: 'string',
+                            description: 'Optional category filter (e.g., "filesystem", "env")'
+                        },
+                        limit: {
+                            type: 'number',
+                            description: 'Maximum number of results to return',
+                            default: 50,
+                            minimum: 1,
+                            maximum: 200
+                        }
+                    },
+                    required: []
                 }
             },
             {
@@ -137,6 +176,13 @@ export class ToolHandler {
                         return { error: 'command parameter is required' };
                     }
                     return await this.getCliCommandHelp(args.command);
+                case 'get_terragrunt_function':
+                    if (!args?.name) {
+                        return { error: 'name parameter is required' };
+                    }
+                    return await this.getTerragruntFunction(args.name);
+                case 'list_terragrunt_functions':
+                    return await this.listTerragruntFunctions(args?.category, args?.limit);
 
                 case 'get_hcl_config_reference':
                     if (!args?.config) {
@@ -287,6 +333,54 @@ export class ToolHandler {
             })),
             totalDocuments: results.length,
             hasMore: results.length > limit
+        };
+    }
+
+    private async getTerragruntFunction(name: string): Promise<any> {
+        // Ensure functions are loaded at least once per process
+        if (!this.functionsLoaded) {
+            await this.functionsManager.loadFunctions();
+            this.functionsLoaded = true;
+        }
+
+        const fn = this.functionsManager.getFunction(name);
+        if (!fn) {
+            return {
+                name,
+                error: `No Terragrunt function found for: ${name}`,
+                suggestion: 'Try list_terragrunt_functions or provide a more precise function name'
+            };
+        }
+
+        return {
+            name: fn.name,
+            signature: fn.signature,
+            description: fn.description,
+            parameters: fn.parameters,
+            returnType: fn.returnType,
+            category: fn.category,
+            examples: fn.examples,
+            relatedFunctions: fn.relatedFunctions
+        };
+    }
+
+    private async listTerragruntFunctions(category?: string, limit: number = 50): Promise<any> {
+        if (!this.functionsLoaded) {
+            await this.functionsManager.loadFunctions();
+            this.functionsLoaded = true;
+        }
+
+        const list = this.functionsManager.listFunctions(category);
+        return {
+            total: list.length,
+            hasMore: list.length > limit,
+            functions: list.slice(0, limit).map(fn => ({
+                name: fn.name,
+                signature: fn.signature,
+                description: fn.description,
+                returnType: fn.returnType,
+                category: fn.category
+            }))
         };
     }
 }

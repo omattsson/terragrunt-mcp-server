@@ -1,12 +1,14 @@
 # Available Tools
 
-The Terragrunt MCP Server provides **6 specialized tools** for accessing and searching Terragrunt documentation. Each tool is designed for specific use cases to help you find the information you need quickly.
+The Terragrunt MCP Server provides **8 specialized tools** for accessing and searching Terragrunt documentation and function references. Each tool is designed for specific use cases to help you find the information you need quickly.
 
 ## Tool Overview
 
 | Tool | Purpose | Best For |
 |------|---------|----------|
 | `search_terragrunt_docs` | General search | Broad topic exploration |
+| `get_terragrunt_function` | Get a single function | Looking up a specific built-in function |
+| `list_terragrunt_functions` | List functions | Browsing available built-in functions |
 | `get_terragrunt_sections` | List sections | Understanding doc structure |
 | `get_section_docs` | Section retrieval | Deep diving into topics |
 | `get_cli_command_help` | CLI command help | Command syntax and options |
@@ -19,19 +21,19 @@ The Terragrunt MCP Server provides **6 specialized tools** for accessing and sea
 
 **Purpose**: Search across all Terragrunt documentation for specific topics, commands, or concepts.
 
-### Parameters
+### Parameters — search_terragrunt_docs
 
 - **`query`** (string, required): Search query text
 - **`limit`** (number, optional): Maximum results (default: 5, max: 20)
 
-### Use Cases
+### Use Cases — search_terragrunt_docs
 
 - General questions about Terragrunt
 - Broad topic exploration
 - Discovering documentation you didn't know existed
 - Finding all mentions of a specific concept
 
-### Example Prompts
+### Example Prompts — search_terragrunt_docs
 
 ```text
 "Search for Terragrunt documentation about dependencies"
@@ -40,7 +42,7 @@ The Terragrunt MCP Server provides **6 specialized tools** for accessing and sea
 "Search for documentation on mocking"
 ```
 
-### Example Response
+### Example Response — search_terragrunt_docs
 
 ```json
 {
@@ -65,18 +67,18 @@ The Terragrunt MCP Server provides **6 specialized tools** for accessing and sea
 
 **Purpose**: Get a complete list of all available documentation sections with document counts.
 
-### Parameters
+### Parameters — get_terragrunt_sections
 
 None required.
 
-### Use Cases
+### Use Cases — get_terragrunt_sections
 
 - Understanding the documentation structure
 - Browsing by category
 - Finding the right section for deep exploration
 - Getting an overview of available topics
 
-### Example Prompts
+### Example Prompts — get_terragrunt_sections
 
 ```text
 "What documentation sections are available?"
@@ -84,7 +86,7 @@ None required.
 "Show me the structure of Terragrunt docs"
 ```
 
-### Example Response
+### Example Response — get_terragrunt_sections
 
 ```json
 {
@@ -111,18 +113,18 @@ None required.
 
 **Purpose**: Get all documentation pages from a specific section for comprehensive reading.
 
-### Parameters
+### Parameters — get_section_docs
 
 - **`section`** (string, required): Section name (e.g., "getting-started", "reference", "features")
 
-### Use Cases
+### Use Cases — get_section_docs
 
 - Deep diving into a specific topic area
 - Reading documentation sequentially
 - Understanding a complete feature set
 - Comprehensive learning
 
-### Example Prompts
+### Example Prompts — get_section_docs
 
 ```text
 "Show me all getting-started documentation"
@@ -131,7 +133,7 @@ None required.
 "Retrieve all CLI reference docs"
 ```
 
-### Example Response
+### Example Response — get_section_docs
 
 ```json
 {
@@ -154,18 +156,18 @@ None required.
 
 **Purpose**: Get detailed help documentation for specific Terragrunt CLI commands.
 
-### Parameters
+### Parameters — get_cli_command_help
 
 - **`command`** (string, required): Command name (e.g., "plan", "apply", "run-all", "hclfmt")
 
-### Use Cases
+### Use Cases — get_cli_command_help
 
 - Learning command syntax
 - Understanding command options and flags
 - CLI troubleshooting
 - Discovering command capabilities
 
-### Example Prompts
+### Example Prompts — get_cli_command_help
 
 ```text
 "How do I use the terragrunt plan command?"
@@ -174,7 +176,7 @@ None required.
 "Explain the terragrunt render command"
 ```
 
-### Example Response
+### Example Response — get_cli_command_help
 
 ```json
 {
@@ -192,18 +194,18 @@ None required.
 
 **Purpose**: Get documentation for HCL configuration blocks, attributes, and functions used in `terragrunt.hcl`.
 
-### Parameters
+### Parameters — get_hcl_config_reference
 
 - **`config`** (string, required): Config element name (e.g., "terraform", "remote_state", "dependency", "inputs")
 
-### Use Cases
+### Use Cases — get_hcl_config_reference
 
 - Writing terragrunt.hcl files
 - Understanding configuration options
 - Learning HCL syntax for Terragrunt
 - Debugging configuration issues
 
-### Example Prompts
+### Example Prompts — get_hcl_config_reference
 
 ```text
 "How do I configure the terraform block in terragrunt.hcl?"
@@ -212,7 +214,7 @@ None required.
 "What attributes can I use in the inputs block?"
 ```
 
-### Example Response
+### Example Response — get_hcl_config_reference
 
 ```json
 {
@@ -235,19 +237,19 @@ None required.
 
 **Purpose**: Find code examples and snippets related to specific Terragrunt topics or patterns.
 
-### Parameters
+### Parameters — get_code_examples
 
 - **`topic`** (string, required): Topic or pattern (e.g., "remote state", "dependencies", "before hooks")
 - **`limit`** (number, optional): Max documents to return (default: 5, max: 10)
 
-### Use Cases
+### Use Cases — get_code_examples
 
 - Learning by example
 - Finding implementation patterns
 - Quick reference for syntax
 - Copying working code snippets
 
-### Example Prompts
+### Example Prompts — get_code_examples
 
 ```text
 "Show me examples of using dependencies in Terragrunt"
@@ -256,7 +258,7 @@ None required.
 "Show me how to use generate blocks with examples"
 ```
 
-### Example Response
+### Example Response — get_code_examples
 
 ```json
 {
@@ -275,6 +277,71 @@ None required.
   ],
   "totalDocuments": 3,
   "hasMore": false
+}
+```
+
+---
+
+## 7. get_terragrunt_function
+
+**Purpose**: Retrieve a specific Terragrunt built-in function by name.
+
+### Parameters — get_terragrunt_function
+
+- **`name`** (string, required): Function name (e.g., "get_env", "find_in_parent_folders")
+
+### Example Prompts — get_terragrunt_function
+
+```text
+"Show Terragrunt function get_env"
+"Lookup the find_in_parent_folders function"
+```
+
+### Example Response — get_terragrunt_function
+
+```json
+{
+  "name": "get_env",
+  "signature": "get_env(name, default) -> string",
+  "description": "",
+  "parameters": [
+    { "name": "name", "type": "string", "required": true, "description": "" },
+    { "name": "default", "type": "string", "required": true, "description": "" }
+  ],
+  "returnType": "string",
+  "category": "functions",
+  "examples": [],
+  "relatedFunctions": []
+}
+```
+
+---
+
+## 8. list_terragrunt_functions
+
+**Purpose**: List Terragrunt built-in functions, optionally filtered by category.
+
+### Parameters — list_terragrunt_functions
+
+- **`category`** (string, optional): Category filter (e.g., "filesystem", "env")
+- **`limit`** (number, optional): Maximum results (default: 50, max: 200)
+
+### Example Prompts — list_terragrunt_functions
+
+```text
+"List Terragrunt functions"
+"List functions in the env category"
+```
+
+### Example Response — list_terragrunt_functions
+
+```json
+{
+  "total": 42,
+  "hasMore": false,
+  "functions": [
+    { "name": "get_env", "signature": "get_env(name, default) -> string", "category": "functions", "description": "", "returnType": "string" }
+  ]
 }
 ```
 
@@ -301,6 +368,12 @@ None required.
 
 **"Show me an example of X..."**
 → Use `get_code_examples` with the topic
+
+**"What's the signature of function X?"**
+→ Use `get_terragrunt_function` with the function name
+
+**"What built-in functions are available?"**
+→ Use `list_terragrunt_functions` optionally with a category filter
 
 ---
 
