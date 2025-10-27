@@ -136,6 +136,74 @@ export class TerragruntFunctionsManager {
   }
 
   /**
+   * Extract a specific function from documentation by name.
+   * Searches documentation for the named function and extracts its details on-demand.
+   * Useful for lazy loading or as a fallback when loadFunctions() didn't find a function.
+   * 
+   * @param name The function name to search for (case-insensitive)
+   * @returns TerragruntFunction if found, otherwise null
+   */
+  async extractFunctionFromDocs(name: string): Promise<TerragruntFunction | null> {
+    if (!name || !name.trim()) {
+      return null;
+    }
+
+    const searchName = name.trim();
+    const normalizedName = this.normalizeKey(searchName);
+
+    // First check if it's already in cache
+    const cached = this.functionsCache.get(normalizedName);
+    if (cached) {
+      return cached;
+    }
+
+    // Search documentation for the function
+    const allDocs = await this.docsManager.fetchLatestDocs();
+    
+    // Prefer the canonical HCL functions reference page(s)
+    const functionDocs = allDocs.filter(d =>
+      d.section === 'reference' && (
+        d.url.includes('/docs/reference/hcl/functions/') ||
+        d.title.toLowerCase().includes('built-in function') ||
+        d.title.toLowerCase().includes('function')
+      )
+    );
+
+    // Search for the specific function in documentation content
+    for (const doc of functionDocs) {
+      const content = doc.content;
+      
+      // Look for the function name as a potential signature
+      // Use case-insensitive regex to find the function name
+      const functionNamePattern = new RegExp(
+        `\\b${searchName}\\s*\\([^)]*\\)`,
+        'i'
+      );
+      
+      if (!functionNamePattern.test(content)) {
+        continue; // Function not mentioned in this doc
+      }
+
+      // Extract functions from this document
+      const extracted = this.extractFunctionsFromContent(content);
+      
+      // Find the specific function we're looking for
+      const found = extracted.find(fn => 
+        this.normalizeKey(fn.name) === normalizedName
+      );
+
+      if (found) {
+        // Add to cache for future lookups
+        this.upsertFunction(found);
+        return found;
+      }
+    }
+
+    // Not found in any documentation
+    return null;
+  }
+
+  /**
    * Helper to add or replace a function in cache using normalized key.
    * Not part of the public API specified by the issue, but useful for tests
    * and for the upcoming implementation in issue #13.

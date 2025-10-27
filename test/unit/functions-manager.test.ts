@@ -65,4 +65,44 @@ describe('TerragruntFunctionsManager', () => {
     // Should match concat by return type and parameter types
     expect(results.map(f => f.name)).toContain('concat');
   });
+
+  it('extracts a specific function from docs by name', async () => {
+    const result = await mgr.extractFunctionFromDocs('abspath');
+    expect(result).not.toBeNull();
+    expect(result?.name).toBe('abspath');
+    expect(result?.returnType.toLowerCase()).toBe('string');
+    expect(result?.parameters?.[0]?.name).toBe('path');
+  });
+
+  it('returns null when extracting non-existent function', async () => {
+    const result = await mgr.extractFunctionFromDocs('nonexistent_function_xyz');
+    expect(result).toBeNull();
+  });
+
+  it('extracts function case-insensitively', async () => {
+    const result = await mgr.extractFunctionFromDocs('CONCAT');
+    expect(result).not.toBeNull();
+    expect(result?.name).toBe('concat');
+  });
+
+  it('caches extracted function for future lookups', async () => {
+    // First extraction should search docs
+    const result1 = await mgr.extractFunctionFromDocs('abspath');
+    expect(result1).not.toBeNull();
+    
+    // Second call should return cached version
+    const result2 = await mgr.extractFunctionFromDocs('abspath');
+    expect(result2).not.toBeNull();
+    expect(result2?.name).toBe('abspath');
+    
+    // Should also be available via getFunction
+    const cached = mgr.getFunction('abspath');
+    expect(cached).not.toBeNull();
+    expect(cached?.name).toBe('abspath');
+  });
+
+  it('handles empty or whitespace-only function names', async () => {
+    expect(await mgr.extractFunctionFromDocs('')).toBeNull();
+    expect(await mgr.extractFunctionFromDocs('   ')).toBeNull();
+  });
 });
