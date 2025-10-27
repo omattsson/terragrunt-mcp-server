@@ -233,7 +233,8 @@ export class TerragruntFunctionsManager {
     
     // Fallback: register function names that appear in explicit usage context (more selective)
     // Look for patterns like "use function_name()", "call function_name()", "function_name() function", etc.
-    const inlineCallRegex = /(?:use|call|invoke|function)\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\(/gi;
+    // Use word boundaries to avoid matching "function" as a substring (e.g., in "test_function")
+    const inlineCallRegex = /\b(?:use|call|invoke|function)\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\(/gi;
 
     const seen = new Set<string>();
 
@@ -514,6 +515,90 @@ export class TerragruntFunctionsManager {
       return 'general';
     };
 
+    // Helper to extract examples from "Example:" or "Examples:" sections
+    const extractExamples = (context: string, functionName: string): FunctionExample[] => {
+      const examples: FunctionExample[] = [];
+      
+      // Look for "Example:" or "Examples:" section
+      const exampleSectionRegex = /examples?[:\s]+(.+?)(?=##|see\s+also|parameters:|usage:|$)/is;
+      const exampleMatch = exampleSectionRegex.exec(context);
+      
+      if (exampleMatch && exampleMatch[1]) {
+        const exampleContent = exampleMatch[1].trim();
+        
+        // Split by common delimiters that indicate separate examples
+        // Look for patterns like "Example 1:", "Another example:", or numbered examples
+        const exampleDelimiters = /(?:example\s+\d+|another\s+example|additionally)[:\s]+/gi;
+        const splits = exampleContent.split(exampleDelimiters);
+        
+        for (const section of splits) {
+          if (!section.trim()) continue;
+          
+          // Extract code blocks (indented, fenced, or inline)
+          // Pattern 1: Fenced code blocks (```...```)
+          const fencedMatch = /```[\w]*\s*(.+?)```/s.exec(section);
+          if (fencedMatch) {
+            const code = fencedMatch[1].trim();
+            // Look for description before the code block
+            const descMatch = /^([^`]+?)(?=```)/s.exec(section);
+            const description = descMatch ? descMatch[1].trim() : 'Example usage';
+            
+            examples.push({
+              code,
+              description,
+              useCase: 'documented'
+            });
+            continue;
+          }
+          
+          // Pattern 2: Indented code blocks (multiple lines starting with spaces/tabs)
+          const indentedMatch = /(?:^|\n)([ \t]+.+?)(?=\n[^\s\t]|$)/s.exec(section);
+          if (indentedMatch) {
+            const code = indentedMatch[1].trim();
+            // Extract description from text before indented code
+            const beforeCode = section.slice(0, indentedMatch.index).trim();
+            const description = beforeCode || 'Example usage';
+            
+            examples.push({
+              code,
+              description,
+              useCase: 'documented'
+            });
+            continue;
+          }
+          
+          // Pattern 3: Inline function calls
+          const inlineRegex = new RegExp(`${functionName}\\s*\\(([^)]{0,120})\\)`, 'i');
+          const inlineMatch = inlineRegex.exec(section);
+          if (inlineMatch) {
+            const code = `${functionName}(${inlineMatch[1]})`;
+            const description = section.trim().slice(0, 100);
+            
+            examples.push({
+              code,
+              description,
+              useCase: 'documented'
+            });
+          }
+        }
+      }
+      
+      // Fallback: If no examples found in explicit section, look for inline usage
+      if (examples.length === 0) {
+        const usageRegex = new RegExp(`${functionName}\\s*\\(([^)]{0,120})\\)`, 'i');
+        const usageMatch = usageRegex.exec(context);
+        if (usageMatch) {
+          examples.push({
+            code: `${functionName}(${usageMatch[1]})`,
+            description: 'Inline example',
+            useCase: 'inline'
+          });
+        }
+      }
+      
+      return examples;
+    };
+
   // Scan for signature patterns with explicit return types (arrow style)
     let match: RegExpExecArray | null;
     while ((match = signatureRegex.exec(text)) !== null) {
@@ -552,14 +637,9 @@ export class TerragruntFunctionsManager {
       const descCtx = text.slice(Math.max(0, match.index - 500), match.index + 200);
       const description = extractDescription(descCtx, name, Math.min(500, match.index));
 
-      // Try to extract small inline example usage within the nearby context
-      const examples: FunctionExample[] = [];
-      const usageCtx = text.slice(match.index, match.index + 240);
-      const usageRe = new RegExp(`${name}\\s*\\(([^)]{0,120})\\)`, 'i');
-      const u = usageRe.exec(usageCtx);
-      if (u) {
-        examples.push({ code: `${name}(${u[1]})`, description: 'Inline example', useCase: 'inline' });
-      }
+      // Extract examples from context around the function
+      const exampleCtx = text.slice(match.index, match.index + 600);
+      const examples = extractExamples(exampleCtx, name);
 
       // Related functions via "See also" pattern in nearby context
   const relRe = /(see\s+also|related)[:\s]+([^\n.]{0,120})/i;
@@ -613,11 +693,10 @@ export class TerragruntFunctionsManager {
       const descCtx = text.slice(Math.max(0, match.index - 500), match.index + 200);
       const description = extractDescription(descCtx, name, Math.min(500, match.index));
       
-      const examples: FunctionExample[] = [];
-      const usageCtx = text.slice(match.index, match.index + 240);
-      const usageRe = new RegExp(`${name}\\s*\\(([^)]{0,120})\\)`, 'i');
-      const u = usageRe.exec(usageCtx);
-      if (u) examples.push({ code: `${name}(${u[1]})`, description: 'Inline example', useCase: 'inline' });
+      // Extract examples from context around the function
+      const exampleCtx = text.slice(match.index, match.index + 600);
+      const examples = extractExamples(exampleCtx, name);
+      
   const relRe = /(see\s+also|related)[:\s]+([^\n.]{0,120})/i;
       const relCtx = text.slice(match.index, match.index + 300);
       const rel = relRe.exec(relCtx);
@@ -660,11 +739,10 @@ export class TerragruntFunctionsManager {
       const descCtx = text.slice(Math.max(0, match.index - 500), match.index + 200);
       const description = extractDescription(descCtx, name, Math.min(500, match.index));
       
-      // Try to capture a tiny inline example of invocation
-      const usageCtx = text.slice(match.index, match.index + 200);
-      const usageRe = new RegExp(`${name}\\s*\\(([^)]{0,120})\\)`, 'i');
-      const u = usageRe.exec(usageCtx);
-      const examples: FunctionExample[] = u ? [{ code: `${name}(${u[1]})`, description: 'Inline example', useCase: 'inline' }] : [];
+      // Extract examples from context around the function
+      const exampleCtx = text.slice(match.index, match.index + 600);
+      const examples = extractExamples(exampleCtx, name);
+      
       // Best-effort: attempt to extract parameter names/types from nearby context
       let paramCtx = text.slice(Math.max(0, match.index - 300), match.index + 400);
       const pLower = paramCtx.toLowerCase();

@@ -165,4 +165,69 @@ describe('TerragruntFunctionsManager', () => {
     expect(envFunctions.length).toBeGreaterThan(0);
     expect(envFunctions.every(f => f.category === 'environment')).toBe(true);
   });
+
+  it('extracts examples from "Example:" sections with fenced code blocks', async () => {
+    // Using the beforeEach mgr which already has abspath with an inline example
+    await mgr.loadFunctions();
+    const abs = mgr.getFunction('abspath');
+    
+    expect(abs).toBeTruthy();
+    expect(abs!.examples).toBeDefined();
+    expect(abs!.examples.length).toBeGreaterThan(0);
+    
+    // The example should be extracted (either documented or inline)
+    expect(abs!.examples[0].code).toContain('abspath');
+  });
+
+  it('extracts examples from inline usage context', async () => {
+    await mgr.loadFunctions();
+    const concat = mgr.getFunction('concat');
+    
+    expect(concat).toBeTruthy();
+    expect(concat!.examples).toBeDefined();
+    expect(concat!.examples.length).toBeGreaterThan(0);
+    
+    // concat has "Usage: concat([1],[2])" in the test data
+    expect(concat!.examples[0].code).toContain('concat');
+  });
+
+  it('ensures all extracted functions have examples array', async () => {
+    await mgr.loadFunctions();
+    const all = mgr.listFunctions();
+    
+    expect(all.length).toBeGreaterThan(0);
+    
+    // Every function should have an examples array (even if empty)
+    for (const fn of all) {
+      expect(fn.examples).toBeDefined();
+      expect(Array.isArray(fn.examples)).toBe(true);
+    }
+  });
+
+  it('extracts useCase metadata for examples', async () => {
+    await mgr.loadFunctions();
+    const abs = mgr.getFunction('abspath');
+    
+    expect(abs).toBeTruthy();
+    expect(abs!.examples.length).toBeGreaterThan(0);
+    
+    // Example should have useCase field
+    const example = abs!.examples[0];
+    expect(example.useCase).toBeDefined();
+    expect(['inline', 'documented']).toContain(example.useCase);
+  });
+
+  it('extracts example code and description', async () => {
+    await mgr.loadFunctions();
+    const abs = mgr.getFunction('abspath');
+    
+    expect(abs).toBeTruthy();
+    expect(abs!.examples.length).toBeGreaterThan(0);
+    
+    const example = abs!.examples[0];
+    expect(example.code).toBeTruthy();
+    expect(example.description).toBeTruthy();
+    expect(typeof example.code).toBe('string');
+    expect(typeof example.description).toBe('string');
+  });
 });
