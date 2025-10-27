@@ -161,7 +161,7 @@ export class TerragruntFunctionsManager {
     // Use non-capturing negative lookbehind to avoid matching mid-identifier
   const signatureRegex = /(?:^|[^a-zA-Z0-9_])(?<name>[a-zA-Z_][a-zA-Z0-9_]*)\s*\((?<params>[^)]*)\)\s*(?:->|→)\s*(?<ret>[^\s.,;:(){}[\]]+)?/g;
   // Alternate: name(params) [ -|—|–|:] (returns|return type) Type
-  const altSignatureRegex = /(?:^|[^a-zA-Z0-9_])(?<name>[a-zA-Z_][a-zA-Z0-9_]*)\s*\((?<params>[^)]*)\)\s*(?:[-–—,:])?\s*(?:returns?|return\s+type)\s+(?<ret2>[A-Za-z0-9_[][\]{}<>|.]+)/gi;
+  const altSignatureRegex = /(?:^|[^a-zA-Z0-9_])(?<name>[a-zA-Z_][a-zA-Z0-9_]*)\s*\((?<params>[^)]*)\)\s*(?:[-–—,:])?\s*(?:returns?|return\s+type)\s+(?<ret2>[A-Za-z0-9_{}<>|.\][[]]+)/gi;
     
     // Fallback: register function names that appear as calls
     const inlineCallRegex = /\b([a-zA-Z_][a-zA-Z0-9_]*)\s*\(/g;
@@ -211,19 +211,56 @@ export class TerragruntFunctionsManager {
     // Fallback: parse parameters from context block following a "Parameters" label
     const parseParamsFromContext = (context: string): FunctionParameter[] => {
       const out: FunctionParameter[] = [];
-      const idx = context.toLowerCase().indexOf('parameters');
+      const lowerCtx = context.toLowerCase();
+      const idx = lowerCtx.indexOf('parameters');
       if (idx === -1) return out;
-      const slice = context.slice(idx, idx + 260); // small window after label
-      const re = /([a-zA-Z_][\w-]*)\s*(?:\(([^)]+)\)|:\s*([^;,.\n]+))?/g;
-      let m: RegExpExecArray | null;
-      const seenNames = new Set<string>();
-      while ((m = re.exec(slice)) !== null) {
-        const name = (m[1] || '').trim();
-        if (!name || seenNames.has(name.toLowerCase())) continue;
-        const type = (m[2] || m[3] || 'unknown').trim();
-        seenNames.add(name.toLowerCase());
-        out.push({ name, type, required: true, description: '', default: undefined });
-        if (out.length >= 6) break;
+      // Limit to the likely end of the parameters block to avoid capturing trailing prose
+      const searchStart = idx + 'parameters'.length;
+      const markers = ['usage:', 'example:', 'examples:', 'see also', 'related', 'returns '];
+      let end = idx + 260; // default small window
+      for (const m of markers) {
+        const pos = lowerCtx.indexOf(m, searchStart);
+        if (pos !== -1) {
+          end = Math.min(end, pos);
+        }
+      }
+      const slice = context.slice(idx, Math.max(idx + 1, end));
+      
+      // First try to match structured parameter lists: "Parameters: list1 (list), list2 (list)"
+      const structuredMatch = /parameters:\s*([^]+?)(?=usage:|example:|see also|related|returns |$)/i.exec(context.slice(idx, end));
+      if (structuredMatch) {
+        const paramText = structuredMatch[1];
+        // Match patterns like "name (type)" or "name: type"
+        const paramRe = /\b([a-zA-Z_][\w-]*)\s*(?:\(([^)]+)\)|:\s*([^;,.\n]+))/g;
+        let pm: RegExpExecArray | null;
+        const seenNames = new Set<string>();
+        while ((pm = paramRe.exec(paramText)) !== null) {
+          const name = pm[1].trim();
+          const lname = name.toLowerCase();
+          const stopwords = new Set(['parameters','parameter','example','examples','usage','see','also','related']);
+          if (!name || seenNames.has(lname) || stopwords.has(lname)) continue;
+          const type = (pm[2] || pm[3] || 'unknown').trim();
+          seenNames.add(lname);
+          out.push({ name, type, required: true, description: '', default: undefined });
+          if (out.length >= 6) break;
+        }
+      }
+      
+      // Fallback to original regex if nothing found
+      if (out.length === 0) {
+        const re = /([a-zA-Z_][\w-]*)\s*(?:\(([^)]+)\)|:\s*([^;,.\n]+))?/g;
+        let m: RegExpExecArray | null;
+        const seenNames = new Set<string>();
+        const stopwords = new Set(['parameters','parameter','example','examples','usage','see','also','related']);
+        while ((m = re.exec(slice)) !== null) {
+          const name = (m[1] || '').trim();
+          const lname = name.toLowerCase();
+          if (!name || seenNames.has(lname) || stopwords.has(lname)) continue;
+          const type = (m[2] || m[3] || 'unknown').trim();
+          seenNames.add(lname);
+          out.push({ name, type, required: true, description: '', default: undefined });
+          if (out.length >= 6) break;
+        }
       }
       return out;
     };
@@ -247,7 +284,7 @@ export class TerragruntFunctionsManager {
           match.index + match[0].length, 
           match.index + match[0].length + 160
         );
-  const retMatch = /returns?\s+(?:a\s+)?([A-Za-z0-9_[][\]{}<>|]+)/i.exec(contextWindow);
+  const retMatch = /returns?\s+(?:a\s+)?([A-Za-z0-9_{}<>|.\][[]]+)/i.exec(contextWindow);
         if (retMatch) {
           returnType = retMatch[1];
         }
@@ -255,9 +292,11 @@ export class TerragruntFunctionsManager {
       if (!returnType) returnType = 'unknown';
 
       let parameters = parseParams(paramsRaw);
-      if (parameters.length === 0) {
-        const ctx = text.slice(match.index, match.index + 400);
-        parameters = parseParamsFromContext(ctx);
+      // Try to enrich parameters from nearby explicit "Parameters" context
+      const ctx = text.slice(match.index, match.index + 500);
+      const ctxParams = parseParamsFromContext(ctx);
+      if (parameters.length === 0 || ctxParams.length > parameters.length) {
+        parameters = ctxParams;
       }
 
       // Try to extract small inline example usage within the nearby context
@@ -307,9 +346,11 @@ export class TerragruntFunctionsManager {
       const paramsRaw = (groups.params || '').trim();
       const returnType = (groups.ret2 || 'unknown').trim();
       let parameters = parseParams(paramsRaw);
-      if (parameters.length === 0) {
-        const ctx = text.slice(match.index, match.index + 400);
-        parameters = parseParamsFromContext(ctx);
+      // Try to enrich parameters from nearby explicit "Parameters" context
+      const ctx = text.slice(match.index, match.index + 500);
+      const ctxParams = parseParamsFromContext(ctx);
+      if (parameters.length === 0 || ctxParams.length > parameters.length) {
+        parameters = ctxParams;
       }
       const examples: FunctionExample[] = [];
       const usageCtx = text.slice(match.index, match.index + 240);
@@ -354,11 +395,19 @@ export class TerragruntFunctionsManager {
       const usageRe = new RegExp(`${name}\\s*\\(([^)]{0,120})\\)`, 'i');
       const u = usageRe.exec(usageCtx);
       const examples: FunctionExample[] = u ? [{ code: `${name}(${u[1]})`, description: 'Inline example', useCase: 'inline' }] : [];
+      // Best-effort: attempt to extract parameter names/types from nearby context
+      let paramCtx = text.slice(Math.max(0, match.index - 300), match.index + 400);
+      const pLower = paramCtx.toLowerCase();
+      const lastParamsIdx = pLower.lastIndexOf('parameters');
+      if (lastParamsIdx !== -1) {
+        paramCtx = paramCtx.slice(lastParamsIdx);
+      }
+      const inferredParams = parseParamsFromContext(paramCtx);
       results.push({
         name,
         signature: `${name}(...)`,
         description: '',
-        parameters: [],
+        parameters: inferredParams,
         returnType: 'unknown',
         category: 'functions',
         examples,
