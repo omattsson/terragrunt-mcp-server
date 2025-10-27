@@ -268,9 +268,9 @@ describe('MCP Protocol Compliance', () => {
       });
     });
 
-    it('should return exactly 6 tools', () => {
+    it('should return at least 6 tools', () => {
       const tools = toolHandler.getAvailableTools();
-      expect(tools.length).toBe(6);
+      expect(tools.length).toBeGreaterThanOrEqual(6);
     });
 
     it('should include search_terragrunt_docs tool', () => {

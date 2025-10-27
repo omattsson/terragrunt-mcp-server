@@ -305,6 +305,7 @@ export class TerragruntDocsManager {
     const coreDocs = [
       { url: `${this.baseUrl}/docs/getting-started/quick-start/`, title: 'Quick Start', section: 'getting-started' },
       { url: `${this.baseUrl}/docs/reference/config-blocks-and-attributes/`, title: 'Configuration Reference', section: 'reference' },
+      { url: `${this.baseUrl}/docs/reference/hcl/functions/`, title: 'Built-in Functions', section: 'reference' },
       { url: `${this.baseUrl}/docs/features/keep-your-terraform-code-dry/`, title: 'Keep Your Code DRY', section: 'features' },
       { url: `${this.baseUrl}/docs/features/execute-terraform-commands-on-multiple-modules-at-once/`, title: 'Multiple Modules', section: 'features' },
     ];
