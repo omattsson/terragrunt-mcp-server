@@ -2,127 +2,167 @@
 
 ## Architecture Overview
 
-This is a **Model Context Protocol (MCP) server** that provides Terragrunt documentation access to VS Code with GitHub Copilot. The architecture follows MCP standards with a clean handler-based separation:
+This is a **Model Context Protocol (MCP) server** that provides Terragrunt documentation access to AI assistants via VS Code. The architecture follows MCP standards with handler-based separation:
 
-- **`src/index.ts`**: Main MCP server entry point using `@modelcontextprotocol/sdk`
-- **Handlers layer**: `src/handlers/` contains `ResourceHandler` and `ToolHandler` classes that implement MCP protocol handlers
-- **Terragrunt layer**: `src/terragrunt/` contains domain logic for docs fetching, caching, and command execution
-- **Types**: `src/types/` defines interfaces for MCP and Terragrunt-specific data structures
+- **`src/index.ts`**: MCP server entry point using `@modelcontextprotocol/sdk` with stdio transport
+- **Handlers**: `src/handlers/` contains `ResourceHandler`, `ToolHandler`, and `PromptHandler` for MCP protocol
+- **Domain Logic**: `src/terragrunt/` contains `DocsManager` (caching/fetching), `FunctionsManager` (built-in functions), `CommandsManager`
+- **Types**: `src/types/` defines MCP and Terragrunt-specific interfaces
 
-## Key Implementation Patterns
+## Critical ES Module Requirements
 
-### MCP Protocol Implementation
-- Server uses **stdio transport** (`StdioServerTransport`) for VS Code integration
-- All handlers return MCP-compliant responses with proper error handling
-- Tools return structured JSON, resources return markdown with MIME types
-- Use `ListResourcesRequestSchema`, `ReadResourceRequestSchema`, `ListToolsRequestSchema`, `CallToolRequestSchema`
+- **`"type": "module"`** in package.json means all imports MUST use `.js` extensions
+- Example: `import { ResourceHandler } from './handlers/resources.js';` (NOT `.ts`)
+- TypeScript compiles `.ts` → `.js` but import statements reference the OUTPUT `.js` files
+- Missing `.js` extension will cause runtime errors despite TypeScript compiling successfully
 
-### Documentation Management
-The `TerragruntDocsManager` class (`src/terragrunt/docs.ts`) implements:
-- **Two-tier caching**: In-memory + disk-based persistence
-- **Smart cache**: 24-hour expiry with automatic refresh detection
-- **Disk persistence**: Cache survives server restarts (stored in `.cache/terragrunt-docs/`)
-- **Web scraping**: Uses `cheerio` to parse `https://terragrunt.gruntwork.io/docs/`
-- **Section-based organization**: Auto-extracts sections like "getting-started", "reference"
-- **Search functionality**: Full-text search across cached documentation
+## Manager Pattern & Caching Architecture
 
-### Resource Pattern
-Resources follow URI scheme `terragrunt://docs/{type}/{identifier}`:
-- `terragrunt://docs/overview` - Documentation overview
-- `terragrunt://docs/section/{section}` - Section-grouped docs  
-- `terragrunt://docs/page/{encoded-url}` - Individual pages
+### TerragruntDocsManager (`src/terragrunt/docs.ts`)
+**Multi-tier resilience strategy** with automatic fallback chain:
+1. **In-memory cache** (`Map<string, TerragruntDoc>`) - fastest, cleared on restart
+2. **Disk cache** (`.cache/terragrunt-docs/`) - persists across restarts, 24-hour expiry
+3. **Network fetch** (cheerio web scraping) - with exponential backoff retry (3 attempts, max 10s delay)
+4. **Fixture fallback** (`fixtures/terragrunt-docs-fixture.json`) - offline/CI safety net
 
-### Tool Pattern  
-Six core tools with specific input schemas:
-- `search_terragrunt_docs` - Query with limit parameter (general search across all docs)
-- `get_terragrunt_sections` - No parameters (returns list of documentation sections)
-- `get_section_docs` - Section parameter (retrieves all docs from a section)
-- `get_cli_command_help` - Command parameter (finds CLI command documentation)
-- `get_hcl_config_reference` - Config parameter (finds HCL blocks/attributes/functions)
-- `get_code_examples` - Topic and limit parameters (extracts code snippets with context)
+**Key method flow**:
+- `fetchLatestDocs()` → checks cache validity → `loadCacheFromDisk()` → `refreshDocsCache()` → network or fallback
+- `shouldRefreshCache()` returns true if >24 hours old OR never fetched
+- Always call `saveCacheToDisk()` after successful network fetch to persist
 
-## Development Workflow
+**Content cleaning**: `cleanContent()` collapses whitespace, removes HTML artifacts for search efficiency
 
-### Build & Test Commands
-```bash
-npm run build          # TypeScript compilation to dist/
-npm run dev           # Development with ts-node
-npm run test:server   # Integration test via Node.js
-npm run test:mcp      # Direct MCP protocol test via stdin
+### TerragruntFunctionsManager (`src/terragrunt/functions.ts`)
+**Extracts function metadata** from flattened docs content using regex patterns:
+- **Signature styles**: Handles `name(params) -> Type` AND `name(params) returns Type`
+- **Parameter extraction**: Two-pass approach:
+  1. Parse inline signature `(param1, param2)` for quick extraction
+  2. If empty or insufficient, scan nearby "Parameters:" context block with structured regex
+  3. Prefers explicit context when it yields MORE parameters than inline (see `parseParamsFromContext`)
+- **Structured parsing**: Matches `name (type)` or `name: type` format, stops at section markers (Usage, Example, See also)
+- **Deduplication**: Uses lowercase normalized keys (`normalizeKey()`) for case-insensitive lookups
+- **Related functions**: Extracts from "See also" patterns via regex
+
+**Critical fix pattern** (from recent work):
+```typescript
+// WRONG: Only using inline params when signature is ambiguous
+let parameters = parseParams(paramsRaw);
+
+// RIGHT: Enrich from explicit context when available
+let parameters = parseParams(paramsRaw);
+const ctxParams = parseParamsFromContext(ctx);
+if (parameters.length === 0 || ctxParams.length > parameters.length) {
+  parameters = ctxParams; // Prefer richer context
+}
 ```
 
-### VS Code Integration
-Server requires configuration in VS Code `settings.json`:
-```json
-{
-  "mcp.servers": {
-    "terragrunt": {
-      "command": "node",
-      "args": ["dist/index.js"],
-      "cwd": "/path/to/terragrunt-mcp-server"
-    }
+## Testing Strategy & Commands
+
+### Test Suite Structure
+- **Unit tests** (`test/unit/*.test.ts`): Vitest-based, run with `npm run test` or `npm run test:unit`
+  - `vitest.config.ts` includes ONLY `.test.ts` files to avoid Node-run `.test.js` integration tests
+  - 60s timeout for retry-heavy tests (network fallback scenarios)
+- **Integration tests** (`test/integration/*.test.js`): Node-run scripts, use `npm run test:integration:all`
+  - Test REAL MCP protocol via direct manager instantiation (not Vitest mocks)
+  - `test/server-test.js` is the main comprehensive integration suite
+- **MCP protocol tests** (`test/integration/mcp-protocol.test.ts`): Vitest-based MCP compliance checks
+
+### Critical Test Commands
+```bash
+npm run test                    # Vitest unit tests only (.test.ts files)
+npm run test:unit              # Same as above
+npm run test:integration:all   # Node-run integration scripts
+npm run test:all              # Both unit + integration (full suite)
+npm test -- path/to/file.test.ts  # Run single test file (faster iteration)
+```
+
+### Test Isolation Pattern
+Integration tests use **real dependencies** (no mocks) but inject fixture data to avoid network calls:
+```typescript
+// Mock DocsManager with fixture content, not real fetch
+class MockDocsManager {
+  async fetchLatestDocs() { return fixtureData; }
+}
+```
+
+## MCP Protocol Compliance
+
+### Handler Error Handling
+**Never throw errors to MCP layer** - always return valid MCP responses:
+```typescript
+// WRONG
+async handler(request) {
+  return await operation(); // Throws on error
+}
+
+// RIGHT
+async handler(request) {
+  try {
+    return { data: await operation() };
+  } catch (error) {
+    console.error('Handler failed:', error);
+    return { data: [], error: 'Fallback response' }; // Or empty array/object
   }
 }
 ```
 
-### Testing Strategy
-- **`test/server-test.js`**: Comprehensive integration tests covering docs fetching, search, resources, and tools
-- **`test-mcp.sh`**: Direct MCP protocol testing via JSON-RPC
-- Tests validate documentation structure, search accuracy, and resource content
-
-## Critical Implementation Details
-
-### ES Modules Configuration
-- Uses `"type": "module"` in package.json
-- Import paths **must** include `.js` extensions (e.g., `'./handlers/resources.js'`)
-- TypeScript compiles `.ts` to `.js` but imports still reference `.js`
-
-### Dependency Management
-- Uses **MCP SDK v1.20+** (keep updated for protocol compatibility)
-- **ESLint v9+** and TypeScript ESLint v8+ (avoid deprecated v8/v6 versions)
-- Run `npm outdated` regularly to check for MCP SDK updates
-- Transitive dependency warnings (from jest/node-fetch) are non-critical
-
-### Error Handling Pattern
-All handlers use try-catch with fallbacks:
+### Tool Schema Validation
+Tools MUST define `inputSchema` with JSON Schema format:
 ```typescript
-try {
-  const result = await operation();
-  return { data: result };
-} catch (error) {
-  console.error('Context:', error);
-  return { fallback: [] }; // Never throw to MCP layer
+{
+  type: 'object',
+  properties: { query: { type: 'string', description: '...' } },
+  required: ['query']
 }
 ```
 
-### Caching Implementation
-- **Two-tier cache**: In-memory `Map<string, TerragruntDoc>` + disk persistence (JSON)
-- **Disk location**: `.cache/terragrunt-docs/` (already in `.gitignore`)
-- **Cache files**: `docs-cache.json` (~1.1MB) + `metadata.json` (timestamps)
-- **Load strategy**: Disk → Memory on first request (~10ms load time)
-- **Save strategy**: Automatically saves to disk after web fetch
-- **Expiry logic**: 24-hour timestamp-based validation in `shouldRefreshCache()`
-- **Refresh logic**: Only fetches from web when cache expired or missing
+### Resource URI Scheme
+Resources use `terragrunt://docs/{type}/{identifier}`:
+- Encode URLs with `encodeURIComponent()` for page identifiers
+- Section names are extracted from URL paths: `/docs/getting-started/` → `"getting-started"`
 
-## Project-Specific Conventions
+## Common Development Tasks
 
-- **Handler classes**: Always instantiate dependencies in constructor
-- **URL encoding**: Use `encodeURIComponent()` for resource URIs with URLs
-- **Section extraction**: Parse URLs like `/docs/getting-started/` → `"getting-started"`
-- **Content limits**: Resource handler limits to 50 docs to prevent VS Code overwhelming
-- **Command execution**: `runTerragruntCommand()` has 5-minute timeout and proper stdio capture
+### Adding a New Tool
+1. **Define in `ToolHandler.getAvailableTools()`**: Add schema with name, description, inputSchema
+2. **Implement in `ToolHandler.executeTool()`**: Add case to switch statement
+3. **Add tests**: Unit test in `test/unit/tool-handler.test.ts` + integration in `test/integration/`
+4. **Update tool count**: Adjust MCP protocol test assertion (`>= N tools`) if adding, not replacing
 
-## Common Tasks
+### Adding a New Manager
+1. **Create class in `src/terragrunt/`**: Follow constructor dependency injection pattern
+2. **Inject dependencies**: Accept `TerragruntDocsManager` in constructor (see `TerragruntFunctionsManager`)
+3. **Add caching**: Use `Map<string, T>` for in-memory cache with `normalizeKey()` for case-insensitive lookups
+4. **Lazy loading**: Implement `loadData()` method called on first use (see `TerragruntFunctionsManager.loadFunctions()`)
+5. **Wire to handler**: Instantiate in relevant handler constructor, expose via tools
 
-### Adding New Tools
-1. Add tool definition to `ToolHandler.getAvailableTools()`
-2. Implement execution logic in `ToolHandler.executeTool()`
-3. Add input schema validation with proper TypeScript types
+### Regex-Based Extraction Patterns
+When parsing documentation content:
+- Use **global regex** (`/pattern/g`) on flattened text (newlines already collapsed by `cleanContent()`)
+- **Capture groups** with named groups: `/(?<name>pattern)/` for clarity
+- **Context windows**: Extract surrounding text (e.g., `text.slice(match.index, match.index + 400)`) for enrichment
+- **Stopwords**: Filter out common prose words when extracting structured data (see `parseParamsFromContext`)
+- **Section markers**: Stop extraction at keywords like "Usage:", "Example:", "See also" to avoid capturing unrelated text
 
-### Extending Documentation Sources
-1. Modify URL patterns in `TerragruntDocsManager.getDocumentationPages()`
-2. Update section extraction logic in `extractSection()`
-3. Test with `npm run test:server` to validate parsing
+### Lint & Build
+- **ESLint v9** with flat config (`eslint.config.mjs`)
+- **No-useless-escape rule**: Avoid escaping `-` in character classes `[a-z-]` → `[a-z-]` (hyphen at end doesn't need escape)
+- **Build before commit**: `npm run build` to catch TS errors; `npm run lint` to catch style issues
+- **Auto-fix**: `npm run lint:fix` for auto-fixable issues
 
-### Debugging MCP Communication  
-Use `test-mcp.sh` to send raw JSON-RPC messages and inspect protocol-level responses.
+## Debugging & Troubleshooting
+
+### MCP Communication
+- **Direct protocol test**: `./test-mcp.sh` sends raw JSON-RPC via stdin, useful for protocol debugging
+- **Logs**: Server logs to stderr (visible in VS Code Output panel when running as MCP server)
+- **Resource inspection**: Use `@copilot` in VS Code to query available resources/tools
+
+### Cache Issues
+- **Clear cache**: Delete `.cache/terragrunt-docs/` to force fresh fetch
+- **Force fixture**: Remove cache + disable network in tests to verify fixture fallback works
+- **Inspect cache**: `cat .cache/terragrunt-docs/metadata.json` shows last fetch time
+
+### Test Failures
+- **Run single test**: `npm test -- test/unit/functions-manager.test.ts` for faster iteration
+- **Check test isolation**: Integration tests should not depend on disk cache state (use fixtures)
+- **Regex debugging**: Add `console.log(match.groups)` to inspect capture groups in extraction logic
