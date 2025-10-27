@@ -398,6 +398,122 @@ export class TerragruntFunctionsManager {
       return out;
     };
 
+    // Helper to categorize a function based on name patterns, description, and context
+    const categorizeFunction = (name: string, description: string, context: string): string => {
+      const lowerName = name.toLowerCase();
+      const lowerDesc = description.toLowerCase();
+      const lowerCtx = context.toLowerCase();
+      
+      // Category detection by function name patterns
+      if (lowerName.startsWith('path_') || 
+          lowerName.startsWith('get_terragrunt_dir') ||
+          lowerName.startsWith('get_parent_terragrunt') ||
+          lowerName.includes('_path') ||
+          lowerName === 'abspath' ||
+          lowerName === 'dirname' ||
+          lowerName === 'basename') {
+        return 'path';
+      }
+      
+      if (lowerName.startsWith('get_env') ||
+          lowerName.startsWith('get_aws_') ||
+          lowerName.includes('account') ||
+          lowerName.includes('identity') ||
+          lowerName.includes('region')) {
+        return 'environment';
+      }
+      
+      if (lowerName.startsWith('get_terraform_') ||
+          lowerName.includes('terraform')) {
+        return 'terraform';
+      }
+      
+      if (lowerName === 'find_in_parent_folders' ||
+          lowerName.startsWith('read_') ||
+          lowerName.startsWith('file') ||
+          lowerName === 'fileexists' ||
+          lowerName === 'filebase64' ||
+          lowerName === 'templatefile') {
+        return 'file';
+      }
+      
+      if (lowerName === 'dependency') {
+        return 'dependency';
+      }
+      
+      if (lowerName.includes('encode') || lowerName.includes('decode')) {
+        return 'encoding';
+      }
+      
+      if (lowerName === 'regex' ||
+          lowerName === 'replace' ||
+          lowerName === 'join' ||
+          lowerName === 'split' ||
+          lowerName === 'trim' ||
+          lowerName === 'format' ||
+          lowerName === 'substr') {
+        return 'string';
+      }
+      
+      if (lowerName === 'concat' ||
+          lowerName === 'flatten' ||
+          lowerName === 'distinct' ||
+          lowerName === 'compact' ||
+          lowerName === 'reverse' ||
+          lowerName === 'sort' ||
+          lowerName === 'slice') {
+        return 'list';
+      }
+      
+      if (lowerName === 'merge' ||
+          lowerName === 'lookup' ||
+          lowerName === 'keys' ||
+          lowerName === 'values') {
+        return 'map';
+      }
+      
+      // Category hints from description
+      if (lowerDesc.includes('path') || lowerDesc.includes('directory')) {
+        return 'path';
+      }
+      
+      if (lowerDesc.includes('environment') || lowerDesc.includes('aws account')) {
+        return 'environment';
+      }
+      
+      if (lowerDesc.includes('file') || lowerDesc.includes('read')) {
+        return 'file';
+      }
+      
+      if (lowerDesc.includes('list') || lowerDesc.includes('array')) {
+        return 'list';
+      }
+      
+      if (lowerDesc.includes('string') || lowerDesc.includes('text')) {
+        return 'string';
+      }
+      
+      // Category hints from context headings
+      if (lowerCtx.includes('## path functions') || lowerCtx.includes('path helpers')) {
+        return 'path';
+      }
+      
+      if (lowerCtx.includes('## environment') || lowerCtx.includes('environment variables')) {
+        return 'environment';
+      }
+      
+      if (lowerCtx.includes('## terraform')) {
+        return 'terraform';
+      }
+      
+      if (lowerCtx.includes('## file') || lowerCtx.includes('file functions')) {
+        return 'file';
+      }
+      
+      // Default fallback
+      return 'general';
+    };
+
   // Scan for signature patterns with explicit return types (arrow style)
     let match: RegExpExecArray | null;
     while ((match = signatureRegex.exec(text)) !== null) {
@@ -460,13 +576,16 @@ export class TerragruntFunctionsManager {
         }
       }
 
+      // Categorize based on name, description, and context
+      const category = categorizeFunction(name, description, descCtx);
+
       results.push({
         name,
         signature: `${name}(${paramsRaw})${returnType !== 'unknown' ? ` -> ${returnType}` : ''}`.trim(),
         description,
         parameters,
         returnType,
-        category: 'functions',
+        category,
         examples,
         relatedFunctions: related
       });
@@ -512,13 +631,17 @@ export class TerragruntFunctionsManager {
           if (nm && nm.toLowerCase() !== name.toLowerCase() && !related.includes(nm)) related.push(nm);
         }
       }
+      
+      // Categorize based on name, description, and context
+      const category = categorizeFunction(name, description, descCtx);
+      
       results.push({
         name,
         signature: `${name}(${paramsRaw})${returnType !== 'unknown' ? ` -> ${returnType}` : ''}`.trim(),
         description,
         parameters,
         returnType,
-        category: 'functions',
+        category,
         examples,
         relatedFunctions: related
       });
@@ -550,13 +673,17 @@ export class TerragruntFunctionsManager {
         paramCtx = paramCtx.slice(lastParamsIdx);
       }
       const inferredParams = parseParamsFromContext(paramCtx);
+      
+      // Categorize based on name, description, and context
+      const category = categorizeFunction(name, description, descCtx);
+      
       results.push({
         name,
         signature: `${name}(...)`,
         description,
         parameters: inferredParams,
         returnType: 'unknown',
-        category: 'functions',
+        category,
         examples,
         relatedFunctions: []
       });

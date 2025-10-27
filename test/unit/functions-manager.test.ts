@@ -136,4 +136,33 @@ describe('TerragruntFunctionsManager', () => {
     expect(getEnv?.description).toBeTruthy();
     expect(getEnv?.description.toLowerCase()).toContain('environment');
   });
+
+  it('categorizes functions based on name patterns', async () => {
+    await mgr.loadFunctions();
+    
+    const abspath = mgr.getFunction('abspath');
+    expect(abspath?.category).toBe('path');
+    
+    const concat = mgr.getFunction('concat');
+    expect(concat?.category).toBe('list');
+    
+    const getEnv = mgr.getFunction('get_env');
+    expect(getEnv?.category).toBe('environment');
+  });
+
+  it('filters functions by category', async () => {
+    await mgr.loadFunctions();
+    
+    const pathFunctions = mgr.listFunctions('path');
+    expect(pathFunctions.length).toBeGreaterThan(0);
+    expect(pathFunctions.every(f => f.category === 'path')).toBe(true);
+    
+    const listFunctions = mgr.listFunctions('list');
+    expect(listFunctions.length).toBeGreaterThan(0);
+    expect(listFunctions.every(f => f.category === 'list')).toBe(true);
+    
+    const envFunctions = mgr.listFunctions('environment');
+    expect(envFunctions.length).toBeGreaterThan(0);
+    expect(envFunctions.every(f => f.category === 'environment')).toBe(true);
+  });
 });
