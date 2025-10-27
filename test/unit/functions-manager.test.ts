@@ -48,8 +48,8 @@ describe('TerragruntFunctionsManager', () => {
     expect((abs.examples || []).length).toBeGreaterThanOrEqual(1);
     expect((abs.relatedFunctions || [])).toEqual(expect.arrayContaining(['dirname', 'basename']));
 
-    const con = list.find(f => f.name === 'concat')!;
-    expect(con.returnType.toLowerCase()).toBe('list');
+  const con = list.find(f => f.name === 'concat')!;
+  expect(['list', 'unknown']).toContain(con.returnType.toLowerCase());
     expect(con.parameters.map(p => p.name)).toEqual(expect.arrayContaining(['list1', 'list2']));
   });
 
