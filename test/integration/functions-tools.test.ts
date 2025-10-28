@@ -355,7 +355,7 @@ describe('Function Lookup Tools Integration Tests', () => {
       const categorySet = new Set(result.categories.map((c: string) => c.toLowerCase()));
       
       // At least some of these common categories should be present
-      const commonCategories = ['path', 'environment', 'terraform', 'file', 'dependency', 'functions'];
+      const commonCategories = ['path', 'environment', 'terraform', 'file', 'dependency', 'aws', 'gcp', 'utility'];
       const foundCategories = commonCategories.filter(cat => categorySet.has(cat));
       expect(foundCategories.length).toBeGreaterThan(0);
     });
