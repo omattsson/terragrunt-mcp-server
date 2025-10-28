@@ -621,6 +621,199 @@ describe('ToolHandler', () => {
     });
   });
 
+  describe('Tool Execution - list_terragrunt_functions', () => {
+    it('should list all functions when no parameters provided', async () => {
+      const mockFunctions = [
+        { name: 'get_env', signature: 'get_env(name, default) -> string', description: 'Get environment variable', parameters: [], returnType: 'string', category: 'env', examples: [], relatedFunctions: [] },
+        { name: 'find_in_parent_folders', signature: 'find_in_parent_folders() -> string', description: 'Find file in parent folders', parameters: [], returnType: 'string', category: 'path', examples: [], relatedFunctions: [] }
+      ];
+
+      const mockFunctionsManager = {
+        loadFunctions: vi.fn().mockResolvedValue(undefined),
+        listFunctions: vi.fn().mockReturnValue(mockFunctions),
+        getAvailableCategories: vi.fn().mockReturnValue(['env', 'path'])
+      };
+
+      (toolHandler as any).functionsManager = mockFunctionsManager;
+
+      const result = await toolHandler.executeTool('list_terragrunt_functions', {});
+      
+      expect(result.functions).toBeDefined();
+      expect(Array.isArray(result.functions)).toBe(true);
+      expect(result.functions.length).toBe(2);
+      expect(result.categories).toBeDefined();
+      expect(Array.isArray(result.categories)).toBe(true);
+      expect(result.totalCount).toBe(2);
+    });
+
+    it('should filter by category', async () => {
+      const mockFunctions = [
+        { name: 'get_env', signature: 'get_env(name, default) -> string', description: 'Get environment variable', parameters: [], returnType: 'string', category: 'env', examples: [], relatedFunctions: [] }
+      ];
+
+      const mockFunctionsManager = {
+        loadFunctions: vi.fn().mockResolvedValue(undefined),
+        listFunctions: vi.fn().mockReturnValue(mockFunctions),
+        getAvailableCategories: vi.fn().mockReturnValue(['env', 'path'])
+      };
+
+      (toolHandler as any).functionsManager = mockFunctionsManager;
+
+      const result = await toolHandler.executeTool('list_terragrunt_functions', {
+        category: 'env'
+      });
+      
+      expect(result.functions).toBeDefined();
+      expect(result.functions.length).toBe(1);
+      expect(result.functions[0].category).toBe('env');
+      expect(mockFunctionsManager.listFunctions).toHaveBeenCalledWith('env');
+    });
+
+    it('should filter by search query', async () => {
+      const mockFunctions = [
+        { name: 'get_env', signature: 'get_env(name, default) -> string', description: 'Get environment variable value', parameters: [], returnType: 'string', category: 'env', examples: [], relatedFunctions: [] },
+        { name: 'get_aws_account_id', signature: 'get_aws_account_id() -> string', description: 'Get AWS account ID', parameters: [], returnType: 'string', category: 'aws', examples: [], relatedFunctions: [] }
+      ];
+
+      const mockFunctionsManager = {
+        loadFunctions: vi.fn().mockResolvedValue(undefined),
+        searchFunctions: vi.fn().mockReturnValue(mockFunctions),
+        getAvailableCategories: vi.fn().mockReturnValue(['env', 'aws'])
+      };
+
+      (toolHandler as any).functionsManager = mockFunctionsManager;
+
+      const result = await toolHandler.executeTool('list_terragrunt_functions', {
+        search: 'get'
+      });
+      
+      expect(result.functions).toBeDefined();
+      expect(result.functions.length).toBe(2);
+      expect(mockFunctionsManager.searchFunctions).toHaveBeenCalledWith('get');
+    });
+
+    it('should combine search and category filters', async () => {
+      const mockSearchResults = [
+        { name: 'get_env', signature: 'get_env(name, default) -> string', description: 'Get environment variable', parameters: [], returnType: 'string', category: 'env', examples: [], relatedFunctions: [] },
+        { name: 'get_aws_account_id', signature: 'get_aws_account_id() -> string', description: 'Get AWS account ID', parameters: [], returnType: 'string', category: 'aws', examples: [], relatedFunctions: [] }
+      ];
+
+      const mockFunctionsManager = {
+        loadFunctions: vi.fn().mockResolvedValue(undefined),
+        searchFunctions: vi.fn().mockReturnValue(mockSearchResults),
+        getAvailableCategories: vi.fn().mockReturnValue(['env', 'aws'])
+      };
+
+      (toolHandler as any).functionsManager = mockFunctionsManager;
+
+      const result = await toolHandler.executeTool('list_terragrunt_functions', {
+        search: 'get',
+        category: 'env'
+      });
+      
+      expect(result.functions).toBeDefined();
+      expect(result.functions.length).toBe(1);
+      expect(result.functions[0].category).toBe('env');
+      expect(mockFunctionsManager.searchFunctions).toHaveBeenCalledWith('get');
+    });
+
+    it('should respect limit parameter', async () => {
+      const mockFunctions = Array.from({ length: 100 }, (_, i) => ({
+        name: `func_${i}`,
+        signature: `func_${i}() -> string`,
+        description: `Function ${i}`,
+        parameters: [],
+        returnType: 'string',
+        category: 'test',
+        examples: [],
+        relatedFunctions: []
+      }));
+
+      const mockFunctionsManager = {
+        loadFunctions: vi.fn().mockResolvedValue(undefined),
+        listFunctions: vi.fn().mockReturnValue(mockFunctions),
+        getAvailableCategories: vi.fn().mockReturnValue(['test'])
+      };
+
+      (toolHandler as any).functionsManager = mockFunctionsManager;
+
+      const result = await toolHandler.executeTool('list_terragrunt_functions', {
+        limit: 10
+      });
+      
+      expect(result.functions.length).toBe(10);
+      expect(result.totalCount).toBe(100);
+    });
+
+    it('should include shortDescription in response', async () => {
+      const mockFunctions = [
+        { name: 'get_env', signature: 'get_env(name, default) -> string', description: 'Get environment variable value. This is a longer description with more details.', parameters: [], returnType: 'string', category: 'env', examples: [], relatedFunctions: [] }
+      ];
+
+      const mockFunctionsManager = {
+        loadFunctions: vi.fn().mockResolvedValue(undefined),
+        listFunctions: vi.fn().mockReturnValue(mockFunctions),
+        getAvailableCategories: vi.fn().mockReturnValue(['env'])
+      };
+
+      (toolHandler as any).functionsManager = mockFunctionsManager;
+
+      const result = await toolHandler.executeTool('list_terragrunt_functions', {});
+      
+      expect(result.functions[0]).toHaveProperty('shortDescription');
+      expect(result.functions[0].shortDescription).toBe('Get environment variable value.');
+      // shortDescription should be shorter than or equal to the original
+      expect(result.functions[0].shortDescription.length).toBeLessThanOrEqual(mockFunctions[0].description.length);
+      // Verify it's actually shortened (took first sentence)
+      expect(result.functions[0].shortDescription).not.toBe(mockFunctions[0].description);
+    });
+
+    it('should include all required fields in response', async () => {
+      const mockFunctions = [
+        { name: 'get_env', signature: 'get_env(name, default) -> string', description: 'Get environment variable', parameters: [], returnType: 'string', category: 'env', examples: [], relatedFunctions: [] }
+      ];
+
+      const mockFunctionsManager = {
+        loadFunctions: vi.fn().mockResolvedValue(undefined),
+        listFunctions: vi.fn().mockReturnValue(mockFunctions),
+        getAvailableCategories: vi.fn().mockReturnValue(['env'])
+      };
+
+      (toolHandler as any).functionsManager = mockFunctionsManager;
+
+      const result = await toolHandler.executeTool('list_terragrunt_functions', {});
+      
+      expect(result).toHaveProperty('functions');
+      expect(result).toHaveProperty('categories');
+      expect(result).toHaveProperty('totalCount');
+      
+      const func = result.functions[0];
+      expect(func).toHaveProperty('name');
+      expect(func).toHaveProperty('category');
+      expect(func).toHaveProperty('shortDescription');
+      expect(func).toHaveProperty('signature');
+    });
+
+    it('should return empty array when search has no results', async () => {
+      const mockFunctionsManager = {
+        loadFunctions: vi.fn().mockResolvedValue(undefined),
+        searchFunctions: vi.fn().mockReturnValue([]),
+        getAvailableCategories: vi.fn().mockReturnValue(['env', 'path'])
+      };
+
+      (toolHandler as any).functionsManager = mockFunctionsManager;
+
+      const result = await toolHandler.executeTool('list_terragrunt_functions', {
+        search: 'nonexistent'
+      });
+      
+      expect(result.functions).toBeDefined();
+      expect(result.functions.length).toBe(0);
+      expect(result.totalCount).toBe(0);
+      expect(result.categories).toBeDefined();
+    });
+  });
+
   describe('Error Handling', () => {
     it('should return error for unknown tool', async () => {
       const result = await toolHandler.executeTool('unknown_tool', {});

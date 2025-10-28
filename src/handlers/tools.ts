@@ -64,13 +64,17 @@ export class ToolHandler {
             },
             {
                 name: 'list_terragrunt_functions',
-                description: 'List Terragrunt built-in functions, optionally filtered by category',
+                description: 'List Terragrunt built-in functions with optional filtering by category or search query',
                 inputSchema: {
                     type: 'object',
                     properties: {
                         category: {
                             type: 'string',
-                            description: 'Optional category filter (e.g., "filesystem", "env")'
+                            description: 'Optional category filter (e.g., "filesystem", "env", "path")'
+                        },
+                        search: {
+                            type: 'string',
+                            description: 'Optional search query to filter functions by name or description'
                         },
                         limit: {
                             type: 'number',
@@ -190,7 +194,11 @@ export class ToolHandler {
                         args?.include_examples ?? true
                     );
                 case 'list_terragrunt_functions':
-                    return await this.listTerragruntFunctions(args?.category, args?.limit);
+                    return await this.listTerragruntFunctions(
+                        args?.category,
+                        args?.search,
+                        args?.limit
+                    );
 
                 case 'get_hcl_config_reference':
                     if (!args?.config) {
@@ -434,23 +442,57 @@ export class ToolHandler {
             .map(s => s.name);
     }
 
-    private async listTerragruntFunctions(category?: string, limit: number = 50): Promise<any> {
+    private async listTerragruntFunctions(category?: string, search?: string, limit: number = 50): Promise<any> {
         if (!this.functionsLoaded) {
             await this.functionsManager.loadFunctions();
             this.functionsLoaded = true;
         }
 
-        const list = this.functionsManager.listFunctions(category);
+        let functions;
+        
+        // Apply search or category filter
+        if (search && search.trim()) {
+            functions = this.functionsManager.searchFunctions(search);
+            // Further filter by category if provided
+            if (category && category.trim()) {
+                const catFilter = category.trim().toLowerCase();
+                functions = functions.filter(f => (f.category || '').toLowerCase() === catFilter);
+            }
+        } else {
+            functions = this.functionsManager.listFunctions(category);
+        }
+
+        // Get all available categories (not filtered - shows all options for discovery)
+        const categories = this.functionsManager.getAvailableCategories();
+
         return {
-            total: list.length,
-            hasMore: list.length > limit,
-            functions: list.slice(0, limit).map(fn => ({
+            functions: functions.slice(0, limit).map(fn => ({
                 name: fn.name,
-                signature: fn.signature,
-                description: fn.description,
-                returnType: fn.returnType,
-                category: fn.category
-            }))
+                category: fn.category,
+                shortDescription: this.getShortDescription(fn.description),
+                signature: fn.signature
+            })),
+            categories: categories,  // All categories, not just from filtered results
+            totalCount: functions.length  // Count of filtered results before limit
         };
+    }
+
+    /**
+     * Generate a short description from a full description.
+     * Takes the first sentence or first 100 characters.
+     */
+    private getShortDescription(description: string): string {
+        if (!description) return '';
+        
+        // Take first sentence or first 100 chars
+        // Match sentence ending with proper boundary (whitespace or end of string)
+        const firstSentence = description.match(/^[^.!?]+[.!?](?=\s|$)/);
+        if (firstSentence) {
+            return firstSentence[0].trim();
+        }
+        
+        return description.length > 100 
+            ? description.substring(0, 100).trim() + '...'
+            : description;
     }
 }
