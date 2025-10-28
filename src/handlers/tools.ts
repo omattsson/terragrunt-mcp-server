@@ -484,7 +484,8 @@ export class ToolHandler {
         if (!description) return '';
         
         // Take first sentence or first 100 chars
-        const firstSentence = description.match(/^[^.!?]+[.!?]/);
+        // Match sentence ending with proper boundary (whitespace or end of string)
+        const firstSentence = description.match(/^[^.!?]+[.!?](?=\s|$)/);
         if (firstSentence) {
             return firstSentence[0].trim();
         }
