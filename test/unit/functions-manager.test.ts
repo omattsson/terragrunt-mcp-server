@@ -393,4 +393,69 @@ describe('TerragruntFunctionsManager', () => {
       }
     });
   });
+
+  describe('getAvailableCategories', () => {
+    it('returns all unique categories from cached functions', async () => {
+      await mgr.loadFunctions();
+      const categories = mgr.getAvailableCategories();
+      
+      expect(Array.isArray(categories)).toBe(true);
+      expect(categories.length).toBeGreaterThan(0);
+      
+      // Should be sorted alphabetically
+      const sortedCategories = [...categories].sort();
+      expect(categories).toEqual(sortedCategories);
+      
+      // Should not have duplicates
+      const uniqueCategories = [...new Set(categories)];
+      expect(categories.length).toBe(uniqueCategories.length);
+    });
+
+    it('returns empty array when no functions are loaded', () => {
+      const emptyManager = new TerragruntFunctionsManager(new MockDocsManager([]) as any);
+      const categories = emptyManager.getAvailableCategories();
+      
+      expect(Array.isArray(categories)).toBe(true);
+      expect(categories.length).toBe(0);
+    });
+
+    it('filters out empty or whitespace-only categories', async () => {
+      const content = [
+        '## test_func1',
+        'Description: Test function',
+        'test_func1() -> string',
+      ].join(' ');
+
+      const mockDocs: TerragruntDoc[] = [{
+        title: 'Test Functions',
+        url: 'https://terragrunt.gruntwork.io/docs/reference/hcl/functions/',
+        content,
+        section: 'reference',
+        lastUpdated: new Date().toISOString(),
+      }];
+
+      const testMgr = new TerragruntFunctionsManager(new MockDocsManager(mockDocs) as any);
+      await testMgr.loadFunctions();
+      const categories = testMgr.getAvailableCategories();
+      
+      // Should not include empty strings
+      expect(categories.every(cat => cat.trim().length > 0)).toBe(true);
+    });
+
+    it('includes categories from all loaded functions', async () => {
+      await mgr.loadFunctions();
+      const categories = mgr.getAvailableCategories();
+      const allFunctions = mgr.listFunctions();
+      
+      // Get unique categories from all functions
+      const expectedCategories = [...new Set(
+        allFunctions
+          .map(f => f.category)
+          .filter(c => c && c.trim())
+      )].sort();
+      
+      expect(categories).toEqual(expectedCategories);
+    });
+  });
 });
+

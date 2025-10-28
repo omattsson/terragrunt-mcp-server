@@ -136,6 +136,22 @@ export class TerragruntFunctionsManager {
   }
 
   /**
+   * Get all unique categories from cached functions.
+   * @returns Sorted array of category names
+   */
+  getAvailableCategories(): string[] {
+    const categories = new Set<string>();
+    
+    for (const fn of this.functionsCache.values()) {
+      if (fn.category && fn.category.trim()) {
+        categories.add(fn.category);
+      }
+    }
+    
+    return Array.from(categories).sort();
+  }
+
+  /**
    * Extract a specific function from documentation by name.
    * Searches documentation for the named function and extracts its details on-demand.
    * Useful for lazy loading or as a fallback when loadFunctions() didn't find a function.
