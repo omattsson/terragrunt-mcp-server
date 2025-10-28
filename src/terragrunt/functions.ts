@@ -136,6 +136,74 @@ export class TerragruntFunctionsManager {
   }
 
   /**
+   * Extract a specific function from documentation by name.
+   * Searches documentation for the named function and extracts its details on-demand.
+   * Useful for lazy loading or as a fallback when loadFunctions() didn't find a function.
+   * 
+   * @param name The function name to search for (case-insensitive)
+   * @returns TerragruntFunction if found, otherwise null
+   */
+  async extractFunctionFromDocs(name: string): Promise<TerragruntFunction | null> {
+    if (!name || !name.trim()) {
+      return null;
+    }
+
+    const searchName = name.trim();
+    const normalizedName = this.normalizeKey(searchName);
+
+    // First check if it's already in cache
+    const cached = this.functionsCache.get(normalizedName);
+    if (cached) {
+      return cached;
+    }
+
+    // Search documentation for the function
+    const allDocs = await this.docsManager.fetchLatestDocs();
+    
+    // Prefer the canonical HCL functions reference page(s)
+    const functionDocs = allDocs.filter(d =>
+      d.section === 'reference' && (
+        d.url.includes('/docs/reference/hcl/functions/') ||
+        d.title.toLowerCase().includes('built-in function') ||
+        d.title.toLowerCase().includes('function')
+      )
+    );
+
+    // Search for the specific function in documentation content
+    for (const doc of functionDocs) {
+      const content = doc.content;
+      
+      // Look for the function name as a potential signature
+      // Use case-insensitive regex to find the function name
+      const functionNamePattern = new RegExp(
+        `\\b${searchName}\\s*\\([^)]*\\)`,
+        'i'
+      );
+      
+      if (!functionNamePattern.test(content)) {
+        continue; // Function not mentioned in this doc
+      }
+
+      // Extract functions from this document
+      const extracted = this.extractFunctionsFromContent(content);
+      
+      // Find the specific function we're looking for
+      const found = extracted.find(fn => 
+        this.normalizeKey(fn.name) === normalizedName
+      );
+
+      if (found) {
+        // Add to cache for future lookups
+        this.upsertFunction(found);
+        return found;
+      }
+    }
+
+    // Not found in any documentation
+    return null;
+  }
+
+  /**
    * Helper to add or replace a function in cache using normalized key.
    * Not part of the public API specified by the issue, but useful for tests
    * and for the upcoming implementation in issue #13.
@@ -161,14 +229,17 @@ export class TerragruntFunctionsManager {
     // Use non-capturing negative lookbehind to avoid matching mid-identifier
   const signatureRegex = /(?:^|[^a-zA-Z0-9_])(?<name>[a-zA-Z_][a-zA-Z0-9_]*)\s*\((?<params>[^)]*)\)\s*(?:->|→)\s*(?<ret>[^\s.,;:(){}[\]]+)?/g;
   // Alternate: name(params) [ -|—|–|:] (returns|return type) Type
-  const altSignatureRegex = /(?:^|[^a-zA-Z0-9_])(?<name>[a-zA-Z_][a-zA-Z0-9_]*)\s*\((?<params>[^)]*)\)\s*(?:[-–—,:])?\s*(?:returns?|return\s+type)\s+(?<ret2>[A-Za-z0-9_{}<>|.\][[]]+)/gi;
+  const altSignatureRegex = /(?:^|[^a-zA-Z0-9_])(?<name>[a-zA-Z_][a-zA-Z0-9_]*)\s*\((?<params>[^)]*)\)\s*(?:[-–—,:])?\s*(?:returns?|return\s+type)\s+(?<ret2>[A-Za-z0-9_<>|[\]{}]+)/gi;
     
-    // Fallback: register function names that appear as calls
-    const inlineCallRegex = /\b([a-zA-Z_][a-zA-Z0-9_]*)\s*\(/g;
+    // Fallback: register function names that appear in explicit usage context (more selective)
+    // Look for patterns like "use function_name()", "call function_name()", "function_name() function", etc.
+    // Use word boundaries to avoid matching "function" as a substring (e.g., in "test_function")
+    const inlineCallRegex = /\b(?:use|call|invoke|function)\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\(/gi;
 
     const seen = new Set<string>();
 
     // Helper to parse parameter list from inline signature
+    // Enriched version that detects optional parameters from brackets or question marks
     const parseParams = (paramsRaw: string): FunctionParameter[] => {
       const out: FunctionParameter[] = [];
       const raw = (paramsRaw || '').trim();
@@ -180,15 +251,32 @@ export class TerragruntFunctionsManager {
         
         let nameGuess = part;
         let typeGuess = 'unknown';
+        let isOptional = false;
+        
+        // Check for optional markers: [param] or param? or (optional)
+        if (/^\[.*\]$/.test(part.trim())) {
+          // Bracketed parameter indicates optional
+          nameGuess = part.trim().replace(/^\[|\]$/g, '');
+          isOptional = true;
+        } else if (part.includes('?')) {
+          // Question mark indicates optional
+          nameGuess = part.replace('?', '');
+          isOptional = true;
+        } else if (/\(optional\)/i.test(part)) {
+          // Explicit (optional) marker
+          nameGuess = part.replace(/\(optional\)/gi, '');
+          isOptional = true;
+        }
         
         // Try "name: type" format
-        const colonIdx = part.indexOf(':');
+        const colonIdx = nameGuess.indexOf(':');
         if (colonIdx > -1) {
-          nameGuess = part.substring(0, colonIdx).trim();
-          typeGuess = part.substring(colonIdx + 1).trim() || 'unknown';
+          const namePart = nameGuess.substring(0, colonIdx).trim();
+          typeGuess = nameGuess.substring(colonIdx + 1).trim() || 'unknown';
+          nameGuess = namePart;
         } else {
           // Try "type name" or just "name"
-          const tokens = part.trim().split(/\s+/);
+          const tokens = nameGuess.trim().split(/\s+/);
           if (tokens.length >= 2) {
             nameGuess = tokens[0];
             typeGuess = tokens.slice(1).join(' ');
@@ -198,9 +286,9 @@ export class TerragruntFunctionsManager {
         }
         
         out.push({ 
-          name: nameGuess, 
-          type: typeGuess, 
-          required: true, 
+          name: nameGuess.trim(), 
+          type: typeGuess.trim(), 
+          required: !isOptional, 
           description: '', 
           default: undefined 
         });
@@ -208,7 +296,72 @@ export class TerragruntFunctionsManager {
       return out;
     };
 
+    // Helper to extract description from context around a function signature
+    const extractDescription = (context: string, functionName: string, matchIndex: number): string => {
+      // Look for description BEFORE the signature match
+      // Split context at the match point
+      const beforeMatch = context.slice(0, matchIndex);
+      const afterMatch = context.slice(matchIndex);
+      
+      const lowerBefore = beforeMatch.toLowerCase();
+      const lowerName = functionName.toLowerCase();
+      
+      // Try to find "Description:" label before the signature
+      const descIdx = lowerBefore.lastIndexOf('description:');
+      if (descIdx !== -1) {
+        const start = descIdx + 'description:'.length;
+        const slice = beforeMatch.slice(start).trim();
+        // Extract until we hit the signature or section marker
+        const endMarkers = ['parameters:', functionName.toLowerCase() + '(', '##', '\n\n'];
+        let end = slice.length;
+        for (const marker of endMarkers) {
+          const pos = slice.toLowerCase().indexOf(marker);
+          if (pos !== -1 && pos > 0 && pos < end) {
+            end = pos;
+          }
+        }
+        const desc = slice.slice(0, end).trim();
+        if (desc && desc.length > 10 && desc.length < 500) {
+          return desc.replace(/\s+/g, ' ');
+        }
+      }
+      
+      // Try to find text between function name heading (##) and signature
+      const headingPattern = new RegExp(`##\\s*${functionName}\\s*`, 'i');
+      const headingMatch = headingPattern.exec(beforeMatch);
+      if (headingMatch) {
+        // Get text after the heading but before the signature
+        const afterHeading = beforeMatch.slice(headingMatch.index + headingMatch[0].length).trim();
+        // Look for complete sentences
+        const sentences = afterHeading.match(/[A-Z][^.!?]{10,300}[.!?]/g);
+        if (sentences && sentences.length > 0) {
+          const firstSent = sentences[0].trim();
+          if (!firstSent.toLowerCase().includes(functionName.toLowerCase() + '(')) {
+            return firstSent;
+          }
+        }
+      }
+      
+      // Fallback: look for descriptive sentence immediately before the signature
+      // Get last 200 chars before match
+      const beforeSig = beforeMatch.slice(Math.max(0, beforeMatch.length - 200)).trim();
+      const sentences = beforeSig.match(/[A-Z][^.!?]{15,250}[.!?]/g);
+      if (sentences && sentences.length > 0) {
+        // Take the last substantial sentence
+        const lastSent = sentences[sentences.length - 1].trim();
+        if (lastSent.length > 20 && 
+            !lastSent.toLowerCase().includes('parameters:') &&
+            !lastSent.toLowerCase().includes('example:') &&
+            !lastSent.toLowerCase().includes(functionName.toLowerCase() + '(')) {
+          return lastSent;
+        }
+      }
+      
+      return '';
+    };
+
     // Fallback: parse parameters from context block following a "Parameters" label
+    // Enriched version that extracts descriptions, identifies optional params, and finds defaults
     const parseParamsFromContext = (context: string): FunctionParameter[] => {
       const out: FunctionParameter[] = [];
       const lowerCtx = context.toLowerCase();
@@ -230,8 +383,16 @@ export class TerragruntFunctionsManager {
       const structuredMatch = /parameters:\s*([^]+?)(?=usage:|example:|see also|related|returns |$)/i.exec(context.slice(idx, end));
       if (structuredMatch) {
         const paramText = structuredMatch[1];
-        // Match patterns like "name (type)" or "name: type"
-        const paramRe = /\b([a-zA-Z_][\w-]*)\s*(?:\(([^)]+)\)|:\s*([^;,.\n]+))/g;
+        // Enhanced pattern to capture descriptions, optional markers, and defaults
+        // Matches: "name (type): description" or "name (type) - description" or "name: type - description"
+        /*
+          Regex capture groups:
+            1. ([a-zA-Z_][\w-]*)      => parameter name
+            2. ([^)]+)                => type in parentheses (if present)
+            3. ([-:\n]+?)             => type after colon (if present)
+            4. ([^;,.\n]{0,200})?     => description (up to 200 chars, optional)
+        */
+        const paramRe = /\b([a-zA-Z_][\w-]*)\s*(?:\(([^)]+)\)|:\s*([^-:\n]+?))\s*[-:]?\s*([^;,.\n]{0,200})?/g;
         let pm: RegExpExecArray | null;
         const seenNames = new Set<string>();
         while ((pm = paramRe.exec(paramText)) !== null) {
@@ -239,9 +400,46 @@ export class TerragruntFunctionsManager {
           const lname = name.toLowerCase();
           const stopwords = new Set(['parameters','parameter','example','examples','usage','see','also','related']);
           if (!name || seenNames.has(lname) || stopwords.has(lname)) continue;
-          const type = (pm[2] || pm[3] || 'unknown').trim();
+          
+          let type = (pm[2] || pm[3] || 'unknown').trim();
+          let description = (pm[4] || '').trim();
+          
+          // Check for optional markers in type or description
+          const optionalMarkers = /\b(optional|opt\.?)\b/i;
+          const isOptional = optionalMarkers.test(type) || optionalMarkers.test(description);
+          
+          // Remove optional markers from type
+          type = type.replace(optionalMarkers, '').replace(/[[\]()]/g, '').trim();
+          if (!type || type === 'unknown') type = 'unknown';
+          
+          // Extract default value from description
+          let defaultValue: string | number | boolean | null | undefined = undefined;
+          const defaultMatch = /defaults?\s+(?:to\s+)?(?:is\s+)?["`']?([^"`'\n.]{1,50})["`']?/i.exec(description);
+          if (defaultMatch) {
+            const defStr = defaultMatch[1].trim();
+            // Try to parse as number, boolean, null, or keep as string
+            if (defStr === 'null') defaultValue = null;
+            else if (defStr === 'true') defaultValue = true;
+            else if (defStr === 'false') defaultValue = false;
+            else if (/^-?\d+(\.\d+)?$/.test(defStr)) defaultValue = parseFloat(defStr);
+            else defaultValue = defStr;
+          }
+          
+          // Clean description: remove default value text and optional markers
+          description = description
+            .replace(/defaults?\s+(?:to\s+)?(?:is\s+)?["`']?[^"`'\n.]{1,50}["`']?/gi, '')
+            .replace(optionalMarkers, '')
+            .replace(/[[\]()]/g, '')
+            .trim();
+          
           seenNames.add(lname);
-          out.push({ name, type, required: true, description: '', default: undefined });
+          out.push({ 
+            name, 
+            type, 
+            required: !isOptional && defaultValue === undefined, 
+            description: description || '', 
+            default: defaultValue 
+          });
           if (out.length >= 6) break;
         }
       }
@@ -263,6 +461,206 @@ export class TerragruntFunctionsManager {
         }
       }
       return out;
+    };
+
+    // Helper to categorize a function based on name patterns, description, and context
+    const categorizeFunction = (name: string, description: string, context: string): string => {
+      const lowerName = name.toLowerCase();
+      const lowerDesc = description.toLowerCase();
+      const lowerCtx = context.toLowerCase();
+      
+      // Category detection by function name patterns
+      if (lowerName.startsWith('path_') || 
+          lowerName.startsWith('get_terragrunt_dir') ||
+          lowerName.startsWith('get_parent_terragrunt') ||
+          lowerName.includes('_path') ||
+          lowerName === 'abspath' ||
+          lowerName === 'dirname' ||
+          lowerName === 'basename') {
+        return 'path';
+      }
+      
+      if (lowerName.startsWith('get_env') ||
+          lowerName.startsWith('get_aws_') ||
+          lowerName.includes('account') ||
+          lowerName.includes('identity') ||
+          lowerName.includes('region')) {
+        return 'environment';
+      }
+      
+      if (lowerName.startsWith('get_terraform_') ||
+          lowerName.includes('terraform')) {
+        return 'terraform';
+      }
+      
+      if (lowerName === 'find_in_parent_folders' ||
+          lowerName.startsWith('read_') ||
+          lowerName.startsWith('file') ||
+          lowerName === 'fileexists' ||
+          lowerName === 'filebase64' ||
+          lowerName === 'templatefile') {
+        return 'file';
+      }
+      
+      if (lowerName === 'dependency') {
+        return 'dependency';
+      }
+      
+      if (lowerName.includes('encode') || lowerName.includes('decode')) {
+        return 'encoding';
+      }
+      
+      if (lowerName === 'regex' ||
+          lowerName === 'replace' ||
+          lowerName === 'join' ||
+          lowerName === 'split' ||
+          lowerName === 'trim' ||
+          lowerName === 'format' ||
+          lowerName === 'substr') {
+        return 'string';
+      }
+      
+      if (lowerName === 'concat' ||
+          lowerName === 'flatten' ||
+          lowerName === 'distinct' ||
+          lowerName === 'compact' ||
+          lowerName === 'reverse' ||
+          lowerName === 'sort' ||
+          lowerName === 'slice') {
+        return 'list';
+      }
+      
+      if (lowerName === 'merge' ||
+          lowerName === 'lookup' ||
+          lowerName === 'keys' ||
+          lowerName === 'values') {
+        return 'map';
+      }
+      
+      // Category hints from description
+      if (lowerDesc.includes('path') || lowerDesc.includes('directory')) {
+        return 'path';
+      }
+      
+      if (lowerDesc.includes('environment') || lowerDesc.includes('aws account')) {
+        return 'environment';
+      }
+      
+      if (lowerDesc.includes('file') || lowerDesc.includes('read')) {
+        return 'file';
+      }
+      
+      if (lowerDesc.includes('list') || lowerDesc.includes('array')) {
+        return 'list';
+      }
+      
+      if (lowerDesc.includes('string') || lowerDesc.includes('text')) {
+        return 'string';
+      }
+      
+      // Category hints from context headings
+      if (lowerCtx.includes('## path functions') || lowerCtx.includes('path helpers')) {
+        return 'path';
+      }
+      
+      if (lowerCtx.includes('## environment') || lowerCtx.includes('environment variables')) {
+        return 'environment';
+      }
+      
+      if (lowerCtx.includes('## terraform')) {
+        return 'terraform';
+      }
+      
+      if (lowerCtx.includes('## file') || lowerCtx.includes('file functions')) {
+        return 'file';
+      }
+      
+      // Default fallback
+      return 'general';
+    };
+
+    // Helper to extract examples from "Example:" or "Examples:" sections
+    const extractExamples = (context: string, functionName: string): FunctionExample[] => {
+      const examples: FunctionExample[] = [];
+      
+      // Look for "Example:" or "Examples:" section
+      const exampleSectionRegex = /examples?[:\s]+(.+?)(?=##|see\s+also|parameters:|usage:|$)/is;
+      const exampleMatch = exampleSectionRegex.exec(context);
+      
+      if (exampleMatch && exampleMatch[1]) {
+        const exampleContent = exampleMatch[1].trim();
+        
+        // Split by common delimiters that indicate separate examples
+        // Look for patterns like "Example 1:", "Another example:", or numbered examples
+        const exampleDelimiters = /(?:example\s+\d+|another\s+example|additionally)[:\s]+/gi;
+        const splits = exampleContent.split(exampleDelimiters);
+        
+        for (const section of splits) {
+          if (!section.trim()) continue;
+          
+          // Extract code blocks (indented, fenced, or inline)
+          // Pattern 1: Fenced code blocks (```...```)
+          const fencedMatch = /```[\w]*\s*(.+?)```/s.exec(section);
+          if (fencedMatch) {
+            const code = fencedMatch[1].trim();
+            // Look for description before the code block
+            const descMatch = /^([^`]+?)(?=```)/s.exec(section);
+            const description = descMatch ? descMatch[1].trim() : 'Example usage';
+            
+            examples.push({
+              code,
+              description,
+              useCase: 'documented'
+            });
+            continue;
+          }
+          
+          // Pattern 2: Indented code blocks (multiple lines starting with spaces/tabs)
+          const indentedMatch = /(?:^|\n)([ \t]+.+?)(?=\n[^\s\t]|$)/s.exec(section);
+          if (indentedMatch) {
+            const code = indentedMatch[1].trim();
+            // Extract description from text before indented code
+            const beforeCode = section.slice(0, indentedMatch.index).trim();
+            const description = beforeCode || 'Example usage';
+            
+            examples.push({
+              code,
+              description,
+              useCase: 'documented'
+            });
+            continue;
+          }
+          
+          // Pattern 3: Inline function calls
+          const inlineRegex = new RegExp(`${functionName}\\s*\\(([^)]{0,120})\\)`, 'i');
+          const inlineMatch = inlineRegex.exec(section);
+          if (inlineMatch) {
+            const code = `${functionName}(${inlineMatch[1]})`;
+            const description = section.trim().slice(0, 100);
+            
+            examples.push({
+              code,
+              description,
+              useCase: 'documented'
+            });
+          }
+        }
+      }
+      
+      // Fallback: If no examples found in explicit section, look for inline usage
+      if (examples.length === 0) {
+        const usageRegex = new RegExp(`${functionName}\\s*\\(([^)]{0,120})\\)`, 'i');
+        const usageMatch = usageRegex.exec(context);
+        if (usageMatch) {
+          examples.push({
+            code: `${functionName}(${usageMatch[1]})`,
+            description: 'Inline example',
+            useCase: 'inline'
+          });
+        }
+      }
+      
+      return examples;
     };
 
   // Scan for signature patterns with explicit return types (arrow style)
@@ -299,14 +697,13 @@ export class TerragruntFunctionsManager {
         parameters = ctxParams;
       }
 
-      // Try to extract small inline example usage within the nearby context
-      const examples: FunctionExample[] = [];
-      const usageCtx = text.slice(match.index, match.index + 240);
-      const usageRe = new RegExp(`${name}\\s*\\(([^)]{0,120})\\)`, 'i');
-      const u = usageRe.exec(usageCtx);
-      if (u) {
-        examples.push({ code: `${name}(${u[1]})`, description: 'Inline example', useCase: 'inline' });
-      }
+      // Extract description from context before/around the signature
+      const descCtx = text.slice(Math.max(0, match.index - 500), match.index + 200);
+      const description = extractDescription(descCtx, name, Math.min(500, match.index));
+
+      // Extract examples from context around the function
+      const exampleCtx = text.slice(match.index, match.index + 600);
+      const examples = extractExamples(exampleCtx, name);
 
       // Related functions via "See also" pattern in nearby context
   const relRe = /(see\s+also|related)[:\s]+([^\n.]{0,120})/i;
@@ -323,13 +720,16 @@ export class TerragruntFunctionsManager {
         }
       }
 
+      // Categorize based on name, description, and context
+      const category = categorizeFunction(name, description, descCtx);
+
       results.push({
         name,
         signature: `${name}(${paramsRaw})${returnType !== 'unknown' ? ` -> ${returnType}` : ''}`.trim(),
-        description: '',
+        description,
         parameters,
         returnType,
-        category: 'functions',
+        category,
         examples,
         relatedFunctions: related
       });
@@ -352,11 +752,15 @@ export class TerragruntFunctionsManager {
       if (parameters.length === 0 || ctxParams.length > parameters.length) {
         parameters = ctxParams;
       }
-      const examples: FunctionExample[] = [];
-      const usageCtx = text.slice(match.index, match.index + 240);
-      const usageRe = new RegExp(`${name}\\s*\\(([^)]{0,120})\\)`, 'i');
-      const u = usageRe.exec(usageCtx);
-      if (u) examples.push({ code: `${name}(${u[1]})`, description: 'Inline example', useCase: 'inline' });
+      
+      // Extract description from context before/around the signature
+      const descCtx = text.slice(Math.max(0, match.index - 500), match.index + 200);
+      const description = extractDescription(descCtx, name, Math.min(500, match.index));
+      
+      // Extract examples from context around the function
+      const exampleCtx = text.slice(match.index, match.index + 600);
+      const examples = extractExamples(exampleCtx, name);
+      
   const relRe = /(see\s+also|related)[:\s]+([^\n.]{0,120})/i;
       const relCtx = text.slice(match.index, match.index + 300);
       const rel = relRe.exec(relCtx);
@@ -370,13 +774,17 @@ export class TerragruntFunctionsManager {
           if (nm && nm.toLowerCase() !== name.toLowerCase() && !related.includes(nm)) related.push(nm);
         }
       }
+      
+      // Categorize based on name, description, and context
+      const category = categorizeFunction(name, description, descCtx);
+      
       results.push({
         name,
         signature: `${name}(${paramsRaw})${returnType !== 'unknown' ? ` -> ${returnType}` : ''}`.trim(),
-        description: '',
+        description,
         parameters,
         returnType,
-        category: 'functions',
+        category,
         examples,
         relatedFunctions: related
       });
@@ -390,11 +798,15 @@ export class TerragruntFunctionsManager {
       if (seen.has(key)) continue;
       
       seen.add(key);
-      // Try to capture a tiny inline example of invocation
-      const usageCtx = text.slice(match.index, match.index + 200);
-      const usageRe = new RegExp(`${name}\\s*\\(([^)]{0,120})\\)`, 'i');
-      const u = usageRe.exec(usageCtx);
-      const examples: FunctionExample[] = u ? [{ code: `${name}(${u[1]})`, description: 'Inline example', useCase: 'inline' }] : [];
+      
+      // Extract description from surrounding context
+      const descCtx = text.slice(Math.max(0, match.index - 500), match.index + 200);
+      const description = extractDescription(descCtx, name, Math.min(500, match.index));
+      
+      // Extract examples from context around the function
+      const exampleCtx = text.slice(match.index, match.index + 600);
+      const examples = extractExamples(exampleCtx, name);
+      
       // Best-effort: attempt to extract parameter names/types from nearby context
       let paramCtx = text.slice(Math.max(0, match.index - 300), match.index + 400);
       const pLower = paramCtx.toLowerCase();
@@ -403,13 +815,17 @@ export class TerragruntFunctionsManager {
         paramCtx = paramCtx.slice(lastParamsIdx);
       }
       const inferredParams = parseParamsFromContext(paramCtx);
+      
+      // Categorize based on name, description, and context
+      const category = categorizeFunction(name, description, descCtx);
+      
       results.push({
         name,
         signature: `${name}(...)`,
-        description: '',
+        description,
         parameters: inferredParams,
         returnType: 'unknown',
-        category: 'functions',
+        category,
         examples,
         relatedFunctions: []
       });

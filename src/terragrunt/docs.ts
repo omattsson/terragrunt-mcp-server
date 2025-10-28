@@ -114,6 +114,81 @@ export class TerragruntDocsManager {
     }
   }
 
+  /**
+   * Validates that the fixture contains required function documentation for offline testing.
+   * This ensures the fixture is comprehensive enough to support function extraction tests.
+   * 
+   * @returns Validation result with details about missing content
+   */
+  public async validateFixture(): Promise<{
+    valid: boolean;
+    hasFunctionDocs: boolean;
+    functionDocsCount: number;
+    totalDocs: number;
+    missingPages: string[];
+  }> {
+    try {
+      const fixtureExists = await fs.access(this.fixtureFile).then(() => true).catch(() => false);
+      
+      if (!fixtureExists) {
+        return {
+          valid: false,
+          hasFunctionDocs: false,
+          functionDocsCount: 0,
+          totalDocs: 0,
+          missingPages: ['Fixture file not found']
+        };
+      }
+
+      const fixtureContent = await fs.readFile(this.fixtureFile, 'utf-8');
+      const docs: TerragruntDoc[] = JSON.parse(fixtureContent);
+
+      // Required pages for comprehensive function extraction
+      const requiredPages = [
+        'Functions', // Main functions reference page
+      ];
+
+      const foundPages = new Set<string>();
+      let functionDocsCount = 0;
+
+      docs.forEach(doc => {
+        // Check for required pages
+        if (requiredPages.includes(doc.title)) {
+          foundPages.add(doc.title);
+        }
+        
+        // Count function-related documentation
+        if (
+          doc.title.toLowerCase().includes('function') ||
+          doc.section === 'reference' && doc.url.includes('/functions/')
+        ) {
+          functionDocsCount++;
+        }
+      });
+
+      const missingPages = requiredPages.filter(page => !foundPages.has(page));
+      const hasFunctionDocs = functionDocsCount > 0;
+      const valid = missingPages.length === 0 && hasFunctionDocs;
+
+      return {
+        valid,
+        hasFunctionDocs,
+        functionDocsCount,
+        totalDocs: docs.length,
+        missingPages
+      };
+    } catch (error) {
+      console.error('Failed to validate fixture:', error);
+      return {
+        valid: false,
+        hasFunctionDocs: false,
+        functionDocsCount: 0,
+        totalDocs: 0,
+        missingPages: [`Validation error: ${error instanceof Error ? error.message : String(error)}`]
+      };
+    }
+  }
+
   private async loadCacheFromDisk(): Promise<boolean> {
     try {
       // Check if cache files exist
