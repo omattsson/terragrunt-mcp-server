@@ -349,4 +349,48 @@ describe('TerragruntFunctionsManager', () => {
       }
     }
   });
+
+  describe('Fixture-based Function Extraction', () => {
+    it('can extract functions from real fixture data', async () => {
+      // Use real DocsManager with fixture data
+      const { TerragruntDocsManager } = await import('../../src/terragrunt/docs.js');
+      const realDocsManager = new TerragruntDocsManager();
+      
+      // Validate fixture first
+      const validation = await realDocsManager.validateFixture();
+      expect(validation.valid).toBe(true);
+      expect(validation.hasFunctionDocs).toBe(true);
+      
+      // Create functions manager with real docs
+      const realFunctionsManager = new TerragruntFunctionsManager(realDocsManager);
+      await realFunctionsManager.loadFunctions();
+      
+      // Should extract some functions from fixture
+      const functions = realFunctionsManager.listFunctions();
+      expect(functions.length).toBeGreaterThan(0);
+    });
+
+    it('extracted functions from fixture have complete metadata', async () => {
+      const { TerragruntDocsManager } = await import('../../src/terragrunt/docs.js');
+      const realDocsManager = new TerragruntDocsManager();
+      const realFunctionsManager = new TerragruntFunctionsManager(realDocsManager);
+      
+      await realFunctionsManager.loadFunctions();
+      const functions = realFunctionsManager.listFunctions();
+      
+      // Verify at least some functions were extracted
+      expect(functions.length).toBeGreaterThan(0);
+      
+      // Check that functions have expected structure
+      for (const fn of functions) {
+        expect(fn.name).toBeDefined();
+        expect(fn.signature).toBeDefined();
+        expect(fn.description).toBeDefined();
+        expect(fn.category).toBeDefined();
+        expect(Array.isArray(fn.parameters)).toBe(true);
+        expect(Array.isArray(fn.examples)).toBe(true);
+        expect(Array.isArray(fn.relatedFunctions)).toBe(true);
+      }
+    });
+  });
 });
