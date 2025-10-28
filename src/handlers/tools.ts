@@ -462,6 +462,7 @@ export class ToolHandler {
             functions = this.functionsManager.listFunctions(category);
         }
 
+        // Get all available categories (not filtered - shows all options for discovery)
         const categories = this.functionsManager.getAvailableCategories();
 
         return {
@@ -471,8 +472,8 @@ export class ToolHandler {
                 shortDescription: this.getShortDescription(fn.description),
                 signature: fn.signature
             })),
-            categories: categories,
-            totalCount: functions.length
+            categories: categories,  // All categories, not just from filtered results
+            totalCount: functions.length  // Count of filtered results before limit
         };
     }
 
