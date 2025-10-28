@@ -23,7 +23,7 @@ async function testFunctionsTools() {
   // Get details for first function
   const target = list[0]?.name;
   if (target) {
-    const getResp = await toolHandler.executeTool('get_terragrunt_function', { name: target });
+    const getResp = await toolHandler.executeTool('get_terragrunt_function', { function_name: target });
     if (getResp.error) {
       console.error('❌ get_terragrunt_function returned error:', getResp.error);
       process.exit(1);

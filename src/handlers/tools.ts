@@ -45,16 +45,21 @@ export class ToolHandler {
             },
             {
                 name: 'get_terragrunt_function',
-                description: 'Get a specific Terragrunt built-in function by name',
+                description: 'Get detailed documentation for a specific Terragrunt built-in function',
                 inputSchema: {
                     type: 'object',
                     properties: {
-                        name: {
+                        function_name: {
                             type: 'string',
                             description: 'The Terragrunt function name (e.g., "get_env", "find_in_parent_folders")'
+                        },
+                        include_examples: {
+                            type: 'boolean',
+                            description: 'Include code examples in the response (default: true)',
+                            default: true
                         }
                     },
-                    required: ['name']
+                    required: ['function_name']
                 }
             },
             {
@@ -177,10 +182,13 @@ export class ToolHandler {
                     }
                     return await this.getCliCommandHelp(args.command);
                 case 'get_terragrunt_function':
-                    if (!args?.name) {
-                        return { error: 'name parameter is required' };
+                    if (!args?.function_name) {
+                        return { error: 'function_name parameter is required' };
                     }
-                    return await this.getTerragruntFunction(args.name);
+                    return await this.getTerragruntFunction(
+                        args.function_name,
+                        args?.include_examples ?? true
+                    );
                 case 'list_terragrunt_functions':
                     return await this.listTerragruntFunctions(args?.category, args?.limit);
 
@@ -336,19 +344,24 @@ export class ToolHandler {
         };
     }
 
-    private async getTerragruntFunction(name: string): Promise<any> {
+    private async getTerragruntFunction(functionName: string, includeExamples: boolean = true): Promise<any> {
         // Ensure functions are loaded at least once per process
         if (!this.functionsLoaded) {
             await this.functionsManager.loadFunctions();
             this.functionsLoaded = true;
         }
 
-        const fn = this.functionsManager.getFunction(name);
+        const fn = this.functionsManager.getFunction(functionName);
         if (!fn) {
+            const suggestions = this.getSimilarFunctionNames(functionName);
+            const suggestionText = suggestions.length > 0
+                ? `Did you mean: ${suggestions.join(', ')}?`
+                : 'Try list_terragrunt_functions to see all available functions';
+
             return {
-                name,
-                error: `No Terragrunt function found for: ${name}`,
-                suggestion: 'Try list_terragrunt_functions or provide a more precise function name'
+                name: functionName,
+                error: `No Terragrunt function found for: ${functionName}`,
+                suggestion: suggestionText
             };
         }
 
@@ -359,9 +372,62 @@ export class ToolHandler {
             parameters: fn.parameters,
             returnType: fn.returnType,
             category: fn.category,
-            examples: fn.examples,
-            relatedFunctions: fn.relatedFunctions
+            examples: includeExamples ? fn.examples : [],
+            relatedFunctions: fn.relatedFunctions,
+            relatedDocs: [] // TODO: Extract from documentation in future enhancement
         };
+    }
+
+    /**
+     * Find similar function names using simple string matching.
+     * Returns up to 5 suggestions based on substring matches and common prefixes.
+     */
+    private getSimilarFunctionNames(functionName: string): string[] {
+        const allFunctions = this.functionsManager.listFunctions();
+        const query = functionName.toLowerCase();
+        const suggestions: Array<{ name: string; score: number }> = [];
+
+        for (const fn of allFunctions) {
+            const fnName = fn.name.toLowerCase();
+            let score = 0;
+
+            // Exact substring match
+            if (fnName.includes(query)) {
+                score += 10;
+            }
+
+            // Query is substring of function name
+            if (query.includes(fnName)) {
+                score += 8;
+            }
+
+            // Common prefix
+            let prefixLen = 0;
+            for (let i = 0; i < Math.min(query.length, fnName.length); i++) {
+                if (query[i] === fnName[i]) {
+                    prefixLen++;
+                } else {
+                    break;
+                }
+            }
+            score += prefixLen * 2;
+
+            // Similar words (split by underscore)
+            const queryParts = query.split('_');
+            const fnParts = fnName.split('_');
+            const commonParts = queryParts.filter(p => fnParts.includes(p)).length;
+            score += commonParts * 3;
+
+            if (score > 0) {
+                suggestions.push({ name: fn.name, score });
+            }
+        }
+
+        // Sort by score (descending) and return top 5
+        return suggestions
+            .sort((a, b) => b.score - a.score)
+            .slice(0, 5)
+            .map(s => s.name);
     }
 
     private async listTerragruntFunctions(category?: string, limit: number = 50): Promise<any> {
