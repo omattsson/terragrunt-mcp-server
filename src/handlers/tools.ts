@@ -379,8 +379,14 @@ export class ToolHandler {
     }
 
     /**
-     * Find similar function names using simple string matching.
-     * Returns up to 5 suggestions based on substring matches and common prefixes.
+     * Finds similar function names using a multi-factor scoring algorithm.
+     * Scoring combines several matching strategies:
+     * - Exact substring matches (higher score)
+     * - Common prefix matches
+     * - Word splitting and partial word matches
+     * - Penalizes mismatches and rewards close matches
+     * Suggestions are sorted by score and the top 5 are returned.
+     * This helps provide relevant alternatives when a function name is not found.
      */
     private getSimilarFunctionNames(functionName: string): string[] {
         const allFunctions = this.functionsManager.listFunctions();
@@ -397,9 +403,7 @@ export class ToolHandler {
             }
 
             // Query is substring of function name
-            if (query.includes(fnName)) {
-                score += 8;
-            }
+            // Removed redundant query.includes(fnName) check
 
             // Common prefix
             let prefixLen = 0;
