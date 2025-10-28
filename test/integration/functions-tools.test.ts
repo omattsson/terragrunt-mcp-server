@@ -181,12 +181,20 @@ describe('Function Lookup Tools Integration Tests', () => {
 
     describe('Performance', () => {
       it('should respond in <150ms for cached function lookup', async () => {
-        const start = performance.now();
-        
-        await toolHandler.executeTool('get_terragrunt_function', {
-          function_name: 'get_env'
+        // Get a real function name dynamically instead of hardcoding
+        const listResult = await toolHandler.executeTool('list_terragrunt_functions', {
+          limit: 1
         });
-        
+        expect(listResult.functions).toBeDefined();
+        expect(listResult.functions.length).toBeGreaterThan(0);
+        const functionName = listResult.functions[0].name;
+
+        const start = performance.now();
+
+        await toolHandler.executeTool('get_terragrunt_function', {
+          function_name: functionName
+        });
+
         const duration = performance.now() - start;
         expect(duration).toBeLessThan(150);
       });
