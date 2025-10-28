@@ -14,8 +14,8 @@
     "test:integration": "node test/server-test.js",
     "test:integration:cache": "node test/integration/cache-persistence.test.js",
     "test:integration:errors": "node test/integration/error-handling.test.js",
-  "test:integration:functions": "node test/integration/functions-tools.test.js",
-  "test:integration:all": "node test/server-test.js && node test/integration/functions-tools.test.js",
+    "test:integration:functions": "node test/integration/functions-tools.test.js",
+    "test:integration:all": "node test/server-test.js && node test/integration/functions-tools.test.js",
     "test:server": "node test/server-test.js",
     "test:all": "npm run test:unit && npm run test:integration:all",
     "test:coverage": "vitest run --coverage",
@@ -38,6 +38,7 @@
     "@types/node": "^24.9.1",
     "@typescript-eslint/eslint-plugin": "^8.0.0",
     "@typescript-eslint/parser": "^8.0.0",
+    "@vitest/coverage-v8": "^4.0.3",
     "@vitest/ui": "^4.0.3",
     "eslint": "^9.0.0",
     "vitest": "^4.0.3"

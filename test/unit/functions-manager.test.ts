@@ -457,5 +457,239 @@ describe('TerragruntFunctionsManager', () => {
       expect(categories).toEqual(expectedCategories);
     });
   });
+
+  describe('Edge Cases', () => {
+    it('handles underscores and numbers in function names', async () => {
+      const content = [
+        '## get_aws_account_id',
+        'Returns the AWS account ID for authentication.',
+        'get_aws_account_id() -> string',
+        '',
+        '## path_join_v2',
+        'Returns the joined path components.',
+        'path_join_v2() -> string',
+      ].join(' ');
+
+      const mockDocs: TerragruntDoc[] = [{
+        title: 'Functions with Underscores',
+        url: 'https://terragrunt.gruntwork.io/docs/reference/hcl/functions/',
+        content,
+        section: 'reference',
+        lastUpdated: new Date().toISOString(),
+      }];
+
+      const testMgr = new TerragruntFunctionsManager(new MockDocsManager(mockDocs) as any);
+      await testMgr.loadFunctions();
+      
+      const fn1 = testMgr.getFunction('get_aws_account_id');
+      expect(fn1).toBeTruthy();
+      expect(fn1?.name).toBe('get_aws_account_id');
+      
+      const fn2 = testMgr.getFunction('path_join_v2');
+      expect(fn2).toBeTruthy();
+      expect(fn2?.name).toBe('path_join_v2');
+    });
+
+    it('handles very long function names', async () => {
+      const longName = 'get_very_long_function_name_with_many_underscores_and_parts';
+      const shortDesc = 'Returns a complex value.';
+      
+      const content = [
+        `## ${longName}`,
+        shortDesc,
+        `${longName}() -> string`,
+      ].join(' ');
+
+      const mockDocs: TerragruntDoc[] = [{
+        title: 'Long Functions',
+        url: 'https://terragrunt.gruntwork.io/docs/reference/hcl/functions/',
+        content,
+        section: 'reference',
+        lastUpdated: new Date().toISOString(),
+      }];
+
+      const testMgr = new TerragruntFunctionsManager(new MockDocsManager(mockDocs) as any);
+      await testMgr.loadFunctions();
+      
+      const fn = testMgr.getFunction(longName);
+      expect(fn).toBeTruthy();
+      expect(fn?.name).toBe(longName);
+      expect(fn?.description).toBeTruthy();
+      expect(fn?.name.length).toBeGreaterThan(50);
+    });
+
+    it('handles empty description gracefully', async () => {
+      const content = [
+        '## minimal_func',
+        'minimal_func() -> string',
+      ].join(' ');
+
+      const mockDocs: TerragruntDoc[] = [{
+        title: 'Minimal Function',
+        url: 'https://terragrunt.gruntwork.io/docs/reference/hcl/functions/',
+        content,
+        section: 'reference',
+        lastUpdated: new Date().toISOString(),
+      }];
+
+      const testMgr = new TerragruntFunctionsManager(new MockDocsManager(mockDocs) as any);
+      await testMgr.loadFunctions();
+      
+      const fn = testMgr.getFunction('minimal_func');
+      expect(fn).toBeTruthy();
+      expect(fn?.description).toBeDefined();
+      // Description may be empty or derived from context
+    });
+
+    it('returns null for null/undefined function name in getFunction', async () => {
+      await mgr.loadFunctions();
+      
+      expect(mgr.getFunction(null as any)).toBeNull();
+      expect(mgr.getFunction(undefined as any)).toBeNull();
+      expect(mgr.getFunction('')).toBeNull();
+      expect(mgr.getFunction('   ')).toBeNull();
+    });
+  });
+
+  describe('Cache Behavior', () => {
+    it('demonstrates cache persistence across calls', async () => {
+      await mgr.loadFunctions();
+      
+      // First call
+      const fn1 = mgr.getFunction('abspath');
+      expect(fn1).toBeTruthy();
+      
+      // Second call should return same cached instance
+      const fn2 = mgr.getFunction('abspath');
+      expect(fn2).toBeTruthy();
+      expect(fn1?.name).toBe(fn2?.name);
+    });
+
+    it('normalizes keys to lowercase for cache storage', async () => {
+      await mgr.loadFunctions();
+      
+      // All these variations should return the same function
+      const fn1 = mgr.getFunction('abspath');
+      const fn2 = mgr.getFunction('ABSPATH');
+      const fn3 = mgr.getFunction('AbsPath');
+      const fn4 = mgr.getFunction('aBsPaTh');
+      
+      expect(fn1).toBeTruthy();
+      expect(fn2).toBeTruthy();
+      expect(fn3).toBeTruthy();
+      expect(fn4).toBeTruthy();
+      
+      expect(fn1?.name).toBe('abspath');
+      expect(fn2?.name).toBe('abspath');
+      expect(fn3?.name).toBe('abspath');
+      expect(fn4?.name).toBe('abspath');
+    });
+
+    it('persists functions across multiple list calls', async () => {
+      await mgr.loadFunctions();
+      
+      const list1 = mgr.listFunctions();
+      const list2 = mgr.listFunctions();
+      const list3 = mgr.listFunctions();
+      
+      expect(list1.length).toBe(list2.length);
+      expect(list2.length).toBe(list3.length);
+      expect(list1.map(f => f.name)).toEqual(list2.map(f => f.name));
+    });
+  });
+
+  describe('listFunctions() edge cases', () => {
+    it('returns empty array for unknown category', async () => {
+      await mgr.loadFunctions();
+      const result = mgr.listFunctions('nonexistent_category_xyz');
+      expect(Array.isArray(result)).toBe(true);
+      expect(result.length).toBe(0);
+    });
+
+    it('returns empty array when no functions loaded', () => {
+      const emptyManager = new TerragruntFunctionsManager(new MockDocsManager([]) as any);
+      const result = emptyManager.listFunctions();
+      expect(Array.isArray(result)).toBe(true);
+      expect(result.length).toBe(0);
+    });
+
+    it('handles category filter with different cases', async () => {
+      await mgr.loadFunctions();
+      
+      const pathFuncs1 = mgr.listFunctions('path');
+      const pathFuncs2 = mgr.listFunctions('PATH');
+      const pathFuncs3 = mgr.listFunctions('Path');
+      
+      // All should return same results (case-insensitive)
+      expect(pathFuncs1.length).toBe(pathFuncs2.length);
+      expect(pathFuncs2.length).toBe(pathFuncs3.length);
+    });
+  });
+
+  describe('searchFunctions() detailed matching', () => {
+    it('finds functions by exact name match', async () => {
+      await mgr.loadFunctions();
+      const result = mgr.searchFunctions('abspath');
+      
+      expect(result.length).toBeGreaterThan(0);
+      expect(result.some(f => f.name === 'abspath')).toBe(true);
+    });
+
+    it('finds functions by partial name match', async () => {
+      await mgr.loadFunctions();
+      const result = mgr.searchFunctions('path');
+      
+      // Should find 'abspath' and potentially others with 'path' in name
+      expect(result.length).toBeGreaterThan(0);
+      expect(result.some(f => f.name.includes('path'))).toBe(true);
+    });
+
+    it('finds functions by description content', async () => {
+      await mgr.loadFunctions();
+      const result = mgr.searchFunctions('absolute');
+      
+      // Should find functions with 'absolute' in description
+      expect(result.length).toBeGreaterThan(0);
+      const abspathFunc = result.find(f => f.name === 'abspath');
+      expect(abspathFunc).toBeTruthy();
+      expect(abspathFunc?.description.toLowerCase()).toContain('absolute');
+    });
+
+    it('search is case-insensitive', async () => {
+      await mgr.loadFunctions();
+      
+      const result1 = mgr.searchFunctions('abspath');
+      const result2 = mgr.searchFunctions('ABSPATH');
+      const result3 = mgr.searchFunctions('AbsPath');
+      
+      expect(result1.length).toBe(result2.length);
+      expect(result2.length).toBe(result3.length);
+      expect(result1.map(f => f.name)).toEqual(result2.map(f => f.name));
+    });
+
+    it('returns empty array when no matches found', async () => {
+      await mgr.loadFunctions();
+      const result = mgr.searchFunctions('xyz_nonexistent_function_12345');
+      
+      expect(Array.isArray(result)).toBe(true);
+      expect(result.length).toBe(0);
+    });
+
+    it('returns empty array for empty search query', async () => {
+      await mgr.loadFunctions();
+      
+      expect(mgr.searchFunctions('')).toEqual([]);
+      expect(mgr.searchFunctions('   ')).toEqual([]);
+      expect(mgr.searchFunctions('\t')).toEqual([]);
+    });
+
+    it('searches across multiple fields (name, description, signature)', async () => {
+      await mgr.loadFunctions();
+      const result = mgr.searchFunctions('string');
+      
+      // Should find functions with 'string' in return type, description, etc.
+      expect(result.length).toBeGreaterThan(0);
+    });
+  });
 });
 
