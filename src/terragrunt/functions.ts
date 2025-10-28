@@ -239,6 +239,7 @@ export class TerragruntFunctionsManager {
     const seen = new Set<string>();
 
     // Helper to parse parameter list from inline signature
+    // Enriched version that detects optional parameters from brackets or question marks
     const parseParams = (paramsRaw: string): FunctionParameter[] => {
       const out: FunctionParameter[] = [];
       const raw = (paramsRaw || '').trim();
@@ -250,15 +251,32 @@ export class TerragruntFunctionsManager {
         
         let nameGuess = part;
         let typeGuess = 'unknown';
+        let isOptional = false;
+        
+        // Check for optional markers: [param] or param? or (optional)
+        if (/^\[.*\]$/.test(part.trim())) {
+          // Bracketed parameter indicates optional
+          nameGuess = part.trim().replace(/^\[|\]$/g, '');
+          isOptional = true;
+        } else if (part.includes('?')) {
+          // Question mark indicates optional
+          nameGuess = part.replace('?', '');
+          isOptional = true;
+        } else if (/\(optional\)/i.test(part)) {
+          // Explicit (optional) marker
+          nameGuess = part.replace(/\(optional\)/gi, '');
+          isOptional = true;
+        }
         
         // Try "name: type" format
-        const colonIdx = part.indexOf(':');
+        const colonIdx = nameGuess.indexOf(':');
         if (colonIdx > -1) {
-          nameGuess = part.substring(0, colonIdx).trim();
-          typeGuess = part.substring(colonIdx + 1).trim() || 'unknown';
+          const namePart = nameGuess.substring(0, colonIdx).trim();
+          typeGuess = nameGuess.substring(colonIdx + 1).trim() || 'unknown';
+          nameGuess = namePart;
         } else {
           // Try "type name" or just "name"
-          const tokens = part.trim().split(/\s+/);
+          const tokens = nameGuess.trim().split(/\s+/);
           if (tokens.length >= 2) {
             nameGuess = tokens[0];
             typeGuess = tokens.slice(1).join(' ');
@@ -268,9 +286,9 @@ export class TerragruntFunctionsManager {
         }
         
         out.push({ 
-          name: nameGuess, 
-          type: typeGuess, 
-          required: true, 
+          name: nameGuess.trim(), 
+          type: typeGuess.trim(), 
+          required: !isOptional, 
           description: '', 
           default: undefined 
         });
@@ -343,6 +361,7 @@ export class TerragruntFunctionsManager {
     };
 
     // Fallback: parse parameters from context block following a "Parameters" label
+    // Enriched version that extracts descriptions, identifies optional params, and finds defaults
     const parseParamsFromContext = (context: string): FunctionParameter[] => {
       const out: FunctionParameter[] = [];
       const lowerCtx = context.toLowerCase();
@@ -364,8 +383,9 @@ export class TerragruntFunctionsManager {
       const structuredMatch = /parameters:\s*([^]+?)(?=usage:|example:|see also|related|returns |$)/i.exec(context.slice(idx, end));
       if (structuredMatch) {
         const paramText = structuredMatch[1];
-        // Match patterns like "name (type)" or "name: type"
-        const paramRe = /\b([a-zA-Z_][\w-]*)\s*(?:\(([^)]+)\)|:\s*([^;,.\n]+))/g;
+        // Enhanced pattern to capture descriptions, optional markers, and defaults
+        // Matches: "name (type): description" or "name (type) - description" or "name: type - description"
+        const paramRe = /\b([a-zA-Z_][\w-]*)\s*(?:\(([^)]+)\)|:\s*([^-:\n]+?))\s*[-:]?\s*([^;,.\n]{0,200})?/g;
         let pm: RegExpExecArray | null;
         const seenNames = new Set<string>();
         while ((pm = paramRe.exec(paramText)) !== null) {
@@ -373,9 +393,46 @@ export class TerragruntFunctionsManager {
           const lname = name.toLowerCase();
           const stopwords = new Set(['parameters','parameter','example','examples','usage','see','also','related']);
           if (!name || seenNames.has(lname) || stopwords.has(lname)) continue;
-          const type = (pm[2] || pm[3] || 'unknown').trim();
+          
+          let type = (pm[2] || pm[3] || 'unknown').trim();
+          let description = (pm[4] || '').trim();
+          
+          // Check for optional markers in type or description
+          const optionalMarkers = /\b(optional|opt\.?)\b/i;
+          const isOptional = optionalMarkers.test(type) || optionalMarkers.test(description);
+          
+          // Remove optional markers from type
+          type = type.replace(optionalMarkers, '').replace(/[[\]()]/g, '').trim();
+          if (!type || type === 'unknown') type = 'unknown';
+          
+          // Extract default value from description
+          let defaultValue: string | number | boolean | null | undefined = undefined;
+          const defaultMatch = /defaults?\s+(?:to\s+)?(?:is\s+)?["`']?([^"`'\n.]{1,50})["`']?/i.exec(description);
+          if (defaultMatch) {
+            const defStr = defaultMatch[1].trim();
+            // Try to parse as number, boolean, null, or keep as string
+            if (defStr === 'null') defaultValue = null;
+            else if (defStr === 'true') defaultValue = true;
+            else if (defStr === 'false') defaultValue = false;
+            else if (/^-?\d+(\.\d+)?$/.test(defStr)) defaultValue = parseFloat(defStr);
+            else defaultValue = defStr;
+          }
+          
+          // Clean description: remove default value text and optional markers
+          description = description
+            .replace(/defaults?\s+(?:to\s+)?(?:is\s+)?["`']?[^"`'\n.]{1,50}["`']?/gi, '')
+            .replace(optionalMarkers, '')
+            .replace(/[[\]()]/g, '')
+            .trim();
+          
           seenNames.add(lname);
-          out.push({ name, type, required: true, description: '', default: undefined });
+          out.push({ 
+            name, 
+            type, 
+            required: !isOptional && defaultValue === undefined, 
+            description: description || '', 
+            default: defaultValue 
+          });
           if (out.length >= 6) break;
         }
       }
