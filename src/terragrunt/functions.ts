@@ -385,6 +385,13 @@ export class TerragruntFunctionsManager {
         const paramText = structuredMatch[1];
         // Enhanced pattern to capture descriptions, optional markers, and defaults
         // Matches: "name (type): description" or "name (type) - description" or "name: type - description"
+        /*
+          Regex capture groups:
+            1. ([a-zA-Z_][\w-]*)      => parameter name
+            2. ([^)]+)                => type in parentheses (if present)
+            3. ([-:\n]+?)             => type after colon (if present)
+            4. ([^;,.\n]{0,200})?     => description (up to 200 chars, optional)
+        */
         const paramRe = /\b([a-zA-Z_][\w-]*)\s*(?:\(([^)]+)\)|:\s*([^-:\n]+?))\s*[-:]?\s*([^;,.\n]{0,200})?/g;
         let pm: RegExpExecArray | null;
         const seenNames = new Set<string>();
