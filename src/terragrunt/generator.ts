@@ -61,9 +61,9 @@ export class TerragruntConfigGenerator {
   /**
    * Validate variables and apply defaults
    */
-  private validateVariables(template: ConfigTemplate, options: Record<string, any>): VariableValidationResult {
+  private validateVariables(template: ConfigTemplate, options: Record<string, string | number | boolean | undefined>): VariableValidationResult {
     const missingVariables: string[] = [];
-    const resolvedValues: Record<string, any> = {};
+    const resolvedValues: Record<string, string | number | boolean> = {};
 
     for (const variable of template.variables) {
       const value = options[variable.name];
@@ -90,7 +90,7 @@ export class TerragruntConfigGenerator {
   /**
    * Build configuration from template with variable substitution
    */
-  private async buildFromTemplate(template: ConfigTemplate, values: Record<string, any>): Promise<string> {
+  private async buildFromTemplate(template: ConfigTemplate, values: Record<string, string | number | boolean>): Promise<string> {
     let config = template.templateHcl;
 
     // Find variable metadata for type-aware substitution
@@ -113,15 +113,19 @@ export class TerragruntConfigGenerator {
         // Numbers without quotes
         substitutedValue = String(value);
       } else {
-        // Strings - value might already be in a quoted context in template
+        // Strings - escape special characters and handle quoting
+        const stringValue = String(value);
+        // Escape backslashes first, then quotes
+        const escapedValue = stringValue.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+        
         // Check if placeholder is already within quotes in template
         const quotedPattern = new RegExp(`"${placeholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}"`, 'g');
         if (config.match(quotedPattern)) {
           // Already quoted in template, substitute without adding quotes
-          substitutedValue = String(value);
+          substitutedValue = escapedValue;
         } else {
           // Not quoted, add quotes
-          substitutedValue = `"${value}"`;
+          substitutedValue = `"${escapedValue}"`;
         }
       }
 
@@ -166,15 +170,49 @@ export class TerragruntConfigGenerator {
   private parseHclBlocks(config: string): Array<{ type: string; content: string }> {
     const blocks: Array<{ type: string; content: string }> = [];
     
-    // Match HCL blocks: block_type { ... }
-    const blockRegex = /(\w+)\s*\{([^}]*(?:\{[^}]*\}[^}]*)*)\}/g;
-    let match;
-
-    while ((match = blockRegex.exec(config)) !== null) {
-      blocks.push({
-        type: match[1],
-        content: match[2],
-      });
+    // Scan for block_type { ... } with proper nested brace handling
+    let i = 0;
+    const len = config.length;
+    
+    while (i < len) {
+      // Skip whitespace
+      while (i < len && /\s/.test(config[i])) {
+        i++;
+      }
+      
+      // Match block type and opening brace
+      const remaining = config.slice(i);
+      const blockStart = remaining.match(/^(\w+)\s*\{/);
+      
+      if (blockStart) {
+        const type = blockStart[1];
+        // Move past the block type and opening brace
+        i += blockStart[0].length;
+        
+        // Find matching closing brace using brace counting
+        let braceCount = 1;
+        const contentStart = i;
+        let contentEnd = i;
+        
+        while (contentEnd < len && braceCount > 0) {
+          if (config[contentEnd] === '{') {
+            braceCount++;
+          } else if (config[contentEnd] === '}') {
+            braceCount--;
+          }
+          contentEnd++;
+        }
+        
+        // Extract block content (excluding outer braces)
+        const content = config.slice(contentStart, contentEnd - 1).trim();
+        blocks.push({ type, content });
+        i = contentEnd;
+      } else {
+        // Move to next line if no block found
+        const nextNewline = config.indexOf('\n', i);
+        if (nextNewline === -1) break;
+        i = nextNewline + 1;
+      }
     }
 
     return blocks;
@@ -262,17 +300,25 @@ export class TerragruntConfigGenerator {
     const allDocs: any[] = [];
     const seenUrls = new Set<string>();
 
-    for (const term of searchTerms.slice(0, 3)) { // Limit to top 3 terms
-      try {
-        const docs = await this.docsManager.searchDocs(term);
-        for (const doc of docs.slice(0, 2)) { // Take top 2 results per term
-          if (!seenUrls.has(doc.url)) {
-            seenUrls.add(doc.url);
-            allDocs.push(doc);
-          }
+    // Run searches concurrently for top 3 terms
+    const termList = searchTerms.slice(0, 3);
+    const searchPromises = termList.map(term =>
+      this.docsManager.searchDocs(term)
+        .catch(error => {
+          console.error(`[Generator] Failed to search docs for term '${term}':`, error);
+          return [];
+        })
+    );
+    
+    const results = await Promise.all(searchPromises);
+    
+    // Combine results, take top 2 per term, ensure uniqueness
+    for (const docs of results) {
+      for (const doc of docs.slice(0, 2)) { // Take top 2 results per term
+        if (!seenUrls.has(doc.url)) {
+          seenUrls.add(doc.url);
+          allDocs.push(doc);
         }
-      } catch (error) {
-        console.error(`[Generator] Failed to search docs for term '${term}':`, error);
       }
     }
 

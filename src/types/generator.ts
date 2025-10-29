@@ -14,7 +14,7 @@ export interface GenerateConfigParams {
   /** Optional backend type (e.g., 's3', 'azurerm', 'gcs') */
   backend?: string;
   /** Configuration options/variables for template substitution */
-  options: Record<string, any>;
+  options: Record<string, string | number | boolean | undefined>;
 }
 
 /**
@@ -42,5 +42,5 @@ export interface VariableValidationResult {
   /** List of missing required variables */
   missingVariables: string[];
   /** Resolved values with defaults applied */
-  resolvedValues: Record<string, any>;
+  resolvedValues: Record<string, string | number | boolean>;
 }
