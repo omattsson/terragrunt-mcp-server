@@ -3,6 +3,12 @@ import * as cheerio from 'cheerio';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
+import { gzip, gunzip } from 'zlib';
+import { promisify } from 'util';
+import { LRUCache } from 'lru-cache';
+
+const gzipAsync = promisify(gzip);
+const gunzipAsync = promisify(gunzip);
 
 export interface TerragruntDoc {
   title: string;
@@ -12,9 +18,26 @@ export interface TerragruntDoc {
   lastUpdated?: string;
 }
 
+interface IndexedDoc extends TerragruntDoc {
+  titleLower: string;
+  contentLower: string;
+  sectionLower: string;
+}
+
 interface CacheMetadata {
   lastFetchTime: string;
   docsCount: number;
+  compressed?: boolean;
+}
+
+interface CacheStats {
+  hits: number;
+  misses: number;
+  searches: number;
+  totalSearchTime: number;
+  lastRefresh: Date | null;
+  cacheSize: number;
+  memoryUsage: number;
 }
 
 interface RetryConfig {
@@ -27,12 +50,24 @@ interface RetryConfig {
 export class TerragruntDocsManager {
   private readonly baseUrl = 'https://terragrunt.gruntwork.io';
   private docsCache: Map<string, TerragruntDoc> = new Map();
+  private indexedDocs: IndexedDoc[] = [];
+  private searchCache: LRUCache<string, TerragruntDoc[]>;
   private lastFetchTime: Date | null = null;
-  private readonly cacheExpiry = 24 * 60 * 60 * 1000; // 24 hours
+  private readonly cacheExpiry: number;
   private readonly cacheDir: string;
   private readonly cacheFile: string;
   private readonly metadataFile: string;
   private readonly fixtureFile: string;
+  private readonly useCompression: boolean;
+  private stats: CacheStats = {
+    hits: 0,
+    misses: 0,
+    searches: 0,
+    totalSearchTime: 0,
+    lastRefresh: null,
+    cacheSize: 0,
+    memoryUsage: 0
+  };
   private readonly retryConfig: RetryConfig = {
     maxRetries: 3,
     initialDelayMs: 1000,
@@ -45,11 +80,54 @@ export class TerragruntDocsManager {
     const __filename = fileURLToPath(import.meta.url);
     const __dirname = path.dirname(__filename);
     
+    // Configurable cache TTL (default 24 hours)
+    const ttlHours = process.env.TERRAGRUNT_CACHE_TTL_HOURS 
+      ? parseInt(process.env.TERRAGRUNT_CACHE_TTL_HOURS, 10)
+      : 24;
+    this.cacheExpiry = ttlHours * 60 * 60 * 1000;
+    
+    // Enable compression by default (can disable with env var)
+    this.useCompression = process.env.TERRAGRUNT_CACHE_COMPRESSION !== 'false';
+    
     // Store cache in project root under .cache/terragrunt-docs
     this.cacheDir = path.join(__dirname, '..', '..', '.cache', 'terragrunt-docs');
-    this.cacheFile = path.join(this.cacheDir, 'docs-cache.json');
+    this.cacheFile = path.join(this.cacheDir, this.useCompression ? 'docs-cache.json.gz' : 'docs-cache.json');
     this.metadataFile = path.join(this.cacheDir, 'metadata.json');
     this.fixtureFile = path.join(__dirname, '..', '..', 'fixtures', 'terragrunt-docs-fixture.json');
+    
+    // Initialize LRU cache for search results (max 100 searches, 5 min TTL)
+    this.searchCache = new LRUCache<string, TerragruntDoc[]>({
+      max: 100,
+      ttl: 1000 * 60 * 5, // 5 minutes
+      updateAgeOnGet: true
+    });
+  }
+
+  /**
+   * Get cache statistics for monitoring and optimization
+   */
+  getCacheStats(): CacheStats {
+    return {
+      ...this.stats,
+      cacheSize: this.docsCache.size,
+      memoryUsage: process.memoryUsage().heapUsed,
+      lastRefresh: this.lastFetchTime
+    };
+  }
+
+  /**
+   * Reset cache statistics
+   */
+  resetStats(): void {
+    this.stats = {
+      hits: 0,
+      misses: 0,
+      searches: 0,
+      totalSearchTime: 0,
+      lastRefresh: this.lastFetchTime,
+      cacheSize: this.docsCache.size,
+      memoryUsage: process.memoryUsage().heapUsed
+    };
   }
 
   private async ensureCacheDir(): Promise<void> {
@@ -105,6 +183,9 @@ export class TerragruntDocsManager {
       this.docsCache.clear();
       docs.forEach(doc => this.docsCache.set(doc.url, doc));
       this.lastFetchTime = new Date(); // Mark as fresh to prevent immediate re-fetch
+      
+      // Build search index for fixture docs
+      this.buildSearchIndex();
 
       console.log(`Loaded ${docs.length} docs from fixture (fallback mode)`);
       return true;
@@ -191,14 +272,24 @@ export class TerragruntDocsManager {
 
   private async loadCacheFromDisk(): Promise<boolean> {
     try {
-      // Check if cache files exist
-      const [docsExists, metadataExists] = await Promise.all([
-        fs.access(this.cacheFile).then(() => true).catch(() => false),
-        fs.access(this.metadataFile).then(() => true).catch(() => false)
-      ]);
+      // Try loading compressed cache first if compression is enabled
+      let cacheFileToLoad = this.cacheFile;
+      let cacheExists = await fs.access(cacheFileToLoad).then(() => true).catch(() => false);
+      
+      // Fallback to uncompressed if compressed doesn't exist
+      if (!cacheExists && this.useCompression) {
+        const uncompressedPath = this.cacheFile.replace('.gz', '');
+        cacheExists = await fs.access(uncompressedPath).then(() => true).catch(() => false);
+        if (cacheExists) {
+          cacheFileToLoad = uncompressedPath;
+        }
+      }
+      
+      const metadataExists = await fs.access(this.metadataFile).then(() => true).catch(() => false);
 
-      if (!docsExists || !metadataExists) {
+      if (!cacheExists || !metadataExists) {
         console.log('No disk cache found');
+        this.stats.misses++;
         return false;
       }
 
@@ -210,22 +301,42 @@ export class TerragruntDocsManager {
       const cacheAge = Date.now() - new Date(metadata.lastFetchTime).getTime();
       if (cacheAge > this.cacheExpiry) {
         console.log('Disk cache expired');
+        this.stats.misses++;
         return false;
       }
 
-      // Load docs from disk
-      const docsContent = await fs.readFile(this.cacheFile, 'utf-8');
+      // Load docs from disk (with decompression if needed)
+      let docsContent: string;
+      const fileBuffer = await fs.readFile(cacheFileToLoad);
+      
+      if (cacheFileToLoad.endsWith('.gz')) {
+        const decompressed = await gunzipAsync(fileBuffer);
+        docsContent = decompressed.toString('utf-8');
+        console.log(`Decompressed cache: ${fileBuffer.length} → ${decompressed.length} bytes`);
+      } else {
+        docsContent = fileBuffer.toString('utf-8');
+      }
+      
       const docs: TerragruntDoc[] = JSON.parse(docsContent);
 
-      // Populate in-memory cache
+      // Populate in-memory cache and build search index
       this.docsCache.clear();
+      this.indexedDocs = docs.map(doc => ({
+        ...doc,
+        titleLower: doc.title.toLowerCase(),
+        contentLower: doc.content.toLowerCase(),
+        sectionLower: doc.section.toLowerCase()
+      }));
+      
       docs.forEach(doc => this.docsCache.set(doc.url, doc));
       this.lastFetchTime = new Date(metadata.lastFetchTime);
+      this.stats.hits++;
 
       console.log(`Loaded ${docs.length} docs from disk cache (age: ${Math.round(cacheAge / 1000 / 60)} minutes)`);
       return true;
     } catch (error) {
       console.error('Failed to load cache from disk:', error);
+      this.stats.misses++;
       return false;
     }
   }
@@ -237,16 +348,27 @@ export class TerragruntDocsManager {
       const docs = Array.from(this.docsCache.values());
       const metadata: CacheMetadata = {
         lastFetchTime: this.lastFetchTime?.toISOString() || new Date().toISOString(),
-        docsCount: docs.length
+        docsCount: docs.length,
+        compressed: this.useCompression
       };
 
-      // Write both files atomically
-      await Promise.all([
-        fs.writeFile(this.cacheFile, JSON.stringify(docs, null, 2), 'utf-8'),
-        fs.writeFile(this.metadataFile, JSON.stringify(metadata, null, 2), 'utf-8')
-      ]);
-
-      console.log(`Saved ${docs.length} docs to disk cache`);
+      const jsonData = JSON.stringify(docs, null, 2);
+      
+      // Compress if enabled
+      if (this.useCompression) {
+        const compressed = await gzipAsync(jsonData);
+        await Promise.all([
+          fs.writeFile(this.cacheFile, compressed),
+          fs.writeFile(this.metadataFile, JSON.stringify(metadata, null, 2), 'utf-8')
+        ]);
+        console.log(`Saved ${docs.length} docs to disk cache (compressed: ${jsonData.length} → ${compressed.length} bytes, ${Math.round(compressed.length / jsonData.length * 100)}%)`);
+      } else {
+        await Promise.all([
+          fs.writeFile(this.cacheFile, jsonData, 'utf-8'),
+          fs.writeFile(this.metadataFile, JSON.stringify(metadata, null, 2), 'utf-8')
+        ]);
+        console.log(`Saved ${docs.length} docs to disk cache`);
+      }
     } catch (error) {
       console.error('Failed to save cache to disk:', error);
     }
@@ -317,6 +439,11 @@ export class TerragruntDocsManager {
       }
 
       this.lastFetchTime = new Date();
+      this.stats.lastRefresh = this.lastFetchTime;
+      
+      // Build search index from fetched docs
+      this.buildSearchIndex();
+      
       console.log(`Cached ${this.docsCache.size} documentation pages`);
       
       // Save to disk after successful fetch
@@ -461,29 +588,81 @@ export class TerragruntDocsManager {
       .trim();
   }
 
+  /**
+   * Build search index from cached docs.
+   * Pre-computes lowercase strings to avoid repeated .toLowerCase() calls during searches.
+   */
+  private buildSearchIndex(): void {
+    const docs = Array.from(this.docsCache.values());
+    this.indexedDocs = docs.map(doc => ({
+      ...doc,
+      titleLower: doc.title.toLowerCase(),
+      contentLower: doc.content.toLowerCase(),
+      sectionLower: doc.section.toLowerCase()
+    }));
+    console.log(`Built search index for ${this.indexedDocs.length} documents`);
+  }
+
   async searchDocs(query: string): Promise<TerragruntDoc[]> {
-    const docs = await this.fetchLatestDocs();
+    const startTime = performance.now();
+    
+    // Check LRU cache first
+    const cached = this.searchCache.get(query);
+    if (cached) {
+      this.stats.hits++;
+      const duration = performance.now() - startTime;
+      this.stats.totalSearchTime += duration;
+      this.stats.searches++;
+      return cached;
+    }
+    
+    this.stats.misses++;
+    
+    // Ensure docs are loaded
+    await this.fetchLatestDocs();
+    
+    // Use indexed search if available, otherwise build index
+    if (this.indexedDocs.length === 0 && this.docsCache.size > 0) {
+      this.buildSearchIndex();
+    }
+    
     const lowercaseQuery = query.toLowerCase();
 
-    return docs.filter(doc =>
-      doc.title.toLowerCase().includes(lowercaseQuery) ||
-      doc.content.toLowerCase().includes(lowercaseQuery) ||
-      doc.section.toLowerCase().includes(lowercaseQuery)
+    // Search using pre-computed lowercase strings
+    const results = this.indexedDocs.filter(doc =>
+      doc.titleLower.includes(lowercaseQuery) ||
+      doc.contentLower.includes(lowercaseQuery) ||
+      doc.sectionLower.includes(lowercaseQuery)
     ).sort((a, b) => {
       // Prioritize title matches
-      const aTitle = a.title.toLowerCase().includes(lowercaseQuery);
-      const bTitle = b.title.toLowerCase().includes(lowercaseQuery);
+      const aTitle = a.titleLower.includes(lowercaseQuery);
+      const bTitle = b.titleLower.includes(lowercaseQuery);
       if (aTitle && !bTitle) return -1;
       if (!aTitle && bTitle) return 1;
 
       // Then prioritize section matches
-      const aSection = a.section.toLowerCase().includes(lowercaseQuery);
-      const bSection = b.section.toLowerCase().includes(lowercaseQuery);
+      const aSection = a.sectionLower.includes(lowercaseQuery);
+      const bSection = b.sectionLower.includes(lowercaseQuery);
       if (aSection && !bSection) return -1;
       if (!aSection && bSection) return 1;
 
       return 0;
-    });
+    }).map(doc => ({
+      title: doc.title,
+      url: doc.url,
+      content: doc.content,
+      section: doc.section,
+      lastUpdated: doc.lastUpdated
+    }));
+    
+    // Cache the results
+    this.searchCache.set(query, results);
+    
+    const duration = performance.now() - startTime;
+    this.stats.totalSearchTime += duration;
+    this.stats.searches++;
+    
+    return results;
   }
 
   async getDocBySection(section: string): Promise<TerragruntDoc[]> {
