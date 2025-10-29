@@ -311,7 +311,6 @@ function checkInterpolationSyntax(config: string): string[] {
 
     // Find interpolations by scanning character by character to handle nesting
     let j = 0;
-    let inComment = false;
 
     // Check if line has a comment - we'll skip interpolation checks after comment start
     const commentMatch = line.match(/^([^#]*?)(?:#|\/\/)/);

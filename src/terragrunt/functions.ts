@@ -326,10 +326,8 @@ export class TerragruntFunctionsManager {
       // Look for description BEFORE the signature match
       // Split context at the match point
       const beforeMatch = context.slice(0, matchIndex);
-      const afterMatch = context.slice(matchIndex);
       
       const lowerBefore = beforeMatch.toLowerCase();
-      const lowerName = functionName.toLowerCase();
       
       // Try to find "Description:" label before the signature
       const descIdx = lowerBefore.lastIndexOf('description:');

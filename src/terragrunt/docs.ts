@@ -432,7 +432,7 @@ export class TerragruntDocsManager {
           if (doc) {
             this.docsCache.set(doc.url, doc);
           }
-        } catch (_error) {
+        } catch {
           console.warn(`Skipping page ${page.url} after retries failed`);
         }
       }

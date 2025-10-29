@@ -231,7 +231,7 @@ export class TerragruntConfigGenerator {
   /**
    * Explain a specific HCL block
    */
-  private explainBlock(block: { type: string; content: string }, useCase: UseCase): string {
+  private explainBlock(block: { type: string; content: string }, _useCase: UseCase): string {
     const explanations: Record<string, string> = {
       remote_state: 'Configures remote state backend for storing Terraform state in a shared location. This enables team collaboration and state locking to prevent concurrent modifications.',
       generate: 'Automatically generates configuration files before Terraform runs. Useful for creating provider configurations, backend configs, or other repetitive files.',
@@ -402,7 +402,7 @@ export class TerragruntConfigGenerator {
 
     // Find variables that weren't used
     for (const variable of template.variables) {
-      if (!usedValues.hasOwnProperty(variable.name)) {
+      if (!Object.prototype.hasOwnProperty.call(usedValues, variable.name)) {
         suggestions.push(`${variable.name}: ${variable.description}`);
       }
     }
