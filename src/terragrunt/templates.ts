@@ -57,7 +57,7 @@ export class TemplatesManager {
 
     if (options.cloudProvider) {
       results = results.filter(t => 
-        t.cloudProvider === options.cloudProvider || t.cloudProvider === 'multi'
+        t.cloudProvider === options.cloudProvider
       );
     }
 
@@ -276,7 +276,7 @@ export class TemplatesManager {
           name: 'account_id',
           description: 'AWS account ID for validation',
           type: 'string',
-          required: false,
+          required: true,
           example: '123456789012',
         },
       ],
@@ -286,9 +286,7 @@ export class TemplatesManager {
   contents  = <<EOF
 provider "aws" {
   region = "{{region}}"
-  {{#if account_id}}
   allowed_account_ids = ["{{account_id}}"]
-  {{/if}}
 }
 EOF
 }`,

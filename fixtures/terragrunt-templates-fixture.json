@@ -1,4 +1,5 @@
 {
+  "_comment": "Sample Gruntwork and Azure configurations for integration testing and documentation reference. These are real-world examples extracted from production repositories.",
   "gruntwork": {
     "root_hcl": {
       "name": "Root Configuration (Gruntwork AWS)",
