@@ -299,6 +299,7 @@ function checkUnclosedStrings(config: string): string[] {
 
 /**
  * Check for valid interpolation syntax ${...}
+ * Note: Interpolations are primarily used INSIDE strings in HCL
  */
 function checkInterpolationSyntax(config: string): string[] {
   const errors: string[] = [];
@@ -308,54 +309,16 @@ function checkInterpolationSyntax(config: string): string[] {
     const line = lines[i];
     const lineNum = i + 1;
 
-    // Track string boundaries to avoid flagging interpolations in comments or strings
-    let inString = false;
-    let stringChar: string | null = null;
-    let escaped = false;
-
     // Find interpolations by scanning character by character to handle nesting
     let j = 0;
-    while (j < line.length) {
-      const char = line[j];
+    let inComment = false;
 
-      // Handle escape sequences
-      if (escaped) {
-        escaped = false;
-        j++;
-        continue;
-      }
+    // Check if line has a comment - we'll skip interpolation checks after comment start
+    const commentMatch = line.match(/^([^#]*?)(?:#|\/\/)/);
+    const commentStart = commentMatch ? commentMatch[1].length : line.length;
 
-      if (char === '\\') {
-        escaped = true;
-        j++;
-        continue;
-      }
-
-      // Track string boundaries
-      if (char === '"' || char === "'") {
-        if (!inString) {
-          inString = true;
-          stringChar = char;
-        } else if (char === stringChar) {
-          inString = false;
-          stringChar = null;
-        }
-        j++;
-        continue;
-      }
-
-      // Skip if we're inside a string (interpolations in strings are valid)
-      if (inString) {
-        j++;
-        continue;
-      }
-
-      // Check for comments - skip rest of line
-      if (char === '#' || (char === '/' && j + 1 < line.length && line[j + 1] === '/')) {
-        break;
-      }
-
-      // Look for start of interpolation (only outside strings and comments)
+    while (j < commentStart) {
+      // Look for start of interpolation
       if (line[j] === '$' && j + 1 < line.length && line[j + 1] === '{') {
         // Found interpolation start
         const startPos = j;
