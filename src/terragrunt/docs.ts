@@ -84,6 +84,9 @@ export class TerragruntDocsManager {
     const ttlHours = process.env.TERRAGRUNT_CACHE_TTL_HOURS 
       ? parseInt(process.env.TERRAGRUNT_CACHE_TTL_HOURS, 10)
       : 24;
+    if (isNaN(ttlHours) || ttlHours < 0) {
+      throw new Error('TERRAGRUNT_CACHE_TTL_HOURS must be a non-negative number');
+    }
     this.cacheExpiry = ttlHours * 60 * 60 * 1000;
     
     // Enable compression by default (can disable with env var)
@@ -610,8 +613,6 @@ export class TerragruntDocsManager {
     const cached = this.searchCache.get(query);
     if (cached) {
       this.stats.hits++;
-      const duration = performance.now() - startTime;
-      this.stats.totalSearchTime += duration;
       this.stats.searches++;
       return cached;
     }
@@ -647,13 +648,7 @@ export class TerragruntDocsManager {
       if (!aSection && bSection) return 1;
 
       return 0;
-    }).map(doc => ({
-      title: doc.title,
-      url: doc.url,
-      content: doc.content,
-      section: doc.section,
-      lastUpdated: doc.lastUpdated
-    }));
+    }) as TerragruntDoc[];
     
     // Cache the results
     this.searchCache.set(query, results);

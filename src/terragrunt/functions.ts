@@ -53,11 +53,6 @@ export class TerragruntFunctionsManager {
     // Initialize LRU cache with size limits to prevent unbounded memory growth
     this.functionsCache = new LRUCache<string, TerragruntFunction>({
       max: 1000, // Maximum 1000 functions (way more than needed, but safe limit)
-      maxSize: 10 * 1024 * 1024, // 10MB max size
-      sizeCalculation: (fn) => {
-        // Estimate size of function object in bytes
-        return JSON.stringify(fn).length;
-      },
       updateAgeOnGet: true, // Keep frequently accessed items
       updateAgeOnHas: false
     });

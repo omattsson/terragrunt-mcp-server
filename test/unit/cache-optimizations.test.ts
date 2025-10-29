@@ -99,7 +99,6 @@ describe('Cache Optimizations', () => {
       // First search builds the index (if not already built)
       const start1 = performance.now();
       await docsManager.searchDocs('dependencies');
-      const duration1 = performance.now() - start1;
       
       // Create a new manager to test index building from scratch
       const freshManager = new TerragruntDocsManager();
