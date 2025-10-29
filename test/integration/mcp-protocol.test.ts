@@ -268,9 +268,9 @@ describe('MCP Protocol Compliance', () => {
       });
     });
 
-    it('should return at least 6 tools', () => {
+    it('should return at least 8 tools', () => {
       const tools = toolHandler.getAvailableTools();
-      expect(tools.length).toBeGreaterThanOrEqual(6);
+      expect(tools.length).toBeGreaterThanOrEqual(8);
     });
 
     it('should include search_terragrunt_docs tool', () => {
@@ -319,6 +319,28 @@ describe('MCP Protocol Compliance', () => {
       
       expect(examplesTool).toBeDefined();
       expect(examplesTool?.inputSchema.properties.topic).toBeDefined();
+    });
+
+    it('should include get_terragrunt_function tool', () => {
+      const tools = toolHandler.getAvailableTools();
+      const functionTool = tools.find(t => t.name === 'get_terragrunt_function');
+      
+      expect(functionTool).toBeDefined();
+      expect(functionTool?.description).toBeDefined();
+      expect(functionTool?.inputSchema.properties.function_name).toBeDefined();
+      expect(functionTool?.inputSchema.properties.include_examples).toBeDefined();
+      expect(functionTool?.inputSchema.required).toContain('function_name');
+    });
+
+    it('should include list_terragrunt_functions tool', () => {
+      const tools = toolHandler.getAvailableTools();
+      const listTool = tools.find(t => t.name === 'list_terragrunt_functions');
+      
+      expect(listTool).toBeDefined();
+      expect(listTool?.description).toBeDefined();
+      expect(listTool?.inputSchema.properties.category).toBeDefined();
+      expect(listTool?.inputSchema.properties.search).toBeDefined();
+      expect(listTool?.inputSchema.properties.limit).toBeDefined();
     });
 
     it('should have clear, descriptive tool names', () => {
@@ -429,11 +451,119 @@ describe('MCP Protocol Compliance', () => {
       expect(Array.isArray(result.examples)).toBe(true);
     });
 
+    it('should return structured response for get_terragrunt_function tool', async () => {
+      const result = await toolHandler.executeTool('get_terragrunt_function', {
+        function_name: 'path_relative_to_include'
+      });
+
+      expect(result.name).toBe('path_relative_to_include');
+      expect(result.signature).toBeDefined();
+      expect(result.description).toBeDefined();
+      expect(result.parameters).toBeDefined();
+      expect(Array.isArray(result.parameters)).toBe(true);
+      expect(result.category).toBeDefined();
+    });
+
+    it('should handle include_examples parameter for get_terragrunt_function', async () => {
+      const withExamples = await toolHandler.executeTool('get_terragrunt_function', {
+        function_name: 'path_relative_to_include',
+        include_examples: true
+      });
+
+      const withoutExamples = await toolHandler.executeTool('get_terragrunt_function', {
+        function_name: 'path_relative_to_include',
+        include_examples: false
+      });
+
+      expect(withExamples.examples).toBeDefined();
+      // When include_examples=false, examples is an empty array, not undefined
+      expect(Array.isArray(withoutExamples.examples)).toBe(true);
+      expect(withoutExamples.examples.length).toBe(0);
+    });
+
+    it('should return structured response for list_terragrunt_functions tool with no params', async () => {
+      const result = await toolHandler.executeTool('list_terragrunt_functions', {});
+
+      expect(result.functions).toBeDefined();
+      expect(Array.isArray(result.functions)).toBe(true);
+      expect(result.totalCount).toBeDefined();
+      expect(typeof result.totalCount).toBe('number');
+      expect(result.categories).toBeDefined();
+      expect(Array.isArray(result.categories)).toBe(true);
+    });
+
+    it('should filter by category for list_terragrunt_functions tool', async () => {
+      const result = await toolHandler.executeTool('list_terragrunt_functions', {
+        category: 'path'
+      });
+
+      expect(result.functions).toBeDefined();
+      expect(Array.isArray(result.functions)).toBe(true);
+      
+      // All returned functions should be in the 'path' category
+      result.functions.forEach((fn: any) => {
+        expect(fn.category).toBe('path');
+      });
+    });
+
+    it('should search by keyword for list_terragrunt_functions tool', async () => {
+      const result = await toolHandler.executeTool('list_terragrunt_functions', {
+        search: 'path'
+      });
+
+      expect(result.functions).toBeDefined();
+      expect(Array.isArray(result.functions)).toBe(true);
+      // Functions should contain 'path' in name or description
+      expect(result.functions.length).toBeGreaterThan(0);
+    });
+
+    it('should respect limit parameter for list_terragrunt_functions tool', async () => {
+      const result = await toolHandler.executeTool('list_terragrunt_functions', {
+        limit: 5
+      });
+
+      expect(result.functions).toBeDefined();
+      expect(Array.isArray(result.functions)).toBe(true);
+      expect(result.functions.length).toBeLessThanOrEqual(5);
+    });
+
     it('should validate required parameters', async () => {
       const result = await toolHandler.executeTool('search_terragrunt_docs', {});
 
       expect(result.error).toBeDefined();
       expect(result.error).toContain('required');
+    });
+
+    it('should validate required function_name parameter for get_terragrunt_function', async () => {
+      const result = await toolHandler.executeTool('get_terragrunt_function', {});
+
+      expect(result.error).toBeDefined();
+      expect(result.error).toContain('function_name');
+    });
+
+    it('should return error for unknown function in get_terragrunt_function', async () => {
+      const result = await toolHandler.executeTool('get_terragrunt_function', {
+        function_name: 'nonexistent_function_12345'
+      });
+
+      expect(result.error).toBeDefined();
+      expect(result.error).toContain('No Terragrunt function found');
+      // Should provide suggestions
+      expect(result.suggestion).toBeDefined();
+    });
+
+    it('should handle invalid category gracefully for list_terragrunt_functions', async () => {
+      const result = await toolHandler.executeTool('list_terragrunt_functions', {
+        category: 'invalid_category_xyz'
+      });
+
+      // Should not throw error, but may return empty results
+      expect(result.functions).toBeDefined();
+      expect(Array.isArray(result.functions)).toBe(true);
+      // Either returns empty array or includes available categories
+      if (result.functions.length === 0) {
+        expect(result.availableCategories || result.categories).toBeDefined();
+      }
     });
 
     it('should return error object for unknown tool', async () => {
