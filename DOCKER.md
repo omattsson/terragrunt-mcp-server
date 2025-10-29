@@ -163,4 +163,10 @@ docker run -i olofdevopsninja/terragrunt-mcp-server:latest
 
 ## Publishing the Image
 
-For maintainers: See [Docker Publishing Guide](docs/Docker-Publishing.md) for instructions on publishing new versions to Docker Hub using GitHub Actions.
+For maintainers: To publish a new version of the Docker image to Docker Hub, use the GitHub Actions workflow:
+
+1. Ensure you have `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN` set as repository secrets in GitHub. These are required for authentication to Docker Hub.
+2. Go to the "Actions" tab in GitHub, find the "Publish Docker Image" workflow, and click "Run workflow" (this uses the `workflow_dispatch` trigger).
+3. The workflow will build the image and push it to Docker Hub under the configured repository.
+
+For more details, see the workflow file in `.github/workflows/docker-publish.yml`.
