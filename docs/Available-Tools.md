@@ -432,8 +432,8 @@ The tool provides **9 templates** covering **5 use cases**:
 | dependencies | 1 template | Multi-cloud |
 | hooks | 2 templates | Multi-cloud (before_hook, after_hook) |
 | inputs | 1 template | Multi-cloud |
-| configuration | 1 template | Terraform version constraints |
 
+<!-- Note: The "configuration" template (Terraform version constraints) is included as part of the "inputs" use case. -->
 ---
 
 ## Tool Selection Guide
