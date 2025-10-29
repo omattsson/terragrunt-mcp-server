@@ -14,7 +14,7 @@ describe('TemplatesManager', () => {
       const templates = await manager.getAllTemplates();
       
       expect(templates.length).toBeGreaterThanOrEqual(3);
-      expect(templates.length).toBe(3); // MVP: exactly 3 templates
+      expect(templates.length).toBe(9); // Total templates after Sprint 2
     });
 
     it('should only load templates once', async () => {
@@ -76,7 +76,7 @@ describe('TemplatesManager', () => {
     it('should return all templates', async () => {
       const templates = await manager.getAllTemplates();
       
-      expect(templates).toHaveLength(3);
+      expect(templates).toHaveLength(9);
       
       const ids = templates.map(t => t.id);
       expect(ids).toContain('aws-s3-backend');
@@ -105,7 +105,7 @@ describe('TemplatesManager', () => {
     it('should filter by category', async () => {
       const backendTemplates = await manager.searchTemplates({ category: 'backend' });
       
-      expect(backendTemplates).toHaveLength(2);
+      expect(backendTemplates).toHaveLength(3); // AWS S3, Azure Blob, GCP GCS
       expect(backendTemplates.every(t => t.category === 'backend')).toBe(true);
     });
 
@@ -128,7 +128,7 @@ describe('TemplatesManager', () => {
         tags: ['remote-state'] 
       });
       
-      expect(remoteStateTemplates).toHaveLength(2);
+      expect(remoteStateTemplates).toHaveLength(3); // AWS S3, Azure Blob, GCP GCS
       expect(remoteStateTemplates.every(t => t.tags.includes('remote-state'))).toBe(true);
     });
 
@@ -149,7 +149,7 @@ describe('TemplatesManager', () => {
         cloudProvider: 'gcp',
       });
       
-      expect(results).toHaveLength(0);
+      expect(results).toHaveLength(1); // GCP GCS backend template matches cloudProvider filter
     });
   });
 
@@ -157,7 +157,7 @@ describe('TemplatesManager', () => {
     it('should return correct metadata', async () => {
       const metadata = await manager.getMetadata();
       
-      expect(metadata.totalTemplates).toBe(3);
+      expect(metadata.totalTemplates).toBe(9);
       expect(metadata.categories).toContain('backend');
       expect(metadata.categories).toContain('provider');
       expect(metadata.cloudProviders).toContain('aws');
@@ -228,7 +228,10 @@ describe('TemplatesManager', () => {
       
       for (const template of templates) {
         expect(template.example).toBeTruthy();
-        expect(template.example).toContain('{');
+        // terraform_version_constraint is a simple assignment, not a block
+        if (template.id !== 'terraform-version') {
+          expect(template.example).toContain('{');
+        }
       }
     });
   });
@@ -243,7 +246,7 @@ describe('TemplatesManager', () => {
       
       const afterClear = await manager.getAllTemplates();
       // After clear, loadTemplates will reinitialize
-      expect(afterClear.length).toBe(3);
+      expect(afterClear.length).toBe(9);
     });
   });
 });

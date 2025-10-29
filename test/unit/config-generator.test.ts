@@ -561,14 +561,17 @@ describe('TerragruntConfigGenerator', () => {
       expect(result.config).toContain('generate');
     });
 
-    it('should provide meaningful error for unsupported use cases', async () => {
-      // dependencies, hooks, inputs don't have templates yet
-      await expect(
-        generator.generateConfig({
-          useCase: 'dependencies',
-          options: {},
-        })
-      ).rejects.toThrow('No template found');
+    it('should generate dependency configuration', async () => {
+      const result = await generator.generateConfig({
+        useCase: 'dependencies',
+        options: {
+          name: 'vpc',
+          config_path: '../vpc',
+        },
+      });
+
+      expect(result).toBeDefined();
+      expect(result.config).toContain('dependency');
     });
   });
 });

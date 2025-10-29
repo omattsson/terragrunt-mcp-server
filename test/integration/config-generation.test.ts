@@ -277,21 +277,18 @@ describe('Config Generation Integration Tests', () => {
       expect(result.error.toLowerCase()).toMatch(/required|missing|variable/);
     }, 10000);
 
-    it('should handle use cases without templates gracefully', async () => {
-      // Dependencies, hooks, inputs don't have templates yet
-      const useCasesWithoutTemplates = ['dependencies', 'hooks', 'inputs'];
+    it('should handle use cases with missing required variables gracefully', async () => {
+      // Test with dependency template but missing required variables
+      const result = await toolHandler.executeTool('generate_terragrunt_config', {
+        useCase: 'dependencies',
+        options: {} // Missing required: name, config_path
+      });
 
-      for (const useCase of useCasesWithoutTemplates) {
-        const result = await toolHandler.executeTool('generate_terragrunt_config', {
-          useCase,
-          options: {}
-        });
-
-        validateResponseSchema(result);
-        // Should fail gracefully with clear error
-        expect(result.success).toBe(false);
-        expect(result.error).toBeDefined();
-      }
+      validateResponseSchema(result);
+      // Should fail gracefully with clear error about missing variables
+      expect(result.success).toBe(false);
+      expect(result.error).toBeDefined();
+      expect(result.error).toContain('required');
     }, 10000);
   });
 

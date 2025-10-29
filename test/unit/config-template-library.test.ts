@@ -117,10 +117,11 @@ describe('ConfigTemplateLibrary', () => {
       expect(templates.every(t => t.category === 'provider')).toBe(true);
     });
 
-    it('should return empty array for use case without templates', async () => {
+    it('should return templates for use case with templates', async () => {
       const templates = await library.listTemplatesForUseCase('hooks');
       
-      expect(templates).toEqual([]);
+      expect(templates.length).toBeGreaterThan(0); // Now we have hook templates
+      expect(templates.every(t => t.category === 'hooks')).toBe(true);
     });
 
     it('should return multiple templates for same use case', async () => {
