@@ -594,6 +594,259 @@ describe('MCP Protocol Compliance', () => {
     });
   });
 
+  describe('Configuration Generator Tool Compliance', () => {
+    describe('Tool Definition in ListTools', () => {
+      it('should include generate_terragrunt_config in available tools', () => {
+        const tools = toolHandler.getAvailableTools();
+        const genTool = tools.find(t => t.name === 'generate_terragrunt_config');
+        
+        expect(genTool).toBeDefined();
+        expect(genTool?.name).toBe('generate_terragrunt_config');
+        expect(genTool?.description).toBeDefined();
+        expect(typeof genTool?.description).toBe('string');
+      });
+
+      it('should have valid JSON Schema for generate_terragrunt_config', () => {
+        const tools = toolHandler.getAvailableTools();
+        const genTool = tools.find(t => t.name === 'generate_terragrunt_config');
+        
+        expect(genTool?.inputSchema).toBeDefined();
+        expect(genTool?.inputSchema.type).toBe('object');
+        expect(genTool?.inputSchema.properties).toBeDefined();
+        expect(typeof genTool?.inputSchema.properties).toBe('object');
+      });
+
+      it('should define useCase parameter as enum with 5 valid values', () => {
+        const tools = toolHandler.getAvailableTools();
+        const genTool = tools.find(t => t.name === 'generate_terragrunt_config');
+        
+        const useCaseProperty = genTool?.inputSchema.properties.useCase;
+        expect(useCaseProperty).toBeDefined();
+        expect(useCaseProperty.type).toBe('string');
+        expect(useCaseProperty.enum).toBeDefined();
+        expect(Array.isArray(useCaseProperty.enum)).toBe(true);
+        expect(useCaseProperty.enum).toEqual([
+          'remote_state',
+          'provider_generation',
+          'dependencies',
+          'hooks',
+          'inputs'
+        ]);
+      });
+
+      it('should define backend as optional string parameter', () => {
+        const tools = toolHandler.getAvailableTools();
+        const genTool = tools.find(t => t.name === 'generate_terragrunt_config');
+        
+        const backendProperty = genTool?.inputSchema.properties.backend;
+        expect(backendProperty).toBeDefined();
+        expect(backendProperty.type).toBe('string');
+        
+        // backend should NOT be in required array
+        const required = genTool?.inputSchema.required || [];
+        expect(required.includes('backend')).toBe(false);
+      });
+
+      it('should define options as required object parameter', () => {
+        const tools = toolHandler.getAvailableTools();
+        const genTool = tools.find(t => t.name === 'generate_terragrunt_config');
+        
+        const optionsProperty = genTool?.inputSchema.properties.options;
+        expect(optionsProperty).toBeDefined();
+        expect(optionsProperty.type).toBe('object');
+        expect(optionsProperty.additionalProperties).toBe(true);
+        
+        // options should be in required array
+        const required = genTool?.inputSchema.required || [];
+        expect(required.includes('options')).toBe(true);
+      });
+
+      it('should require useCase and options parameters', () => {
+        const tools = toolHandler.getAvailableTools();
+        const genTool = tools.find(t => t.name === 'generate_terragrunt_config');
+        
+        expect(genTool?.inputSchema.required).toBeDefined();
+        expect(Array.isArray(genTool?.inputSchema.required)).toBe(true);
+        expect(genTool?.inputSchema.required).toContain('useCase');
+        expect(genTool?.inputSchema.required).toContain('options');
+      });
+    });
+
+    describe('CallTool Request/Response Format', () => {
+      it('should execute successfully with valid parameters', async () => {
+        const result = await toolHandler.executeTool('generate_terragrunt_config', {
+          useCase: 'remote_state',
+          backend: 's3',
+          options: {
+            bucket: 'test-bucket',
+            key: 'terraform.tfstate',
+            region: 'us-east-1',
+            dynamodb_table: 'terraform-locks'
+          }
+        });
+
+        expect(result).toBeDefined();
+        expect(typeof result).toBe('object');
+        expect(result.success).toBeDefined();
+        expect(typeof result.success).toBe('boolean');
+      });
+
+      it('should return MCP-compliant success response structure', async () => {
+        const result = await toolHandler.executeTool('generate_terragrunt_config', {
+          useCase: 'remote_state',
+          backend: 's3',
+          options: {
+            bucket: 'test-bucket',
+            key: 'terraform.tfstate',
+            region: 'us-east-1',
+            dynamodb_table: 'locks'
+          }
+        });
+
+        expect(result.success).toBe(true);
+        expect(result).toHaveProperty('config');
+        expect(typeof result.config).toBe('string');
+        expect(result).toHaveProperty('explanation');
+        expect(typeof result.explanation).toBe('string');
+        expect(result).toHaveProperty('relatedDocs');
+        expect(Array.isArray(result.relatedDocs)).toBe(true);
+        expect(result).toHaveProperty('nextSteps');
+        expect(Array.isArray(result.nextSteps)).toBe(true);
+        expect(result).toHaveProperty('additionalOptions');
+        expect(Array.isArray(result.additionalOptions)).toBe(true);
+      });
+
+      it('should handle complex options object with multiple value types', async () => {
+        const result = await toolHandler.executeTool('generate_terragrunt_config', {
+          useCase: 'remote_state',
+          backend: 's3',
+          options: {
+            bucket: 'test-bucket',              // string
+            key: 'terraform.tfstate',            // string
+            region: 'us-west-2',                 // string
+            dynamodb_table: 'locks',             // string
+            encrypt: true,                       // boolean
+          }
+        });
+
+        expect(result).toBeDefined();
+        expect(result.success).toBe(true);
+        // All parameter types should be handled
+        expect(result.config).toContain('test-bucket');
+        expect(result.config).toContain('encrypt');
+      });
+    });
+
+    describe('Parameter Validation', () => {
+      it('should return error when useCase parameter is missing', async () => {
+        const result = await toolHandler.executeTool('generate_terragrunt_config', {
+          // Missing useCase
+          options: {
+            bucket: 'test'
+          }
+        });
+
+        expect(result).toBeDefined();
+        expect(result.error).toBeDefined();
+        expect(typeof result.error).toBe('string');
+        expect(result.error).toContain('useCase');
+      });
+
+      it('should return error when options parameter is missing', async () => {
+        const result = await toolHandler.executeTool('generate_terragrunt_config', {
+          useCase: 'remote_state'
+          // Missing options
+        });
+
+        expect(result).toBeDefined();
+        expect(result.error).toBeDefined();
+        expect(typeof result.error).toBe('string');
+        expect(result.error).toContain('options');
+      });
+
+      it('should handle optional backend parameter correctly', async () => {
+        const result = await toolHandler.executeTool('generate_terragrunt_config', {
+          useCase: 'remote_state',
+          // No backend specified - should still work
+          options: {
+            bucket: 'test-bucket',
+            key: 'terraform.tfstate',
+            region: 'us-east-1',
+            dynamodb_table: 'locks'
+          }
+        });
+
+        expect(result).toBeDefined();
+        expect(result.success).toBe(true);
+      });
+    });
+
+    describe('Error Handling Compliance', () => {
+      it('should return MCP-compliant error for unknown use case', async () => {
+        const result = await toolHandler.executeTool('generate_terragrunt_config', {
+          useCase: 'unknown_use_case',
+          options: {}
+        });
+
+        expect(result).toBeDefined();
+        expect(result.success).toBe(false);
+        expect(result.error).toBeDefined();
+        expect(typeof result.error).toBe('string');
+        expect(result.error.length).toBeGreaterThan(0);
+      });
+
+      it('should return MCP-compliant error for invalid backend', async () => {
+        const result = await toolHandler.executeTool('generate_terragrunt_config', {
+          useCase: 'remote_state',
+          backend: 'invalid_backend_xyz',
+          options: {
+            bucket: 'test'
+          }
+        });
+
+        expect(result).toBeDefined();
+        expect(result.success).toBe(false);
+        expect(result.error).toBeDefined();
+        expect(typeof result.error).toBe('string');
+      });
+
+      it('should return MCP-compliant error for missing required template variables', async () => {
+        const result = await toolHandler.executeTool('generate_terragrunt_config', {
+          useCase: 'remote_state',
+          backend: 's3',
+          options: {
+            // Missing required variables like bucket, region, etc.
+            key: 'terraform.tfstate'
+          }
+        });
+
+        expect(result).toBeDefined();
+        expect(result.success).toBe(false);
+        expect(result.error).toBeDefined();
+        expect(typeof result.error).toBe('string');
+        expect(result.error.toLowerCase()).toMatch(/required|missing|variable/);
+      });
+
+      it('should not throw exceptions on invalid input (return error object instead)', async () => {
+        // Test multiple invalid inputs - should all return error objects, not throw
+        const testCases = [
+          { useCase: 'invalid' },
+          { useCase: 'remote_state' }, // missing options
+          { options: {} }, // missing useCase
+        ];
+
+        for (const testCase of testCases) {
+          const result = await toolHandler.executeTool('generate_terragrunt_config', testCase);
+          
+          expect(result).toBeDefined();
+          expect(typeof result).toBe('object');
+          // Should have error property, not throw
+          expect(result.error || result.success === false).toBeTruthy();
+        }
+      });
+    });
+  });
+
   describe('Error Response Compliance', () => {
     it('should return error response (not throw) for invalid resources', async () => {
       const resource = await resourceHandler.getResource('terragrunt://docs/invalid');
