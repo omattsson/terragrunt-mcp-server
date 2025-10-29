@@ -53,7 +53,7 @@ export class ConfigTemplateLibrary {
    * Get a template by use case and optional backend/cloud provider
    * 
    * @param useCase - The primary use case (remote_state, provider_generation, etc.)
-   * @param backend - Optional backend/cloud provider filter (s3, azurerm, aws, etc.)
+   * @param backend - Optional backend/cloud provider filter (s3, azurerm, aws, etc.) or template ID
    * @returns ConfigTemplate if found, undefined otherwise
    */
   async getTemplate(useCase: UseCase, backend?: string): Promise<ConfigTemplate | undefined> {
@@ -71,11 +71,17 @@ export class ConfigTemplateLibrary {
       return undefined;
     }
 
-    // If backend specified, filter by cloud provider or tags
+    // If backend specified, filter by template ID, cloud provider, or tags
     if (backend) {
       const backendLower = backend.toLowerCase();
       
-      // Try to match by cloudProvider first
+      // Try to match by template ID first (for custom templates)
+      const idMatch = templates.find(t => t.id.toLowerCase() === backendLower);
+      if (idMatch) {
+        return idMatch;
+      }
+      
+      // Try to match by cloudProvider
       const cloudMatch = templates.find(t => t.cloudProvider === backendLower);
       if (cloudMatch) {
         return cloudMatch;

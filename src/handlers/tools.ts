@@ -4,6 +4,10 @@ import { TerragruntFunctionsManager } from '../terragrunt/functions.js';
 import { TerragruntConfigGenerator } from '../terragrunt/generator.js';
 import { ConfigTemplateLibrary, UseCase } from '../terragrunt/library.js';
 import { TemplatesManager } from '../terragrunt/templates/index.js';
+import { BuiltinTemplateLoader } from '../terragrunt/templates/loaders/builtin.js';
+import { FilesystemTemplateLoader } from '../terragrunt/templates/loaders/filesystem.js';
+import { CustomTemplateLoader } from '../terragrunt/templates/loaders/custom.js';
+import { TemplateValidator } from '../terragrunt/templates/validator.js';
 
 export interface Tool {
     name: string;
@@ -24,7 +28,13 @@ export class ToolHandler {
         this.resourceHandler = new ResourceHandler();
         this.docsManager = new TerragruntDocsManager();
         this.functionsManager = new TerragruntFunctionsManager(this.docsManager);
-        this.templatesManager = new TemplatesManager();
+        
+        // Initialize templates manager with builtin and filesystem loaders
+        this.templatesManager = new TemplatesManager([
+            new BuiltinTemplateLoader(),
+            new FilesystemTemplateLoader()  // Defaults to ~/.terragrunt-mcp/templates/
+        ]);
+        
         this.templateLibrary = new ConfigTemplateLibrary(this.templatesManager);
         this.configGenerator = new TerragruntConfigGenerator(this.docsManager, this.templateLibrary);
     }
@@ -170,7 +180,7 @@ export class ToolHandler {
             },
             {
                 name: 'generate_terragrunt_config',
-                description: 'Generate a complete Terragrunt configuration from templates with variable substitution, explanations, and documentation. Includes HCL syntax validation.',
+                description: 'Generate a complete Terragrunt configuration from templates with variable substitution, explanations, and documentation. Includes HCL syntax validation. Supports custom user-provided templates.',
                 inputSchema: {
                     type: 'object',
                     properties: {
@@ -192,6 +202,49 @@ export class ToolHandler {
                             type: 'boolean',
                             description: 'If true, throw an error if HCL validation fails. If false (default), return the config with validation warnings.',
                             default: false
+                        },
+                        custom_template: {
+                            type: 'object',
+                            description: 'Optional custom template to use instead of built-in templates. Must include: id, name, description, category, templateHcl. See documentation for full schema.',
+                            properties: {
+                                id: { type: 'string', description: 'Unique template identifier' },
+                                name: { type: 'string', description: 'Human-readable template name' },
+                                description: { type: 'string', description: 'Template description' },
+                                category: { 
+                                    type: 'string', 
+                                    enum: ['backend', 'provider', 'dependency', 'hooks', 'inputs', 'advanced', 'configuration'],
+                                    description: 'Template category'
+                                },
+                                cloudProvider: { 
+                                    type: 'string',
+                                    enum: ['aws', 'azure', 'gcp', 'multi'],
+                                    description: 'Optional cloud provider'
+                                },
+                                templateHcl: { type: 'string', description: 'HCL template content with ${var.name} placeholders' },
+                                variables: {
+                                    type: 'array',
+                                    description: 'Template variables',
+                                    items: {
+                                        type: 'object',
+                                        properties: {
+                                            name: { type: 'string' },
+                                            type: { type: 'string' },
+                                            description: { type: 'string' },
+                                            required: { type: 'boolean' },
+                                            defaultValue: {},
+                                            example: { type: 'string' }
+                                        },
+                                        required: ['name', 'type', 'required']
+                                    }
+                                },
+                                tags: {
+                                    type: 'array',
+                                    items: { type: 'string' },
+                                    description: 'Search tags'
+                                },
+                                example: { type: 'string', description: 'Usage example' }
+                            },
+                            required: ['id', 'name', 'description', 'category', 'templateHcl']
                         }
                     },
                     required: ['useCase', 'options']
@@ -260,7 +313,8 @@ export class ToolHandler {
                         args.useCase,
                         args.backend || undefined,
                         args.options,
-                        args.strictValidation ?? false
+                        args.strictValidation ?? false,
+                        args.custom_template
                     );
 
                 default:
@@ -555,10 +609,35 @@ export class ToolHandler {
         useCase: string,
         backend?: string,
         options: Record<string, string | number | boolean | undefined> = {},
-        strictValidation: boolean = false
+        strictValidation: boolean = false,
+        customTemplate?: any
     ): Promise<any> {
         try {
-            const result = await this.configGenerator.generateConfig({
+            // If custom template provided, validate it first before attempting to use it
+            if (customTemplate) {
+                const validator = new TemplateValidator();
+                validator.validate(customTemplate); // This throws on validation error
+            }
+            
+            // If custom template provided, create a temporary TemplatesManager with custom loader
+            let templateLibrary = this.templateLibrary;
+            
+            if (customTemplate) {
+                // Create a new TemplatesManager with custom template (highest priority)
+                const customTemplatesManager = new TemplatesManager([
+                    new CustomTemplateLoader(customTemplate),
+                    new FilesystemTemplateLoader(),
+                    new BuiltinTemplateLoader()
+                ]);
+                templateLibrary = new ConfigTemplateLibrary(customTemplatesManager);
+            }
+            
+            // Use the appropriate template library (custom or default)
+            const generator = customTemplate 
+                ? new TerragruntConfigGenerator(this.docsManager, templateLibrary)
+                : this.configGenerator;
+
+            const result = await generator.generateConfig({
                 useCase: useCase as UseCase,
                 backend,
                 options,
@@ -581,7 +660,9 @@ export class ToolHandler {
                     formatted: result.validation.formatted,
                     errors: result.validation.errors,
                     warnings: result.validation.warnings
-                } : undefined
+                } : undefined,
+                // Indicate if custom template was used
+                usedCustomTemplate: !!customTemplate
             };
         } catch (error) {
             return {
