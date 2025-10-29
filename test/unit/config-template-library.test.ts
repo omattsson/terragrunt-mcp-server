@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { ConfigTemplateLibrary } from '../../src/terragrunt/library.js';
-import { TemplatesManager } from '../../src/terragrunt/templates.js';
+import { TemplatesManager } from '../../src/terragrunt/templates/index.js';
 
 describe('ConfigTemplateLibrary', () => {
   let library: ConfigTemplateLibrary;

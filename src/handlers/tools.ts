@@ -3,7 +3,7 @@ import { TerragruntDocsManager } from '../terragrunt/docs.js';
 import { TerragruntFunctionsManager } from '../terragrunt/functions.js';
 import { TerragruntConfigGenerator } from '../terragrunt/generator.js';
 import { ConfigTemplateLibrary, UseCase } from '../terragrunt/library.js';
-import { TemplatesManager } from '../terragrunt/templates.js';
+import { TemplatesManager } from '../terragrunt/templates/index.js';
 
 export interface Tool {
     name: string;

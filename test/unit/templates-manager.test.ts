@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { TemplatesManager } from '../../src/terragrunt/templates.js';
+import { TemplatesManager } from '../../src/terragrunt/templates/index.js';
 
 describe('TemplatesManager', () => {
   let manager: TemplatesManager;
