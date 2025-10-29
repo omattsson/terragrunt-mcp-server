@@ -20,7 +20,7 @@ export interface ConfigTemplate {
   variables: ConfigVariable[];
   templateHcl: string;
   example?: string;
-  source: 'gruntwork' | 'azure-config' | 'documentation' | 'builtin';
+  source: 'gruntwork' | 'azure-config' | 'documentation' | 'builtin' | 'custom' | 'filesystem';
   tags: string[];
 }
 

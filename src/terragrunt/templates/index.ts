@@ -1,34 +1,58 @@
 import { ConfigTemplate, TemplateMetadata, TemplateSearchOptions } from '../../types/templates.js';
-import { loadBuiltinTemplates } from './loaders/builtin.js';
+import { TemplateLoader } from './loaders/base.js';
+import { BuiltinTemplateLoader } from './loaders/builtin.js';
 
 /**
  * Manages Terragrunt configuration templates extracted from documentation
  * and real-world examples (Gruntwork, Azure configs)
+ * 
+ * Supports multiple template loaders with priority-based override:
+ * - Custom templates (API parameter): priority 100
+ * - Filesystem templates: priority 50
+ * - Built-in templates: priority 10
  */
 export class TemplatesManager {
   private templates: Map<string, ConfigTemplate> = new Map();
   private initialized = false;
+  private loaders: TemplateLoader[];
 
-  constructor() {
-    // Templates will be loaded lazily on first use
+  /**
+   * @param loaders - Template loaders to use (defaults to BuiltinTemplateLoader)
+   */
+  constructor(loaders?: TemplateLoader[]) {
+    this.loaders = loaders && loaders.length > 0 
+      ? loaders 
+      : [new BuiltinTemplateLoader()];
   }
 
   /**
-   * Load all templates into memory
+   * Load all templates into memory from all loaders
+   * Templates from higher-priority loaders override those from lower-priority loaders
    */
   async loadTemplates(): Promise<void> {
     if (this.initialized) {
       return;
     }
 
-    // Load built-in templates from registry
-    const builtinTemplates = loadBuiltinTemplates();
-    for (const template of builtinTemplates) {
-      this.templates.set(template.id.toLowerCase(), template);
+    // Sort loaders by priority (ascending, so we process lowest first)
+    const sortedLoaders = [...this.loaders].sort((a, b) => a.priority - b.priority);
+    
+    // Load templates in priority order
+    for (const loader of sortedLoaders) {
+      try {
+        const templates = await loader.loadTemplates();
+        for (const template of templates) {
+          this.templates.set(template.id.toLowerCase(), template);
+          // Later loaders (higher priority) overwrite earlier ones
+        }
+      } catch (error) {
+        console.error(`[TemplatesManager] Error loading from loader (priority ${loader.priority}):`, error);
+        // Continue with other loaders
+      }
     }
 
     this.initialized = true;
-    console.log(`[TemplatesManager] Loaded ${this.templates.size} templates`);
+    console.log(`[TemplatesManager] Loaded ${this.templates.size} templates from ${this.loaders.length} loader(s)`);
   }
 
   /**
