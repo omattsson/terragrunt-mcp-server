@@ -1,0 +1,66 @@
+{
+  "gruntwork": {
+    "root_hcl": {
+      "name": "Root Configuration (Gruntwork AWS)",
+      "path": "root.hcl",
+      "description": "Top-level configuration with provider generation and S3 backend",
+      "content": "locals {\n  account_vars = read_terragrunt_config(find_in_parent_folders(\"account.hcl\"))\n  region_vars  = read_terragrunt_config(find_in_parent_folders(\"region.hcl\"))\n  \n  account_name = local.account_vars.locals.account_name\n  account_id   = local.account_vars.locals.aws_account_id\n  aws_region   = local.region_vars.locals.aws_region\n}\n\ngenerate \"provider\" {\n  path      = \"provider.tf\"\n  if_exists = \"overwrite_terragrunt\"\n  contents  = <<EOF\nprovider \"aws\" {\n  region = \"${local.aws_region}\"\n  \n  allowed_account_ids = [\"${local.account_id}\"]\n}\nEOF\n}\n\nremote_state {\n  backend = \"s3\"\n  config = {\n    encrypt        = true\n    bucket         = \"terraform-state-${local.account_name}\"\n    key            = \"${path_relative_to_include()}/terraform.tfstate\"\n    region         = local.aws_region\n    dynamodb_table = \"terraform-locks\"\n  }\n  generate = {\n    path      = \"backend.tf\"\n    if_exists = \"overwrite_terragrunt\"\n  }\n}"
+    },
+    "account_hcl": {
+      "name": "Account Configuration",
+      "path": "account.hcl",
+      "description": "AWS account-level variables",
+      "content": "locals {\n  account_name   = \"dev\"\n  aws_account_id = \"123456789012\"\n}"
+    },
+    "region_hcl": {
+      "name": "Region Configuration",
+      "path": "region.hcl",
+      "description": "AWS region configuration",
+      "content": "locals {\n  aws_region = \"us-east-1\"\n}"
+    },
+    "stack_hcl": {
+      "name": "Stack Configuration (Modern)",
+      "path": "terragrunt.stack.hcl",
+      "description": "Modern Stacks pattern with units and dependencies",
+      "content": "unit \"mysql_db\" {\n  source = \"git::git@github.com:gruntwork-io/terragrunt-infrastructure-modules-example.git//mysql?ref=v0.8.0\"\n\n  values = {\n    name              = \"mysql_db\"\n    instance_class    = \"db.t2.micro\"\n    allocated_storage = 20\n    engine_version    = \"5.7.21\"\n\n    master_username = \"admin\"\n    master_password = get_env(\"MYSQL_MASTER_PASSWORD\")\n  }\n}\n\nunit \"asg\" {\n  source = \"git::git@github.com:gruntwork-io/terragrunt-infrastructure-modules-example.git//asg-rolling-deploy?ref=v0.8.0\"\n  \n  depends_on = [\"mysql_db\"]\n\n  values = {\n    instance_type     = \"t2.micro\"\n    min_size          = 1\n    max_size          = 3\n    server_port       = 8080\n    \n    mysql_config = dependency.mysql_db.outputs\n  }\n}"
+    }
+  },
+  "azure_config": {
+    "root_hcl": {
+      "name": "Root Configuration (Azure)",
+      "path": "root.hcl",
+      "description": "Top-level Azure configuration with Blob Storage backend",
+      "content": "locals {\n  subscription_vars = read_terragrunt_config(find_in_parent_folders(\"subscription.hcl\"))\n  site_vars        = read_terragrunt_config(find_in_parent_folders(\"site.hcl\"))\n  stack_vars       = read_terragrunt_config(find_in_parent_folders(\"stack.hcl\"))\n  \n  subscription_id = local.subscription_vars.locals.subscription_id\n  tenant_id       = local.subscription_vars.locals.tenant_id\n  location        = local.site_vars.locals.location\n}\n\ngenerate \"provider\" {\n  path      = \"provider.tf\"\n  if_exists = \"overwrite_terragrunt\"\n  contents  = <<EOF\nprovider \"azurerm\" {\n  features {\n    key_vault {\n      purge_soft_deleted_secrets_on_destroy = true\n      recover_soft_deleted_secrets          = true\n    }\n  }\n  \n  subscription_id    = \"${local.subscription_id}\"\n  tenant_id          = \"${local.tenant_id}\"\n  storage_use_azuread = true\n}\nEOF\n}\n\nremote_state {\n  backend = \"azurerm\"\n  config = {\n    subscription_id      = local.subscription_id\n    resource_group_name  = local.subscription_vars.locals.deployment_storage_resource_group_name\n    storage_account_name = local.subscription_vars.locals.deployment_storage_account_name\n    container_name       = local.subscription_vars.locals.tf_container_name\n    key                  = \"${path_relative_to_include(\"site\")}/terraform.tfstate\"\n  }\n}\n\nterraform {\n  extra_arguments \"retry_lock\" {\n    commands = get_terraform_commands_that_need_locking()\n    arguments = [\n      \"-lock-timeout=20m\"\n    ]\n  }\n  \n  extra_arguments \"parallelism\" {\n    commands = [\n      \"apply\",\n      \"plan\",\n      \"destroy\"\n    ]\n    arguments = [\n      \"-parallelism=10\"\n    ]\n  }\n}"
+    },
+    "subscription_hcl": {
+      "name": "Subscription Configuration",
+      "path": "subscription.hcl",
+      "description": "Azure subscription-level configuration",
+      "content": "locals {\n  subscription_id = \"xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx\"\n  tenant_id       = \"yyyyyyyy-yyyy-yyyy-yyyy-yyyyyyyyyyyy\"\n  \n  deployment_storage_resource_group_name = \"rg-terraform-state\"\n  deployment_storage_account_name        = \"tfstatestorage\"\n  tf_container_name                      = \"tfstate\"\n  \n  environment = \"dev\"\n}"
+    },
+    "site_hcl": {
+      "name": "Site Configuration",
+      "path": "site.hcl",
+      "description": "Azure region/site configuration",
+      "content": "locals {\n  location = \"westeurope\"  # or \"eastus\"\n  site     = \"euw\"         # or \"use\"\n}"
+    },
+    "stack_hcl": {
+      "name": "Stack Configuration",
+      "path": "stack.hcl",
+      "description": "Azure stack-level configuration with tags",
+      "content": "locals {\n  subscription_vars = read_terragrunt_config(find_in_parent_folders(\"subscription.hcl\"))\n  site_vars        = read_terragrunt_config(find_in_parent_folders(\"site.hcl\"))\n  \n  stack = \"dev1\"\n  \n  default_tags = {\n    Environment = local.subscription_vars.locals.environment\n    ManagedBy   = \"Terraform\"\n    Owner       = \"DevOps Team\"\n  }\n}"
+    },
+    "envcommon_unit": {
+      "name": "Environment Common Unit",
+      "path": "_envcommon/unit1.hcl",
+      "description": "Shared configuration for units (DRY pattern)",
+      "content": "locals {\n  stack_vars        = read_terragrunt_config(find_in_parent_folders(\"stack.hcl\"))\n  site_vars         = read_terragrunt_config(find_in_parent_folders(\"site.hcl\"))\n  subscription_vars = read_terragrunt_config(find_in_parent_folders(\"subscription.hcl\"))\n  \n  base_source_url = \"git::https://github.com/example/terraform-modules.git//modules/unit1\"\n}\n\ninputs = {\n  resource_group_name = \"rg-${get_env(\"USER\", \"default\")}-${local.stack_vars.locals.stack}\"\n  location            = local.site_vars.locals.location\n  \n  default_tags = merge(\n    local.stack_vars.locals.default_tags,\n    {\n      Component = \"unit1\"\n    }\n  )\n}"
+    },
+    "unit_terragrunt": {
+      "name": "Unit Configuration",
+      "path": "unit/terragrunt.hcl",
+      "description": "Unit-level configuration with includes and deep merge",
+      "content": "include \"root\" {\n  path           = find_in_parent_folders(\"root.hcl\")\n  merge_strategy = \"deep\"\n}\n\ninclude \"envcommon\" {\n  path           = \"${get_repo_root()}/_envcommon/unit1.hcl\"\n  expose         = true\n  merge_strategy = \"deep\"\n}\n\nterraform {\n  source = \"${include.envcommon.locals.base_source_url}?ref=main\"\n}\n\ninputs = {\n  project_name = \"Custom Project\"\n  enable_feature_x = true\n}"
+    }
+  }
+}
