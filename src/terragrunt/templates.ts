@@ -302,7 +302,297 @@ EOF
 }`,
     });
 
-    console.log('[TemplatesManager] Loaded 3 built-in templates');
+    // Template 4: GCP GCS Remote State Backend
+    this.templates.set('gcp-gcs-backend', {
+      id: 'gcp-gcs-backend',
+      name: 'GCP GCS Remote State Backend',
+      description: 'Configure Google Cloud Storage as remote state backend',
+      category: 'backend',
+      cloudProvider: 'gcp',
+      source: 'builtin',
+      tags: ['remote-state', 'gcs', 'gcp', 'backend'],
+      variables: [
+        {
+          name: 'bucket',
+          description: 'GCS bucket name for remote state',
+          type: 'string',
+          required: true,
+          example: 'my-terraform-state',
+        },
+        {
+          name: 'prefix',
+          description: 'Path prefix within bucket',
+          type: 'string',
+          required: true,
+          example: 'terraform/state',
+        },
+        {
+          name: 'project',
+          description: 'GCP project ID',
+          type: 'string',
+          required: false,
+          example: 'my-gcp-project',
+        },
+        {
+          name: 'credentials',
+          description: 'Path to GCP credentials file',
+          type: 'string',
+          required: false,
+          example: '/path/to/credentials.json',
+        },
+      ],
+      templateHcl: `remote_state {
+  backend = "gcs"
+  config = {
+    bucket      = "{{bucket}}"
+    prefix      = "{{prefix}}"
+{{#project}}
+    project     = "{{project}}"
+{{/project}}
+{{#credentials}}
+    credentials = "{{credentials}}"
+{{/credentials}}
+  }
+}`,
+      example: `remote_state {
+  backend = "gcs"
+  config = {
+    bucket      = "my-terraform-state"
+    prefix      = "terraform/state"
+    project     = "my-gcp-project"
+  }
+}`,
+    });
+
+    // Template 5: Before Hook
+    this.templates.set('before-hook', {
+      id: 'before-hook',
+      name: 'Before Hook',
+      description: 'Execute commands before Terragrunt operations',
+      category: 'hooks',
+      cloudProvider: 'multi',
+      source: 'builtin',
+      tags: ['hooks', 'before', 'automation'],
+      variables: [
+        {
+          name: 'name',
+          description: 'Hook name',
+          type: 'string',
+          required: true,
+          example: 'validate',
+        },
+        {
+          name: 'commands',
+          description: 'Comma-separated list of commands to run hook on',
+          type: 'string',
+          required: true,
+          example: 'apply,plan',
+        },
+        {
+          name: 'execute',
+          description: 'Comma-separated list of shell commands to execute',
+          type: 'string',
+          required: true,
+          example: 'echo "Running validation"',
+        },
+        {
+          name: 'working_dir',
+          description: 'Working directory for hook execution',
+          type: 'string',
+          required: false,
+          example: '.',
+        },
+      ],
+      templateHcl: `terraform {
+  before_hook "{{name}}" {
+    commands     = [{{#commands}}"{{.}}"{{^last}}, {{/last}}{{/commands}}]
+    execute      = [{{#execute}}"{{.}}"{{^last}}, {{/last}}{{/execute}}]
+{{#working_dir}}
+    working_dir  = "{{working_dir}}"
+{{/working_dir}}
+  }
+}`,
+      example: `terraform {
+  before_hook "validate" {
+    commands     = ["apply", "plan"]
+    execute      = ["echo", "Running validation"]
+  }
+}`,
+    });
+
+    // Template 6: After Hook
+    this.templates.set('after-hook', {
+      id: 'after-hook',
+      name: 'After Hook',
+      description: 'Execute commands after Terragrunt operations',
+      category: 'hooks',
+      cloudProvider: 'multi',
+      source: 'builtin',
+      tags: ['hooks', 'after', 'automation'],
+      variables: [
+        {
+          name: 'name',
+          description: 'Hook name',
+          type: 'string',
+          required: true,
+          example: 'notify',
+        },
+        {
+          name: 'commands',
+          description: 'Comma-separated list of commands to run hook on',
+          type: 'string',
+          required: true,
+          example: 'apply',
+        },
+        {
+          name: 'execute',
+          description: 'Comma-separated list of shell commands to execute',
+          type: 'string',
+          required: true,
+          example: 'echo "Deployment complete"',
+        },
+        {
+          name: 'run_on_error',
+          description: 'Run hook even if command fails',
+          type: 'boolean',
+          required: false,
+          example: 'true',
+          defaultValue: 'false',
+        },
+      ],
+      templateHcl: `terraform {
+  after_hook "{{name}}" {
+    commands     = [{{#commands}}"{{.}}"{{^last}}, {{/last}}{{/commands}}]
+    execute      = [{{#execute}}"{{.}}"{{^last}}, {{/last}}{{/execute}}]
+{{#run_on_error}}
+    run_on_error = {{run_on_error}}
+{{/run_on_error}}
+  }
+}`,
+      example: `terraform {
+  after_hook "notify" {
+    commands     = ["apply"]
+    execute      = ["echo", "Deployment complete"]
+    run_on_error = true
+  }
+}`,
+    });
+
+    // Template 7: Single Module Dependency
+    this.templates.set('dependency-single', {
+      id: 'dependency-single',
+      name: 'Single Module Dependency',
+      description: 'Configure dependency on another Terragrunt module',
+      category: 'dependency',
+      cloudProvider: 'multi',
+      source: 'builtin',
+      tags: ['dependency', 'module', 'outputs'],
+      variables: [
+        {
+          name: 'name',
+          description: 'Dependency name (used to reference outputs)',
+          type: 'string',
+          required: true,
+          example: 'vpc',
+        },
+        {
+          name: 'config_path',
+          description: 'Path to dependency terragrunt.hcl',
+          type: 'string',
+          required: true,
+          example: '../vpc',
+        },
+        {
+          name: 'mock_outputs_allowed',
+          description: 'Allow using mock outputs when dependency not applied',
+          type: 'boolean',
+          required: false,
+          example: 'true',
+          defaultValue: 'false',
+        },
+      ],
+      templateHcl: `dependency "{{name}}" {
+  config_path = "{{config_path}}"
+{{#mock_outputs_allowed}}
+  mock_outputs_allowed_terraform_commands = ["validate", "plan"]
+  mock_outputs = {
+    # Add mock outputs here
+  }
+{{/mock_outputs_allowed}}
+}`,
+      example: `dependency "vpc" {
+  config_path = "../vpc"
+  mock_outputs_allowed_terraform_commands = ["validate", "plan"]
+  mock_outputs = {
+    vpc_id = "mock-vpc-id"
+  }
+}`,
+    });
+
+    // Template 8: Basic Inputs Configuration
+    this.templates.set('inputs-basic', {
+      id: 'inputs-basic',
+      name: 'Basic Inputs Configuration',
+      description: 'Define input variables to pass to Terraform',
+      category: 'inputs',
+      cloudProvider: 'multi',
+      source: 'builtin',
+      tags: ['inputs', 'variables', 'configuration'],
+      variables: [
+        {
+          name: 'environment',
+          description: 'Environment name',
+          type: 'string',
+          required: false,
+          example: 'production',
+        },
+        {
+          name: 'region',
+          description: 'Cloud region',
+          type: 'string',
+          required: false,
+          example: 'us-east-1',
+        },
+      ],
+      templateHcl: `inputs = {
+{{#environment}}
+  environment = "{{environment}}"
+{{/environment}}
+{{#region}}
+  region      = "{{region}}"
+{{/region}}
+  # Add more inputs as needed
+}`,
+      example: `inputs = {
+  environment = "production"
+  region      = "us-east-1"
+  project     = "my-project"
+}`,
+    });
+
+    // Template 9: Terraform Version Constraint
+    this.templates.set('terraform-version', {
+      id: 'terraform-version',
+      name: 'Terraform Version Constraint',
+      description: 'Specify required Terraform version',
+      category: 'configuration',
+      cloudProvider: 'multi',
+      source: 'builtin',
+      tags: ['version', 'constraint', 'terraform'],
+      variables: [
+        {
+          name: 'constraint',
+          description: 'Version constraint expression',
+          type: 'string',
+          required: true,
+          example: '>= 1.0.0, < 2.0.0',
+        },
+      ],
+      templateHcl: `terraform_version_constraint = "{{constraint}}"`,
+      example: `terraform_version_constraint = ">= 1.0.0, < 2.0.0"`,
+    });
+
+    console.log('[TemplatesManager] Loaded 9 built-in templates');
   }
 
   /**
