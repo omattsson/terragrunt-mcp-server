@@ -149,14 +149,24 @@ docker run -i \
 - Alpine base reduces attack surface
 - Documentation cache is the only writable volume
 
-## Publishing the Image
+## Using Pre-built Images from Docker Hub
 
-If you want to publish to a container registry:
+Instead of building locally, you can use the official pre-built image:
 
 ```bash
-# Tag for registry
-docker tag terragrunt-mcp-server:latest olofdevopsninja/terragrunt-mcp-server:latest
+# Pull the latest image
+docker pull olofdevopsninja/terragrunt-mcp-server:latest
 
-# Push to Docker Hub
-docker push olofdevopsninja/terragrunt-mcp-server:latest
+# Run it
+docker run -i olofdevopsninja/terragrunt-mcp-server:latest
 ```
+
+## Publishing the Image
+
+For maintainers: To publish a new version of the Docker image to Docker Hub, use the GitHub Actions workflow:
+
+1. Ensure you have `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN` set as repository secrets in GitHub. These are required for authentication to Docker Hub.
+2. Go to the "Actions" tab in GitHub, find the "Publish Docker Image" workflow, and click "Run workflow" (this uses the `workflow_dispatch` trigger).
+3. The workflow will build the image and push it to Docker Hub under the configured repository.
+
+For more details, see the workflow file in `.github/workflows/docker-publish.yml`.
