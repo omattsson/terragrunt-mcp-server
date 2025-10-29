@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { TerragruntConfigGenerator } from '../../src/terragrunt/generator.js';
 import { TerragruntDocsManager } from '../../src/terragrunt/docs.js';
 import { ConfigTemplateLibrary } from '../../src/terragrunt/library.js';
-import { TemplatesManager } from '../../src/terragrunt/templates.js';
+import { TemplatesManager } from '../../src/terragrunt/templates/index.js';
 
 describe('TerragruntConfigGenerator', () => {
   let generator: TerragruntConfigGenerator;

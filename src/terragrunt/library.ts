@@ -1,4 +1,4 @@
-import { TemplatesManager } from './templates.js';
+import { TemplatesManager } from './templates/index.js';
 import { ConfigTemplate } from '../types/templates.js';
 
 /**
