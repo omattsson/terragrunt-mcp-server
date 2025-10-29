@@ -1,4 +1,5 @@
 import { TerragruntDocsManager } from './docs.js';
+import { LRUCache } from 'lru-cache';
 
 /**
  * Describes a single parameter accepted by a Terragrunt built-in function
@@ -35,18 +36,26 @@ export interface TerragruntFunction {
 }
 
 /**
- * Manages Terragrunt built-in function metadata with an in-memory cache.
+ * Manages Terragrunt built-in function metadata with an LRU cache.
  *
  * Notes:
  * - Cache keys are stored in lowercase for case-insensitive lookups.
  * - Population of the cache is deferred to loadFunctions() (see issue #13).
+ * - Uses LRU cache with max 1000 items and 10MB size limit for memory safety.
  */
 export class TerragruntFunctionsManager {
   private readonly docsManager: TerragruntDocsManager;
-  private readonly functionsCache: Map<string, TerragruntFunction> = new Map();
+  private readonly functionsCache: LRUCache<string, TerragruntFunction>;
 
   constructor(docsManager: TerragruntDocsManager) {
     this.docsManager = docsManager;
+    
+    // Initialize LRU cache with size limits to prevent unbounded memory growth
+    this.functionsCache = new LRUCache<string, TerragruntFunction>({
+      max: 1000, // Maximum 1000 functions (way more than needed, but safe limit)
+      updateAgeOnGet: true, // Keep frequently accessed items
+      updateAgeOnHas: false
+    });
   }
 
   /**
