@@ -1,6 +1,9 @@
 import { ResourceHandler } from './resources.js';
 import { TerragruntDocsManager } from '../terragrunt/docs.js';
 import { TerragruntFunctionsManager } from '../terragrunt/functions.js';
+import { TerragruntConfigGenerator } from '../terragrunt/generator.js';
+import { ConfigTemplateLibrary } from '../terragrunt/library.js';
+import { TemplatesManager } from '../terragrunt/templates.js';
 
 export interface Tool {
     name: string;
@@ -13,11 +16,17 @@ export class ToolHandler {
     private docsManager: TerragruntDocsManager;
     private functionsManager: TerragruntFunctionsManager;
     private functionsLoaded: boolean = false;
+    private templatesManager: TemplatesManager;
+    private templateLibrary: ConfigTemplateLibrary;
+    private configGenerator: TerragruntConfigGenerator;
 
     constructor() {
         this.resourceHandler = new ResourceHandler();
         this.docsManager = new TerragruntDocsManager();
         this.functionsManager = new TerragruntFunctionsManager(this.docsManager);
+        this.templatesManager = new TemplatesManager();
+        this.templateLibrary = new ConfigTemplateLibrary(this.templatesManager);
+        this.configGenerator = new TerragruntConfigGenerator(this.docsManager, this.templateLibrary);
     }
 
     getAvailableTools(): Tool[] {
@@ -158,6 +167,30 @@ export class ToolHandler {
                     },
                     required: ['topic']
                 }
+            },
+            {
+                name: 'generate_terragrunt_config',
+                description: 'Generate a complete Terragrunt configuration from templates with variable substitution, explanations, and documentation',
+                inputSchema: {
+                    type: 'object',
+                    properties: {
+                        useCase: {
+                            type: 'string',
+                            enum: ['remote_state', 'provider_generation', 'dependencies', 'hooks', 'inputs'],
+                            description: 'The use case to generate configuration for (remote_state, provider_generation, dependencies, hooks, inputs)'
+                        },
+                        backend: {
+                            type: 'string',
+                            description: 'Optional backend type for remote_state (e.g., "s3", "azurerm", "gcs", "azure")'
+                        },
+                        options: {
+                            type: 'object',
+                            description: 'Configuration variables for the template (e.g., bucket, region, account_id). Required variables depend on the selected template.',
+                            additionalProperties: true
+                        }
+                    },
+                    required: ['useCase', 'options']
+                }
             }
         ];
     }
@@ -210,6 +243,15 @@ export class ToolHandler {
                         return { error: 'topic parameter is required' };
                     }
                     return await this.getCodeExamples(args.topic, args?.limit);
+
+                case 'generate_terragrunt_config':
+                    if (!args?.useCase) {
+                        return { error: 'useCase parameter is required' };
+                    }
+                    if (!args?.options) {
+                        return { error: 'options parameter is required' };
+                    }
+                    return await this.generateTerragruntConfig(args.useCase, args.backend, args.options);
 
                 default:
                     return {
@@ -494,5 +536,36 @@ export class ToolHandler {
         return description.length > 100 
             ? description.substring(0, 100).trim() + '...'
             : description;
+    }
+
+    /**
+     * Generate a complete Terragrunt configuration from templates
+     */
+    private async generateTerragruntConfig(useCase: string, backend?: string, options: any = {}): Promise<any> {
+        try {
+            const result = await this.configGenerator.generateConfig({
+                useCase: useCase as any,
+                backend,
+                options
+            });
+
+            return {
+                success: true,
+                config: result.config,
+                explanation: result.explanation,
+                relatedDocs: result.relatedDocs.map(doc => ({
+                    title: doc.title,
+                    url: doc.url,
+                    section: doc.section
+                })),
+                nextSteps: result.nextSteps,
+                additionalOptions: result.additionalOptions || []
+            };
+        } catch (error) {
+            return {
+                success: false,
+                error: error instanceof Error ? error.message : 'Failed to generate configuration'
+            };
+        }
     }
 }
