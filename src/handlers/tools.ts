@@ -170,7 +170,7 @@ export class ToolHandler {
             },
             {
                 name: 'generate_terragrunt_config',
-                description: 'Generate a complete Terragrunt configuration from templates with variable substitution, explanations, and documentation',
+                description: 'Generate a complete Terragrunt configuration from templates with variable substitution, explanations, and documentation. Includes HCL syntax validation.',
                 inputSchema: {
                     type: 'object',
                     properties: {
@@ -187,6 +187,11 @@ export class ToolHandler {
                             type: 'object',
                             description: 'Configuration variables for the template (e.g., bucket, region, account_id). Required variables depend on the selected template.',
                             additionalProperties: true
+                        },
+                        strictValidation: {
+                            type: 'boolean',
+                            description: 'If true, throw an error if HCL validation fails. If false (default), return the config with validation warnings.',
+                            default: false
                         }
                     },
                     required: ['useCase', 'options']
@@ -254,7 +259,8 @@ export class ToolHandler {
                     return await this.generateTerragruntConfig(
                         args.useCase,
                         args.backend || undefined,
-                        args.options
+                        args.options,
+                        args.strictValidation ?? false
                     );
 
                 default:
@@ -548,13 +554,15 @@ export class ToolHandler {
     private async generateTerragruntConfig(
         useCase: string,
         backend?: string,
-        options: Record<string, string | number | boolean | undefined> = {}
+        options: Record<string, string | number | boolean | undefined> = {},
+        strictValidation: boolean = false
     ): Promise<any> {
         try {
             const result = await this.configGenerator.generateConfig({
                 useCase: useCase as UseCase,
                 backend,
-                options
+                options,
+                strictValidation
             });
 
             return {
@@ -567,7 +575,13 @@ export class ToolHandler {
                     section: doc.section
                 })),
                 nextSteps: result.nextSteps,
-                additionalOptions: result.additionalOptions || []
+                additionalOptions: result.additionalOptions || [],
+                validation: result.validation ? {
+                    syntaxValid: result.validation.syntaxValid,
+                    formatted: result.validation.formatted,
+                    errors: result.validation.errors,
+                    warnings: result.validation.warnings
+                } : undefined
             };
         } catch (error) {
             return {

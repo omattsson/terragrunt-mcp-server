@@ -15,7 +15,7 @@ A Model Context Protocol (MCP) server that provides comprehensive Terragrunt doc
 
 ### Features & Tools
 - [Available Tools](Available-Tools) - Complete reference for all 9 tools
-- [Configuration Generator](Configuration-Generator) - Guide for the configuration generator tool
+- [HCL Validation](HCL-Validation) - Built-in syntax validation for generated configs
 - [Architecture Overview](Architecture-Overview) - Understanding the caching and MCP implementation
 - [Caching System](Caching-System) - Deep dive into the two-tier caching mechanism
 
