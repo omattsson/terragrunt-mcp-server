@@ -9,7 +9,6 @@ import { TemplateValidator, TemplateValidationError } from '../../src/terragrunt
 import { CustomTemplateLoader } from '../../src/terragrunt/templates/loaders/custom.js';
 import { FilesystemTemplateLoader } from '../../src/terragrunt/templates/loaders/filesystem.js';
 import { BuiltinTemplateLoader } from '../../src/terragrunt/templates/loaders/builtin.js';
-import { ConfigTemplate } from '../../src/types/templates.js';
 import { mkdir, writeFile, rm } from 'fs/promises';
 import { join } from 'path';
 import { tmpdir } from 'os';

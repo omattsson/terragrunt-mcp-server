@@ -613,19 +613,17 @@ export class ToolHandler {
         customTemplate?: any
     ): Promise<any> {
         try {
-            // If custom template provided, validate it first before attempting to use it
-            if (customTemplate) {
-                const validator = new TemplateValidator();
-                validator.validate(customTemplate); // This throws on validation error
-            }
-            
-            // If custom template provided, create a temporary TemplatesManager with custom loader
+            // If custom template provided, validate it and use the normalized result
             let templateLibrary = this.templateLibrary;
             
             if (customTemplate) {
-                // Create a new TemplatesManager with custom template (highest priority)
+                const validator = new TemplateValidator();
+                // Validate and normalize the template - this throws on validation error
+                const validatedTemplate = validator.validate(customTemplate);
+                
+                // Create a new TemplatesManager with validated template (highest priority)
                 const customTemplatesManager = new TemplatesManager([
-                    new CustomTemplateLoader(customTemplate),
+                    new CustomTemplateLoader(validatedTemplate),
                     new FilesystemTemplateLoader(),
                     new BuiltinTemplateLoader()
                 ]);

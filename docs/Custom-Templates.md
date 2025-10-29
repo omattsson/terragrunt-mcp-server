@@ -28,6 +28,8 @@ When multiple templates have the same ID, the highest priority wins.
 
 Pass a custom template directly when calling a tool:
 
+> **Note on Template Placeholders**: Use `{{variable_name}}` syntax for template placeholders. These will be replaced with actual values during config generation. The generated output will contain HCL variable references like `${var.variable_name}` or literal values depending on the context.
+
 ```typescript
 {
   query: "Generate S3 backend with KMS encryption",
@@ -39,12 +41,12 @@ Pass a custom template directly when calling a tool:
     templateHcl: `remote_state {
   backend = "s3"
   config = {
-    bucket         = "\${var.bucket_name}"
-    key            = "\${var.key_path}"
-    region         = "\${var.region}"
+    bucket         = "{{bucket_name}}"
+    key            = "{{key_path}}"
+    region         = "{{region}}"
     encrypt        = true
-    kms_key_id     = "\${var.kms_key_id}"
-    dynamodb_table = "\${var.dynamodb_table}"
+    kms_key_id     = "{{kms_key_id}}"
+    dynamodb_table = "{{dynamodb_table}}"
   }
 }`,
     variables: [
@@ -81,7 +83,7 @@ Create template files in `~/.terragrunt-mcp/templates/`:
   "description": "Standard S3 backend configuration for our organization",
   "category": "backend",
   "cloudProvider": "aws",
-  "templateHcl": "remote_state {\n  backend = \"s3\"\n  config = {\n    bucket         = \"${var.bucket_name}\"\n    key            = \"${var.key_path}\"\n    region         = \"us-east-1\"\n    encrypt        = true\n    dynamodb_table = \"terraform-locks\"\n  }\n}",
+  "templateHcl": "remote_state {\n  backend = \"s3\"\n  config = {\n    bucket         = \"{{bucket_name}}\"\n    key            = \"{{key_path}}\"\n    region         = \"us-east-1\"\n    encrypt        = true\n    dynamodb_table = \"terraform-locks\"\n  }\n}",
   "variables": [
     {
       "name": "bucket_name",
@@ -175,7 +177,7 @@ Invalid templates will be rejected with a detailed error message.
   "description": "Azure Blob Storage backend with SAS token authentication",
   "category": "backend",
   "cloudProvider": "azure",
-  "templateHcl": "remote_state {\n  backend = \"azurerm\"\n  config = {\n    storage_account_name = \"${var.storage_account}\"\n    container_name       = \"${var.container_name}\"\n    key                  = \"${var.key_path}\"\n    sas_token            = \"${var.sas_token}\"\n  }\n}",
+  "templateHcl": "remote_state {\n  backend = \"azurerm\"\n  config = {\n    storage_account_name = \"{{storage_account}}\"\n    container_name       = \"{{container_name}}\"\n    key                  = \"{{key_path}}\"\n    sas_token            = \"{{sas_token}}\"\n  }\n}",
   "variables": [
     {
       "name": "storage_account",
@@ -229,7 +231,7 @@ Invalid templates will be rejected with a detailed error message.
   "description": "Configure AWS and Azure providers together",
   "category": "provider",
   "cloudProvider": "multi",
-  "templateHcl": "generate \"providers\" {\n  path      = \"providers.tf\"\n  if_exists = \"overwrite_terragrunt\"\n  contents  = <<EOF\nprovider \"aws\" {\n  region = \"${var.aws_region}\"\n}\n\nprovider \"azurerm\" {\n  features {}\n}\nEOF\n}",
+  "templateHcl": "generate \"providers\" {\n  path      = \"providers.tf\"\n  if_exists = \"overwrite_terragrunt\"\n  contents  = <<EOF\nprovider \"aws\" {\n  region = \"{{aws_region}}\"\n}\n\nprovider \"azurerm\" {\n  features {}\n}\nEOF\n}",
   "variables": [
     {
       "name": "aws_region",

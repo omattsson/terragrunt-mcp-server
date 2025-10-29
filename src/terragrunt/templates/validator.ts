@@ -3,7 +3,7 @@
  * Validates custom templates for structure, HCL syntax, and security
  */
 
-import { ConfigTemplate, ConfigVariable } from '../../types/templates.js';
+import { ConfigTemplate } from '../../types/templates.js';
 import { validateHCL } from '../hcl-validator.js';
 
 /**
@@ -120,7 +120,9 @@ export class TemplateValidator {
     try {
       const result = validateHCL(hcl);
       if (!result.syntaxValid || result.errors.length > 0) {
-        throw new Error(result.errors.join('; '));
+        // Format errors for better readability
+        const errorList = result.errors.map((err, idx) => `  ${idx + 1}. ${err}`).join('\n');
+        throw new Error(`HCL validation failed with ${result.errors.length} error(s):\n${errorList}`);
       }
     } catch (error) {
       throw new TemplateValidationError(
