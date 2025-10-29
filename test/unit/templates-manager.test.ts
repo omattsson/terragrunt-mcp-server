@@ -149,7 +149,7 @@ describe('TemplatesManager', () => {
         cloudProvider: 'gcp',
       });
       
-      expect(results).toHaveLength(1); // GCP template has 'gcp' tag
+      expect(results).toHaveLength(1); // GCP GCS backend template matches cloudProvider filter
     });
   });
 
