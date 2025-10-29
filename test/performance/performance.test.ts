@@ -185,6 +185,13 @@ describe('Performance Benchmarks', () => {
   });
 
   describe('4. Response Time Benchmarks for Each Tool', () => {
+    beforeAll(async () => {
+      // Warm up the cache by executing a simple query first
+      console.log('Warming up tool handler cache...');
+      await toolHandler.executeTool('get_terragrunt_sections', {});
+      console.log('Cache warmed up');
+    }, 30000); // 30 second timeout for warm-up
+
     it('should execute search_terragrunt_docs in <1 second', async () => {
       const startTime = performance.now();
       

@@ -166,3 +166,10 @@ When parsing documentation content:
 - **Run single test**: `npm test -- test/unit/functions-manager.test.ts` for faster iteration
 - **Check test isolation**: Integration tests should not depend on disk cache state (use fixtures)
 - **Regex debugging**: Add `console.log(match.groups)` to inspect capture groups in extraction logic
+
+## Use sequential thought process when modifying code
+- Understand existing flow before adding/changing logic
+- Identify all impacted components (handlers, managers, tests)
+- Always consider impact on caching, error handling, and MCP compliance
+- Write unit tests for new logic, then integration tests for end-to-end verification
+- Review regex patterns carefully to avoid over/under-matching
