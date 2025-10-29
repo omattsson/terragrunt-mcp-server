@@ -270,20 +270,24 @@ npm run test:server    # Run integration tests
 
 ### Testing
 
-The project includes comprehensive test coverage (378 tests):
+The project includes comprehensive test coverage (363 tests):
 
-- **Unit Tests** (136 tests): Core functionality validation
+- **Unit Tests** (160 tests): Core functionality validation
   - Functions Manager (21 tests)
   - Docs Manager (67 tests)
-  - Tool Handler (24 tests)
+  - Error Handling (24 tests)
   - Resource Handler (24 tests)
-- **Integration Tests** (47 tests): End-to-end tool and resource testing
+  - Tool Handler (24 tests)
+- **Integration Tests** (164 tests): End-to-end tool and resource testing
   - Functions Tools Integration (23 tests)
-  - MCP Protocol (68 tests)
-  - Edge Cases (48 tests)
+  - MCP Protocol Compliance (68 tests)
+  - Edge Case Validation (48 tests)
   - Server Integration (24 tests)
-- **Error Handling** (24 tests): Resilience and fallback mechanisms
+  - Functions Tools (legacy .js) (1 test)
 - **Performance Tests** (39 tests): Benchmark critical operations
+  - Large result sets, search performance, concurrent operations
+  - Cache efficiency, memory usage monitoring
+  - Function lookup performance benchmarks
 
 #### Running Tests Locally
 
