@@ -2,7 +2,7 @@ import { ResourceHandler } from './resources.js';
 import { TerragruntDocsManager } from '../terragrunt/docs.js';
 import { TerragruntFunctionsManager } from '../terragrunt/functions.js';
 import { TerragruntConfigGenerator } from '../terragrunt/generator.js';
-import { ConfigTemplateLibrary } from '../terragrunt/library.js';
+import { ConfigTemplateLibrary, UseCase } from '../terragrunt/library.js';
 import { TemplatesManager } from '../terragrunt/templates.js';
 
 export interface Tool {
@@ -251,7 +251,11 @@ export class ToolHandler {
                     if (!args?.options) {
                         return { error: 'options parameter is required' };
                     }
-                    return await this.generateTerragruntConfig(args.useCase, args.backend, args.options);
+                    return await this.generateTerragruntConfig(
+                        args.useCase,
+                        args.backend || undefined,
+                        args.options
+                    );
 
                 default:
                     return {
@@ -541,10 +545,14 @@ export class ToolHandler {
     /**
      * Generate a complete Terragrunt configuration from templates
      */
-    private async generateTerragruntConfig(useCase: string, backend?: string, options: any = {}): Promise<any> {
+    private async generateTerragruntConfig(
+        useCase: string,
+        backend?: string,
+        options: Record<string, string | number | boolean | undefined> = {}
+    ): Promise<any> {
         try {
             const result = await this.configGenerator.generateConfig({
-                useCase: useCase as any,
+                useCase: useCase as UseCase,
                 backend,
                 options
             });
