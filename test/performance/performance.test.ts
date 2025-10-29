@@ -498,6 +498,332 @@ describe('Performance Benchmarks', () => {
     });
   });
 
+  describe('8. Function Lookup Performance', () => {
+    describe('get_terragrunt_function', () => {
+      it('should handle first call (cache miss) in <200ms', async () => {
+        // Create fresh ToolHandler to test true cache miss
+        const freshToolHandler = new ToolHandler();
+        
+        const startTime = performance.now();
+        
+        const result = await freshToolHandler.executeTool('get_terragrunt_function', {
+          function_name: 'path_relative_to_include'
+        });
+        
+        const duration = performance.now() - startTime;
+        
+        expect(result.name).toBe('path_relative_to_include');
+        expect(result.signature).toBeDefined();
+        expect(duration).toBeLessThan(200); // First call with cache loading
+        
+        console.log(`✓ First function lookup (cache miss): ${duration.toFixed(2)}ms`);
+      });
+
+      it('should handle cached lookup in <10ms', async () => {
+        const startTime = performance.now();
+        
+        const result = await toolHandler.executeTool('get_terragrunt_function', {
+          function_name: 'path_relative_to_include'
+        });
+        
+        const duration = performance.now() - startTime;
+        
+        expect(result.name).toBe('path_relative_to_include');
+        expect(duration).toBeLessThan(10); // Cached lookup should be very fast
+        
+        console.log(`✓ Cached function lookup: ${duration.toFixed(2)}ms`);
+      });
+
+      it('should handle 100 cached lookups with average <10ms', async () => {
+        const iterations = 100;
+        const startTime = performance.now();
+        
+        for (let i = 0; i < iterations; i++) {
+          const result = await toolHandler.executeTool('get_terragrunt_function', {
+            function_name: 'path_relative_to_include'
+          });
+          expect(result.name).toBe('path_relative_to_include');
+        }
+        
+        const duration = performance.now() - startTime;
+        const avgTime = duration / iterations;
+        
+        expect(avgTime).toBeLessThan(10); // Average should be under 10ms
+        
+        console.log(`✓ ${iterations} cached lookups in ${duration.toFixed(2)}ms (avg: ${avgTime.toFixed(2)}ms)`);
+      });
+
+      it('should handle lookup with examples in <15ms', async () => {
+        const startTime = performance.now();
+        
+        const result = await toolHandler.executeTool('get_terragrunt_function', {
+          function_name: 'path_relative_to_include',
+          include_examples: true
+        });
+        
+        const duration = performance.now() - startTime;
+        
+        expect(result.name).toBe('path_relative_to_include');
+        expect(result.examples).toBeDefined();
+        expect(duration).toBeLessThan(15); // Slightly higher threshold for examples
+        
+        console.log(`✓ Function lookup with examples: ${duration.toFixed(2)}ms`);
+      });
+
+      it('should handle lookup without examples in <10ms', async () => {
+        const startTime = performance.now();
+        
+        const result = await toolHandler.executeTool('get_terragrunt_function', {
+          function_name: 'path_relative_to_include',
+          include_examples: false
+        });
+        
+        const duration = performance.now() - startTime;
+        
+        expect(result.name).toBe('path_relative_to_include');
+        expect(Array.isArray(result.examples)).toBe(true);
+        expect(result.examples.length).toBe(0);
+        expect(duration).toBeLessThan(10);
+        
+        console.log(`✓ Function lookup without examples: ${duration.toFixed(2)}ms`);
+      });
+
+      it('should have consistent performance across different functions', async () => {
+        const functionNames = ['get_env', 'find_in_parent_folders', 'get_terraform_commands_that_need_vars'];
+        const durations: number[] = [];
+        
+        for (const funcName of functionNames) {
+          const startTime = performance.now();
+          
+          const result = await toolHandler.executeTool('get_terragrunt_function', {
+            function_name: funcName
+          });
+          
+          const duration = performance.now() - startTime;
+          durations.push(duration);
+          
+          expect(result.name).toBe(funcName);
+          expect(duration).toBeLessThan(10);
+        }
+        
+        const avgDuration = durations.reduce((a, b) => a + b, 0) / durations.length;
+        const maxDuration = Math.max(...durations);
+        
+        console.log(`✓ ${functionNames.length} different functions: avg ${avgDuration.toFixed(2)}ms, max ${maxDuration.toFixed(2)}ms`);
+      });
+    });
+
+    describe('list_terragrunt_functions', () => {
+      it('should list all functions in <50ms', async () => {
+        const startTime = performance.now();
+        
+        const result = await toolHandler.executeTool('list_terragrunt_functions', {});
+        
+        const duration = performance.now() - startTime;
+        
+        expect(result.functions).toBeDefined();
+        expect(Array.isArray(result.functions)).toBe(true);
+        expect(result.functions.length).toBeGreaterThan(0);
+        expect(duration).toBeLessThan(50);
+        
+        console.log(`✓ List all functions (${result.functions.length} total): ${duration.toFixed(2)}ms`);
+      });
+
+      it('should filter by category in <30ms', async () => {
+        const startTime = performance.now();
+        
+        const result = await toolHandler.executeTool('list_terragrunt_functions', {
+          category: 'path'
+        });
+        
+        const duration = performance.now() - startTime;
+        
+        expect(result.functions).toBeDefined();
+        expect(Array.isArray(result.functions)).toBe(true);
+        expect(duration).toBeLessThan(30);
+        
+        // Verify all results match category
+        result.functions.forEach((fn: any) => {
+          expect(fn.category).toBe('path');
+        });
+        
+        console.log(`✓ Filter by category='path' (${result.functions.length} results): ${duration.toFixed(2)}ms`);
+      });
+
+      it('should search by keyword in <100ms', async () => {
+        const startTime = performance.now();
+        
+        const result = await toolHandler.executeTool('list_terragrunt_functions', {
+          search: 'path'
+        });
+        
+        const duration = performance.now() - startTime;
+        
+        expect(result.functions).toBeDefined();
+        expect(Array.isArray(result.functions)).toBe(true);
+        expect(result.functions.length).toBeGreaterThan(0);
+        expect(duration).toBeLessThan(100);
+        
+        console.log(`✓ Search 'path' (${result.functions.length} results): ${duration.toFixed(2)}ms`);
+      });
+
+      it('should respect limit parameter in <30ms', async () => {
+        const limit = 10;
+        const startTime = performance.now();
+        
+        const result = await toolHandler.executeTool('list_terragrunt_functions', {
+          limit: limit
+        });
+        
+        const duration = performance.now() - startTime;
+        
+        expect(result.functions).toBeDefined();
+        expect(Array.isArray(result.functions)).toBe(true);
+        expect(result.functions.length).toBeLessThanOrEqual(limit);
+        expect(duration).toBeLessThan(30);
+        
+        console.log(`✓ List with limit=${limit} (${result.functions.length} results): ${duration.toFixed(2)}ms`);
+      });
+
+      it('should handle combined filters in <100ms', async () => {
+        const startTime = performance.now();
+        
+        const result = await toolHandler.executeTool('list_terragrunt_functions', {
+          category: 'path',
+          search: 'relative',
+          limit: 5
+        });
+        
+        const duration = performance.now() - startTime;
+        
+        expect(result.functions).toBeDefined();
+        expect(Array.isArray(result.functions)).toBe(true);
+        expect(duration).toBeLessThan(100);
+        
+        console.log(`✓ Combined filters (category+search+limit, ${result.functions.length} results): ${duration.toFixed(2)}ms`);
+      });
+    });
+
+    describe('Concurrent Access', () => {
+      it('should handle 10 parallel function lookups efficiently', async () => {
+        const functionNames = [
+          'path_relative_to_include',
+          'get_env',
+          'find_in_parent_folders',
+          'get_terraform_commands_that_need_vars',
+          'get_aws_account_id',
+          'get_terraform_command',
+          'run_cmd',
+          'read_terragrunt_config',
+          'get_parent_terragrunt_dir',
+          'get_terragrunt_dir'
+        ];
+        
+        const startTime = performance.now();
+        
+        const results = await Promise.all(
+          functionNames.map(name => 
+            toolHandler.executeTool('get_terragrunt_function', { function_name: name })
+          )
+        );
+        
+        const duration = performance.now() - startTime;
+        
+        // Verify all completed successfully
+        results.forEach((result, index) => {
+          expect(result.name).toBe(functionNames[index]);
+        });
+        
+        const avgTime = duration / functionNames.length;
+        
+        console.log(`✓ ${functionNames.length} parallel lookups in ${duration.toFixed(2)}ms (avg: ${avgTime.toFixed(2)}ms)`);
+      });
+
+      it('should handle mixed concurrent operations (get + list)', async () => {
+        const startTime = performance.now();
+        
+        const operations = [
+          toolHandler.executeTool('get_terragrunt_function', { function_name: 'path_relative_to_include' }),
+          toolHandler.executeTool('list_terragrunt_functions', { category: 'path' }),
+          toolHandler.executeTool('get_terragrunt_function', { function_name: 'get_env' }),
+          toolHandler.executeTool('list_terragrunt_functions', { search: 'terraform' }),
+          toolHandler.executeTool('get_terragrunt_function', { function_name: 'find_in_parent_folders' }),
+        ];
+        
+        const results = await Promise.all(operations);
+        
+        const duration = performance.now() - startTime;
+        
+        // Verify results are correct
+        expect(results[0].name).toBe('path_relative_to_include');
+        expect(Array.isArray(results[1].functions)).toBe(true);
+        expect(results[2].name).toBe('get_env');
+        expect(Array.isArray(results[3].functions)).toBe(true);
+        expect(results[4].name).toBe('find_in_parent_folders');
+        
+        console.log(`✓ ${operations.length} mixed concurrent operations: ${duration.toFixed(2)}ms`);
+      });
+    });
+
+    describe('Memory Usage', () => {
+      it('should keep function cache under 2MB', async () => {
+        // Force garbage collection if available
+        if (global.gc) {
+          global.gc();
+        }
+        
+        const memBefore = process.memoryUsage();
+        
+        // Load all functions into cache
+        const result = await toolHandler.executeTool('list_terragrunt_functions', {});
+        
+        const memAfter = process.memoryUsage();
+        const heapIncrease = (memAfter.heapUsed - memBefore.heapUsed) / 1024 / 1024;
+        
+        expect(result.functions).toBeDefined();
+        expect(result.functions.length).toBeGreaterThan(0);
+        expect(heapIncrease).toBeLessThan(2); // Cache should be under 2MB
+        
+        console.log(`✓ Function cache loaded (${result.functions.length} functions): heap increase ${heapIncrease.toFixed(2)}MB`);
+      });
+
+      it('should not leak memory on repeated lookups', async () => {
+        // Force garbage collection if available
+        if (global.gc) {
+          global.gc();
+        }
+        
+        const memStart = process.memoryUsage().heapUsed;
+        
+        // Perform 1000 lookups
+        for (let i = 0; i < 1000; i++) {
+          await toolHandler.executeTool('get_terragrunt_function', {
+            function_name: 'path_relative_to_include'
+          });
+        }
+        
+        const memMiddle = process.memoryUsage().heapUsed;
+        const increaseFirst500 = (memMiddle - memStart) / 1024 / 1024;
+        
+        // Perform another 1000 lookups
+        for (let i = 0; i < 1000; i++) {
+          await toolHandler.executeTool('get_terragrunt_function', {
+            function_name: 'get_env'
+          });
+        }
+        
+        const memEnd = process.memoryUsage().heapUsed;
+        const increaseSecond500 = (memEnd - memMiddle) / 1024 / 1024;
+        
+        // Memory should stabilize - second batch shouldn't increase much more than first
+        // Allow some variance but second increase should be minimal if no leaks
+        expect(increaseSecond500).toBeLessThan(increaseFirst500 + 0.5); // Allow 0.5MB variance
+        
+        console.log(`✓ 2000 lookups: first 1000 +${increaseFirst500.toFixed(2)}MB, second 1000 +${increaseSecond500.toFixed(2)}MB (no leak detected)`);
+      });
+    });
+  });
+
   afterAll(() => {
     // Print final memory stats
     const finalMemory = process.memoryUsage();
