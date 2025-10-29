@@ -20,7 +20,7 @@ This MCP server enables AI assistants to access and search the complete Terragru
 
 ### 🔧 Available Tools
 
-Eight specialized tools for different documentation needs:
+Nine specialized tools for different documentation needs:
 
 #### 1. **`search_terragrunt_docs`** - General Documentation Search
 
@@ -95,6 +95,46 @@ List all available Terragrunt built-in functions with filtering and search capab
   - `limit` (number, optional): Maximum results to return (default: all functions)
 - **Returns**: Array of functions with name, signature, category, and description
 - **Use cases**: Discovering available functions, browsing by category, finding functions by keyword
+
+#### 9. **`generate_terragrunt_config`** - Configuration Generator
+
+Generate complete `terragrunt.hcl` configurations based on use case and requirements using battle-tested templates.
+
+- **Parameters**:
+  - `useCase` (string, required): Configuration type - one of:
+    - `"remote_state"` - Remote state backend configuration
+    - `"provider_generation"` - Provider block generation
+    - `"dependencies"` - Module dependency configuration
+    - `"hooks"` - Before/after hooks for automation
+    - `"inputs"` - Input variables configuration
+  - `backend` (string, optional): Backend type for remote_state use case:
+    - `"s3"` - AWS S3 + DynamoDB
+    - `"azurerm"` - Azure Blob Storage
+    - `"gcs"` - Google Cloud Storage
+  - `options` (object, optional): Configuration options (varies by use case and backend):
+    - For S3: `bucket`, `key`, `region`, `dynamodb_table`, `encrypt`
+    - For Azure: `storage_account_name`, `container_name`, `key`, `resource_group_name`
+    - For GCS: `bucket`, `prefix`, `project`, `credentials`
+    - For hooks: `name`, `commands`, `execute`, `working_dir`, `run_on_error`
+    - For dependencies: `name`, `config_path`, `mock_outputs_allowed`
+    - For inputs: `environment`, `region`, or any custom key-value pairs
+    - For providers: `path`, `if_exists`, `region`, `account_id`
+- **Returns**:
+  - `config` - Complete HCL configuration ready to use
+  - `explanation` - Human-readable description of what the config does
+  - `nextSteps` - Suggested next actions
+  - `relatedDocs` - Links to relevant Terragrunt documentation
+- **Use cases**: Quick project setup, learning HCL syntax, best practice configurations, starting new modules
+
+**Example prompts:**
+
+```text
+"Generate a terragrunt config for S3 remote state in us-east-1"
+"Create an Azure backend configuration for my terraform state"
+"Show me how to set up dependencies between terragrunt modules"
+"Generate a before hook to run terraform fmt"
+"Create an inputs configuration for a production environment"
+```
 
 ### 📖 Resources
 

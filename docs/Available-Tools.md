@@ -1,6 +1,6 @@
 # Available Tools
 
-The Terragrunt MCP Server provides **8 specialized tools** for accessing and searching Terragrunt documentation and function references. Each tool is designed for specific use cases to help you find the information you need quickly.
+The Terragrunt MCP Server provides **9 specialized tools** for accessing and searching Terragrunt documentation and function references. Each tool is designed for specific use cases to help you find the information you need quickly.
 
 ## Tool Overview
 
@@ -14,6 +14,7 @@ The Terragrunt MCP Server provides **8 specialized tools** for accessing and sea
 | `get_cli_command_help` | CLI command help | Command syntax and options |
 | `get_hcl_config_reference` | HCL config reference | Writing terragrunt.hcl files |
 | `get_code_examples` | Find code snippets | Learning by example |
+| `generate_terragrunt_config` | Configuration generator | Quick setup and best practices |
 
 ---
 
@@ -347,9 +348,97 @@ None required.
 
 ---
 
+## 9. generate_terragrunt_config
+
+**Purpose**: Generate complete `terragrunt.hcl` configurations from battle-tested templates based on your use case and cloud provider.
+
+### Parameters — generate_terragrunt_config
+
+- **`useCase`** (string, required): Configuration type to generate:
+  - `"remote_state"` - Remote state backend configuration (S3, Azure Blob, GCS)
+  - `"provider_generation"` - Provider block generation (AWS, Azure, GCP)
+  - `"dependencies"` - Module dependency configuration
+  - `"hooks"` - Before/after hooks for automation
+  - `"inputs"` - Input variables configuration
+- **`backend`** (string, optional): Backend type for `remote_state` use case:
+  - `"s3"` - AWS S3 with DynamoDB locking
+  - `"azurerm"` - Azure Blob Storage with Azure AD
+  - `"gcs"` - Google Cloud Storage
+- **`options`** (object, optional): Configuration options (varies by use case):
+  - **For S3**: `bucket`, `key`, `region`, `dynamodb_table`, `encrypt`
+  - **For Azure**: `storage_account_name`, `container_name`, `key`, `resource_group_name`
+  - **For GCS**: `bucket`, `prefix`, `project`, `credentials`
+  - **For hooks**: `name`, `commands`, `execute`, `working_dir`, `run_on_error`
+  - **For dependencies**: `name`, `config_path`, `mock_outputs_allowed`
+  - **For inputs**: `environment`, `region`, or custom key-value pairs
+  - **For providers**: `path`, `if_exists`, `region`, `account_id`
+
+### Use Cases — generate_terragrunt_config
+
+- Quick project setup and scaffolding
+- Learning Terragrunt HCL syntax
+- Implementing best practice configurations
+- Starting new Terragrunt modules
+- Ensuring consistent configuration patterns across teams
+- Discovering available configuration options
+
+### Example Prompts — generate_terragrunt_config
+
+```text
+"Generate a terragrunt config for S3 remote state in us-east-1"
+"Create an Azure backend configuration for my terraform state"
+"Show me how to configure GCS remote state with my project ID"
+"Generate a before hook to run terraform fmt"
+"Create a dependency configuration for my VPC module"
+"Show me an inputs configuration for production environment"
+"Generate an AWS provider block with account validation"
+```
+
+### Example Response — generate_terragrunt_config
+
+```json
+{
+  "config": "remote_state {\n  backend = \"s3\"\n  config = {\n    bucket         = \"my-terraform-state\"\n    key            = \"${path_relative_to_include()}/terraform.tfstate\"\n    region         = \"us-east-1\"\n    encrypt        = true\n    dynamodb_table = \"terraform-locks\"\n  }\n}",
+  "explanation": "This configuration sets up AWS S3 as your remote state backend with DynamoDB for state locking. The state file will be stored in the 'my-terraform-state' bucket in us-east-1, with encryption enabled and state locking via the 'terraform-locks' DynamoDB table.",
+  "nextSteps": [
+    "Create the S3 bucket: aws s3 mb s3://my-terraform-state",
+    "Create the DynamoDB table: aws dynamodb create-table --table-name terraform-locks ...",
+    "Add this configuration to your root terragrunt.hcl",
+    "Run terragrunt init to initialize the backend"
+  ],
+  "relatedDocs": [
+    {
+      "title": "Remote State",
+      "url": "https://terragrunt.gruntwork.io/docs/features/keep-your-remote-state-configuration-dry/",
+      "section": "features"
+    }
+  ],
+  "additionalOptions": [
+    "Add kms_key_id for server-side encryption with AWS KMS",
+    "Configure skip_bucket_versioning to disable versioning",
+    "Add skip_bucket_accesslogging to disable access logging"
+  ]
+}
+```
+
+### Available Templates — generate_terragrunt_config
+
+The tool provides **9 templates** covering **5 use cases**:
+
+| Use Case | Templates | Cloud Providers |
+|----------|-----------|-----------------|
+| remote_state | 3 templates | AWS S3, Azure Blob, GCP GCS |
+| provider_generation | 1 template | AWS |
+| dependencies | 1 template | Multi-cloud |
+| hooks | 2 templates | Multi-cloud (before_hook, after_hook) |
+| inputs | 1 template | Multi-cloud |
+| configuration | 1 template | Terraform version constraints |
+
+---
+
 ## Tool Selection Guide
 
-### Choose the right tool for your needs:
+### Choose the right tool for your needs
 
 **"I don't know where to start..."**
 → Use `get_terragrunt_sections` to browse categories
@@ -374,6 +463,12 @@ None required.
 
 **"What built-in functions are available?"**
 → Use `list_terragrunt_functions` optionally with a category filter
+
+**"I need to generate a configuration quickly..."**
+→ Use `generate_terragrunt_config` with your use case and options
+
+**"How do I set up remote state/dependencies/hooks?"**
+→ Use `generate_terragrunt_config` to get a complete working example
 
 ---
 
