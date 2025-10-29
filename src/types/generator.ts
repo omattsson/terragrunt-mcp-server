@@ -15,6 +15,8 @@ export interface GenerateConfigParams {
   backend?: string;
   /** Configuration options/variables for template substitution */
   options: Record<string, string | number | boolean | undefined>;
+  /** Enable strict HCL syntax validation (defaults to false) */
+  strictValidation?: boolean;
 }
 
 /**
@@ -31,6 +33,22 @@ export interface GeneratedConfig {
   nextSteps: string[];
   /** Additional configuration options that could be added */
   additionalOptions?: string[];
+  /** HCL syntax validation results */
+  validation?: HCLValidationResult;
+}
+
+/**
+ * Result of HCL syntax validation
+ */
+export interface HCLValidationResult {
+  /** Whether the HCL syntax is valid */
+  syntaxValid: boolean;
+  /** Whether the HCL appears to be properly formatted */
+  formatted: boolean;
+  /** Non-critical issues or suggestions */
+  warnings: string[];
+  /** Critical syntax errors */
+  errors: string[];
 }
 
 /**

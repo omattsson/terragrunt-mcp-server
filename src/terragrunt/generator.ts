@@ -1,4 +1,5 @@
 import { TerragruntDocsManager } from './docs.js';
+import { validateHCL } from './hcl-validator.js';
 import { ConfigTemplateLibrary, UseCase } from './library.js';
 import { ConfigTemplate, ConfigVariable } from '../types/templates.js';
 import { GenerateConfigParams, GeneratedConfig, VariableValidationResult } from '../types/generator.js';
@@ -34,8 +35,16 @@ export class TerragruntConfigGenerator {
       throw new Error(`Missing required variables: ${validation.missingVariables.join(', ')}`);
     }
 
-    // Build configuration from template
+    // Generate configuration from template
     const config = await this.buildFromTemplate(template, validation.resolvedValues);
+
+    // Validate HCL syntax
+    const hclValidation = validateHCL(config);
+
+    // Handle strict validation mode
+    if (params.strictValidation && !hclValidation.syntaxValid) {
+      throw new Error(`HCL validation failed:\n${hclValidation.errors.map(e => `  - ${e}`).join('\n')}`);
+    }
 
     // Generate explanation
     const explanation = await this.explainConfiguration(config, useCase, template);
@@ -55,6 +64,7 @@ export class TerragruntConfigGenerator {
       relatedDocs,
       nextSteps,
       additionalOptions,
+      validation: hclValidation,
     };
   }
 
