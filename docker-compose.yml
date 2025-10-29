@@ -2,10 +2,15 @@ version: '3.8'
 
 services:
   terragrunt-mcp:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    image: terragrunt-mcp-server:latest
+    # Use pre-built image from Docker Hub (recommended)
+    image: olofdevopsninja/terragrunt-mcp-server:latest
+    
+    # OR build locally (uncomment to override)
+    # build:
+    #   context: .
+    #   dockerfile: Dockerfile
+    # image: terragrunt-mcp-server:latest
+    
     container_name: terragrunt-mcp-server
     stdin_open: true
     tty: true

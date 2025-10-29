@@ -105,6 +105,25 @@ List all available Terragrunt built-in functions with filtering and search capab
 
 ## Installation
 
+### Option 1: Using Docker (Recommended)
+
+The easiest way to get started is using the pre-built Docker image:
+
+```bash
+# Pull the latest image
+docker pull olofdevopsninja/terragrunt-mcp-server:latest
+
+# Run with Docker
+docker run -i olofdevopsninja/terragrunt-mcp-server:latest
+
+# Or use docker-compose
+docker-compose up
+```
+
+See the [Docker Deployment Guide](DOCKER.md) for detailed instructions.
+
+### Option 2: From Source
+
 1. Clone the repository
 2. Install dependencies:
 
@@ -118,13 +137,30 @@ List all available Terragrunt built-in functions with filtering and search capab
    npm run build
    ```
 
-### Running with Docker
-
-For containerized deployment, see the [Docker Deployment Guide](DOCKER.md) for instructions on building and running the server in a local Docker container.
-
 ### VS Code Configuration
 
+#### Using Docker Hub Image (Recommended)
+
 Add this to your VS Code `settings.json`:
+
+```json
+{
+  "mcp.servers": {
+    "terragrunt": {
+      "command": "docker",
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "-v", "mcp-cache:/app/.cache",
+        "olofdevopsninja/terragrunt-mcp-server:latest"
+      ]
+    }
+  }
+}
+```
+
+#### Using Local Build
 
 ```json
 {
@@ -138,28 +174,9 @@ Add this to your VS Code `settings.json`:
 }
 ```
 
-Or use the Docker configuration (see [Docker guide](DOCKER.md)):
+1. **Restart VS Code** to activate the MCP server
 
-```json
-{
-  "mcp.servers": {
-    "terragrunt": {
-      "command": "docker",
-      "args": [
-        "run",
-        "-i",
-        "--rm",
-        "-v", "mcp-cache:/app/.cache",
-        "terragrunt-mcp-server:latest"
-      ]
-    }
-  }
-}
-```
-
-4. **Restart VS Code** to activate the MCP server
-
-5. **Verify installation**: Ask GitHub Copilot: *"Search Terragrunt docs for getting started"*
+2. **Verify installation**: Ask GitHub Copilot: *"Search Terragrunt docs for getting started"*
 
 ## Usage with GitHub Copilot
 

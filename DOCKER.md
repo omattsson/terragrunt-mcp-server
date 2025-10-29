@@ -149,14 +149,18 @@ docker run -i \
 - Alpine base reduces attack surface
 - Documentation cache is the only writable volume
 
-## Publishing the Image
+## Using Pre-built Images from Docker Hub
 
-If you want to publish to a container registry:
+Instead of building locally, you can use the official pre-built image:
 
 ```bash
-# Tag for registry
-docker tag terragrunt-mcp-server:latest olofdevopsninja/terragrunt-mcp-server:latest
+# Pull the latest image
+docker pull olofdevopsninja/terragrunt-mcp-server:latest
 
-# Push to Docker Hub
-docker push olofdevopsninja/terragrunt-mcp-server:latest
+# Run it
+docker run -i olofdevopsninja/terragrunt-mcp-server:latest
 ```
+
+## Publishing the Image
+
+For maintainers: See [Docker Publishing Guide](docs/Docker-Publishing.md) for instructions on publishing new versions to Docker Hub using GitHub Actions.
