@@ -387,7 +387,7 @@ export class TerragruntConfigGenerator {
   /**
    * Suggest additional options that could be added to the configuration
    */
-  private suggestAdditionalOptions(template: ConfigTemplate, usedValues: Record<string, any>): string[] {
+  private suggestAdditionalOptions(template: ConfigTemplate, usedValues: Record<string, string | number | boolean>): string[] {
     const suggestions: string[] = [];
 
     // Find variables that weren't used
