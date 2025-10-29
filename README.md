@@ -20,7 +20,7 @@ This MCP server enables AI assistants to access and search the complete Terragru
 
 ### 🔧 Available Tools
 
-Six specialized tools for different documentation needs:
+Eight specialized tools for different documentation needs:
 
 #### 1. **`search_terragrunt_docs`** - General Documentation Search
 
@@ -75,6 +75,27 @@ Find code examples and snippets related to specific Terragrunt topics or pattern
 - **Returns**: Code snippets with context from relevant documentation
 - **Use cases**: Learning by example, implementation patterns, quick references
 
+#### 7. **`get_terragrunt_function`** - Built-in Function Reference
+
+Get detailed documentation for a specific Terragrunt built-in function.
+
+- **Parameters**:
+  - `function_name` (string, required): Function name (e.g., "path_relative_to_include", "get_env")
+  - `include_examples` (boolean, optional): Include code examples (default: true)
+- **Returns**: Complete function metadata including signature, parameters, return type, examples
+- **Use cases**: Learning function syntax, understanding parameters, finding usage examples
+
+#### 8. **`list_terragrunt_functions`** - List Built-in Functions
+
+List all available Terragrunt built-in functions with filtering and search capabilities.
+
+- **Parameters**:
+  - `category` (string, optional): Filter by category (e.g., "path", "aws", "environment")
+  - `search` (string, optional): Search in function names and descriptions
+  - `limit` (number, optional): Maximum results to return (default: all functions)
+- **Returns**: Array of functions with name, signature, category, and description
+- **Use cases**: Discovering available functions, browsing by category, finding functions by keyword
+
 ### 📖 Resources
 
 - Complete documentation overview with section breakdown
@@ -86,10 +107,13 @@ Find code examples and snippets related to specific Terragrunt topics or pattern
 
 1. Clone the repository
 2. Install dependencies:
+
    ```bash
    npm install
    ```
+
 3. Build the server:
+
    ```bash
    npm run build
    ```
@@ -172,6 +196,15 @@ Once configured, interact with Terragrunt documentation directly through Copilot
 - *"What are some examples of before_hook usage?"*
 - *"Show me how to use generate blocks with examples"*
 
+#### Built-in Functions
+
+- *"Show me documentation for the path_relative_to_include function"*
+- *"What parameters does get_env accept?"*
+- *"List all AWS-related Terragrunt functions"*
+- *"What built-in functions are available for working with files?"*
+- *"Search for functions related to environment variables"*
+- *"How do I use find_in_parent_folders?"*
+
 ### Advanced Usage
 
 - *"Compare different approaches for Terragrunt module organization"*
@@ -187,7 +220,7 @@ terragrunt-mcp-server/
 │   ├── index.ts                 # MCP server entry point
 │   ├── server.ts                # Server initialization and setup
 │   ├── handlers/
-│   │   ├── tools.ts             # Tool execution handlers (6 tools)
+│   │   ├── tools.ts             # Tool execution handlers (8 tools)
 │   │   ├── resources.ts         # Resource access handlers
 │   │   └── prompts.ts           # Prompt templates (future)
 │   ├── terragrunt/
@@ -217,7 +250,7 @@ terragrunt-mcp-server/
 ### Key Files
 
 - **`src/index.ts`**: Main entry point that initializes the MCP server with stdio transport
-- **`src/handlers/tools.ts`**: Implements all 6 tools for documentation access
+- **`src/handlers/tools.ts`**: Implements all 8 tools for documentation access
 - **`src/terragrunt/docs.ts`**: Core documentation manager with caching, retry logic, and fallbacks
 - **`test/server-test.js`**: Comprehensive test suite validating all functionality
 
@@ -237,14 +270,20 @@ npm run test:server    # Run integration tests
 
 ### Testing
 
-The project includes comprehensive test coverage (268 tests):
+The project includes comprehensive test coverage (378 tests):
 
-- **Unit Tests** (115 tests): Core functionality validation
-- **Integration Tests** (24 tests): End-to-end tool and resource testing
+- **Unit Tests** (136 tests): Core functionality validation
+  - Functions Manager (21 tests)
+  - Docs Manager (67 tests)
+  - Tool Handler (24 tests)
+  - Resource Handler (24 tests)
+- **Integration Tests** (47 tests): End-to-end tool and resource testing
+  - Functions Tools Integration (23 tests)
+  - MCP Protocol (68 tests)
+  - Edge Cases (48 tests)
+  - Server Integration (24 tests)
 - **Error Handling** (24 tests): Resilience and fallback mechanisms
-- **Performance Tests** (24 tests): Benchmark critical operations
-- **Edge Case Tests** (48 tests): Validate robust input handling
-- **MCP Protocol Tests** (57 tests): Full protocol compliance validation
+- **Performance Tests** (39 tests): Benchmark critical operations
 
 #### Running Tests Locally
 
@@ -287,7 +326,6 @@ For detailed testing information, see:
 - [Edge Cases Testing Guide](docs/Edge-Cases-Testing.md)
 - [MCP Protocol Compliance](docs/MCP-Protocol-Compliance.md)
 
-
 ### Docker Support
 
 Build and run in Docker for isolated testing:
@@ -316,7 +354,7 @@ This server implements the [Model Context Protocol (MCP)](https://modelcontextpr
 
 - **Stdio Transport**: Direct integration with VS Code and other MCP clients
 - **Resource Handlers**: Expose documentation as structured resources
-- **Tool Handlers**: Six specialized tools for different documentation queries
+- **Tool Handlers**: Eight specialized tools for different documentation queries
 - **Prompt Handlers**: Future support for guided workflows
 
 ### Documentation Caching System
