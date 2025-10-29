@@ -14,7 +14,8 @@ A Model Context Protocol (MCP) server that provides comprehensive Terragrunt doc
 - [Configuration](Configuration) - Configure VS Code and MCP settings
 
 ### Features & Tools
-- [Available Tools](Available-Tools) - Complete reference for all 6 documentation tools
+- [Available Tools](Available-Tools) - Complete reference for all 9 tools
+- [HCL Validation](HCL-Validation) - Built-in syntax validation for generated configs
 - [Architecture Overview](Architecture-Overview) - Understanding the caching and MCP implementation
 - [Caching System](Caching-System) - Deep dive into the two-tier caching mechanism
 
