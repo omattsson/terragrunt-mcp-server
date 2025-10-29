@@ -23,6 +23,28 @@ export interface ValidationResult {
 export class ConfigTemplateLibrary {
   private templatesManager: TemplatesManager;
 
+  /**
+   * Mapping of use cases to template categories
+   */
+  private static readonly CATEGORY_MAP: Record<UseCase, string> = {
+    remote_state: 'backend',
+    provider_generation: 'provider',
+    dependencies: 'dependency',
+    hooks: 'hooks',
+    inputs: 'inputs',
+  };
+
+  /**
+   * Reverse mapping of template categories to use cases
+   */
+  private static readonly REVERSE_CATEGORY_MAP: Record<string, UseCase> = {
+    backend: 'remote_state',
+    provider: 'provider_generation',
+    dependency: 'dependencies',
+    hooks: 'hooks',
+    inputs: 'inputs',
+  };
+
   constructor(templatesManager?: TemplatesManager) {
     this.templatesManager = templatesManager || new TemplatesManager();
   }
@@ -37,16 +59,7 @@ export class ConfigTemplateLibrary {
   async getTemplate(useCase: UseCase, backend?: string): Promise<ConfigTemplate | undefined> {
     await this.templatesManager.loadTemplates();
     
-    // Map use cases to template categories
-    const categoryMap: Record<UseCase, string> = {
-      remote_state: 'backend',
-      provider_generation: 'provider',
-      dependencies: 'dependency',
-      hooks: 'hooks',
-      inputs: 'inputs',
-    };
-
-    const category = categoryMap[useCase];
+    const category = ConfigTemplateLibrary.CATEGORY_MAP[useCase];
     if (!category) {
       return undefined;
     }
@@ -93,17 +106,8 @@ export class ConfigTemplateLibrary {
     const metadata = await this.templatesManager.getMetadata();
     const useCases = new Set<UseCase>();
 
-    // Map categories back to use cases
-    const reverseMap: Record<string, UseCase> = {
-      backend: 'remote_state',
-      provider: 'provider_generation',
-      dependency: 'dependencies',
-      hooks: 'hooks',
-      inputs: 'inputs',
-    };
-
     for (const category of metadata.categories) {
-      const useCase = reverseMap[category];
+      const useCase = ConfigTemplateLibrary.REVERSE_CATEGORY_MAP[category];
       if (useCase) {
         useCases.add(useCase);
       }
@@ -119,15 +123,7 @@ export class ConfigTemplateLibrary {
    * @returns Array of templates matching the use case
    */
   async listTemplatesForUseCase(useCase: UseCase): Promise<ConfigTemplate[]> {
-    const categoryMap: Record<UseCase, string> = {
-      remote_state: 'backend',
-      provider_generation: 'provider',
-      dependencies: 'dependency',
-      hooks: 'hooks',
-      inputs: 'inputs',
-    };
-
-    const category = categoryMap[useCase];
+    const category = ConfigTemplateLibrary.CATEGORY_MAP[useCase];
     if (!category) {
       return [];
     }
