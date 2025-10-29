@@ -181,7 +181,7 @@ export class TemplatesManager {
       category: 'backend',
       cloudProvider: 'azure',
       source: 'azure-config',
-      tags: ['remote-state', 'azure', 'blob-storage', 'backend'],
+      tags: ['remote-state', 'azure', 'azurerm', 'blob-storage', 'backend'],
       variables: [
         {
           name: 'subscription_id',
