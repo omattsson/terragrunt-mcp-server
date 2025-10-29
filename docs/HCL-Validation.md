@@ -194,7 +194,7 @@ source = "git::git@github.com:example/repo.git//module?ref=v1.0.0
 source = "git::git@github.com:example/repo.git//module?ref=v1.0.0"
 ```
 
-### Issue: "Empty interpolation '${}''"
+### Issue: "Empty interpolation '{}'"
 
 **Cause**: Interpolation with no content.
 

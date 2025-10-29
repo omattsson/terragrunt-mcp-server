@@ -107,7 +107,7 @@ function checkBalancedDelimiters(config: string): string[] {
       }
 
       // Handle string boundaries
-      if ((char === '"' || char === "'") && !escaped) {
+      if (char === '"' || char === "'") {
         if (!inString) {
           inString = true;
           stringChar = char;
@@ -188,7 +188,7 @@ function checkBalancedDelimiters(config: string): string[] {
 function removeComments(line: string): string {
   let result = '';
   let inString = false;
-  let stringChar = '';
+  let stringChar: string | null = null;
   let escaped = false;
 
   for (let i = 0; i < line.length; i++) {
@@ -213,13 +213,13 @@ function removeComments(line: string): string {
     }
 
     // Handle string boundaries
-    if ((char === '"' || char === "'") && !escaped) {
+    if (char === '"' || char === "'") {
       if (!inString) {
         inString = true;
         stringChar = char;
       } else if (char === stringChar) {
         inString = false;
-        stringChar = '';
+        stringChar = null;
       }
       result += char;
       continue;
@@ -308,10 +308,54 @@ function checkInterpolationSyntax(config: string): string[] {
     const line = lines[i];
     const lineNum = i + 1;
 
+    // Track string boundaries to avoid flagging interpolations in comments or strings
+    let inString = false;
+    let stringChar: string | null = null;
+    let escaped = false;
+
     // Find interpolations by scanning character by character to handle nesting
     let j = 0;
     while (j < line.length) {
-      // Look for start of interpolation
+      const char = line[j];
+
+      // Handle escape sequences
+      if (escaped) {
+        escaped = false;
+        j++;
+        continue;
+      }
+
+      if (char === '\\') {
+        escaped = true;
+        j++;
+        continue;
+      }
+
+      // Track string boundaries
+      if (char === '"' || char === "'") {
+        if (!inString) {
+          inString = true;
+          stringChar = char;
+        } else if (char === stringChar) {
+          inString = false;
+          stringChar = null;
+        }
+        j++;
+        continue;
+      }
+
+      // Skip if we're inside a string (interpolations in strings are valid)
+      if (inString) {
+        j++;
+        continue;
+      }
+
+      // Check for comments - skip rest of line
+      if (char === '#' || (char === '/' && j + 1 < line.length && line[j + 1] === '/')) {
+        break;
+      }
+
+      // Look for start of interpolation (only outside strings and comments)
       if (line[j] === '$' && j + 1 < line.length && line[j + 1] === '{') {
         // Found interpolation start
         const startPos = j;
@@ -333,8 +377,7 @@ function checkInterpolationSyntax(config: string): string[] {
           j++;
         }
 
-        // Extract the full interpolation
-        const interp = line.substring(startPos, interpEnd + 1);
+        // Extract the interpolation content
         const content = line.substring(startPos + 2, interpEnd);
 
         // Check for empty interpolation
@@ -405,9 +448,9 @@ function checkHCLStructure(config: string): string[] {
 
     // Check for common typos in block names
     // Match both `block {` and `block "label" {` patterns
-    const blockMatch = line.match(/^([a-zA-Z_][a-zA-Z0-9_]*)\s+("[^"]*")?\s*\{|^([a-zA-Z_][a-zA-Z0-9_]*)\s*\{/);
+    const blockMatch = line.match(/^([a-zA-Z_][a-zA-Z0-9_]*)\s*(?:"[^"]*")?\s*\{/);
     if (blockMatch) {
-      const blockName = blockMatch[1] || blockMatch[3];
+      const blockName = blockMatch[1];
       const validBlocks = [
         'remote_state',
         'terraform',
