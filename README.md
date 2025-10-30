@@ -20,7 +20,7 @@ This MCP server enables AI assistants to access and search the complete Terragru
 
 ### 🔧 Available Tools
 
-Nine specialized tools for different documentation needs:
+Ten specialized tools for different documentation needs:
 
 #### 1. **`search_terragrunt_docs`** - General Documentation Search
 
@@ -134,6 +134,32 @@ Generate complete `terragrunt.hcl` configurations based on use case and requirem
 "Show me how to set up dependencies between terragrunt modules"
 "Generate a before hook to run terraform fmt"
 "Create an inputs configuration for a production environment"
+```
+
+#### 10. **`write_terragrunt_config`** - Write Configuration to Disk
+
+Securely write generated or modified Terragrunt configurations to disk with directory whitelisting, path traversal protection, and automatic backup capabilities.
+
+- **Parameters**:
+  - `path` (string, required): Absolute file path where config should be written
+  - `content` (string, required): HCL configuration content to write
+  - `overwrite` (boolean, optional): Allow overwriting existing files (default: false)
+  - `createBackup` (boolean, optional): Create backup before overwrite (default: from env var)
+  - `createParentDirs` (boolean, optional): Create parent directories if missing (default: true)
+- **Security**: Disabled by default, requires explicit configuration:
+  - `TERRAGRUNT_MCP_FILE_WRITE_ENABLED=true` - Enable file writing
+  - `TERRAGRUNT_MCP_ALLOWED_DIRS` - Comma-separated whitelist of allowed directories
+  - `TERRAGRUNT_MCP_AUTO_BACKUP` - Auto-create backups (default: true)
+  - `TERRAGRUNT_MCP_MAX_FILE_SIZE` - Maximum file size limit (default: 1MB)
+- **Use cases**: Saving generated configs, automating configuration updates, batch file operations
+- **See**: [File Writing Guide](docs/File-Writing-Guide.md) for detailed security configuration
+
+**Example prompts:**
+
+```text
+"Write this configuration to /home/user/terraform/terragrunt.hcl"
+"Save the generated config to my project directory"
+"Create a new terragrunt.hcl file with S3 backend configuration"
 ```
 
 ### 📖 Resources

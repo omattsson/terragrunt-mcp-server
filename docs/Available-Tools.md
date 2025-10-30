@@ -1,6 +1,6 @@
 # Available Tools
 
-The Terragrunt MCP Server provides **9 specialized tools** for accessing and searching Terragrunt documentation and function references. Each tool is designed for specific use cases to help you find the information you need quickly.
+The Terragrunt MCP Server provides **10 specialized tools** for accessing and searching Terragrunt documentation, generating configurations, and writing files. Each tool is designed for specific use cases to help you find the information you need quickly.
 
 ## Tool Overview
 
@@ -15,6 +15,7 @@ The Terragrunt MCP Server provides **9 specialized tools** for accessing and sea
 | `get_hcl_config_reference` | HCL config reference | Writing terragrunt.hcl files |
 | `get_code_examples` | Find code snippets | Learning by example |
 | `generate_terragrunt_config` | Configuration generator | Quick setup and best practices |
+| `write_terragrunt_config` | Write configs to disk | Saving generated configurations |
 
 ---
 
@@ -434,6 +435,167 @@ The tool provides **9 templates** covering **5 use cases**:
 | inputs | 1 template | Multi-cloud |
 
 <!-- Note: The "configuration" template (Terraform version constraints) is included as part of the "inputs" use case. -->
+
+---
+
+## 10. write_terragrunt_config
+
+**Purpose**: Write generated Terragrunt configurations to disk with security validation and backup support.
+
+### Parameters — write_terragrunt_config
+
+- **`content`** (string, required): The HCL configuration content to write
+- **`path`** (string, required): Absolute or relative path where the file should be written
+- **`overwrite`** (boolean, optional): Allow overwriting existing files (default: `false`)
+- **`createBackup`** (boolean, optional): Create timestamped backup before overwriting (default: `true`)
+- **`createParentDirs`** (boolean, optional): Create parent directories if they don't exist (default: `true`)
+
+### Security Features — write_terragrunt_config
+
+The tool includes comprehensive security validation:
+
+- **Path traversal prevention**: Detects and blocks `../` patterns
+- **Directory whitelisting**: Only writes to explicitly allowed directories
+- **File size limits**: Configurable maximum file size (default: 1MB)
+- **Overwrite protection**: Requires explicit permission to overwrite files
+- **Automatic backups**: Creates timestamped backups before overwriting
+
+### Configuration — write_terragrunt_config
+
+Control file writing behavior with environment variables:
+
+```bash
+# Enable/disable file writing (default: false for security)
+export TERRAGRUNT_MCP_FILE_WRITE_ENABLED=true
+
+# Comma-separated list of allowed directories
+export TERRAGRUNT_MCP_ALLOWED_DIRS="/home/user/terraform,/home/user/projects"
+
+# Automatic backup creation (default: true)
+export TERRAGRUNT_MCP_AUTO_BACKUP=true
+
+# Maximum file size in bytes (default: 1048576 = 1MB)
+export TERRAGRUNT_MCP_MAX_FILE_SIZE=1048576
+```
+
+**Important**: File writing is **disabled by default** for security. You must explicitly enable it and configure allowed directories.
+
+### Use Cases — write_terragrunt_config
+
+- Saving generated configurations to disk
+- Creating new terragrunt.hcl files
+- Updating existing configurations with backups
+- Setting up multi-environment structures
+
+### Example Prompts — write_terragrunt_config
+
+```text
+"Write the configuration to terragrunt.hcl"
+"Save this to /home/user/terraform/dev/terragrunt.hcl"
+"Create a new file at ./env/prod/terragrunt.hcl with this config"
+"Update the existing file and create a backup"
+```
+
+### Example Usage — write_terragrunt_config
+
+#### Step 1: Generate configuration
+
+```json
+{
+  "tool": "generate_terragrunt_config",
+  "arguments": {
+    "useCase": "remote_state",
+    "backend": "s3",
+    "options": {
+      "bucket": "my-terraform-state",
+      "region": "us-east-1",
+      "key": "terraform.tfstate",
+      "dynamodb_table": "terraform-locks"
+    }
+  }
+}
+```
+
+#### Step 2: Write to disk
+
+```json
+{
+  "tool": "write_terragrunt_config",
+  "arguments": {
+    "path": "/home/user/terraform/terragrunt.hcl",
+    "content": "remote_state {\n  backend = \"s3\"\n  ...\n}",
+    "overwrite": false,
+    "createBackup": true
+  }
+}
+```
+
+### Example Response — write_terragrunt_config
+
+#### Success
+
+```json
+{
+  "success": true,
+  "path": "/home/user/terraform/terragrunt.hcl",
+  "bytesWritten": 245,
+  "created": true,
+  "backedUp": false,
+  "message": "File created successfully"
+}
+```
+
+#### Overwrite with backup
+
+```json
+{
+  "success": true,
+  "path": "/home/user/terraform/terragrunt.hcl",
+  "bytesWritten": 245,
+  "created": false,
+  "backedUp": true,
+  "backupPath": "/home/user/terraform/terragrunt.hcl.backup.2025-10-30T12-34-56-789Z",
+  "message": "File updated successfully (backup created)"
+}
+```
+
+#### Error (security rejection)
+
+```json
+{
+  "success": false,
+  "path": "/etc/passwd",
+  "bytesWritten": 0,
+  "created": false,
+  "backedUp": false,
+  "error": "Path is outside allowed directories: /etc/passwd",
+  "errorType": "OUTSIDE_ALLOWED_DIRECTORIES"
+}
+```
+
+### Error Types — write_terragrunt_config
+
+| Error Type | Description | Solution |
+|------------|-------------|----------|
+| `FILE_WRITING_DISABLED` | File writing not enabled | Set `TERRAGRUNT_MCP_FILE_WRITE_ENABLED=true` |
+| `OUTSIDE_ALLOWED_DIRECTORIES` | Path not in whitelist | Add directory to `TERRAGRUNT_MCP_ALLOWED_DIRS` |
+| `PATH_TRAVERSAL_DETECTED` | Malicious path detected | Use absolute paths without `../` |
+| `FILE_EXISTS_NO_OVERWRITE` | File exists, overwrite disabled | Set `overwrite: true` in arguments |
+| `PERMISSION_DENIED` | No write permission | Check file/directory permissions |
+| `MAX_SIZE_EXCEEDED` | File too large | Increase `TERRAGRUNT_MCP_MAX_FILE_SIZE` |
+
+### Best Practices — write_terragrunt_config
+
+1. **Always use absolute paths** or paths relative to workspace root
+2. **Enable backups** when overwriting important files
+3. **Test with non-critical directories** first
+4. **Review security settings** before enabling in production
+5. **Keep allowed directories minimal** for security
+6. **Check error messages** for detailed troubleshooting
+
+See [File Writing Guide](File-Writing-Guide.md) for detailed security configuration and examples.
+
+<!-- Note: The "configuration" template (Terraform version constraints) is included as part of the "inputs" use case. -->
 ---
 
 ## Tool Selection Guide
@@ -469,6 +631,12 @@ The tool provides **9 templates** covering **5 use cases**:
 
 **"How do I set up remote state/dependencies/hooks?"**
 → Use `generate_terragrunt_config` to get a complete working example
+
+**"Save the generated configuration to a file..."**
+→ Use `write_terragrunt_config` after generating (remember to enable file writing first)
+
+**"I want to create a new terragrunt.hcl file..."**
+→ First use `generate_terragrunt_config`, then `write_terragrunt_config` to save it
 
 ---
 

@@ -8,6 +8,7 @@ import { BuiltinTemplateLoader } from '../terragrunt/templates/loaders/builtin.j
 import { FilesystemTemplateLoader } from '../terragrunt/templates/loaders/filesystem.js';
 import { CustomTemplateLoader } from '../terragrunt/templates/loaders/custom.js';
 import { TemplateValidator } from '../terragrunt/templates/validator.js';
+import { FileWriter } from '../terragrunt/file-writer.js';
 
 export interface Tool {
     name: string;
@@ -23,6 +24,7 @@ export class ToolHandler {
     private templatesManager: TemplatesManager;
     private templateLibrary: ConfigTemplateLibrary;
     private configGenerator: TerragruntConfigGenerator;
+    private fileWriter: FileWriter;
 
     constructor() {
         this.resourceHandler = new ResourceHandler();
@@ -37,6 +39,26 @@ export class ToolHandler {
         
         this.templateLibrary = new ConfigTemplateLibrary(this.templatesManager);
         this.configGenerator = new TerragruntConfigGenerator(this.docsManager, this.templateLibrary);
+        
+        // Initialize file writer (can be configured via environment or config file)
+        this.fileWriter = new FileWriter({
+            enabled: process.env.TERRAGRUNT_MCP_FILE_WRITE_ENABLED !== 'false',
+            allowedDirectories: this.parseAllowedDirectories(),
+            autoBackup: process.env.TERRAGRUNT_MCP_AUTO_BACKUP !== 'false',
+            maxFileSize: parseInt(process.env.TERRAGRUNT_MCP_MAX_FILE_SIZE || '1048576', 10) || 1048576
+        });
+    }
+    
+    /**
+     * Parse allowed directories from environment variable
+     */
+    private parseAllowedDirectories(): string[] {
+        const envDirs = process.env.TERRAGRUNT_MCP_ALLOWED_DIRS;
+        if (envDirs) {
+            return envDirs.split(',').map(dir => dir.trim());
+        }
+        // Default to current working directory
+        return [process.cwd()];
     }
 
     getAvailableTools(): Tool[] {
@@ -249,6 +271,47 @@ export class ToolHandler {
                     },
                     required: ['useCase', 'options']
                 }
+            },
+            {
+                name: 'write_terragrunt_config',
+                description: 'Write a Terragrunt configuration to a file with security validation and backup support',
+                inputSchema: {
+                    type: 'object',
+                    properties: {
+                        content: {
+                            type: 'string',
+                            description: 'The HCL configuration content to write to the file'
+                        },
+                        path: {
+                            type: 'string',
+                            description: 'Path where the file should be written (relative or absolute). Must be within allowed directories.'
+                        },
+                        filePath: {
+                            type: 'string',
+                            description: 'Alternative to path parameter. Path where the file should be written.'
+                        },
+                        overwrite: {
+                            type: 'boolean',
+                            description: 'Allow overwriting existing files (default: false)',
+                            default: false
+                        },
+                        createBackup: {
+                            type: 'boolean',
+                            description: 'Create backup before overwriting existing files (default: true)',
+                            default: true
+                        },
+                        createParentDirs: {
+                            type: 'boolean',
+                            description: 'Create parent directories if they don\'t exist (default: true)',
+                            default: true
+                        }
+                    },
+                    required: ['content'],
+                    oneOf: [
+                        { required: ['path'] },
+                        { required: ['filePath'] }
+                    ]
+                }
             }
         ];
     }
@@ -315,6 +378,50 @@ export class ToolHandler {
                         args.options,
                         args.strictValidation ?? false,
                         args.custom_template
+                    );
+
+                case 'write_terragrunt_config':
+                    if (!args?.content) {
+                        return {
+                            success: false,
+                            path: '',
+                            bytesWritten: 0,
+                            created: false,
+                            backedUp: false,
+                            error: 'content parameter is required',
+                            errorType: 'VALIDATION_ERROR'
+                        };
+                    }
+                    // Accept both 'path' and 'filePath' for compatibility
+                    const targetPath = args?.path || args?.filePath;
+                    if (!targetPath) {
+                        return {
+                            success: false,
+                            path: '',
+                            bytesWritten: 0,
+                            created: false,
+                            backedUp: false,
+                            error: 'path or filePath parameter is required',
+                            errorType: 'VALIDATION_ERROR'
+                        };
+                    }
+                    if (typeof targetPath !== 'string') {
+                        return {
+                            success: false,
+                            path: String(targetPath),
+                            bytesWritten: 0,
+                            created: false,
+                            backedUp: false,
+                            error: 'path must be a string',
+                            errorType: 'VALIDATION_ERROR'
+                        };
+                    }
+                    return await this.writeTerragruntConfig(
+                        args.content,
+                        targetPath,
+                        args.overwrite ?? false,
+                        args.createBackup ?? true,
+                        args.createParentDirs ?? true
                     );
 
                 default:
@@ -666,6 +773,40 @@ export class ToolHandler {
             return {
                 success: false,
                 error: error instanceof Error ? error.message : 'Failed to generate configuration'
+            };
+        }
+    }
+
+    /**
+     * Write a Terragrunt configuration to a file
+     */
+    private async writeTerragruntConfig(
+        content: string,
+        filePath: string,
+        overwrite: boolean,
+        createBackup: boolean,
+        createParentDirs: boolean
+    ): Promise<any> {
+        try {
+            const result = await this.fileWriter.writeFile({
+                content,
+                filePath,
+                overwrite,
+                createBackup,
+                createParentDirs
+            });
+
+            return result;
+        } catch (error) {
+            console.error('Error writing Terragrunt config:', error);
+            return {
+                success: false,
+                path: filePath,
+                bytesWritten: 0,
+                created: false,
+                backedUp: false,
+                error: error instanceof Error ? error.message : 'Failed to write file',
+                errorType: 'UNKNOWN_ERROR'
             };
         }
     }
