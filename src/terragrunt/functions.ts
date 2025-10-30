@@ -729,7 +729,7 @@ export class TerragruntFunctionsManager {
       
       // Extract description (first sentence or two after the section header)
       let description = '';
-      const descMatch = /Section\s+titled\s+"[^"]+"\s+([^.!?]{10,300}[.!?])/.exec(sectionContext);
+      const descMatch = /Section\s+titled\s+[\u201C\u201D][^"\u201C\u201D]+[\u201C\u201D]\s+([^.!?]{10,300}[.!?])/.exec(sectionContext);
       if (descMatch) {
         description = descMatch[1].trim();
       }
@@ -812,7 +812,7 @@ export class TerragruntFunctionsManager {
       
       results.push({
         name,
-        signature: `${name}(${paramSig})${returnType !== 'unknown' ? ` -> ${returnType}` : ''}`.trim(),
+        signature: `${name}(${paramSig})${returnType !== 'unknown' ? ` -> ${returnType}` : ''}`,
         description,
         parameters,
         returnType,
