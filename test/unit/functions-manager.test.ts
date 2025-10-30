@@ -392,6 +392,38 @@ describe('TerragruntFunctionsManager', () => {
         expect(Array.isArray(fn.relatedFunctions)).toBe(true);
       }
     });
+
+    it('extracts all functions from issue #98 (missing built-in functions)', async () => {
+      const { TerragruntDocsManager } = await import('../../src/terragrunt/docs.js');
+      const realDocsManager = new TerragruntDocsManager();
+      const realFunctionsManager = new TerragruntFunctionsManager(realDocsManager);
+      
+      await realFunctionsManager.loadFunctions();
+      
+      // These 7 functions were reported as missing in issue #98
+      const missingFunctions = [
+        'find_in_parent_folders',
+        'run_cmd',
+        'read_terragrunt_config',
+        'sops_decrypt_file',
+        'read_tfvars_file',
+        'mark_as_read',
+        'constraint_check'
+      ];
+      
+      // Verify all functions are now extracted
+      for (const functionName of missingFunctions) {
+        const fn = realFunctionsManager.getFunction(functionName);
+        expect(fn, `Function ${functionName} should be extracted from documentation`).toBeTruthy();
+        expect(fn!.name).toBe(functionName);
+        expect(fn!.description).toBeTruthy();
+        expect(fn!.signature).toBeTruthy();
+      }
+      
+      // Verify total count includes these functions
+      const allFunctions = realFunctionsManager.listFunctions();
+      expect(allFunctions.length).toBeGreaterThanOrEqual(23 + 7); // 23 existing + 7 missing
+    });
   });
 
   describe('getAvailableCategories', () => {
