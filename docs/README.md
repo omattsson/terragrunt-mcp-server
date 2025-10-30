@@ -9,22 +9,28 @@ A Model Context Protocol (MCP) server that provides comprehensive Terragrunt doc
 ## Quick Links
 
 ### Getting Started
+
 - [Installation Guide](Installation-Guide) - Get up and running quickly
 - [Quick Start Tutorial](Quick-Start-Tutorial) - Your first steps with the MCP server
 - [Configuration](Configuration) - Configure VS Code and MCP settings
 
 ### Features & Tools
-- [Available Tools](Available-Tools) - Complete reference for all 9 tools
-- [HCL Validation](HCL-Validation) - Built-in syntax validation for generated configs
-- [Architecture Overview](Architecture-Overview) - Understanding the caching and MCP implementation
-- [Caching System](Caching-System) - Deep dive into the two-tier caching mechanism
+
+- [Available Tools](Available-Tools.md) - Complete reference for all 10 tools
+- [Configuration Generator](Configuration-Generator.md) - Generate Terragrunt configurations
+- [File Writing Guide](File-Writing-Guide.md) - Secure file writing with directory whitelisting
+- [HCL Validation](HCL-Validation.md) - Built-in syntax validation for generated configs
+- [Architecture Overview](Architecture-Overview.md) - Understanding the caching and MCP implementation
+- [Caching System](Caching-System.md) - Deep dive into the two-tier caching mechanism
 
 ### Deployment
+
 - [Docker Deployment](Docker-Deployment) - Run in Docker containers
 - [Direct Installation](Direct-Installation) - Install and run natively
 - [CI/CD Integration](CICD-Integration) - Use in automated environments
 
 ### Development
+
 - [Development Guide](Development-Guide) - Contributing to the project
 - [Testing](Testing) - Running and writing tests
 - [Performance Testing](Performance-Testing) - Performance benchmarks and metrics
@@ -33,6 +39,7 @@ A Model Context Protocol (MCP) server that provides comprehensive Terragrunt doc
 - [Release Process](Release-Process) - How releases are managed
 
 ### Help & Support
+
 - [Troubleshooting](Troubleshooting) - Common issues and solutions
 - [FAQ](FAQ) - Frequently asked questions
 - [Examples & Use Cases](Examples-and-Use-Cases) - Real-world scenarios
