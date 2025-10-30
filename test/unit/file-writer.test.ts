@@ -48,7 +48,7 @@ describe('FileWriter', () => {
 
       expect(result.success).toBe(true);
       expect(result.created).toBe(true);
-      expect(result.filePath).toBe(filePath);
+      expect(result.path).toBe(filePath);
       expect(result.backupPath).toBeUndefined();
       expect(result.message).toContain('created successfully');
 
@@ -89,7 +89,7 @@ describe('FileWriter', () => {
       });
 
       expect(result.success).toBe(false);
-      expect(result.error).toBe(FileWriteErrorType.FILE_EXISTS);
+      expect(result.errorType).toBe(FileWriteErrorType.FILE_EXISTS);
       expect(result.message).toContain('exists and overwrite is disabled');
 
       // Verify original content unchanged
@@ -175,8 +175,8 @@ describe('FileWriter', () => {
       expect(result.success).toBe(false);
       // Path traversal or outside allowed dirs - both are valid security rejections
       expect([FileWriteErrorType.PATH_TRAVERSAL, FileWriteErrorType.OUTSIDE_ALLOWED_DIRS])
-        .toContain(result.error);
-      expect(result.message).toMatch(/Path traversal|outside allowed/);
+        .toContain(result.errorType);
+      expect(result.error).toMatch(/Path traversal|outside allowed/);
     });
 
     it('should reject paths outside allowed directories', async () => {
@@ -188,7 +188,7 @@ describe('FileWriter', () => {
       });
 
       expect(result.success).toBe(false);
-      expect(result.error).toBe(FileWriteErrorType.OUTSIDE_ALLOWED_DIRS);
+      expect(result.errorType).toBe(FileWriteErrorType.OUTSIDE_ALLOWED_DIRS);
       expect(result.message).toContain('outside allowed directories');
     });
 
@@ -220,7 +220,7 @@ describe('FileWriter', () => {
       });
 
       expect(result2.success).toBe(true);
-      expect(path.isAbsolute(result2.filePath)).toBe(true);
+      expect(path.isAbsolute(result2.path)).toBe(true);
     });
   });
 
@@ -239,7 +239,7 @@ describe('FileWriter', () => {
       });
 
       expect(result.success).toBe(false);
-      expect(result.error).toBe(FileWriteErrorType.MAX_SIZE_EXCEEDED);
+      expect(result.errorType).toBe(FileWriteErrorType.MAX_SIZE_EXCEEDED);
       expect(result.message).toContain('exceeds maximum allowed');
     });
 
@@ -267,7 +267,7 @@ describe('FileWriter', () => {
       });
 
       expect(result.success).toBe(false);
-      expect(result.error).toBe(FileWriteErrorType.DISABLED);
+      expect(result.errorType).toBe(FileWriteErrorType.DISABLED);
       expect(result.message).toContain('disabled in configuration');
     });
   });
@@ -305,7 +305,7 @@ describe('FileWriter', () => {
       });
 
       expect(result.success).toBe(false);
-      expect(result.error).toBe(FileWriteErrorType.PERMISSION_DENIED);
+      expect(result.errorType).toBe(FileWriteErrorType.PERMISSION_DENIED);
 
       // Restore permissions for cleanup
       await fs.chmod(readOnlyDir, 0o755);
