@@ -686,6 +686,143 @@ export class TerragruntFunctionsManager {
       return examples;
     };
 
+  // NEW: Pattern for section-based function definitions (e.g., "find_in_parent_foldersSection titled \"find_in_parent_folders\"")
+    // This handles functions documented with section headers rather than formal signatures
+    // Note: The documentation uses Unicode quotes (U+201C " and U+201D ") not ASCII quotes (")
+    const sectionRegex = /([a-z_][a-z0-9_]*)Section\s+titled\s+\u201C([^\u201D]+)\u201D/gi;
+    let sectionMatch: RegExpExecArray | null;
+    
+    while ((sectionMatch = sectionRegex.exec(text)) !== null) {
+      const titleName = sectionMatch[2];
+      
+      // Filter out non-function sections (documentation structure sections)
+      const nonFunctionSections = new Set([
+        'basic usage',
+        'examples',
+        'example',
+        'special parameters',
+        'caching behavior',
+        'opentofu/terraform built-in functions',
+        'parameters',
+        'description',
+        'usage',
+        'notes',
+        'note'
+      ]);
+      
+      if (nonFunctionSections.has(titleName.toLowerCase())) {
+        continue;
+      }
+      
+      // Use the title name as it's more accurate
+      const name = titleName;
+      const key = this.normalizeKey(name);
+      if (seen.has(key)) continue;
+      
+      // Extract context after the section header (up to next section or 1000 chars)
+      const contextStart = sectionMatch.index + sectionMatch[0].length;
+      const nextSectionMatch = /[a-z_][a-z0-9_]*Section\s+titled/i.exec(text.slice(contextStart));
+      const contextEnd = nextSectionMatch 
+        ? contextStart + nextSectionMatch.index 
+        : Math.min(contextStart + 1000, text.length);
+      const sectionContext = text.slice(sectionMatch.index, contextEnd);
+      
+      // Extract description (first sentence or two after the section header)
+      let description = '';
+      const descMatch = /Section\s+titled\s+[\u201C\u201D][^"\u201C\u201D]+[\u201C\u201D]\s+([^.!?]{10,300}[.!?])/.exec(sectionContext);
+      if (descMatch) {
+        description = descMatch[1].trim();
+      }
+      
+      // If no description found, look for next few words after header
+      if (!description || description.length < 10) {
+        const fallbackDesc = sectionContext.slice(sectionMatch[0].length, sectionMatch[0].length + 200);
+        const firstSentence = /^[^.!?]{10,300}[.!?]/.exec(fallbackDesc.trim());
+        description = firstSentence ? firstSentence[0].trim() : fallbackDesc.trim().slice(0, 150);
+      }
+      
+      // Extract parameters from example usages in the section
+      // Look for function calls like "function_name(param1, param2)" or "function_name(param1, [param2])"
+      const paramRegex = new RegExp(`${name}\\s*\\(([^)]{0,200})\\)`, 'gi');
+      const paramMatches = [...sectionContext.matchAll(paramRegex)];
+      
+      let parameters: FunctionParameter[] = [];
+      if (paramMatches.length > 0) {
+        // Find the match with the most parameters (most informative example)
+        let bestParamString = '';
+        for (const pm of paramMatches) {
+          const paramStr = pm[1].trim();
+          if (paramStr.length > bestParamString.length && paramStr.length < 200) {
+            bestParamString = paramStr;
+          }
+        }
+        
+        if (bestParamString) {
+          // Parse parameters from the example
+          parameters = parseParams(bestParamString);
+        }
+      }
+      
+      // Try to extract from Parameters: section if no parameters found
+      if (parameters.length === 0) {
+        parameters = parseParamsFromContext(sectionContext);
+      }
+      
+      // Infer return type from description keywords
+      let returnType = 'unknown';
+      const lowerDesc = description.toLowerCase();
+      if (lowerDesc.includes('returns the absolute path') || lowerDesc.includes('returns a path') || lowerDesc.includes('returns the path')) {
+        returnType = 'string';
+      } else if (lowerDesc.includes('returns a list') || lowerDesc.includes('returns the list')) {
+        returnType = 'list';
+      } else if (lowerDesc.includes('returns a map') || lowerDesc.includes('returns the map')) {
+        returnType = 'map';
+      } else if (lowerDesc.includes('returns the value') || lowerDesc.includes('returns a value')) {
+        returnType = 'string';
+      } else if (lowerDesc.includes('returns true') || lowerDesc.includes('returns false') || lowerDesc.includes('checks if')) {
+        returnType = 'bool';
+      } else if (lowerDesc.match(/returns (an?|the) (string|text)/)) {
+        returnType = 'string';
+      }
+      
+      // Extract examples from the section
+      const examples = extractExamples(sectionContext, name);
+      
+      // Extract related functions from "See also" section
+      const related: string[] = [];
+      const relatedMatch = /(?:see\s+also|related)[:\s]+([^#]+?)(?=##|$)/is.exec(sectionContext);
+      if (relatedMatch) {
+        const relatedText = relatedMatch[1];
+        const funcNameRegex = /\b([a-z_][a-z0-9_]*)\s*\(/gi;
+        let fm: RegExpExecArray | null;
+        while ((fm = funcNameRegex.exec(relatedText)) !== null) {
+          const relName = fm[1];
+          if (relName !== name && !related.includes(relName)) {
+            related.push(relName);
+          }
+          if (related.length >= 5) break;
+        }
+      }
+      
+      // Categorize the function
+      const category = categorizeFunction(name, description, sectionContext);
+      
+      // Build signature from parameters
+      const paramSig = parameters.map(p => p.required ? p.name : `[${p.name}]`).join(', ');
+      
+      results.push({
+        name,
+        signature: `${name}(${paramSig})${returnType !== 'unknown' ? ` -> ${returnType}` : ''}`,
+        description,
+        parameters,
+        returnType,
+        category,
+        examples: examples.length > 0 ? examples : [],
+        relatedFunctions: related
+      });
+      seen.add(key);
+    }
+  
   // Scan for signature patterns with explicit return types (arrow style)
     let match: RegExpExecArray | null;
     while ((match = signatureRegex.exec(text)) !== null) {
