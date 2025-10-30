@@ -73,6 +73,15 @@ export class FileWriter {
         );
       }
 
+      // Check for path traversal in the original path BEFORE resolution
+      if (this.detectPathTraversal(options.filePath)) {
+        throw new FileWriteError(
+          FileWriteErrorType.PATH_TRAVERSAL,
+          'Path validation failed: Path traversal detected',
+          options.filePath
+        );
+      }
+
       // Resolve and validate the file path
       const absolutePath = path.resolve(options.filePath);
       this.validatePath(absolutePath);
@@ -103,8 +112,10 @@ export class FileWriter {
       // Write the file
       await fs.writeFile(absolutePath, options.content, 'utf8');
 
-      // Set appropriate permissions (readable/writable by owner)
-      await fs.chmod(absolutePath, 0o644);
+      // Set appropriate permissions (readable/writable by owner, Unix only)
+      if (process.platform !== 'win32') {
+        await fs.chmod(absolutePath, 0o644);
+      }
 
       return {
         success: true,
@@ -135,7 +146,7 @@ export class FileWriter {
       // Handle Node.js file system errors
       const nodeError = error as NodeJS.ErrnoException;
       let errorType = FileWriteErrorType.UNKNOWN;
-      let errorMessage = 'Unknown error occurred';
+      let errorMessage: string;
 
       if (nodeError.code === 'EACCES' || nodeError.code === 'EPERM') {
         errorType = FileWriteErrorType.PERMISSION_DENIED;
@@ -167,15 +178,6 @@ export class FileWriter {
    * Validate that a path is safe to write to
    */
   private validatePath(absolutePath: string): void {
-    // Check for path traversal
-    if (this.detectPathTraversal(absolutePath)) {
-      throw new FileWriteError(
-        FileWriteErrorType.PATH_TRAVERSAL,
-        'Path validation failed: Path traversal detected',
-        absolutePath
-      );
-    }
-
     // Check if path is within allowed directories
     if (!this.isPathAllowed(absolutePath)) {
       throw new FileWriteError(
@@ -204,21 +206,17 @@ export class FileWriter {
   }
 
   /**
-   * Detect path traversal attempts
+   * Detect path traversal attempts in the original (unresolved) path
    */
-  private detectPathTraversal(absolutePath: string): boolean {
-    // Check for path traversal patterns
+  private detectPathTraversal(originalPath: string): boolean {
+    // Check for path traversal patterns in the original path
     const traversalPatterns = [
       /\.\.[/\\]/,  // ../ or ..\
       /[/\\]\.\./,  // /.. or \..
       /\.\.$/, // Ends with ..
     ];
-
-    // Also check the normalized path - if it goes outside CWD, it's suspicious
-    const normalizedPath = path.normalize(absolutePath);
     
-    return traversalPatterns.some(pattern => pattern.test(absolutePath)) ||
-           traversalPatterns.some(pattern => pattern.test(normalizedPath));
+    return traversalPatterns.some(pattern => pattern.test(originalPath));
   }
 
   /**
@@ -226,7 +224,8 @@ export class FileWriter {
    */
   private async createBackup(filePath: string): Promise<string> {
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const backupPath = `${filePath}${this.config.backupExtension}.${timestamp}`;
+    const randomSuffix = Math.random().toString(36).substring(7);
+    const backupPath = `${filePath}${this.config.backupExtension}.${timestamp}-${randomSuffix}`;
     
     await fs.copyFile(filePath, backupPath);
     

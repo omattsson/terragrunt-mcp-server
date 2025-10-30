@@ -45,7 +45,7 @@ export class ToolHandler {
             enabled: process.env.TERRAGRUNT_MCP_FILE_WRITE_ENABLED !== 'false',
             allowedDirectories: this.parseAllowedDirectories(),
             autoBackup: process.env.TERRAGRUNT_MCP_AUTO_BACKUP !== 'false',
-            maxFileSize: parseInt(process.env.TERRAGRUNT_MCP_MAX_FILE_SIZE || '1048576', 10)
+            maxFileSize: parseInt(process.env.TERRAGRUNT_MCP_MAX_FILE_SIZE || '1048576', 10) || 1048576
         });
     }
     
