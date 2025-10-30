@@ -30,7 +30,10 @@ export interface FileWriteResult {
   success: boolean;
   
   /** Absolute path to the written file */
-  filePath: string;
+  path: string;
+  
+  /** Number of bytes written */
+  bytesWritten: number;
   
   /** Absolute path to the backup file (if created) */
   backupPath?: string;
@@ -38,11 +41,17 @@ export interface FileWriteResult {
   /** True if a new file was created, false if an existing file was updated */
   created: boolean;
   
+  /** True if a backup was created */
+  backedUp: boolean;
+  
   /** Human-readable message about the operation */
-  message: string;
+  message?: string;
   
   /** Error message if the operation failed */
   error?: string;
+  
+  /** Error type if the operation failed */
+  errorType?: string;
 }
 
 /**

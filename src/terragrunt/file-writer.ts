@@ -108,9 +108,11 @@ export class FileWriter {
 
       return {
         success: true,
-        filePath: absolutePath,
+        path: absolutePath,
+        bytesWritten: contentSize,
         backupPath,
         created: !fileExists,
+        backedUp: !!backupPath,
         message: fileExists
           ? `File updated successfully${backupPath ? ' (backup created)' : ''}`
           : 'File created successfully'
@@ -120,10 +122,13 @@ export class FileWriter {
       if (error instanceof FileWriteError) {
         return {
           success: false,
-          filePath: error.filePath || options.filePath,
+          path: error.filePath || options.filePath,
+          bytesWritten: 0,
           created: false,
+          backedUp: false,
           message: error.message,
-          error: error.type
+          error: error.message,
+          errorType: error.type
         };
       }
 
@@ -147,10 +152,13 @@ export class FileWriter {
 
       return {
         success: false,
-        filePath: options.filePath,
+        path: options.filePath,
+        bytesWritten: 0,
         created: false,
+        backedUp: false,
         message: errorMessage,
-        error: errorType
+        error: errorMessage,
+        errorType: errorType
       };
     }
   }

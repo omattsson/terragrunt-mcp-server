@@ -282,9 +282,13 @@ export class ToolHandler {
                             type: 'string',
                             description: 'The HCL configuration content to write to the file'
                         },
-                        filePath: {
+                        path: {
                             type: 'string',
                             description: 'Path where the file should be written (relative or absolute). Must be within allowed directories.'
+                        },
+                        filePath: {
+                            type: 'string',
+                            description: 'Alternative to path parameter. Path where the file should be written.'
                         },
                         overwrite: {
                             type: 'boolean',
@@ -302,7 +306,11 @@ export class ToolHandler {
                             default: true
                         }
                     },
-                    required: ['content', 'filePath']
+                    required: ['content'],
+                    oneOf: [
+                        { required: ['path'] },
+                        { required: ['filePath'] }
+                    ]
                 }
             }
         ];
@@ -374,14 +382,43 @@ export class ToolHandler {
 
                 case 'write_terragrunt_config':
                     if (!args?.content) {
-                        return { error: 'content parameter is required' };
+                        return {
+                            success: false,
+                            path: '',
+                            bytesWritten: 0,
+                            created: false,
+                            backedUp: false,
+                            error: 'content parameter is required',
+                            errorType: 'VALIDATION_ERROR'
+                        };
                     }
-                    if (!args?.filePath) {
-                        return { error: 'filePath parameter is required' };
+                    // Accept both 'path' and 'filePath' for compatibility
+                    const targetPath = args?.path || args?.filePath;
+                    if (!targetPath) {
+                        return {
+                            success: false,
+                            path: '',
+                            bytesWritten: 0,
+                            created: false,
+                            backedUp: false,
+                            error: 'path or filePath parameter is required',
+                            errorType: 'VALIDATION_ERROR'
+                        };
+                    }
+                    if (typeof targetPath !== 'string') {
+                        return {
+                            success: false,
+                            path: String(targetPath),
+                            bytesWritten: 0,
+                            created: false,
+                            backedUp: false,
+                            error: 'path must be a string',
+                            errorType: 'VALIDATION_ERROR'
+                        };
                     }
                     return await this.writeTerragruntConfig(
                         args.content,
-                        args.filePath,
+                        targetPath,
                         args.overwrite ?? false,
                         args.createBackup ?? true,
                         args.createParentDirs ?? true
@@ -764,10 +801,12 @@ export class ToolHandler {
             console.error('Error writing Terragrunt config:', error);
             return {
                 success: false,
-                filePath,
+                path: filePath,
+                bytesWritten: 0,
                 created: false,
-                message: error instanceof Error ? error.message : 'Failed to write file',
-                error: 'UNKNOWN_ERROR'
+                backedUp: false,
+                error: error instanceof Error ? error.message : 'Failed to write file',
+                errorType: 'UNKNOWN_ERROR'
             };
         }
     }
