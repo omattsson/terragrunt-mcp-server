@@ -67,6 +67,7 @@ jobs:
   docker:
     name: Docker Build
     runs-on: ubuntu-latest
+    needs: test
     
     steps:
       - name: Checkout code
@@ -86,6 +87,7 @@ jobs:
   code-quality:
     name: Code Quality
     runs-on: ubuntu-latest
+    needs: test
     
     steps:
       - name: Checkout code
