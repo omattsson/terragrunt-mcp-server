@@ -1,6 +1,7 @@
 import { ResourceHandler } from './resources.js';
 import { TerragruntDocsManager } from '../terragrunt/docs.js';
 import { TerragruntFunctionsManager } from '../terragrunt/functions.js';
+import { BestPracticesAnalyzer } from '../terragrunt/best-practices.js';
 import { TerragruntConfigGenerator } from '../terragrunt/generator.js';
 import { ConfigTemplateLibrary, UseCase } from '../terragrunt/library.js';
 import { TemplatesManager } from '../terragrunt/templates/index.js';
@@ -20,6 +21,7 @@ export class ToolHandler {
     private resourceHandler: ResourceHandler;
     private docsManager: TerragruntDocsManager;
     private functionsManager: TerragruntFunctionsManager;
+    private bestPracticesAnalyzer: BestPracticesAnalyzer;
     private functionsLoaded: boolean = false;
     private templatesManager: TemplatesManager;
     private templateLibrary: ConfigTemplateLibrary;
@@ -30,6 +32,7 @@ export class ToolHandler {
         this.resourceHandler = new ResourceHandler();
         this.docsManager = new TerragruntDocsManager();
         this.functionsManager = new TerragruntFunctionsManager(this.docsManager);
+        this.bestPracticesAnalyzer = new BestPracticesAnalyzer(this.docsManager);
         
         // Initialize templates manager with builtin and filesystem loaders
         this.templatesManager = new TemplatesManager([
@@ -201,6 +204,26 @@ export class ToolHandler {
                 }
             },
             {
+                name: 'analyze_best_practices',
+                description: 'Analyze best practices for a specific Terragrunt topic, including recommendations, antipatterns, and experience-level filtering',
+                inputSchema: {
+                    type: 'object',
+                    properties: {
+                        topic: {
+                            type: 'string',
+                            description: 'Topic to analyze. Supported topics: module_organization, state_management, dependencies, ci_cd, security, performance, testing',
+                            enum: ['module_organization', 'state_management', 'dependencies', 'ci_cd', 'security', 'performance', 'testing']
+                        },
+                        level: {
+                            type: 'string',
+                            description: 'Optional experience level filter (beginner, intermediate, advanced)',
+                            enum: ['beginner', 'intermediate', 'advanced']
+                        }
+                    },
+                    required: ['topic']
+                }
+            },
+            {
                 name: 'generate_terragrunt_config',
                 description: 'Generate a complete Terragrunt configuration from templates with variable substitution, explanations, and documentation. Includes HCL syntax validation. Supports custom user-provided templates.',
                 inputSchema: {
@@ -364,6 +387,12 @@ export class ToolHandler {
                         return { error: 'topic parameter is required' };
                     }
                     return await this.getCodeExamples(args.topic, args?.limit);
+
+                case 'analyze_best_practices':
+                    if (!args?.topic) {
+                        return { error: 'topic parameter is required' };
+                    }
+                    return await this.analyzeBestPractices(args.topic, args?.level);
 
                 case 'generate_terragrunt_config':
                     if (!args?.useCase) {
@@ -563,6 +592,36 @@ export class ToolHandler {
             totalDocuments: results.length,
             hasMore: results.length > limit
         };
+    }
+
+    private async analyzeBestPractices(
+        topic: string,
+        level?: 'beginner' | 'intermediate' | 'advanced'
+    ): Promise<any> {
+        try {
+            const result = await this.bestPracticesAnalyzer.analyzeTopic(topic, level);
+            
+            if (result.recommendations.length === 0) {
+                return {
+                    topic,
+                    error: `No best practices found for topic: ${topic}`,
+                    suggestion: 'Try one of the supported topics: module_organization, state_management, dependencies, ci_cd, security, performance, testing'
+                };
+            }
+
+            return result;
+        } catch (error) {
+            console.error(`Error analyzing best practices for ${topic}:`, error);
+            return {
+                topic,
+                error: error instanceof Error ? error.message : 'Failed to analyze best practices',
+                recommendations: [],
+                summary: '',
+                commonPitfalls: [],
+                experienceNotes: { beginner: [], intermediate: [], advanced: [] },
+                realWorldExamples: []
+            };
+        }
     }
 
     private async getTerragruntFunction(functionName: string, includeExamples: boolean = true): Promise<any> {
