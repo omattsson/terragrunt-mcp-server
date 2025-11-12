@@ -211,8 +211,7 @@ export class ToolHandler {
                     properties: {
                         topic: {
                             type: 'string',
-                            description: 'Topic to analyze. Supported topics: module_organization, state_management, dependencies, ci_cd, security, performance, testing. Typos will trigger intelligent suggestions.',
-                            enum: ['module_organization', 'state_management', 'dependencies', 'ci_cd', 'security', 'performance', 'testing']
+                            description: 'Topic to analyze. Supported topics: module_organization, state_management, dependencies, ci_cd, security, performance, testing. Typos will trigger intelligent suggestions.'
                         },
                         level: {
                             type: 'string',
@@ -631,7 +630,7 @@ export class ToolHandler {
                 experienceNotes: result.experienceNotes,
                 realWorldExamples: result.realWorldExamples,
                 confidence: result.confidence,
-                suggestedTopics: result.suggestedTopics
+                ...(result.suggestedTopics && { suggestedTopics: result.suggestedTopics })
             };
         } catch (error) {
             console.error(`Error analyzing best practices for ${topic}:`, error);

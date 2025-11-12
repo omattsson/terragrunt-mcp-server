@@ -1,11 +1,12 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeAll } from 'vitest';
 import { ToolHandler } from '../../src/handlers/tools.js';
 
 describe('analyze_best_practices Tool Integration', () => {
   let toolHandler: ToolHandler;
 
-  // Initialize tool handler before tests
-  toolHandler = new ToolHandler();
+  beforeAll(() => {
+    toolHandler = new ToolHandler();
+  });
 
   describe('Tool Definition', () => {
     it('includes analyze_best_practices in available tools', () => {
