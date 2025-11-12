@@ -109,6 +109,32 @@ export class BestPracticesAnalyzer {
   ];
 
   /**
+   * Configuration constants for confidence scoring algorithm
+   */
+  
+  /** Maximum number of practices needed to achieve full data availability score (30 points) */
+  private readonly MAX_PRACTICES_FOR_FULL_SCORE = 20;
+  
+  /** Minimum character length for an example to be considered meaningful */
+  private readonly MIN_EXAMPLE_LENGTH = 20;
+  
+  /** Minimum character length for a rationale to be considered meaningful */
+  private readonly MIN_RATIONALE_LENGTH = 50;
+
+  /**
+   * Configuration constants for fuzzy topic matching algorithm
+   */
+  
+  /** Maximum edit distance (Levenshtein) to consider a topic as a likely typo */
+  private readonly MAX_EDIT_DISTANCE_FOR_TYPO = 3;
+  
+  /** Penalty coefficient applied per edit distance unit (1.0 - distance * penalty) */
+  private readonly EDIT_DISTANCE_PENALTY = 0.3;
+  
+  /** Minimum similarity score (0-1) required to suggest a topic */
+  private readonly MIN_SIMILARITY_THRESHOLD = 0.3;
+
+  /**
    * Regex patterns for extracting best practices from documentation
    */
   private readonly bestPracticePatterns = [
@@ -329,7 +355,7 @@ export class BestPracticesAnalyzer {
    */
   private calculateConfidence(
     practices: BestPractice[],
-    recommendations: PracticeRecommendation[]
+    _recommendations: PracticeRecommendation[]
   ): number {
     if (practices.length === 0) {
       return 0;
@@ -338,16 +364,16 @@ export class BestPracticesAnalyzer {
     let score = 0;
 
     // 1. Data availability (0-30 points): more practices = higher confidence
-    const dataScore = Math.min((practices.length / 20) * 30, 30);
+    const dataScore = Math.min((practices.length / this.MAX_PRACTICES_FOR_FULL_SCORE) * 30, 30);
     score += dataScore;
 
     // 2. Example quality (0-20 points): practices with code examples
-    const withExamples = practices.filter(p => p.example && p.example.length > 20).length;
+    const withExamples = practices.filter(p => p.example && p.example.length > this.MIN_EXAMPLE_LENGTH).length;
     const exampleScore = (withExamples / practices.length) * 20;
     score += exampleScore;
 
     // 3. Rationale completeness (0-20 points): meaningful rationale
-    const withRationale = practices.filter(p => p.rationale && p.rationale.length > 50).length;
+    const withRationale = practices.filter(p => p.rationale && p.rationale.length > this.MIN_RATIONALE_LENGTH).length;
     const rationaleScore = (withRationale / practices.length) * 20;
     score += rationaleScore;
 
@@ -412,7 +438,7 @@ export class BestPracticesAnalyzer {
    * Combines typo detection (edit distance) and semantic matching (keyword overlap)
    * 
    * @param query - User's topic query
-   * @returns Array of similar topic names (top 3 with similarity > 0.3)
+   * @returns Array of similar topic names (top 3 with similarity > MIN_SIMILARITY_THRESHOLD)
    */
   private findSimilarTopics(query: string): string[] {
     const normalizedQuery = this.normalizeKey(query);
@@ -422,11 +448,11 @@ export class BestPracticesAnalyzer {
       const normalizedTopic = this.normalizeKey(topic);
       let similarityScore = 0;
 
-      // 1. Check edit distance for typo detection (< 3 edits = likely typo)
+      // 1. Check edit distance for typo detection (< MAX_EDIT_DISTANCE_FOR_TYPO edits = likely typo)
       const editDistance = this.calculateEditDistance(normalizedQuery, normalizedTopic);
-      if (editDistance < 3) {
+      if (editDistance < this.MAX_EDIT_DISTANCE_FOR_TYPO) {
         // High similarity for close typos: distance 0 = 1.0, distance 1 = 0.7, distance 2 = 0.4
-        similarityScore = Math.max(1.0 - (editDistance * 0.3), 0);
+        similarityScore = Math.max(1.0 - (editDistance * this.EDIT_DISTANCE_PENALTY), 0);
       }
 
       // 2. Semantic matching using keyword overlap
@@ -450,7 +476,7 @@ export class BestPracticesAnalyzer {
         similarityScore = Math.max(similarityScore, keywordSimilarity);
       }
 
-      if (similarityScore > 0.3) {
+      if (similarityScore > this.MIN_SIMILARITY_THRESHOLD) {
         similarTopics.push({ topic, score: similarityScore });
       }
     }
@@ -1080,7 +1106,7 @@ export class BestPracticesAnalyzer {
     const examples: string[] = [];
     
     for (const practice of practices) {
-      if (practice.example && practice.example.length > 20) {
+      if (practice.example && practice.example.length > this.MIN_EXAMPLE_LENGTH) {
         examples.push(practice.example);
       }
     }
