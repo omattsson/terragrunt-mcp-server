@@ -605,7 +605,12 @@ export class ToolHandler {
                 return {
                     topic,
                     error: `No best practices found for topic: ${topic}`,
-                    suggestion: 'Try one of the supported topics: module_organization, state_management, dependencies, ci_cd, security, performance, testing'
+                    suggestion: 'Try one of the supported topics: module_organization, state_management, dependencies, ci_cd, security, performance, testing',
+                    recommendations: [],
+                    summary: '',
+                    commonPitfalls: [],
+                    experienceNotes: { beginner: [], intermediate: [], advanced: [] },
+                    realWorldExamples: []
                 };
             }
 
