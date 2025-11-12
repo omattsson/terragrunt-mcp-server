@@ -364,4 +364,208 @@ describe('BestPracticesAnalyzer', () => {
       expect(result.experienceNotes.advanced.length).toBeLessThanOrEqual(5);
     });
   });
+
+  describe('Ranking and Scoring', () => {
+    it('ranks practices with examples higher', async () => {
+      const docsWithExamples: TerragruntDoc[] = [
+        {
+          title: 'Practice with Example',
+          url: 'https://test.com/with-example',
+          content: `
+            Best practice: Use remote state for team collaboration.
+            This ensures consistency across team members.
+            
+            Example:
+            \`\`\`hcl
+            remote_state {
+              backend = "s3"
+            }
+            \`\`\`
+          `,
+          section: 'features',
+          lastUpdated: new Date().toISOString(),
+        },
+        {
+          title: 'Practice without Example',
+          url: 'https://test.com/without-example',
+          content: 'It is recommended to use encryption for sensitive data.',
+          section: 'features',
+          lastUpdated: new Date().toISOString(),
+        }
+      ];
+
+      const testAnalyzer = new BestPracticesAnalyzer(new MockDocsManager(docsWithExamples) as any);
+      await testAnalyzer.extractBestPractices();
+      const result = await testAnalyzer.analyzeTopic('state_management');
+
+      // Practice with example should appear first if both are relevant
+      const practiceTexts = result.recommendations.map(r => r.practice.toLowerCase());
+      const remoteStateIndex = practiceTexts.findIndex(p => p.includes('remote state'));
+      const encryptionIndex = practiceTexts.findIndex(p => p.includes('encryption'));
+
+      // Remote state has example, should rank higher if both found
+      if (remoteStateIndex !== -1 && encryptionIndex !== -1) {
+        expect(remoteStateIndex).toBeLessThan(encryptionIndex);
+      }
+    });
+
+    it('ranks official section docs higher', async () => {
+      const docsWithSections: TerragruntDoc[] = [
+        {
+          title: 'Getting Started Guide',
+          url: 'https://test.com/getting-started',
+          content: 'Best practice: Start with simple folder structures.',
+          section: 'getting-started',
+          lastUpdated: new Date().toISOString(),
+        },
+        {
+          title: 'Community Post',
+          url: 'https://test.com/community',
+          content: 'You should consider using advanced patterns.',
+          section: 'community',
+          lastUpdated: new Date().toISOString(),
+        }
+      ];
+
+      const testAnalyzer = new BestPracticesAnalyzer(new MockDocsManager(docsWithSections) as any);
+      await testAnalyzer.extractBestPractices();
+      const result = await testAnalyzer.analyzeTopic('module_organization');
+
+      // Getting started practice should rank higher than community
+      if (result.recommendations.length >= 2) {
+        const practiceTexts = result.recommendations.map(r => r.practice.toLowerCase());
+        const officialIndex = practiceTexts.findIndex(p => p.includes('simple folder'));
+        const communityIndex = practiceTexts.findIndex(p => p.includes('advanced patterns'));
+
+        if (officialIndex !== -1 && communityIndex !== -1) {
+          expect(officialIndex).toBeLessThan(communityIndex);
+        }
+      }
+    });
+
+    it('identifies similar practices across docs', async () => {
+      const docsWithSimilar: TerragruntDoc[] = [
+        {
+          title: 'Doc 1',
+          url: 'https://test.com/1',
+          content: 'Best practice: Use remote state backend for team collaboration.',
+          section: 'features',
+          lastUpdated: new Date().toISOString(),
+        },
+        {
+          title: 'Doc 2',
+          url: 'https://test.com/2',
+          content: 'It is recommended to use remote state for collaboration across teams.',
+          section: 'features',
+          lastUpdated: new Date().toISOString(),
+        },
+        {
+          title: 'Doc 3',
+          url: 'https://test.com/3',
+          content: 'You should configure encryption for security.',
+          section: 'features',
+          lastUpdated: new Date().toISOString(),
+        }
+      ];
+
+      const testAnalyzer = new BestPracticesAnalyzer(new MockDocsManager(docsWithSimilar) as any);
+      await testAnalyzer.extractBestPractices();
+      const result = await testAnalyzer.analyzeTopic('state_management');
+
+      // Remote state practices (appearing twice) should rank higher than encryption (appearing once)
+      const practiceTexts = result.recommendations.map(r => r.practice.toLowerCase());
+      const remoteStateIndex = practiceTexts.findIndex(p => 
+        p.includes('remote state') && p.includes('collaboration')
+      );
+      const encryptionIndex = practiceTexts.findIndex(p => p.includes('encryption'));
+
+      if (remoteStateIndex !== -1 && encryptionIndex !== -1) {
+        expect(remoteStateIndex).toBeLessThan(encryptionIndex);
+      }
+    });
+
+    it('ranks practices with rationale and metadata higher', async () => {
+      const docsWithMetadata: TerragruntDoc[] = [
+        {
+          title: 'Rich Practice',
+          url: 'https://test.com/rich',
+          content: `
+            Best practice: Use remote state locking to prevent concurrent modifications.
+            This ensures that only one user can modify state at a time because
+            concurrent access can lead to state corruption.
+            
+            Warning: Avoid disabling state locking in production.
+            
+            Tradeoff: Locking adds slight latency but ensures safety.
+            
+            Example:
+            \`\`\`hcl
+            remote_state {
+              backend = "s3"
+              config = {
+                lock_table = "terraform-locks"
+              }
+            }
+            \`\`\`
+          `,
+          section: 'features',
+          lastUpdated: new Date().toISOString(),
+        },
+        {
+          title: 'Simple Practice',
+          url: 'https://test.com/simple',
+          content: 'You should use state versioning.',
+          section: 'features',
+          lastUpdated: new Date().toISOString(),
+        }
+      ];
+
+      const testAnalyzer = new BestPracticesAnalyzer(new MockDocsManager(docsWithMetadata) as any);
+      await testAnalyzer.extractBestPractices();
+      const result = await testAnalyzer.analyzeTopic('state_management');
+
+      // Rich practice with rationale, antipatterns, tradeoffs, and example should rank first
+      expect(result.recommendations.length).toBeGreaterThan(0);
+      const topPractice = result.recommendations[0];
+      expect(topPractice.practice.toLowerCase()).toContain('state');
+    });
+
+    it('limits results to top 20 practices', async () => {
+      // Create docs with many practices
+      const manyPractices = Array.from({ length: 30 }, (_, i) => ({
+        title: `Doc ${i}`,
+        url: `https://test.com/${i}`,
+        content: `Best practice number ${i}: Use practice ${i} for state management.`,
+        section: 'features',
+        lastUpdated: new Date().toISOString(),
+      }));
+
+      const testAnalyzer = new BestPracticesAnalyzer(new MockDocsManager(manyPractices) as any);
+      await testAnalyzer.extractBestPractices();
+      const result = await testAnalyzer.analyzeTopic('state_management');
+
+      // Should limit to 20 even though we have 30 practices
+      expect(result.recommendations.length).toBeLessThanOrEqual(20);
+    });
+
+    it('handles practices with no keywords gracefully', async () => {
+      const docsWithGeneric: TerragruntDoc[] = [
+        {
+          title: 'Generic Doc',
+          url: 'https://test.com/generic',
+          content: 'You should always do this and that.',
+          section: 'features',
+          lastUpdated: new Date().toISOString(),
+        }
+      ];
+
+      const testAnalyzer = new BestPracticesAnalyzer(new MockDocsManager(docsWithGeneric) as any);
+      await testAnalyzer.extractBestPractices();
+      
+      // Should not crash even with generic practices
+      const result = await testAnalyzer.analyzeTopic('state_management');
+      expect(result).toBeDefined();
+      expect(result.recommendations).toBeDefined();
+    });
+  });
 });

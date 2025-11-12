@@ -60,6 +60,18 @@ export interface BestPracticeResult {
 }
 
 /**
+ * Internal interface for scoring and ranking practices
+ * Extends BestPractice with metadata for ranking algorithm
+ */
+interface ScoredPractice extends BestPractice {
+  score: number;           // Calculated ranking score
+  frequency: number;       // How many similar practices found
+  sourceSection: string;   // Documentation section (for priority)
+  exampleCount: number;    // Number of code examples
+  keywords: string[];      // Cached extracted keywords for performance
+}
+
+/**
  * Manages extraction and analysis of best practices from Terragrunt documentation.
  * 
  * This class extracts best practices, antipatterns, and recommendations from
@@ -147,6 +159,156 @@ export class BestPracticesAnalyzer {
    */
   private normalizeKey(key: string): string {
     return key.toLowerCase().trim();
+  }
+
+  /**
+   * Common stopwords to filter out during keyword extraction
+   */
+  private readonly stopwords = new Set([
+    'a', 'an', 'and', 'are', 'as', 'at', 'be', 'by', 'for', 'from',
+    'has', 'he', 'in', 'is', 'it', 'its', 'of', 'on', 'that', 'the',
+    'to', 'was', 'will', 'with', 'you', 'your', 'this', 'should',
+    'must', 'can', 'may', 'use', 'using', 'uses', 'used'
+  ]);
+
+  /**
+   * Extract meaningful keywords from text for similarity comparison
+   * Filters out stopwords and short words
+   */
+  private extractKeywords(text: string): Set<string> {
+    const words = text
+      .toLowerCase()
+      .replace(/[^\w\s]/g, ' ') // Remove punctuation
+      .split(/\s+/)
+      .filter(word => word.length > 2 && !this.stopwords.has(word));
+    
+    return new Set(words);
+  }
+
+  /**
+   * Calculate Jaccard similarity between two texts based on keyword overlap
+   * Returns a value between 0 (no similarity) and 1 (identical)
+   */
+  private calculateSimilarity(text1: string, text2: string): number {
+    const keywords1 = this.extractKeywords(text1);
+    const keywords2 = this.extractKeywords(text2);
+
+    if (keywords1.size === 0 || keywords2.size === 0) {
+      return 0;
+    }
+
+    // Calculate intersection
+    const intersection = new Set(
+      [...keywords1].filter(word => keywords2.has(word))
+    );
+
+    // Calculate union
+    const union = new Set([...keywords1, ...keywords2]);
+
+    // Jaccard similarity = intersection / union
+    return intersection.size / union.size;
+  }
+
+  /**
+   * Calculate frequency of similar practices across all practices
+   * Updates the frequency field of each practice
+   * Optimized to compare each unique pair only once (n(n-1)/2 comparisons)
+   */
+  private calculateFrequency(practices: ScoredPractice[]): void {
+    const similarityThreshold = 0.6; // Practices with >60% similarity are considered the same
+
+    // Initialize all frequencies to 1 (the practice itself)
+    for (let i = 0; i < practices.length; i++) {
+      practices[i].frequency = 1;
+    }
+
+    // Only compare each unique pair once
+    for (let i = 0; i < practices.length; i++) {
+      for (let j = i + 1; j < practices.length; j++) {
+        const similarity = this.calculateSimilarity(
+          practices[i].practice,
+          practices[j].practice
+        );
+
+        if (similarity >= similarityThreshold) {
+          practices[i].frequency++;
+          practices[j].frequency++;
+        }
+      }
+    }
+  }
+
+  /**
+   * Score a practice based on multiple factors
+   * Returns a score from 0 to ~215 (base 100 + bonuses)
+   */
+  private scorePractice(practice: ScoredPractice, topic: string): number {
+    let score = 100; // Base score
+
+    // Frequency bonus: +10 per occurrence, max +30
+    const frequencyBonus = Math.min((practice.frequency - 1) * 10, 30);
+    score += frequencyBonus;
+
+    // Section priority bonus
+    const officialSections = ['getting-started', 'features', 'reference', 'quick-start'];
+    const guideSections = ['guides', 'how-to'];
+    
+    if (officialSections.includes(practice.sourceSection)) {
+      score += 20;
+    } else if (guideSections.includes(practice.sourceSection)) {
+      score += 10;
+    }
+
+    // Example bonus: +15 for having examples, +5 per additional (max +25 total)
+    if (practice.exampleCount > 0) {
+      score += 15;
+      score += Math.min((practice.exampleCount - 1) * 5, 10);
+    }
+
+    // Keyword relevance: match topic keywords
+    const topicKeywords = this.getTopicKeywords(topic).map(kw => kw.toLowerCase());
+    
+    // Use cached keywords (already computed and stored in practice.keywords)
+    // Efficient substring matching: avoid repeated Set conversions and lowercasing
+    const matchCount = topicKeywords.filter(kw =>
+      practice.keywords.some(pk => pk.includes(kw) || kw.includes(pk))
+    ).length;
+    
+    const relevanceBonus = Math.min(matchCount * 4, 20); // +4 per keyword match, max +20
+    score += relevanceBonus;
+
+    // Metadata bonuses
+    if (practice.rationale && practice.rationale.length > 20) {
+      score += 10; // Has meaningful rationale
+    }
+    if (practice.antipatterns && practice.antipatterns.length > 0) {
+      score += 5; // Has antipatterns
+    }
+    if (practice.tradeoffs && practice.tradeoffs.length > 0) {
+      score += 5; // Has tradeoffs
+    }
+
+    return score;
+  }
+
+  /**
+   * Rank practices by calculating scores and sorting
+   * Returns a new sorted array without mutating the input
+   */
+  private rankPractices(practices: ScoredPractice[], topic: string): ScoredPractice[] {
+    // Work on a new array of shallow-copied objects to avoid mutating the input
+    const practicesCopy: ScoredPractice[] = practices.map(practice => ({ ...practice }));
+
+    // Calculate frequency across all practices (on the copy)
+    this.calculateFrequency(practicesCopy);
+
+    // Score each practice (on the copy)
+    for (const practice of practicesCopy) {
+      practice.score = this.scorePractice(practice, topic);
+    }
+
+    // Sort by score descending and return the new array
+    return practicesCopy.sort((a, b) => b.score - a.score);
   }
 
   /**
@@ -428,8 +590,8 @@ export class BestPracticesAnalyzer {
   /**
    * Extract best practices from a set of documentation
    */
-  private extractPracticesFromDocs(docs: TerragruntDoc[], _topic: string): BestPractice[] {
-    const practices: BestPractice[] = [];
+  private extractPracticesFromDocs(docs: TerragruntDoc[], _topic: string): ScoredPractice[] {
+    const practices: ScoredPractice[] = [];
     const seenPractices = new Set<string>();
 
     for (const doc of docs) {
@@ -457,13 +619,26 @@ export class BestPracticesAnalyzer {
             // Prepend context to rationale for better categorization
             const rationale = fullContext + (extractedRationale ? ' ' + extractedRationale : '');
 
-            const practice: BestPractice = {
+            const examples = this.extractExamples(doc.content);
+
+            // Extract and cache keywords for performance (avoid repeated extraction during scoring)
+            const keywords = Array.from(
+              this.extractKeywords(practiceText + ' ' + rationale)
+            );
+
+            const practice: ScoredPractice = {
               practice: practiceText,
               rationale,
-              example: this.extractExamples(doc.content)[0] || '',
+              example: examples[0] || '',
               antipatterns: this.identifyAntipatterns([doc]),
               tradeoffs: this.extractTradeoffs(doc.content),
-              relatedDocs: [doc.url]
+              relatedDocs: [doc.url],
+              // Scoring metadata
+              score: 0,
+              frequency: 1,
+              sourceSection: doc.section || 'other',
+              exampleCount: examples.length,
+              keywords
             };
 
             practices.push(practice);
@@ -472,7 +647,7 @@ export class BestPracticesAnalyzer {
       }
     }
 
-    return practices.slice(0, 20); // Limit to top 20 practices per topic
+    return practices; // Don't slice yet - ranking will handle limiting
   }
 
   /**
@@ -489,7 +664,24 @@ export class BestPracticesAnalyzer {
       // Extract practices for each supported topic
       for (const topic of this.supportedTopics) {
         const relevantDocs = await this.searchForPatterns(topic);
-        const practices = this.extractPracticesFromDocs(relevantDocs, topic);
+        const scoredPractices = this.extractPracticesFromDocs(relevantDocs, topic);
+        
+        // Rank practices by score
+        const rankedPractices = this.rankPractices(scoredPractices, topic);
+        
+        // Limit to top 20 after ranking
+        const topPractices = rankedPractices.slice(0, 20);
+        
+        // Strip scoring metadata before caching (convert to BestPractice[])
+        const practices: BestPractice[] = topPractices.map(sp => ({
+          practice: sp.practice,
+          rationale: sp.rationale,
+          example: sp.example,
+          antipatterns: sp.antipatterns,
+          tradeoffs: sp.tradeoffs,
+          relatedDocs: sp.relatedDocs
+        }));
+        
         this.practicesCache.set(this.normalizeKey(topic), practices);
       }
 
