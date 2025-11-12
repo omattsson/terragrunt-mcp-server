@@ -20,7 +20,7 @@ This MCP server enables AI assistants to access and search the complete Terragru
 
 ### 🔧 Available Tools
 
-Ten specialized tools for different documentation needs:
+Eleven specialized tools for different documentation needs:
 
 #### 1. **`search_terragrunt_docs`** - General Documentation Search
 
@@ -160,6 +160,27 @@ Securely write generated or modified Terragrunt configurations to disk with dire
 "Write this configuration to /home/user/terraform/terragrunt.hcl"
 "Save the generated config to my project directory"
 "Create a new terragrunt.hcl file with S3 backend configuration"
+```
+
+#### 11. **`analyze_best_practices`** - Analyze Best Practices by Topic
+
+Extract and analyze best practices, patterns, antipatterns, and recommendations from Terragrunt documentation for specific topics with experience-level filtering.
+
+- **Parameters**:
+  - `topic` (string, required): Topic to analyze
+    - `module_organization`, `state_management`, `dependencies`, `ci_cd`, `security`, `performance`, `testing`
+  - `level` (string, optional): Filter by experience level
+    - `beginner`, `intermediate`, `advanced`
+- **Returns**: Structured recommendations with priority, rationale, examples, antipatterns, tradeoffs, and experience notes
+- **Use cases**: Learning best practices, understanding patterns, avoiding common pitfalls, getting experience-appropriate guidance
+
+**Example prompts:**
+
+```text
+"What are the best practices for state management?"
+"Show me beginner-level module organization practices"
+"Analyze CI/CD best practices for Terragrunt"
+"What should I avoid when setting up dependencies?"
 ```
 
 ### 📖 Resources

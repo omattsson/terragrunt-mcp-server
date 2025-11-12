@@ -369,42 +369,54 @@ export class BestPracticesAnalyzer {
    * Categorize a practice by experience level based on heuristics
    */
   private categorizeByExperience(practice: BestPractice, doc: TerragruntDoc): ExperienceLevel {
-    const content = (practice.practice + ' ' + practice.rationale + ' ' + doc.content).toLowerCase();
+    // Prioritize practice-specific content over whole doc
+    const practiceContent = (practice.practice + ' ' + practice.rationale).toLowerCase();
+    const docContent = doc.content.toLowerCase();
     
-    // Check doc section first
+    // Check doc section first for beginner content
     if (doc.section === 'getting-started' || doc.section === 'quick-start') {
       return 'beginner';
     }
     
-    // Check for beginner keywords
-    const beginnerKeywords = ['basic', 'simple', 'getting started', 'introduction', 'first', 'start'];
-    if (beginnerKeywords.some(kw => content.includes(kw))) {
+    // Check practice-specific keywords first (more accurate)
+    const beginnerKeywords = ['basic', 'simple', 'getting started', 'introduction', 'first', 'start', 'should use', 'beginners', 'for beginners'];
+    if (beginnerKeywords.some(kw => practiceContent.includes(kw))) {
       return 'beginner';
     }
     
-    // Check for advanced keywords
-    const advancedKeywords = ['advanced', 'complex', 'optimize', 'performance', 'scale', 'production', 'enterprise'];
-    if (advancedKeywords.some(kw => content.includes(kw))) {
+    // Check for advanced keywords in practice content
+    const advancedKeywords = ['advanced', 'complex', 'optimize', 'performance', 'scale', 'enterprise', 'must write', 'critical', 'dependency graph', 'for advanced', 'advanced scenarios', 'advanced users'];
+    if (advancedKeywords.some(kw => practiceContent.includes(kw))) {
+      return 'advanced';
+    }
+    
+    // Check broader doc content for advanced signals
+    if (advancedKeywords.some(kw => docContent.includes(kw))) {
       return 'advanced';
     }
     
     // Check topic-based categorization
     const advancedTopics = ['testing', 'ci_cd', 'performance'];
-    const intermediateTopics = ['module_organization', 'dependencies'];
+    const intermediateTopics = ['module_organization', 'dependencies', 'state'];
     
     // Try to infer topic from content
     for (const topic of advancedTopics) {
       const keywords = this.getTopicKeywords(topic);
-      if (keywords.some(kw => content.includes(kw.toLowerCase()))) {
+      if (keywords.some(kw => practiceContent.includes(kw.toLowerCase()) || docContent.includes(kw.toLowerCase()))) {
         return 'advanced';
       }
     }
     
     for (const topic of intermediateTopics) {
       const keywords = this.getTopicKeywords(topic);
-      if (keywords.some(kw => content.includes(kw.toLowerCase()))) {
+      if (keywords.some(kw => practiceContent.includes(kw.toLowerCase()) || docContent.includes(kw.toLowerCase()))) {
         return 'intermediate';
       }
+    }
+    
+    // Check if practice is from features section (usually intermediate)
+    if (doc.section === 'features') {
+      return 'intermediate';
     }
     
     // Default to intermediate
@@ -434,9 +446,18 @@ export class BestPracticesAnalyzer {
 
             seenPractices.add(practiceText.toLowerCase());
 
+            // Extract surrounding context for better categorization (100 chars before match)
+            const matchIndex = match.index || 0;
+            const contextStart = Math.max(0, matchIndex - 100);
+            const fullContext = doc.content.substring(contextStart, matchIndex + match[0].length).trim();
+            
+            const extractedRationale = this.extractRationale(doc.content, practiceText);
+            // Prepend context to rationale for better categorization
+            const rationale = fullContext + (extractedRationale ? ' ' + extractedRationale : '');
+
             const practice: BestPractice = {
               practice: practiceText,
-              rationale: this.extractRationale(doc.content, practiceText),
+              rationale,
               example: this.extractExamples(doc.content)[0] || '',
               antipatterns: this.identifyAntipatterns([doc]),
               tradeoffs: this.extractTradeoffs(doc.content),

@@ -8,7 +8,7 @@ describe('Cache Optimizations', () => {
     docsManager = new TerragruntDocsManager();
     // Load docs once to populate cache
     await docsManager.fetchLatestDocs();
-  });
+  }, 60000); // 60 second timeout for network fetch
 
   describe('Cache Statistics', () => {
     it('should track cache hits and misses', async () => {
