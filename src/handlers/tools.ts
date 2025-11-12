@@ -205,13 +205,13 @@ export class ToolHandler {
             },
             {
                 name: 'analyze_best_practices',
-                description: 'Analyze best practices for a specific Terragrunt topic, including recommendations, antipatterns, and experience-level filtering',
+                description: 'Analyze best practices for a specific Terragrunt topic with confidence scoring and intelligent suggestions. Returns recommendations, antipatterns, confidence score (0-100), and fuzzy-matched topic suggestions for typos.',
                 inputSchema: {
                     type: 'object',
                     properties: {
                         topic: {
                             type: 'string',
-                            description: 'Topic to analyze. Supported topics: module_organization, state_management, dependencies, ci_cd, security, performance, testing',
+                            description: 'Topic to analyze. Supported topics: module_organization, state_management, dependencies, ci_cd, security, performance, testing. Typos will trigger intelligent suggestions.',
                             enum: ['module_organization', 'state_management', 'dependencies', 'ci_cd', 'security', 'performance', 'testing']
                         },
                         level: {
@@ -601,20 +601,38 @@ export class ToolHandler {
         try {
             const result = await this.bestPracticesAnalyzer.analyzeTopic(topic, level);
             
+            // Handle unknown topics with intelligent suggestions
             if (result.recommendations.length === 0) {
+                // Use fuzzy-matched suggestions if available (from issue #33)
+                const suggestion = result.suggestedTopics && result.suggestedTopics.length > 0
+                    ? `Did you mean: ${result.suggestedTopics.join(', ')}?`
+                    : 'Try one of the supported topics: module_organization, state_management, dependencies, ci_cd, security, performance, testing';
+
                 return {
                     topic,
                     error: `No best practices found for topic: ${topic}`,
-                    suggestion: 'Try one of the supported topics: module_organization, state_management, dependencies, ci_cd, security, performance, testing',
+                    suggestion,
                     recommendations: [],
-                    summary: '',
+                    summary: result.summary || '',
                     commonPitfalls: [],
                     experienceNotes: { beginner: [], intermediate: [], advanced: [] },
-                    realWorldExamples: []
+                    realWorldExamples: [],
+                    confidence: result.confidence || 0,
+                    suggestedTopics: result.suggestedTopics
                 };
             }
 
-            return result;
+            // Return complete result including confidence score (from issue #33)
+            return {
+                topic: result.topic,
+                recommendations: result.recommendations,
+                summary: result.summary,
+                commonPitfalls: result.commonPitfalls,
+                experienceNotes: result.experienceNotes,
+                realWorldExamples: result.realWorldExamples,
+                confidence: result.confidence,
+                suggestedTopics: result.suggestedTopics
+            };
         } catch (error) {
             console.error(`Error analyzing best practices for ${topic}:`, error);
             return {
@@ -624,7 +642,8 @@ export class ToolHandler {
                 summary: '',
                 commonPitfalls: [],
                 experienceNotes: { beginner: [], intermediate: [], advanced: [] },
-                realWorldExamples: []
+                realWorldExamples: [],
+                confidence: 0
             };
         }
     }
