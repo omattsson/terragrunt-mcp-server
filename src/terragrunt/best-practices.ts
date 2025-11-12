@@ -68,6 +68,7 @@ interface ScoredPractice extends BestPractice {
   frequency: number;       // How many similar practices found
   sourceSection: string;   // Documentation section (for priority)
   exampleCount: number;    // Number of code examples
+  keywords: string[];      // Cached extracted keywords for performance
 }
 
 /**
@@ -211,27 +212,29 @@ export class BestPracticesAnalyzer {
   /**
    * Calculate frequency of similar practices across all practices
    * Updates the frequency field of each practice
+   * Optimized to compare each unique pair only once (n(n-1)/2 comparisons)
    */
   private calculateFrequency(practices: ScoredPractice[]): void {
     const similarityThreshold = 0.6; // Practices with >60% similarity are considered the same
 
+    // Initialize all frequencies to 1 (the practice itself)
     for (let i = 0; i < practices.length; i++) {
-      let frequency = 1; // Start with 1 (the practice itself)
+      practices[i].frequency = 1;
+    }
 
-      for (let j = 0; j < practices.length; j++) {
-        if (i !== j) {
-          const similarity = this.calculateSimilarity(
-            practices[i].practice,
-            practices[j].practice
-          );
+    // Only compare each unique pair once
+    for (let i = 0; i < practices.length; i++) {
+      for (let j = i + 1; j < practices.length; j++) {
+        const similarity = this.calculateSimilarity(
+          practices[i].practice,
+          practices[j].practice
+        );
 
-          if (similarity >= similarityThreshold) {
-            frequency++;
-          }
+        if (similarity >= similarityThreshold) {
+          practices[i].frequency++;
+          practices[j].frequency++;
         }
       }
-
-      practices[i].frequency = frequency;
     }
   }
 
@@ -263,13 +266,12 @@ export class BestPracticesAnalyzer {
     }
 
     // Keyword relevance: match topic keywords
-    const topicKeywords = this.getTopicKeywords(topic);
-    const practiceKeywords = this.extractKeywords(
-      practice.practice + ' ' + practice.rationale
-    );
+    const topicKeywords = this.getTopicKeywords(topic).map(kw => kw.toLowerCase());
     
-    const matchCount = topicKeywords.filter(kw => 
-      [...practiceKeywords].some(pk => pk.includes(kw.toLowerCase()) || kw.toLowerCase().includes(pk))
+    // Use cached keywords (already computed and stored in practice.keywords)
+    // Efficient substring matching: avoid repeated Set conversions and lowercasing
+    const matchCount = topicKeywords.filter(kw =>
+      practice.keywords.some(pk => pk.includes(kw) || kw.includes(pk))
     ).length;
     
     const relevanceBonus = Math.min(matchCount * 4, 20); // +4 per keyword match, max +20
@@ -291,19 +293,22 @@ export class BestPracticesAnalyzer {
 
   /**
    * Rank practices by calculating scores and sorting
-   * Returns practices sorted by score (highest first)
+   * Returns a new sorted array without mutating the input
    */
   private rankPractices(practices: ScoredPractice[], topic: string): ScoredPractice[] {
-    // Calculate frequency across all practices
-    this.calculateFrequency(practices);
+    // Work on a new array of shallow-copied objects to avoid mutating the input
+    const practicesCopy: ScoredPractice[] = practices.map(practice => ({ ...practice }));
 
-    // Score each practice
-    for (const practice of practices) {
+    // Calculate frequency across all practices (on the copy)
+    this.calculateFrequency(practicesCopy);
+
+    // Score each practice (on the copy)
+    for (const practice of practicesCopy) {
       practice.score = this.scorePractice(practice, topic);
     }
 
-    // Sort by score descending
-    return practices.sort((a, b) => b.score - a.score);
+    // Sort by score descending and return the new array
+    return practicesCopy.sort((a, b) => b.score - a.score);
   }
 
   /**
@@ -616,6 +621,11 @@ export class BestPracticesAnalyzer {
 
             const examples = this.extractExamples(doc.content);
 
+            // Extract and cache keywords for performance (avoid repeated extraction during scoring)
+            const keywords = Array.from(
+              this.extractKeywords(practiceText + ' ' + rationale)
+            );
+
             const practice: ScoredPractice = {
               practice: practiceText,
               rationale,
@@ -627,7 +637,8 @@ export class BestPracticesAnalyzer {
               score: 0,
               frequency: 1,
               sourceSection: doc.section || 'other',
-              exampleCount: examples.length
+              exampleCount: examples.length,
+              keywords
             };
 
             practices.push(practice);
