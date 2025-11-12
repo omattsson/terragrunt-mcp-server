@@ -253,6 +253,49 @@ describe('Best Practices Integration Tests', () => {
       // Cached call should be faster or equal (handles sub-millisecond timing)
       // If both are 0 (sub-millisecond), that's fine - both are fast
       expect(duration2).toBeLessThanOrEqual(Math.max(duration1, 1));
+      
+      // Cached call should complete in <300ms (performance requirement)
+      expect(duration2).toBeLessThan(300);
+    }, 60000);
+
+    it('completes cached analysis in <300ms', async () => {
+      // First call to populate cache
+      await toolHandler.executeTool('analyze_best_practices', {
+        topic: 'module_organization'
+      });
+
+      // Measure cached performance
+      const start = Date.now();
+      const result = await toolHandler.executeTool('analyze_best_practices', {
+        topic: 'module_organization'
+      });
+      const duration = Date.now() - start;
+
+      // Verify result is valid
+      expect(result).toBeDefined();
+      expect(result.topic).toBe('module_organization');
+      expect(result.confidence).toBeDefined();
+
+      // Performance requirement: <300ms for cached analysis
+      expect(duration).toBeLessThan(300);
+    }, 60000);
+
+    it('completes first-time analysis in reasonable time (<2s)', async () => {
+      // This test simulates MCP server restart with docs already cached on disk
+      // Using a topic not used in previous tests to avoid in-memory cache
+      const start = Date.now();
+      const result = await toolHandler.executeTool('analyze_best_practices', {
+        topic: 'ci_cd'
+      });
+      const duration = Date.now() - start;
+
+      // Verify result is valid
+      expect(result).toBeDefined();
+      expect(result.topic).toBe('ci_cd');
+      expect(result.recommendations).toBeDefined();
+
+      // Even first-time should be reasonable (docs cached on disk)
+      expect(duration).toBeLessThan(2000);
     }, 60000);
 
     it('caches results separately by experience level', async () => {
