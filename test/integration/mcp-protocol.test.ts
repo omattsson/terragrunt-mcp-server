@@ -847,6 +847,280 @@ describe('MCP Protocol Compliance', () => {
     });
   });
 
+  describe('Best Practices Analyzer Tool Compliance', () => {
+    describe('Tool Definition in ListTools', () => {
+      it('should include analyze_best_practices in available tools', () => {
+        const tools = toolHandler.getAvailableTools();
+        const bestPracticesTool = tools.find(t => t.name === 'analyze_best_practices');
+        
+        expect(bestPracticesTool).toBeDefined();
+        expect(bestPracticesTool?.name).toBe('analyze_best_practices');
+        expect(bestPracticesTool?.description).toBeDefined();
+        expect(typeof bestPracticesTool?.description).toBe('string');
+        expect(bestPracticesTool?.description).toContain('confidence');
+      });
+
+      it('should have valid JSON Schema for analyze_best_practices', () => {
+        const tools = toolHandler.getAvailableTools();
+        const bestPracticesTool = tools.find(t => t.name === 'analyze_best_practices');
+        
+        expect(bestPracticesTool?.inputSchema).toBeDefined();
+        expect(bestPracticesTool?.inputSchema.type).toBe('object');
+        expect(bestPracticesTool?.inputSchema.properties).toBeDefined();
+        expect(typeof bestPracticesTool?.inputSchema.properties).toBe('object');
+      });
+
+      it('should define topic parameter as required string WITHOUT enum (enables fuzzy matching)', () => {
+        const tools = toolHandler.getAvailableTools();
+        const bestPracticesTool = tools.find(t => t.name === 'analyze_best_practices');
+        
+        const topicProperty = bestPracticesTool?.inputSchema.properties.topic;
+        expect(topicProperty).toBeDefined();
+        expect(topicProperty.type).toBe('string');
+        
+        // CRITICAL: Topic should NOT have enum to enable fuzzy matching
+        // This was a key decision in PR #114 (issue #34)
+        expect(topicProperty.enum).toBeUndefined();
+        expect(topicProperty.description).toBeDefined();
+        expect(topicProperty.description).toContain('Supported topics');
+      });
+
+      it('should define level parameter as optional string WITH enum', () => {
+        const tools = toolHandler.getAvailableTools();
+        const bestPracticesTool = tools.find(t => t.name === 'analyze_best_practices');
+        
+        const levelProperty = bestPracticesTool?.inputSchema.properties.level;
+        expect(levelProperty).toBeDefined();
+        expect(levelProperty.type).toBe('string');
+        expect(levelProperty.enum).toBeDefined();
+        expect(Array.isArray(levelProperty.enum)).toBe(true);
+        expect(levelProperty.enum).toEqual([
+          'beginner',
+          'intermediate',
+          'advanced'
+        ]);
+        
+        // level should NOT be in required array
+        const required = bestPracticesTool?.inputSchema.required || [];
+        expect(required.includes('level')).toBe(false);
+      });
+
+      it('should require only topic parameter', () => {
+        const tools = toolHandler.getAvailableTools();
+        const bestPracticesTool = tools.find(t => t.name === 'analyze_best_practices');
+        
+        expect(bestPracticesTool?.inputSchema.required).toBeDefined();
+        expect(Array.isArray(bestPracticesTool?.inputSchema.required)).toBe(true);
+        expect(bestPracticesTool?.inputSchema.required).toEqual(['topic']);
+      });
+
+      it('should describe confidence scoring in tool description', () => {
+        const tools = toolHandler.getAvailableTools();
+        const bestPracticesTool = tools.find(t => t.name === 'analyze_best_practices');
+        
+        expect(bestPracticesTool?.description).toBeDefined();
+        expect(bestPracticesTool?.description.toLowerCase()).toContain('confidence');
+        expect(bestPracticesTool?.description.toLowerCase()).toMatch(/suggest|fuzzy|did you mean/);
+      });
+    });
+
+    describe('CallTool Request/Response Format', () => {
+      it('should execute successfully with valid topic', async () => {
+        const result = await toolHandler.executeTool('analyze_best_practices', {
+          topic: 'state_management'
+        });
+
+        expect(result).toBeDefined();
+        expect(typeof result).toBe('object');
+        expect(result.topic).toBe('state_management');
+      }, 30000);
+
+      it('should return MCP-compliant success response structure', async () => {
+        const result = await toolHandler.executeTool('analyze_best_practices', {
+          topic: 'module_organization'
+        });
+
+        expect(result).toBeDefined();
+        expect(typeof result).toBe('object');
+        
+        // Should have all required BestPracticeResult fields
+        expect(result.topic).toBeDefined();
+        expect(result.recommendations).toBeDefined();
+        expect(result.summary).toBeDefined();
+        expect(result.commonPitfalls).toBeDefined();
+        expect(result.experienceNotes).toBeDefined();
+        expect(result.realWorldExamples).toBeDefined();
+        expect(result.confidence).toBeDefined();
+      }, 30000);
+
+      it('should include all required BestPracticeResult fields', async () => {
+        const result = await toolHandler.executeTool('analyze_best_practices', {
+          topic: 'dependencies',
+          level: 'intermediate'
+        });
+
+        // Validate field types
+        expect(typeof result.topic).toBe('string');
+        expect(Array.isArray(result.recommendations)).toBe(true);
+        expect(typeof result.summary).toBe('string');
+        expect(Array.isArray(result.commonPitfalls)).toBe(true);
+        expect(typeof result.experienceNotes).toBe('object');
+        expect(Array.isArray(result.realWorldExamples)).toBe(true);
+        expect(typeof result.confidence).toBe('number');
+        
+        // Validate experienceNotes structure
+        expect(result.experienceNotes).toHaveProperty('beginner');
+        expect(result.experienceNotes).toHaveProperty('intermediate');
+        expect(result.experienceNotes).toHaveProperty('advanced');
+        expect(Array.isArray(result.experienceNotes.beginner)).toBe(true);
+        expect(Array.isArray(result.experienceNotes.intermediate)).toBe(true);
+        expect(Array.isArray(result.experienceNotes.advanced)).toBe(true);
+      }, 30000);
+
+      it('should include confidence score in valid range (0-100)', async () => {
+        const result = await toolHandler.executeTool('analyze_best_practices', {
+          topic: 'security'
+        });
+
+        expect(result.confidence).toBeDefined();
+        expect(typeof result.confidence).toBe('number');
+        expect(result.confidence).toBeGreaterThanOrEqual(0);
+        expect(result.confidence).toBeLessThanOrEqual(100);
+        
+        // Confidence should be a whole number
+        expect(Number.isInteger(result.confidence)).toBe(true);
+      }, 30000);
+    });
+
+    describe('Parameter Validation', () => {
+      it('should return error when topic parameter is missing', async () => {
+        const result = await toolHandler.executeTool('analyze_best_practices', {
+          // Missing topic
+        });
+
+        expect(result).toBeDefined();
+        expect(result.error).toBeDefined();
+        expect(typeof result.error).toBe('string');
+        expect(result.error).toContain('topic');
+      });
+
+      it('should handle invalid level value gracefully', async () => {
+        const result = await toolHandler.executeTool('analyze_best_practices', {
+          topic: 'state_management',
+          level: 'invalid_level' as any
+        });
+
+        // Should still return a result (not throw)
+        expect(result).toBeDefined();
+        expect(typeof result).toBe('object');
+        
+        // Should either ignore invalid level or return error
+        expect(result.topic || result.error).toBeDefined();
+      }, 30000);
+
+      it('should handle optional level parameter correctly', async () => {
+        const result = await toolHandler.executeTool('analyze_best_practices', {
+          topic: 'performance'
+          // No level specified - should still work
+        });
+
+        expect(result).toBeDefined();
+        expect(result.topic).toBe('performance');
+        expect(result.recommendations).toBeDefined();
+        expect(result.confidence).toBeDefined();
+      }, 30000);
+
+      it('should handle unknown parameters gracefully', async () => {
+        const result = await toolHandler.executeTool('analyze_best_practices', {
+          topic: 'testing',
+          unknownParam: 'should be ignored' as any
+        });
+
+        // Should still execute successfully, ignoring unknown params
+        expect(result).toBeDefined();
+        expect(result.topic).toBe('testing');
+        expect(result.confidence).toBeDefined();
+      }, 30000);
+    });
+
+    describe('Error Handling Compliance', () => {
+      it('should return MCP-compliant error for typo with fuzzy matching suggestions', async () => {
+        const result = await toolHandler.executeTool('analyze_best_practices', {
+          topic: 'state_managment' // Typo: missing 'e'
+        });
+
+        expect(result).toBeDefined();
+        expect(result.error).toBeDefined();
+        expect(typeof result.error).toBe('string');
+        
+        // Should include helpful suggestion
+        expect(result.suggestion).toBeDefined();
+        expect(result.suggestion).toContain('Did you mean');
+        
+        // Should include suggested topics array
+        expect(result.suggestedTopics).toBeDefined();
+        expect(Array.isArray(result.suggestedTopics)).toBe(true);
+        expect(result.suggestedTopics.length).toBeGreaterThan(0);
+        
+        // Should suggest the correct topic
+        expect(result.suggestedTopics).toContain('state_management');
+        
+        // Confidence should be 0 for unknown topics
+        expect(result.confidence).toBe(0);
+      }, 30000);
+
+      it('should return helpful suggestion for semantic queries', async () => {
+        const result = await toolHandler.executeTool('analyze_best_practices', {
+          topic: 'remote state' // Semantic query
+        });
+
+        expect(result).toBeDefined();
+        expect(result.error).toBeDefined();
+        expect(result.suggestion).toBeDefined();
+        
+        // Semantic queries may not trigger fuzzy matching if too different
+        // but should get helpful suggestion listing supported topics
+        expect(result.suggestion).toContain('supported topics');
+        expect(result.confidence).toBe(0);
+      }, 30000);
+
+      it('should return MCP-compliant error for completely unknown topic', async () => {
+        const result = await toolHandler.executeTool('analyze_best_practices', {
+          topic: 'xyz_completely_invalid_topic_12345'
+        });
+
+        expect(result).toBeDefined();
+        expect(result.error).toBeDefined();
+        expect(typeof result.error).toBe('string');
+        expect(result.suggestion).toBeDefined();
+        expect(result.confidence).toBe(0);
+        
+        // For very different topics, suggestedTopics may be undefined
+        // but suggestion should list supported topics
+        expect(result.suggestion).toContain('supported topics');
+      }, 30000);
+
+      it('should not throw exceptions on invalid input (return error object instead)', async () => {
+        // Test multiple invalid inputs - should all return error objects, not throw
+        const testCases = [
+          { topic: 'invalid_topic_xyz' },
+          { topic: 'state_managment' }, // typo
+          {}, // missing topic
+          { topic: 'state_management', level: 'invalid' as any },
+        ];
+
+        for (const testCase of testCases) {
+          const result = await toolHandler.executeTool('analyze_best_practices', testCase);
+          
+          expect(result).toBeDefined();
+          expect(typeof result).toBe('object');
+          // Should have either valid response or error property, not throw
+          expect(result.topic || result.error).toBeDefined();
+        }
+      }, 60000);
+    });
+  });
+
   describe('Error Response Compliance', () => {
     it('should return error response (not throw) for invalid resources', async () => {
       const resource = await resourceHandler.getResource('terragrunt://docs/invalid');
