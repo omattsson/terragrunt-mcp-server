@@ -24,15 +24,13 @@ describe('Best Practices Integration Tests', () => {
       const tool = tools.find(t => t.name === 'analyze_best_practices');
 
       expect(tool?.inputSchema.required).toContain('topic');
-      expect(tool?.inputSchema.properties.topic.enum).toEqual([
-        'module_organization',
-        'state_management',
-        'dependencies',
-        'ci_cd',
-        'security',
-        'performance',
-        'testing'
-      ]);
+      
+      // Topic should NOT have enum constraint to enable fuzzy matching
+      expect(tool?.inputSchema.properties.topic.type).toBe('string');
+      expect(tool?.inputSchema.properties.topic.enum).toBeUndefined();
+      expect(tool?.inputSchema.properties.topic.description).toContain('Supported topics');
+      
+      // Level should still have enum constraint
       expect(tool?.inputSchema.properties.level.enum).toEqual([
         'beginner',
         'intermediate',
