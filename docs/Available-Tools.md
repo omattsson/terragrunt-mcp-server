@@ -1,6 +1,6 @@
 # Available Tools
 
-The Terragrunt MCP Server provides **10 specialized tools** for accessing and searching Terragrunt documentation, generating configurations, and writing files. Each tool is designed for specific use cases to help you find the information you need quickly.
+The Terragrunt MCP Server provides **11 specialized tools** for accessing and searching Terragrunt documentation, generating configurations, analyzing best practices, and writing files. Each tool is designed for specific use cases to help you find the information you need quickly.
 
 ## Tool Overview
 
@@ -16,6 +16,7 @@ The Terragrunt MCP Server provides **10 specialized tools** for accessing and se
 | `get_code_examples` | Find code snippets | Learning by example |
 | `generate_terragrunt_config` | Configuration generator | Quick setup and best practices |
 | `write_terragrunt_config` | Write configs to disk | Saving generated configurations |
+| `analyze_best_practices` | Analyze practices by topic | Learning best practices and patterns |
 
 ---
 
@@ -595,6 +596,104 @@ export TERRAGRUNT_MCP_MAX_FILE_SIZE=1048576
 
 See [File Writing Guide](File-Writing-Guide.md) for detailed security configuration and examples.
 
+---
+
+## 11. analyze_best_practices
+
+**Purpose**: Analyze and retrieve best practices for specific Terragrunt topics with experience-level filtering. Extracts patterns, recommendations, antipatterns, and real-world examples from documentation.
+
+### Parameters — analyze_best_practices
+
+- **`topic`** (string, required): Topic to analyze. One of:
+  - `module_organization` - Module structure and organization patterns
+  - `state_management` - Remote state configuration and best practices
+  - `dependencies` - Managing dependencies between modules
+  - `ci_cd` - CI/CD integration patterns and workflows
+  - `security` - Security considerations and best practices
+  - `performance` - Performance optimization techniques
+  - `testing` - Testing strategies and patterns
+- **`level`** (string, optional): Filter by experience level
+  - `beginner` - Basic practices for getting started
+  - `intermediate` - Standard practices for production use
+  - `advanced` - Complex patterns for enterprise scenarios
+
+### Use Cases — analyze_best_practices
+
+- Learning recommended patterns for a specific topic
+- Understanding what to avoid (antipatterns)
+- Finding trade-offs and considerations
+- Getting experience-appropriate recommendations
+- Discovering real-world examples
+- Identifying common pitfalls
+
+### Example Prompts — analyze_best_practices
+
+```text
+"What are the best practices for state management?"
+"Show me beginner-level module organization practices"
+"Analyze CI/CD best practices for Terragrunt"
+"What are advanced dependency management patterns?"
+"What should I avoid when configuring remote state?"
+```
+
+### Example Usage — analyze_best_practices
+
+```json
+{
+  "tool": "analyze_best_practices",
+  "arguments": {
+    "topic": "state_management",
+    "level": "beginner"
+  }
+}
+```
+
+### Example Response — analyze_best_practices
+
+```json
+{
+  "topic": "state_management",
+  "recommendations": [
+    {
+      "practice": "Always use remote state for production environments",
+      "priority": "critical",
+      "experienceLevel": "beginner",
+      "category": "state_management",
+      "rationale": "Remote state ensures your infrastructure state is safely backed up and can be shared across teams",
+      "examples": ["remote_state {\n  backend = \"s3\"\n  ..."],
+      "antipatterns": ["Don't use local state for multi-user environments"],
+      "tradeoffs": ["Centralized state may increase latency"],
+      "relatedDocs": ["https://terragrunt.gruntwork.io/docs/..."]
+    }
+  ],
+  "summary": "Best practices for state_management include using remote state backends, enabling encryption and versioning, and implementing state locking to prevent concurrent modifications...",
+  "commonPitfalls": [
+    "Storing sensitive data directly in state files",
+    "Not configuring state locking for multi-user environments"
+  ],
+  "experienceNotes": {
+    "beginner": ["Start with S3 backend and basic encryption"],
+    "intermediate": ["Implement state locking with DynamoDB"],
+    "advanced": ["Consider state backend optimization for enterprise scale"]
+  },
+  "realWorldExamples": [
+    "S3 backend with encryption and versioning enabled",
+    "State locking configuration to prevent concurrent modifications"
+  ]
+}
+```
+
+### Best Practices — analyze_best_practices
+
+1. **Start with your experience level** - Filter to get appropriate recommendations
+2. **Review antipatterns first** - Learn what NOT to do
+3. **Check trade-offs** - Understand the implications of each practice
+4. **Use with other tools** - Combine with `get_code_examples` for implementation details
+5. **Apply iteratively** - Start with beginner practices and progress
+6. **Cross-reference examples** - Verify practices with real code samples
+
+
+
 <!-- Note: The "configuration" template (Terraform version constraints) is included as part of the "inputs" use case. -->
 ---
 
@@ -637,6 +736,12 @@ See [File Writing Guide](File-Writing-Guide.md) for detailed security configurat
 
 **"I want to create a new terragrunt.hcl file..."**
 → First use `generate_terragrunt_config`, then `write_terragrunt_config` to save it
+
+**"What are the best practices for X?"**
+→ Use `analyze_best_practices` with your topic to get recommendations and patterns
+
+**"How should I organize my modules/manage state/handle dependencies?"**
+→ Use `analyze_best_practices` to learn recommended patterns and what to avoid
 
 ---
 
