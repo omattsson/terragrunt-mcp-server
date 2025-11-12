@@ -118,7 +118,10 @@ export class BestPracticesAnalyzer {
    */
   private readonly tradeoffPatterns = [
     /(?:tradeoff|trade-off)[:\s]+([^.!?]+[.!?])/gi,
-    /(?:consider|however|but|although)\s+([^.!?]+[.!?])/gi,
+    // Only match "consider" when followed by context suggesting weighing options
+    /consider\s+(?:whether|if|the)\s+([^.!?]+[.!?])/gi,
+    // Only match "however", "but", "although" when sentence contains tradeoff context
+    /(?:however|but|although)[^.!?]*?\b(?:cost|performance|vs\.?|instead|downside|upside|benefit|drawback|advantage|disadvantage)\b[^.!?]*?[.!?]/gi,
     /(?:alternative|alternatively)[:\s]+([^.!?]+[.!?])/gi
   ];
 
@@ -353,11 +356,10 @@ export class BestPracticesAnalyzer {
       const matches = [...content.matchAll(pattern)];
       
       for (const match of matches) {
-        if (match[1]) {
-          const tradeoff = match[1].trim();
-          if (tradeoff.length > 15) { // Filter out very short matches
-            tradeoffs.add(tradeoff);
-          }
+        // Handle both capture group patterns and full match patterns
+        const tradeoff = (match[1] || match[0]).trim();
+        if (tradeoff.length > 15) { // Filter out very short matches
+          tradeoffs.add(tradeoff);
         }
       }
     }
