@@ -57,6 +57,8 @@ export interface BestPracticeResult {
   commonPitfalls: string[];
   experienceNotes: ExperienceNotes;
   realWorldExamples: string[];
+  confidence: number;            // Confidence score 0-100 based on data quality
+  suggestedTopics?: string[];    // Similar topics (only for unknown topics)
 }
 
 /**
@@ -309,6 +311,155 @@ export class BestPracticesAnalyzer {
 
     // Sort by score descending and return the new array
     return practicesCopy.sort((a, b) => b.score - a.score);
+  }
+
+  /**
+   * Calculate confidence score (0-100) based on data quality and completeness
+   * 
+   * Scoring factors:
+   * - Data availability: 0-30 points (more practices = higher confidence)
+   * - Example quality: 0-20 points (practices with code examples)
+   * - Rationale completeness: 0-20 points (meaningful rationale text)
+   * - Antipattern coverage: 0-15 points (identifies what to avoid)
+   * - Tradeoff analysis: 0-15 points (explains pros/cons)
+   * 
+   * @param practices - Array of best practices
+   * @param recommendations - Array of recommendations (for additional validation)
+   * @returns Confidence score 0-100
+   */
+  private calculateConfidence(
+    practices: BestPractice[],
+    recommendations: PracticeRecommendation[]
+  ): number {
+    if (practices.length === 0) {
+      return 0;
+    }
+
+    let score = 0;
+
+    // 1. Data availability (0-30 points): more practices = higher confidence
+    const dataScore = Math.min((practices.length / 20) * 30, 30);
+    score += dataScore;
+
+    // 2. Example quality (0-20 points): practices with code examples
+    const withExamples = practices.filter(p => p.example && p.example.length > 20).length;
+    const exampleScore = (withExamples / practices.length) * 20;
+    score += exampleScore;
+
+    // 3. Rationale completeness (0-20 points): meaningful rationale
+    const withRationale = practices.filter(p => p.rationale && p.rationale.length > 50).length;
+    const rationaleScore = (withRationale / practices.length) * 20;
+    score += rationaleScore;
+
+    // 4. Antipattern coverage (0-15 points): identifies what to avoid
+    const withAntipatterns = practices.filter(p => p.antipatterns && p.antipatterns.length > 0).length;
+    const antipatternScore = (withAntipatterns / practices.length) * 15;
+    score += antipatternScore;
+
+    // 5. Tradeoff analysis (0-15 points): explains pros/cons
+    const withTradeoffs = practices.filter(p => p.tradeoffs && p.tradeoffs.length > 0).length;
+    const tradeoffScore = (withTradeoffs / practices.length) * 15;
+    score += tradeoffScore;
+
+    return Math.round(score);
+  }
+
+  /**
+   * Calculate Levenshtein edit distance between two strings
+   * Used for typo detection in topic matching
+   * 
+   * @param s1 - First string
+   * @param s2 - Second string
+   * @returns Edit distance (number of edits needed to transform s1 into s2)
+   */
+  private calculateEditDistance(s1: string, s2: string): number {
+    const len1 = s1.length;
+    const len2 = s2.length;
+
+    // Create 2D array for dynamic programming
+    const dp: number[][] = Array(len1 + 1)
+      .fill(null)
+      .map(() => Array(len2 + 1).fill(0));
+
+    // Initialize base cases
+    for (let i = 0; i <= len1; i++) {
+      dp[i][0] = i;
+    }
+    for (let j = 0; j <= len2; j++) {
+      dp[0][j] = j;
+    }
+
+    // Fill the dp table
+    for (let i = 1; i <= len1; i++) {
+      for (let j = 1; j <= len2; j++) {
+        if (s1[i - 1] === s2[j - 1]) {
+          dp[i][j] = dp[i - 1][j - 1];
+        } else {
+          dp[i][j] = Math.min(
+            dp[i - 1][j] + 1,     // deletion
+            dp[i][j - 1] + 1,     // insertion
+            dp[i - 1][j - 1] + 1  // substitution
+          );
+        }
+      }
+    }
+
+    return dp[len1][len2];
+  }
+
+  /**
+   * Find similar topics using fuzzy matching
+   * Combines typo detection (edit distance) and semantic matching (keyword overlap)
+   * 
+   * @param query - User's topic query
+   * @returns Array of similar topic names (top 3 with similarity > 0.3)
+   */
+  private findSimilarTopics(query: string): string[] {
+    const normalizedQuery = this.normalizeKey(query);
+    const similarTopics: Array<{ topic: string; score: number }> = [];
+
+    for (const topic of this.supportedTopics) {
+      const normalizedTopic = this.normalizeKey(topic);
+      let similarityScore = 0;
+
+      // 1. Check edit distance for typo detection (< 3 edits = likely typo)
+      const editDistance = this.calculateEditDistance(normalizedQuery, normalizedTopic);
+      if (editDistance < 3) {
+        // High similarity for close typos: distance 0 = 1.0, distance 1 = 0.7, distance 2 = 0.4
+        similarityScore = Math.max(1.0 - (editDistance * 0.3), 0);
+      }
+
+      // 2. Semantic matching using keyword overlap
+      const queryKeywords = this.extractKeywords(query);
+      const topicKeywords = this.getTopicKeywords(topic);
+      
+      // Convert topic keywords to normalized set for comparison
+      const topicKeywordSet = new Set(
+        topicKeywords.map(kw => kw.toLowerCase()).flatMap(kw => 
+          Array.from(this.extractKeywords(kw))
+        )
+      );
+
+      if (queryKeywords.size > 0 && topicKeywordSet.size > 0) {
+        // Calculate Jaccard similarity
+        const intersection = [...queryKeywords].filter(kw => topicKeywordSet.has(kw)).length;
+        const union = new Set([...queryKeywords, ...topicKeywordSet]).size;
+        const keywordSimilarity = union > 0 ? intersection / union : 0;
+        
+        // Use higher of edit distance or keyword similarity
+        similarityScore = Math.max(similarityScore, keywordSimilarity);
+      }
+
+      if (similarityScore > 0.3) {
+        similarTopics.push({ topic, score: similarityScore });
+      }
+    }
+
+    // Sort by score descending and return top 3
+    return similarTopics
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 3)
+      .map(t => t.topic);
   }
 
   /**
@@ -727,11 +878,29 @@ export class BestPracticesAnalyzer {
   }
 
   /**
-   * Analyze best practices for a specific topic
+   * Analyze best practices for a specific topic with confidence scoring and fuzzy matching
    * 
    * @param topic - The topic to analyze (e.g., 'state_management', 'dependencies')
    * @param level - Optional experience level filter
-   * @returns Best practice analysis results
+   * @returns Best practice analysis results with confidence score and suggestions
+   * 
+   * **Confidence Scoring**: Returns a 0-100 confidence score based on:
+   * - Data availability (30 points): Number of practices extracted
+   * - Example quality (20 points): Presence of code examples
+   * - Rationale completeness (20 points): Presence of explanations
+   * - Antipattern coverage (15 points): Common pitfalls identified
+   * - Tradeoff analysis (15 points): Benefits/limitations discussed
+   * 
+   * Typical confidence scores:
+   * - High (80-100): Well-documented topics with many examples and comprehensive coverage
+   * - Medium (60-79): Good documentation with some examples and explanations
+   * - Low (40-59): Basic documentation with limited examples or rationale
+   * - Very Low (0-39): Sparse documentation or unknown topics
+   * 
+   * **Fuzzy Topic Matching**: For unknown topics, suggests similar topics using:
+   * - Edit distance (Levenshtein) < 3 for typo detection ('state_managment' → 'state_management')
+   * - Keyword similarity > 0.3 for semantic matching ('remote state' → 'state_management')
+   * - Returns top 3 suggestions in BestPracticeResult.suggestedTopics
    */
   async analyzeTopic(
     topic: string,
@@ -771,9 +940,6 @@ export class BestPracticesAnalyzer {
         recommendations = recommendations.filter(r => r.experienceLevel === level);
       }
 
-      // Generate summary
-      const summary = this.generateSummary(topic, recommendations);
-
       // Extract common pitfalls (antipatterns)
       const commonPitfalls = this.extractCommonPitfalls(practices);
 
@@ -783,13 +949,20 @@ export class BestPracticesAnalyzer {
       // Extract real-world examples
       const realWorldExamples = this.extractRealWorldExamples(practices);
 
+      // Calculate confidence score based on data quality
+      const confidence = this.calculateConfidence(practices, recommendations);
+
+      // Generate summary with confidence
+      const summary = this.generateSummary(topic, recommendations, confidence);
+
       const result: BestPracticeResult = {
         topic,
         recommendations,
         summary,
         commonPitfalls,
         experienceNotes,
-        realWorldExamples
+        realWorldExamples,
+        confidence
       };
 
       // Cache the result
@@ -804,26 +977,41 @@ export class BestPracticesAnalyzer {
 
   /**
    * Create an empty result for when no practices are found
+   * Includes suggestions for similar topics using fuzzy matching
    */
   private createEmptyResult(topic: string): BestPracticeResult {
+    const suggestedTopics = this.findSimilarTopics(topic);
+    
+    let summary = `No best practices found for topic: ${topic}`;
+    if (suggestedTopics.length > 0) {
+      summary += `. Did you mean: ${suggestedTopics.join(', ')}?`;
+    }
+
     return {
       topic,
       recommendations: [],
-      summary: `No best practices found for topic: ${topic}`,
+      summary,
       commonPitfalls: [],
       experienceNotes: {
         beginner: [],
         intermediate: [],
         advanced: []
       },
-      realWorldExamples: []
+      realWorldExamples: [],
+      confidence: 0,
+      suggestedTopics: suggestedTopics.length > 0 ? suggestedTopics : undefined
     };
   }
 
   /**
    * Generate a summary of the recommendations
+   * Includes confidence level for better user feedback
    */
-  private generateSummary(topic: string, recommendations: PracticeRecommendation[]): string {
+  private generateSummary(
+    topic: string,
+    recommendations: PracticeRecommendation[],
+    confidence: number
+  ): string {
     if (recommendations.length === 0) {
       return `No recommendations available for ${topic}`;
     }
@@ -831,7 +1019,16 @@ export class BestPracticesAnalyzer {
     const criticalCount = recommendations.filter(r => r.priority === 'critical').length;
     const recommendedCount = recommendations.filter(r => r.priority === 'recommended').length;
     
-    return `Found ${recommendations.length} best practices for ${topic}: ` +
+    // Determine confidence level label
+    let confidenceLabel = 'Low';
+    if (confidence >= 80) {
+      confidenceLabel = 'High';
+    } else if (confidence >= 60) {
+      confidenceLabel = 'Medium';
+    }
+    
+    return `Found ${recommendations.length} best practices for ${topic} ` +
+           `(${confidenceLabel} confidence): ` +
            `${criticalCount} critical, ${recommendedCount} recommended. ` +
            `Key areas: ${recommendations.slice(0, 3).map(r => r.practice.split(' ').slice(0, 5).join(' ')).join('; ')}.`;
   }

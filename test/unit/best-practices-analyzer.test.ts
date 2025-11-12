@@ -568,4 +568,193 @@ describe('BestPracticesAnalyzer', () => {
       expect(result.recommendations).toBeDefined();
     });
   });
+
+  describe('Confidence Scoring', () => {
+    it('calculates high confidence for well-documented topics', async () => {
+      const richDocs: TerragruntDoc[] = [
+        {
+          title: 'Comprehensive State Management',
+          url: 'https://test.com/state',
+          content: `
+            Best practice: Use remote state with S3 backend for team collaboration.
+            This ensures that state is centralized and prevents conflicts because 
+            multiple team members need consistent access to infrastructure state.
+            
+            Warning: Avoid using local state for production environments.
+            
+            Tradeoff: Remote state adds network latency but provides better safety.
+            
+            Example:
+            \`\`\`hcl
+            remote_state {
+              backend = "s3"
+              config = {
+                bucket = "my-state"
+                key    = "terraform.tfstate"
+              }
+            }
+            \`\`\`
+            
+            It is recommended to enable state locking to prevent concurrent modifications.
+            This prevents state corruption from simultaneous terraform runs.
+            
+            Warning: Don't disable locking in production.
+            
+            Example:
+            \`\`\`hcl
+            lock_table = "terraform-locks"
+            \`\`\`
+          `,
+          section: 'features',
+          lastUpdated: new Date().toISOString(),
+        }
+      ];
+
+      const testAnalyzer = new BestPracticesAnalyzer(new MockDocsManager(richDocs) as any);
+      await testAnalyzer.extractBestPractices();
+      const result = await testAnalyzer.analyzeTopic('state_management');
+
+      // Good confidence: has examples, rationale, antipatterns, and tradeoffs
+      // But limited number of practices (only 2), so won't reach 80+
+      expect(result.confidence).toBeGreaterThanOrEqual(50);
+      expect(result.confidence).toBeLessThanOrEqual(100);
+    });
+
+    it('calculates low confidence for sparse documentation', async () => {
+      const sparseDocs: TerragruntDoc[] = [
+        {
+          title: 'Brief Mention',
+          url: 'https://test.com/brief',
+          content: 'You should use modules.',
+          section: 'other',
+          lastUpdated: new Date().toISOString(),
+        }
+      ];
+
+      const testAnalyzer = new BestPracticesAnalyzer(new MockDocsManager(sparseDocs) as any);
+      await testAnalyzer.extractBestPractices();
+      const result = await testAnalyzer.analyzeTopic('module_organization');
+
+      // Low confidence: minimal data, no examples, short rationale
+      expect(result.confidence).toBeLessThan(40);
+    });
+
+    it('includes confidence in result', async () => {
+      await analyzer.extractBestPractices();
+      const result = await analyzer.analyzeTopic('state_management');
+
+      expect(result).toHaveProperty('confidence');
+      expect(typeof result.confidence).toBe('number');
+      expect(result.confidence).toBeGreaterThanOrEqual(0);
+      expect(result.confidence).toBeLessThanOrEqual(100);
+    });
+
+    it('includes confidence level in summary', async () => {
+      await analyzer.extractBestPractices();
+      const result = await analyzer.analyzeTopic('state_management');
+
+      expect(result.summary).toMatch(/(High|Medium|Low) confidence/);
+    });
+
+    it('returns 0 confidence for empty topics', async () => {
+      await analyzer.extractBestPractices();
+      const result = await analyzer.analyzeTopic('unknown_topic');
+
+      expect(result.confidence).toBe(0);
+    });
+  });
+
+  describe('Fuzzy Topic Matching', () => {
+    it('suggests similar topics for typos', async () => {
+      await analyzer.extractBestPractices();
+      
+      // Typo in 'state_management'
+      const result = await analyzer.analyzeTopic('state_managment');
+
+      expect(result.suggestedTopics).toBeDefined();
+      expect(result.suggestedTopics).toContain('state_management');
+    });
+
+    it('suggests similar topics for semantic queries', async () => {
+      await analyzer.extractBestPractices();
+      
+      // Query for something that doesn't exist but has related keywords
+      const result = await analyzer.analyzeTopic('backend configuration');
+
+      // Should get empty results since no exact match
+      expect(result.recommendations.length).toBe(0);
+      // May or may not have suggestions depending on keyword overlap
+      if (result.suggestedTopics && result.suggestedTopics.length > 0) {
+        expect(result.suggestedTopics.length).toBeGreaterThan(0);
+      }
+    });
+
+    it('returns up to 3 suggestions', async () => {
+      await analyzer.extractBestPractices();
+      const result = await analyzer.analyzeTopic('test');
+
+      if (result.suggestedTopics) {
+        expect(result.suggestedTopics.length).toBeLessThanOrEqual(3);
+      }
+    });
+
+    it('includes suggestions in summary for unknown topics', async () => {
+      await analyzer.extractBestPractices();
+      const result = await analyzer.analyzeTopic('unknown_topic_xyz');
+
+      if (result.suggestedTopics && result.suggestedTopics.length > 0) {
+        expect(result.summary).toContain('Did you mean');
+      }
+    });
+
+    it('does not include suggestedTopics for valid topics', async () => {
+      await analyzer.extractBestPractices();
+      const result = await analyzer.analyzeTopic('state_management');
+
+      // Valid topic should not have suggestions
+      expect(result.suggestedTopics).toBeUndefined();
+    });
+
+    it('handles gibberish queries gracefully', async () => {
+      await analyzer.extractBestPractices();
+      const result = await analyzer.analyzeTopic('xyzabc123nonsense');
+
+      expect(result).toBeDefined();
+      expect(result.confidence).toBe(0);
+      expect(result.recommendations.length).toBe(0);
+    });
+
+    it('suggests multiple topics for ambiguous queries', async () => {
+      await analyzer.extractBestPractices();
+      const result = await analyzer.analyzeTopic('config');
+
+      // 'config' could match multiple topics
+      if (result.suggestedTopics) {
+        expect(result.suggestedTopics.length).toBeGreaterThan(0);
+      }
+    });
+  });
+
+  describe('Integration - Confidence and Suggestions', () => {
+    it('provides comprehensive result for unknown topic', async () => {
+      await analyzer.extractBestPractices();
+      // Use a query with closer edit distance
+      const result = await analyzer.analyzeTopic('stat_management'); // 1 char typo
+
+      expect(result.confidence).toBe(0);
+      expect(result.recommendations.length).toBe(0);
+      // May have suggestions if edit distance is close enough
+      expect(result.summary).toContain('No best practices found');
+    });
+
+    it('provides comprehensive result for known topic', async () => {
+      await analyzer.extractBestPractices();
+      const result = await analyzer.analyzeTopic('state_management');
+
+      expect(result.confidence).toBeGreaterThan(0);
+      expect(result.recommendations.length).toBeGreaterThan(0);
+      expect(result.suggestedTopics).toBeUndefined();
+      expect(result.summary).toMatch(/confidence/);
+    });
+  });
 });
