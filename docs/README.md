@@ -16,7 +16,8 @@ A Model Context Protocol (MCP) server that provides comprehensive Terragrunt doc
 
 ### Features & Tools
 
-- [Available Tools](Available-Tools.md) - Complete reference for all 10 tools
+- [Available Tools](Available-Tools.md) - Complete reference for all 11 tools
+- [Best Practices Guide](Best-Practices-Guide.md) - Comprehensive guide to Terragrunt best practices
 - [Configuration Generator](Configuration-Generator.md) - Generate Terragrunt configurations
 - [File Writing Guide](File-Writing-Guide.md) - Secure file writing with directory whitelisting
 - [HCL Validation](HCL-Validation.md) - Built-in syntax validation for generated configs
