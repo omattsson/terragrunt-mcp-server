@@ -13,7 +13,7 @@ import {
  * This class analyzes error messages from Terragrunt and matches them against
  * known error patterns to provide helpful solutions and debugging steps.
  * 
- * **Database contains 65+ error patterns across 12 categories**
+ * **Database contains 66 error patterns across 7 categories**
  * 
  * Features:
  * - Pattern matching with regex support
@@ -22,19 +22,14 @@ import {
  * - Context extraction from error messages
  * - Solution retrieval from documentation
  * 
- * Supported error categories:
- * - configuration: Syntax errors, missing blocks, invalid values (15+ patterns)
+ * Supported error categories (patterns are thematically organized within these):
+ * - configuration: Syntax errors, missing blocks, invalid values, hooks, includes, locals, generate blocks (38 patterns)
  * - state: State locking, backend issues (3 patterns)
- * - dependency: Circular dependencies, missing modules (3 patterns)
+ * - dependency: Circular dependencies, missing modules, module sources (13 patterns)
  * - backend: S3, GCS, Azure backend errors (4 patterns)
  * - terraform: Version mismatches, provider issues (3 patterns)
  * - authentication: AWS, Azure, GCP credential issues (3 patterns)
  * - network: Connectivity, timeout issues (2 patterns)
- * - module-source: Git, registry, local module errors (10+ patterns)
- * - hooks: Before/after hook execution errors (7+ patterns)
- * - include: Include/import configuration errors (7+ patterns)
- * - locals: Local variable errors (5+ patterns)
- * - generate: Generate block errors (5+ patterns)
  */
 export class ErrorPatternMatcher {
   private readonly docsManager: TerragruntDocsManager;
@@ -58,6 +53,9 @@ export class ErrorPatternMatcher {
   private readonly MAX_MATCHES = 5;
 
   constructor(docsManager: TerragruntDocsManager) {
+    // Store for future use: dynamic pattern extraction from documentation,
+    // fetching updated solution links, and cross-referencing error patterns
+    // with official Terragrunt docs
     this.docsManager = docsManager;
     
     // Initialize LRU cache for match results
@@ -261,8 +259,10 @@ export class ErrorPatternMatcher {
     }
 
     // Calculate Levenshtein distance for overall similarity
-    const distance = this.levenshteinDistance(pattern, text);
-    const maxLength = Math.max(pattern.length, text.length);
+    // Optimize by truncating very long texts to avoid expensive O(n*m) calculation
+    const truncatedText = text.length > 500 ? text.substring(0, 500) : text;
+    const distance = this.levenshteinDistance(pattern, truncatedText);
+    const maxLength = Math.max(pattern.length, truncatedText.length);
     const similarity = 1 - (distance / maxLength);
 
     // Only consider it a match if similarity is above threshold
@@ -366,7 +366,10 @@ export class ErrorPatternMatcher {
   // ==================== Error Pattern Definitions ====================
 
   /**
-   * Configuration error patterns (15+ patterns)
+   * Configuration error patterns (14 patterns)
+   * Note: Additional configuration-category patterns are returned by
+   * getHookErrorPatterns, getIncludeErrorPatterns, getLocalsErrorPatterns,
+   * and getGenerateErrorPatterns methods for a total of 38 patterns.
    */
   private getConfigurationErrorPatterns(): ErrorPattern[] {
     return [
@@ -654,7 +657,7 @@ export class ErrorPatternMatcher {
   }
 
   /**
-   * State management error patterns (20+ patterns)
+   * State management error patterns (3 patterns)
    */
   private getStateErrorPatterns(): ErrorPattern[] {
     return [
