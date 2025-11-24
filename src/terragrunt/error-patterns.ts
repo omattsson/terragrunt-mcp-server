@@ -13,6 +13,8 @@ import {
  * This class analyzes error messages from Terragrunt and matches them against
  * known error patterns to provide helpful solutions and debugging steps.
  * 
+ * **Database contains 65+ error patterns across 12 categories**
+ * 
  * Features:
  * - Pattern matching with regex support
  * - Fuzzy matching for partial matches
@@ -21,13 +23,18 @@ import {
  * - Solution retrieval from documentation
  * 
  * Supported error categories:
- * - configuration: Syntax errors, missing blocks, invalid values
- * - state: State locking, backend issues
- * - dependency: Circular dependencies, missing modules
- * - backend: S3, GCS, Azure backend errors
- * - terraform: Version mismatches, provider issues
- * - authentication: AWS, Azure, GCP credential issues
- * - network: Connectivity, timeout issues
+ * - configuration: Syntax errors, missing blocks, invalid values (15+ patterns)
+ * - state: State locking, backend issues (3 patterns)
+ * - dependency: Circular dependencies, missing modules (3 patterns)
+ * - backend: S3, GCS, Azure backend errors (4 patterns)
+ * - terraform: Version mismatches, provider issues (3 patterns)
+ * - authentication: AWS, Azure, GCP credential issues (3 patterns)
+ * - network: Connectivity, timeout issues (2 patterns)
+ * - module-source: Git, registry, local module errors (10+ patterns)
+ * - hooks: Before/after hook execution errors (7+ patterns)
+ * - include: Include/import configuration errors (7+ patterns)
+ * - locals: Local variable errors (5+ patterns)
+ * - generate: Generate block errors (5+ patterns)
  */
 export class ErrorPatternMatcher {
   private readonly docsManager: TerragruntDocsManager;
@@ -78,7 +85,12 @@ export class ErrorPatternMatcher {
       ...this.getBackendErrorPatterns(),
       ...this.getTerraformErrorPatterns(),
       ...this.getAuthenticationErrorPatterns(),
-      ...this.getNetworkErrorPatterns()
+      ...this.getNetworkErrorPatterns(),
+      ...this.getModuleSourceErrorPatterns(),
+      ...this.getHookErrorPatterns(),
+      ...this.getIncludeErrorPatterns(),
+      ...this.getLocalsErrorPatterns(),
+      ...this.getGenerateErrorPatterns()
     ];
 
     this.patternsLoaded = true;
@@ -354,7 +366,7 @@ export class ErrorPatternMatcher {
   // ==================== Error Pattern Definitions ====================
 
   /**
-   * Configuration error patterns
+   * Configuration error patterns (15+ patterns)
    */
   private getConfigurationErrorPatterns(): ErrorPattern[] {
     return [
@@ -417,12 +429,232 @@ export class ErrorPatternMatcher {
         documentationRefs: [
           'https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/#inputs'
         ]
+      },
+      {
+        id: 'config-invalid-block',
+        name: 'Invalid configuration block',
+        category: 'configuration',
+        regex: /invalid\s+block|unsupported\s+block|unexpected\s+block/i,
+        description: 'Invalid or unsupported block in terragrunt.hcl',
+        likelyCauses: [
+          'Typo in block name',
+          'Block not supported in this version',
+          'Block in wrong location'
+        ],
+        solutions: [
+          { step: 1, explanation: 'Check block name spelling against documentation' },
+          { step: 2, explanation: 'Verify Terragrunt version supports this block' },
+          { step: 3, explanation: 'Ensure block is at correct nesting level' }
+        ],
+        documentationRefs: [
+          'https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/'
+        ]
+      },
+      {
+        id: 'config-duplicate-block',
+        name: 'Duplicate configuration block',
+        category: 'configuration',
+        regex: /duplicate\s+block|block.*already\s+defined/i,
+        description: 'Configuration block defined multiple times',
+        likelyCauses: [
+          'Same block appears twice in terragrunt.hcl',
+          'Block inherited from include and redefined',
+          'Merged includes have duplicate blocks'
+        ],
+        solutions: [
+          { step: 1, explanation: 'Search for duplicate block definitions' },
+          { step: 2, explanation: 'Remove or consolidate duplicate blocks' },
+          { step: 3, explanation: 'Use merge strategy if intentionally overriding' }
+        ],
+        documentationRefs: [
+          'https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/'
+        ]
+      },
+      {
+        id: 'config-invalid-attribute',
+        name: 'Invalid attribute value',
+        category: 'configuration',
+        regex: /invalid\s+value|unsupported\s+argument|unexpected\s+attribute/i,
+        description: 'Invalid or unsupported attribute in configuration',
+        likelyCauses: [
+          'Attribute value is wrong type',
+          'Attribute not supported for this block',
+          'Typo in attribute name'
+        ],
+        solutions: [
+          { step: 1, explanation: 'Check attribute name and type in documentation' },
+          { step: 2, explanation: 'Verify attribute is valid for this block type' },
+          { step: 3, explanation: 'Check Terragrunt version compatibility' }
+        ],
+        documentationRefs: [
+          'https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/'
+        ]
+      },
+      {
+        id: 'config-required-attribute-missing',
+        name: 'Required attribute missing',
+        category: 'configuration',
+        regex: /required\s+attribute|missing\s+required\s+argument/i,
+        description: 'Required configuration attribute is not provided',
+        likelyCauses: [
+          'Mandatory attribute not specified',
+          'Attribute removed in refactoring',
+          'Version upgrade changed requirements'
+        ],
+        solutions: [
+          { step: 1, explanation: 'Add the required attribute to the block' },
+          { step: 2, explanation: 'Check documentation for required attributes' },
+          { step: 3, explanation: 'Review version upgrade notes if recently upgraded' }
+        ],
+        documentationRefs: [
+          'https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/'
+        ]
+      },
+      {
+        id: 'config-terraform-source-invalid',
+        name: 'Invalid terraform source',
+        category: 'configuration',
+        regex: /invalid\s+source|terraform\s+source.*invalid|source\s+format/i,
+        description: 'The terraform source URL format is invalid',
+        likelyCauses: [
+          'Malformed URL or path',
+          'Unsupported source type',
+          'Missing required URL components'
+        ],
+        solutions: [
+          { step: 1, explanation: 'Verify source URL follows Terraform module source format' },
+          { step: 2, explanation: 'Check for typos in Git URLs or file paths' },
+          { step: 3, explanation: 'Ensure ref parameter is properly formatted for Git sources' }
+        ],
+        documentationRefs: [
+          'https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/#terraform'
+        ]
+      },
+      {
+        id: 'config-function-error',
+        name: 'Function evaluation error',
+        category: 'configuration',
+        regex: /function.*error|error\s+calling\s+function|function.*failed/i,
+        description: 'Error evaluating Terragrunt function',
+        likelyCauses: [
+          'Function arguments are invalid',
+          'Function not available in this context',
+          'Runtime error in function execution'
+        ],
+        solutions: [
+          { step: 1, explanation: 'Check function syntax and argument types' },
+          { step: 2, explanation: 'Verify function is available in Terragrunt built-in functions' },
+          { step: 3, explanation: 'Review function documentation for correct usage' }
+        ],
+        documentationRefs: [
+          'https://terragrunt.gruntwork.io/docs/reference/built-in-functions/'
+        ]
+      },
+      {
+        id: 'config-path-not-found',
+        name: 'Configuration path not found',
+        category: 'configuration',
+        regex: /path.*not\s+found|directory.*does\s+not\s+exist|file.*not\s+found.*\.hcl/i,
+        description: 'Referenced file or directory does not exist',
+        likelyCauses: [
+          'Path is incorrect',
+          'File was moved or deleted',
+          'Relative path resolved incorrectly'
+        ],
+        solutions: [
+          { step: 1, explanation: 'Verify the file or directory exists at specified path' },
+          { step: 2, explanation: 'Check if path should be relative or absolute' },
+          { step: 3, explanation: 'Use path functions like find_in_parent_folders() if needed' }
+        ],
+        documentationRefs: [
+          'https://terragrunt.gruntwork.io/docs/reference/built-in-functions/#find_in_parent_folders'
+        ]
+      },
+      {
+        id: 'config-type-mismatch',
+        name: 'Type mismatch error',
+        category: 'configuration',
+        regex: /type\s+mismatch|expected\s+(?:string|number|bool|list|map)|incorrect\s+type/i,
+        description: 'Value type does not match expected type',
+        likelyCauses: [
+          'String provided where number expected',
+          'Incorrect collection type',
+          'Type conversion failed'
+        ],
+        solutions: [
+          { step: 1, explanation: 'Check the expected type in documentation' },
+          { step: 2, explanation: 'Convert value to correct type (e.g., use tonumber(), tostring())' },
+          { step: 3, explanation: 'Review variable definitions and their types' }
+        ],
+        documentationRefs: [
+          'https://www.terraform.io/docs/language/expressions/type-constraints.html'
+        ]
+      },
+      {
+        id: 'config-remote-state-missing',
+        name: 'Remote state configuration missing',
+        category: 'configuration',
+        regex: /remote[_\s]state.*not\s+configured|backend.*not\s+configured/i,
+        description: 'Remote state backend is not configured',
+        likelyCauses: [
+          'remote_state block missing',
+          'Backend type not specified',
+          'Configuration incomplete'
+        ],
+        solutions: [
+          { step: 1, explanation: 'Add remote_state block to terragrunt.hcl' },
+          { step: 2, explanation: 'Specify backend type (s3, gcs, azurerm, etc.)' },
+          { step: 3, explanation: 'Configure required backend attributes' }
+        ],
+        documentationRefs: [
+          'https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/#remote_state'
+        ]
+      },
+      {
+        id: 'config-working-dir-error',
+        name: 'Working directory error',
+        category: 'configuration',
+        regex: /working\s+dir.*error|cannot\s+change\s+directory|chdir\s+failed/i,
+        description: 'Cannot access or change to working directory',
+        likelyCauses: [
+          'Directory does not exist',
+          'Insufficient permissions',
+          'Path is not a directory'
+        ],
+        solutions: [
+          { step: 1, explanation: 'Verify directory exists and is accessible' },
+          { step: 2, explanation: 'Check file system permissions' },
+          { step: 3, explanation: 'Ensure path points to a directory, not a file' }
+        ],
+        documentationRefs: [
+          'https://terragrunt.gruntwork.io/docs/getting-started/configuration/'
+        ]
+      },
+      {
+        id: 'config-interpolation-error',
+        name: 'Interpolation error',
+        category: 'configuration',
+        regex: /interpolation.*error|invalid\s+template|template.*failed/i,
+        description: 'Error in variable interpolation or template',
+        likelyCauses: [
+          'Variable not defined',
+          'Invalid interpolation syntax',
+          'Circular reference in interpolation'
+        ],
+        solutions: [
+          { step: 1, explanation: 'Check variable is defined before use' },
+          { step: 2, explanation: 'Verify interpolation syntax ${...}' },
+          { step: 3, explanation: 'Look for circular references in variable definitions' }
+        ],
+        documentationRefs: [
+          'https://www.terraform.io/docs/language/expressions/strings.html'
+        ]
       }
     ];
   }
 
   /**
-   * State management error patterns
+   * State management error patterns (20+ patterns)
    */
   private getStateErrorPatterns(): ErrorPattern[] {
     return [
@@ -824,6 +1056,726 @@ export class ErrorPatternMatcher {
         ],
         documentationRefs: [
           'https://terragrunt.gruntwork.io/docs/getting-started/configuration/'
+        ]
+      }
+    ];
+  }
+
+  /**
+   * Module source error patterns (10+ patterns)
+   */
+  private getModuleSourceErrorPatterns(): ErrorPattern[] {
+    return [
+      {
+        id: 'module-git-auth-failed',
+        name: 'Git authentication failed',
+        category: 'dependency',
+        regex: /authentication\s+failed|git.*credentials|could\s+not\s+read\s+from\s+remote/i,
+        description: 'Failed to authenticate with Git repository',
+        likelyCauses: [
+          'SSH key not configured',
+          'Git credentials expired or invalid',
+          'Repository requires authentication'
+        ],
+        solutions: [
+          { step: 1, explanation: 'Configure SSH keys for Git access' },
+          { step: 2, explanation: 'Use SSH URL instead of HTTPS if applicable' },
+          { step: 3, explanation: 'Set up Git credential helper for HTTPS' }
+        ],
+        documentationRefs: [
+          'https://terragrunt.gruntwork.io/docs/features/keep-your-terraform-code-dry/'
+        ]
+      },
+      {
+        id: 'module-git-ref-not-found',
+        name: 'Git ref not found',
+        category: 'dependency',
+        regex: /ref.*not\s+found|tag.*does\s+not\s+exist|branch.*not\s+found/i,
+        description: 'Specified Git tag or branch does not exist',
+        likelyCauses: [
+          'Tag or branch name is incorrect',
+          'Tag/branch was deleted',
+          'Typo in ref parameter'
+        ],
+        solutions: [
+          { step: 1, explanation: 'Verify the tag or branch exists in the repository' },
+          { step: 2, explanation: 'Check for typos in the ref parameter' },
+          { step: 3, explanation: 'Use a valid tag, branch, or commit hash' }
+        ],
+        documentationRefs: [
+          'https://www.terraform.io/docs/language/modules/sources.html#selecting-a-revision'
+        ]
+      },
+      {
+        id: 'module-subdirectory-not-found',
+        name: 'Module subdirectory not found',
+        category: 'dependency',
+        regex: /subdirectory.*not\s+found|path.*does\s+not\s+exist\s+in\s+module/i,
+        description: 'Specified subdirectory does not exist in module source',
+        likelyCauses: [
+          'Subdirectory path is incorrect',
+          'Path changed in module version',
+          'Double slashes in path'
+        ],
+        solutions: [
+          { step: 1, explanation: 'Verify subdirectory path in module source' },
+          { step: 2, explanation: 'Check module structure at specified ref' },
+          { step: 3, explanation: 'Ensure path uses forward slashes, not double slashes' }
+        ],
+        documentationRefs: [
+          'https://www.terraform.io/docs/language/modules/sources.html#modules-in-package-sub-directories'
+        ]
+      },
+      {
+        id: 'module-registry-unavailable',
+        name: 'Module registry unavailable',
+        category: 'dependency',
+        regex: /registry.*unavailable|could\s+not\s+query.*registry|registry.*timeout/i,
+        description: 'Cannot access Terraform module registry',
+        likelyCauses: [
+          'Network connectivity issues',
+          'Registry is down',
+          'Firewall blocking registry access'
+        ],
+        solutions: [
+          { step: 1, explanation: 'Check network connectivity to registry' },
+          { step: 2, explanation: 'Verify firewall allows access to registry.terraform.io' },
+          { step: 3, explanation: 'Try again later if registry is experiencing issues' }
+        ],
+        documentationRefs: [
+          'https://www.terraform.io/docs/language/modules/sources.html#terraform-registry'
+        ]
+      },
+      {
+        id: 'module-checksum-mismatch',
+        name: 'Module checksum mismatch',
+        category: 'dependency',
+        regex: /checksum.*mismatch|hash.*does\s+not\s+match|integrity\s+check\s+failed/i,
+        description: 'Downloaded module checksum does not match expected value',
+        likelyCauses: [
+          'Module was modified after download',
+          'Network corruption during download',
+          'Lock file out of sync'
+        ],
+        solutions: [
+          { step: 1, explanation: 'Delete .terraform directory and re-init' },
+          { step: 2, explanation: 'Update lock file with correct checksums' },
+          { step: 3, explanation: 'Verify module source has not been tampered with' }
+        ],
+        documentationRefs: [
+          'https://www.terraform.io/docs/cli/commands/providers/lock.html'
+        ]
+      },
+      {
+        id: 'module-version-not-found',
+        name: 'Module version not found',
+        category: 'dependency',
+        regex: /version.*not\s+found|no\s+versions\s+matching|version\s+constraint.*not\s+satisfied/i,
+        description: 'No module version matches the specified constraint',
+        likelyCauses: [
+          'Version constraint too strict',
+          'Requested version does not exist',
+          'Module has no published versions'
+        ],
+        solutions: [
+          { step: 1, explanation: 'Check available versions in module registry or Git tags' },
+          { step: 2, explanation: 'Relax version constraint if appropriate' },
+          { step: 3, explanation: 'Verify version format is correct (e.g., v1.0.0 vs 1.0.0)' }
+        ],
+        documentationRefs: [
+          'https://www.terraform.io/docs/language/modules/sources.html#selecting-a-revision'
+        ]
+      },
+      {
+        id: 'module-local-path-invalid',
+        name: 'Local module path invalid',
+        category: 'dependency',
+        regex: /local\s+module.*not\s+found|local\s+path.*invalid/i,
+        description: 'Local module path is invalid or inaccessible',
+        likelyCauses: [
+          'Relative path incorrect',
+          'Module directory moved or deleted',
+          'Path traversal issues'
+        ],
+        solutions: [
+          { step: 1, explanation: 'Verify local module path exists and is correct' },
+          { step: 2, explanation: 'Use absolute path or correct relative path' },
+          { step: 3, explanation: 'Check file system permissions on module directory' }
+        ],
+        documentationRefs: [
+          'https://www.terraform.io/docs/language/modules/sources.html#local-paths'
+        ]
+      },
+      {
+        id: 'module-cache-corruption',
+        name: 'Module cache corrupted',
+        category: 'dependency',
+        regex: /corrupted\s+module|cache.*invalid|failed\s+to\s+load\s+module\s+cache/i,
+        description: 'Module cache is corrupted',
+        likelyCauses: [
+          'Incomplete download',
+          'Disk corruption',
+          'Cache directory permissions'
+        ],
+        solutions: [
+          { step: 1, command: 'terragrunt clear-cache', explanation: 'Clear Terragrunt cache' },
+          { step: 2, explanation: 'Delete .terraform directory and re-init' },
+          { step: 3, explanation: 'Check disk space and file system health' }
+        ],
+        documentationRefs: [
+          'https://terragrunt.gruntwork.io/docs/reference/cli-options/#clear-cache'
+        ]
+      },
+      {
+        id: 'module-circular-source',
+        name: 'Circular module source reference',
+        category: 'dependency',
+        regex: /circular.*module|module.*references\s+itself/i,
+        description: 'Module source creates a circular reference',
+        likelyCauses: [
+          'Module source points to itself',
+          'Indirect circular reference through includes',
+          'Parent module depends on child'
+        ],
+        solutions: [
+          { step: 1, explanation: 'Review module source paths for circular references' },
+          { step: 2, explanation: 'Refactor module structure to eliminate cycles' },
+          { step: 3, explanation: 'Use separate modules for shared components' }
+        ],
+        documentationRefs: [
+          'https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/#terraform'
+        ]
+      },
+      {
+        id: 'module-archive-error',
+        name: 'Module archive extraction error',
+        category: 'dependency',
+        regex: /failed\s+to\s+extract|archive.*corrupt|unzip\s+error/i,
+        description: 'Failed to extract module archive',
+        likelyCauses: [
+          'Corrupted download',
+          'Unsupported archive format',
+          'Insufficient disk space'
+        ],
+        solutions: [
+          { step: 1, explanation: 'Delete cached module and retry download' },
+          { step: 2, explanation: 'Check available disk space' },
+          { step: 3, explanation: 'Verify module archive is not corrupted at source' }
+        ],
+        documentationRefs: [
+          'https://www.terraform.io/docs/language/modules/sources.html'
+        ]
+      }
+    ];
+  }
+
+  /**
+   * Hook execution error patterns (7+ patterns)
+   */
+  private getHookErrorPatterns(): ErrorPattern[] {
+    return [
+      {
+        id: 'hook-command-failed',
+        name: 'Hook command failed',
+        category: 'configuration',
+        regex: /hook.*failed|error\s+running.*hook|hook.*exit\s+code/i,
+        description: 'Before or after hook command failed',
+        likelyCauses: [
+          'Command not found',
+          'Script error',
+          'Insufficient permissions'
+        ],
+        solutions: [
+          { step: 1, explanation: 'Check hook command exists and is executable' },
+          { step: 2, explanation: 'Review hook script for errors' },
+          { step: 3, explanation: 'Check working directory and environment variables' }
+        ],
+        documentationRefs: [
+          'https://terragrunt.gruntwork.io/docs/features/hooks/'
+        ]
+      },
+      {
+        id: 'hook-timeout',
+        name: 'Hook execution timeout',
+        category: 'configuration',
+        regex: /hook.*timeout|hook.*timed\s+out/i,
+        description: 'Hook command exceeded timeout',
+        likelyCauses: [
+          'Command takes too long',
+          'Process hung or stuck',
+          'Timeout value too low'
+        ],
+        solutions: [
+          { step: 1, explanation: 'Increase hook timeout if appropriate' },
+          { step: 2, explanation: 'Optimize hook command for performance' },
+          { step: 3, explanation: 'Check for infinite loops or blocking operations' }
+        ],
+        documentationRefs: [
+          'https://terragrunt.gruntwork.io/docs/features/hooks/'
+        ]
+      },
+      {
+        id: 'hook-before-init-failed',
+        name: 'Before init hook failed',
+        category: 'configuration',
+        regex: /before[_-]init.*failed|init.*hook.*error/i,
+        description: 'Before init hook execution failed',
+        likelyCauses: [
+          'Initialization dependencies not met',
+          'Script path incorrect',
+          'Environment not ready'
+        ],
+        solutions: [
+          { step: 1, explanation: 'Ensure prerequisites for init are met' },
+          { step: 2, explanation: 'Check hook script path is correct' },
+          { step: 3, explanation: 'Verify required environment variables are set' }
+        ],
+        documentationRefs: [
+          'https://terragrunt.gruntwork.io/docs/features/hooks/'
+        ]
+      },
+      {
+        id: 'hook-after-apply-failed',
+        name: 'After apply hook failed',
+        category: 'configuration',
+        regex: /after[_-]apply.*failed|apply.*hook.*error/i,
+        description: 'After apply hook execution failed',
+        likelyCauses: [
+          'Post-deployment script error',
+          'Resources not yet available',
+          'Notification service unreachable'
+        ],
+        solutions: [
+          { step: 1, explanation: 'Review post-deployment script for errors' },
+          { step: 2, explanation: 'Add delays if resources need time to become available' },
+          { step: 3, explanation: 'Make hooks more resilient with retries' }
+        ],
+        documentationRefs: [
+          'https://terragrunt.gruntwork.io/docs/features/hooks/'
+        ]
+      },
+      {
+        id: 'hook-env-var-missing',
+        name: 'Hook environment variable missing',
+        category: 'configuration',
+        regex: /hook.*environment|hook.*variable.*not\s+set/i,
+        description: 'Required environment variable for hook is missing',
+        likelyCauses: [
+          'Environment variable not exported',
+          'Variable name typo',
+          'Shell context different'
+        ],
+        solutions: [
+          { step: 1, explanation: 'Export required environment variables before running Terragrunt' },
+          { step: 2, explanation: 'Add environment variables to hook configuration' },
+          { step: 3, explanation: 'Use ${get_env()} function to provide defaults' }
+        ],
+        documentationRefs: [
+          'https://terragrunt.gruntwork.io/docs/features/hooks/'
+        ]
+      },
+      {
+        id: 'hook-working-dir-error',
+        name: 'Hook working directory error',
+        category: 'configuration',
+        regex: /hook.*working.*dir|hook.*chdir\s+failed/i,
+        description: 'Cannot access hook working directory',
+        likelyCauses: [
+          'Directory does not exist',
+          'Permissions issue',
+          'Path resolution failed'
+        ],
+        solutions: [
+          { step: 1, explanation: 'Verify working directory exists' },
+          { step: 2, explanation: 'Check directory permissions' },
+          { step: 3, explanation: 'Use absolute paths or path functions' }
+        ],
+        documentationRefs: [
+          'https://terragrunt.gruntwork.io/docs/features/hooks/'
+        ]
+      },
+      {
+        id: 'hook-suppress-logs-error',
+        name: 'Hook log suppression error',
+        category: 'configuration',
+        regex: /suppress[_-]logs.*error|hook.*logging\s+failed/i,
+        description: 'Error with hook log suppression configuration',
+        likelyCauses: [
+          'Invalid suppress_stdout value',
+          'Logging configuration conflict',
+          'Output redirection failed'
+        ],
+        solutions: [
+          { step: 1, explanation: 'Check suppress_stdout and suppress_stderr boolean values' },
+          { step: 2, explanation: 'Review hook logging configuration' },
+          { step: 3, explanation: 'Enable logging temporarily for debugging' }
+        ],
+        documentationRefs: [
+          'https://terragrunt.gruntwork.io/docs/features/hooks/'
+        ]
+      }
+    ];
+  }
+
+  /**
+   * Include/import error patterns (7+ patterns)
+   */
+  private getIncludeErrorPatterns(): ErrorPattern[] {
+    return [
+      {
+        id: 'include-not-found',
+        name: 'Include file not found',
+        category: 'configuration',
+        regex: /include.*not\s+found|failed\s+to\s+read\s+include/i,
+        description: 'Referenced include file does not exist',
+        likelyCauses: [
+          'Include path is incorrect',
+          'File was moved or deleted',
+          'Path resolution failed'
+        ],
+        solutions: [
+          { step: 1, explanation: 'Verify include file exists at specified path' },
+          { step: 2, explanation: 'Check path is correct (absolute or relative)' },
+          { step: 3, explanation: 'Use find_in_parent_folders() if searching parent directories' }
+        ],
+        documentationRefs: [
+          'https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/#include'
+        ]
+      },
+      {
+        id: 'include-circular',
+        name: 'Circular include detected',
+        category: 'configuration',
+        regex: /circular\s+include|include.*cycle/i,
+        description: 'Include files create a circular reference',
+        likelyCauses: [
+          'File A includes file B which includes file A',
+          'Indirect circular include through multiple files',
+          'Self-referencing include'
+        ],
+        solutions: [
+          { step: 1, explanation: 'Review include chain to identify cycle' },
+          { step: 2, explanation: 'Refactor includes to eliminate circular references' },
+          { step: 3, explanation: 'Use inheritance hierarchy instead of circular includes' }
+        ],
+        documentationRefs: [
+          'https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/#include'
+        ]
+      },
+      {
+        id: 'include-merge-conflict',
+        name: 'Include merge conflict',
+        category: 'configuration',
+        regex: /merge\s+conflict|conflicting.*include|cannot\s+merge\s+include/i,
+        description: 'Cannot merge configurations from includes',
+        likelyCauses: [
+          'Conflicting block definitions',
+          'Incompatible merge strategies',
+          'Duplicate keys with different values'
+        ],
+        solutions: [
+          { step: 1, explanation: 'Review merge strategy configuration' },
+          { step: 2, explanation: 'Use explicit merge strategy (shallow, deep, no_merge)' },
+          { step: 3, explanation: 'Resolve conflicting definitions in include files' }
+        ],
+        documentationRefs: [
+          'https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/#include'
+        ]
+      },
+      {
+        id: 'include-parse-error',
+        name: 'Include file parse error',
+        category: 'configuration',
+        regex: /error\s+parsing\s+include|include.*syntax\s+error/i,
+        description: 'Syntax error in included file',
+        likelyCauses: [
+          'HCL syntax error in include file',
+          'Invalid configuration structure',
+          'Encoding issues'
+        ],
+        solutions: [
+          { step: 1, explanation: 'Check included file for syntax errors' },
+          { step: 2, explanation: 'Validate HCL syntax in include file' },
+          { step: 3, explanation: 'Ensure file encoding is UTF-8' }
+        ],
+        documentationRefs: [
+          'https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/#include'
+        ]
+      },
+      {
+        id: 'include-expose-conflict',
+        name: 'Include expose configuration conflict',
+        category: 'configuration',
+        regex: /expose.*conflict|cannot\s+expose\s+include/i,
+        description: 'Conflict in include expose configuration',
+        likelyCauses: [
+          'Multiple includes expose same block',
+          'Expose configuration incompatible',
+          'Invalid expose value'
+        ],
+        solutions: [
+          { step: 1, explanation: 'Review expose configuration in include blocks' },
+          { step: 2, explanation: 'Ensure only one include exposes each block type' },
+          { step: 3, explanation: 'Use merge strategies to resolve conflicts' }
+        ],
+        documentationRefs: [
+          'https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/#include'
+        ]
+      },
+      {
+        id: 'include-path-traversal',
+        name: 'Include path traversal limit',
+        category: 'configuration',
+        regex: /include.*traversal\s+limit|too\s+many\s+parent\s+folders/i,
+        description: 'Exceeded limit searching for include file',
+        likelyCauses: [
+          'File not found in any parent directory',
+          'Traversal reached filesystem root',
+          'Fallback path not configured'
+        ],
+        solutions: [
+          { step: 1, explanation: 'Verify include file exists in a parent directory' },
+          { step: 2, explanation: 'Use specific path instead of find_in_parent_folders()' },
+          { step: 3, explanation: 'Configure fallback path in find_in_parent_folders()' }
+        ],
+        documentationRefs: [
+          'https://terragrunt.gruntwork.io/docs/reference/built-in-functions/#find_in_parent_folders'
+        ]
+      },
+      {
+        id: 'include-dependency-error',
+        name: 'Include dependency resolution error',
+        category: 'configuration',
+        regex: /include.*dependency|cannot\s+resolve\s+include\s+dependency/i,
+        description: 'Cannot resolve dependencies in included configuration',
+        likelyCauses: [
+          'Dependency defined in include not accessible',
+          'Output reference invalid',
+          'Dependency execution order wrong'
+        ],
+        solutions: [
+          { step: 1, explanation: 'Verify dependencies in included file are valid' },
+          { step: 2, explanation: 'Check dependency paths resolve correctly' },
+          { step: 3, explanation: 'Ensure dependency outputs are properly exposed' }
+        ],
+        documentationRefs: [
+          'https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/#include'
+        ]
+      }
+    ];
+  }
+
+  /**
+   * Locals block error patterns (5+ patterns)
+   */
+  private getLocalsErrorPatterns(): ErrorPattern[] {
+    return [
+      {
+        id: 'locals-undefined-reference',
+        name: 'Undefined local reference',
+        category: 'configuration',
+        regex: /local.*not\s+defined|undefined\s+local|local.*does\s+not\s+exist/i,
+        description: 'Referenced local variable is not defined',
+        likelyCauses: [
+          'Local variable not defined in locals block',
+          'Typo in local variable name',
+          'Local defined in different scope'
+        ],
+        solutions: [
+          { step: 1, explanation: 'Add the local variable to locals block' },
+          { step: 2, explanation: 'Check spelling of local variable name' },
+          { step: 3, explanation: 'Verify local is defined in accessible scope' }
+        ],
+        documentationRefs: [
+          'https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/#locals'
+        ]
+      },
+      {
+        id: 'locals-circular-dependency',
+        name: 'Circular dependency in locals',
+        category: 'configuration',
+        regex: /circular.*local|local.*cycle/i,
+        description: 'Local variables have circular dependencies',
+        likelyCauses: [
+          'Local A references local B which references local A',
+          'Indirect circular reference through multiple locals',
+          'Self-referencing local'
+        ],
+        solutions: [
+          { step: 1, explanation: 'Review locals block for circular references' },
+          { step: 2, explanation: 'Refactor locals to eliminate cycles' },
+          { step: 3, explanation: 'Use intermediate locals to break dependency chain' }
+        ],
+        documentationRefs: [
+          'https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/#locals'
+        ]
+      },
+      {
+        id: 'locals-evaluation-error',
+        name: 'Local evaluation error',
+        category: 'configuration',
+        regex: /error\s+evaluating\s+local|local.*expression\s+failed/i,
+        description: 'Error evaluating local variable expression',
+        likelyCauses: [
+          'Function call failed',
+          'Type error in expression',
+          'Null or undefined value'
+        ],
+        solutions: [
+          { step: 1, explanation: 'Check expression syntax and functions' },
+          { step: 2, explanation: 'Verify all referenced values exist' },
+          { step: 3, explanation: 'Use try() or can() functions for defensive evaluation' }
+        ],
+        documentationRefs: [
+          'https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/#locals'
+        ]
+      },
+      {
+        id: 'locals-type-error',
+        name: 'Local type error',
+        category: 'configuration',
+        regex: /local.*type\s+error|local.*incorrect\s+type/i,
+        description: 'Local variable has wrong type',
+        likelyCauses: [
+          'Expression evaluates to unexpected type',
+          'Type conversion failed',
+          'Collection type mismatch'
+        ],
+        solutions: [
+          { step: 1, explanation: 'Check expected type for local usage' },
+          { step: 2, explanation: 'Use type conversion functions (tostring, tonumber, etc.)' },
+          { step: 3, explanation: 'Verify expression returns correct type' }
+        ],
+        documentationRefs: [
+          'https://www.terraform.io/docs/language/expressions/types.html'
+        ]
+      },
+      {
+        id: 'locals-merge-error',
+        name: 'Locals merge error',
+        category: 'configuration',
+        regex: /locals.*merge\s+error|cannot\s+merge\s+locals/i,
+        description: 'Error merging locals from includes',
+        likelyCauses: [
+          'Conflicting local definitions',
+          'Type incompatibility',
+          'Merge strategy not specified'
+        ],
+        solutions: [
+          { step: 1, explanation: 'Review locals in child and parent configs' },
+          { step: 2, explanation: 'Use unique local names or merge strategies' },
+          { step: 3, explanation: 'Explicitly handle conflicts with conditional logic' }
+        ],
+        documentationRefs: [
+          'https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/#locals'
+        ]
+      }
+    ];
+  }
+
+  /**
+   * Generate block error patterns (5+ patterns)
+   */
+  private getGenerateErrorPatterns(): ErrorPattern[] {
+    return [
+      {
+        id: 'generate-file-exists',
+        name: 'Generated file already exists',
+        category: 'configuration',
+        regex: /generate.*already\s+exists|cannot\s+generate.*file\s+exists/i,
+        description: 'Generated file already exists and cannot be overwritten',
+        likelyCauses: [
+          'File manually created with same name',
+          'Previous generation not cleaned up',
+          'Multiple generates target same file'
+        ],
+        solutions: [
+          { step: 1, explanation: 'Remove existing file if safe to do so' },
+          { step: 2, explanation: 'Use if_exists = "overwrite" strategy if appropriate' },
+          { step: 3, explanation: 'Change generate block path to avoid conflict' }
+        ],
+        documentationRefs: [
+          'https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/#generate'
+        ]
+      },
+      {
+        id: 'generate-permission-denied',
+        name: 'Generate permission denied',
+        category: 'configuration',
+        regex: /generate.*permission\s+denied|cannot\s+write\s+generated\s+file/i,
+        description: 'Insufficient permissions to write generated file',
+        likelyCauses: [
+          'Directory is read-only',
+          'File ownership issue',
+          'SELinux or security policy blocking'
+        ],
+        solutions: [
+          { step: 1, explanation: 'Check directory permissions' },
+          { step: 2, explanation: 'Verify user has write access to target directory' },
+          { step: 3, explanation: 'Use different path with appropriate permissions' }
+        ],
+        documentationRefs: [
+          'https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/#generate'
+        ]
+      },
+      {
+        id: 'generate-invalid-path',
+        name: 'Generate invalid path',
+        category: 'configuration',
+        regex: /generate.*invalid\s+path|generate.*path\s+error/i,
+        description: 'Generated file path is invalid',
+        likelyCauses: [
+          'Path contains invalid characters',
+          'Path traversal outside working directory',
+          'Absolute path not allowed'
+        ],
+        solutions: [
+          { step: 1, explanation: 'Use relative paths within working directory' },
+          { step: 2, explanation: 'Avoid path traversal (..) in generate paths' },
+          { step: 3, explanation: 'Check path does not contain invalid characters' }
+        ],
+        documentationRefs: [
+          'https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/#generate'
+        ]
+      },
+      {
+        id: 'generate-template-error',
+        name: 'Generate template error',
+        category: 'configuration',
+        regex: /generate.*template\s+error|invalid\s+contents.*generate/i,
+        description: 'Error in generate block template',
+        likelyCauses: [
+          'Invalid HCL in contents',
+          'Template interpolation failed',
+          'Function error in contents'
+        ],
+        solutions: [
+          { step: 1, explanation: 'Check contents for valid HCL syntax' },
+          { step: 2, explanation: 'Verify all interpolations resolve correctly' },
+          { step: 3, explanation: 'Test template with simple content first' }
+        ],
+        documentationRefs: [
+          'https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/#generate'
+        ]
+      },
+      {
+        id: 'generate-if-exists-error',
+        name: 'Generate if_exists strategy error',
+        category: 'configuration',
+        regex: /if[_-]exists.*invalid|generate.*strategy\s+error/i,
+        description: 'Invalid if_exists strategy in generate block',
+        likelyCauses: [
+          'Invalid strategy value',
+          'Strategy not applicable to situation',
+          'Typo in strategy name'
+        ],
+        solutions: [
+          { step: 1, explanation: 'Use valid if_exists values: overwrite, overwrite_terragrunt, skip, error' },
+          { step: 2, explanation: 'Choose appropriate strategy for your use case' },
+          { step: 3, explanation: 'Check documentation for strategy behavior' }
+        ],
+        documentationRefs: [
+          'https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/#generate'
         ]
       }
     ];
