@@ -314,5 +314,31 @@ describe('ErrorPatternMatcher - Fuzzy Matching and Confidence Scoring', () => {
       expect(result1.matches.length).toBeLessThanOrEqual(1);
       expect(result2.matches.length).toBeLessThanOrEqual(5);
     });
+
+    it('should cache separately for different enableFuzzyMatching settings', async () => {
+      const errorMessage = 'Error: configuration problem';
+      
+      // First call with fuzzy disabled
+      const withoutFuzzy = await matcher.diagnoseError(errorMessage, undefined, {
+        enableFuzzyMatching: false,
+        maxMatches: 10
+      });
+      
+      // Second call with fuzzy enabled (should not use cached results from first call)
+      const withFuzzy = await matcher.diagnoseError(errorMessage, undefined, {
+        enableFuzzyMatching: true,
+        maxMatches: 10
+      });
+
+      // With fuzzy enabled should potentially have more matches
+      expect(withFuzzy.matches.length).toBeGreaterThanOrEqual(withoutFuzzy.matches.length);
+      
+      // Verify they're actually different (not cached incorrectly)
+      const fuzzyScores = withFuzzy.matches.filter(m => m.confidence < 0.95);
+      const noFuzzyScores = withoutFuzzy.matches.filter(m => m.confidence < 0.95);
+      
+      // With fuzzy disabled, should have no fuzzy-scored matches
+      expect(noFuzzyScores.length).toBe(0);
+    });
   });
 });

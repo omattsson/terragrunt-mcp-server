@@ -140,7 +140,7 @@ export class ErrorPatternMatcher {
     const enableFuzzyMatching = options?.enableFuzzyMatching ?? true;
 
     // Check cache first (include options in cache key)
-    const cacheKey = this.getCacheKey(truncatedMessage, maxMatches, minConfidence);
+    const cacheKey = this.getCacheKey(truncatedMessage, maxMatches, minConfidence, enableFuzzyMatching);
     const cachedMatches = this.matchCache.get(cacheKey);
     
     let matches: ErrorMatch[];
@@ -217,7 +217,8 @@ export class ErrorPatternMatcher {
       }
       
       // Skip fuzzy matching if we have enough high-quality regex matches (optimization)
-      if (regexMatchCount >= options.maxMatches) {
+      // Use 2x threshold to account for potential duplicates removed during deduplication
+      if (regexMatchCount >= options.maxMatches * 2) {
         continue;
       }
 
@@ -437,10 +438,15 @@ export class ErrorPatternMatcher {
   /**
    * Generate cache key for error message including options.
    */
-  private getCacheKey(errorMessage: string, maxMatches: number, minConfidence: number): string {
+  private getCacheKey(
+    errorMessage: string,
+    maxMatches: number,
+    minConfidence: number,
+    enableFuzzyMatching: boolean
+  ): string {
     // Use first 200 chars plus options as cache key
     const msgKey = errorMessage.substring(0, 200).toLowerCase().trim();
-    return `${msgKey}|${maxMatches}|${minConfidence}`;
+    return `${msgKey}|${maxMatches}|${minConfidence}|${enableFuzzyMatching}`;
   }
 
   /**
