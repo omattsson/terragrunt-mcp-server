@@ -211,8 +211,13 @@ export class ErrorPatternMatcher {
         continue;
       }
 
-      // Skip fuzzy matching if disabled or if we have enough high-quality regex matches
-      if (!options.enableFuzzyMatching || regexMatchCount >= options.maxMatches) {
+      // Skip fuzzy matching if disabled
+      if (!options.enableFuzzyMatching) {
+        continue;
+      }
+      
+      // Skip fuzzy matching if we have enough high-quality regex matches (optimization)
+      if (regexMatchCount >= options.maxMatches) {
         continue;
       }
 
