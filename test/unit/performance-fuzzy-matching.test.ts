@@ -148,11 +148,21 @@ Stack trace:
       await matcher.diagnoseError(errorMessage);
       const duration3 = Date.now() - start3;
 
-      // Cached calls should be significantly faster
-      expect(duration2).toBeLessThan(duration1);
-      expect(duration3).toBeLessThan(duration1);
-      expect(duration2).toBeLessThan(10); // Should be very fast
-      expect(duration3).toBeLessThan(10);
+      // Cached calls should be fast (<=10ms) or faster than first call
+      // Note: On fast machines, Date.now() may return 0ms for sub-millisecond operations
+      expect(duration2).toBeLessThanOrEqual(Math.max(duration1, 10));
+      expect(duration3).toBeLessThanOrEqual(Math.max(duration1, 10));
+      
+      // At least verify the cache is working - run multiple times and check average
+      const iterations = 10;
+      let totalCached = 0;
+      for (let i = 0; i < iterations; i++) {
+        const startCached = Date.now();
+        await matcher.diagnoseError(errorMessage);
+        totalCached += Date.now() - startCached;
+      }
+      const avgCached = totalCached / iterations;
+      expect(avgCached).toBeLessThan(10); // Average should be very fast
     });
   });
 
