@@ -68,6 +68,10 @@ export interface ErrorContext {
     filePath?: string;
     /** Line number if mentioned in error */
     lineNumber?: number;
+    /** Module or component name if detected */
+    module?: string;
+    /** Backend type if detected (s3, gcs, azurerm, etc.) */
+    backend?: string;
 }
 
 /**
