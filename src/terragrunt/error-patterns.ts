@@ -43,14 +43,19 @@ export class ErrorPatternMatcher {
   private readonly MAX_EDIT_DISTANCE_RATIO = 0.3;
 
   /**
-   * Minimum confidence score to include in results
+   * Minimum confidence score to include in results (configurable per-call)
    */
-  private readonly MIN_CONFIDENCE_THRESHOLD = 0.4;
+  private readonly DEFAULT_MIN_CONFIDENCE = 0.3;
 
   /**
-   * Maximum number of matches to return
+   * Maximum number of matches to return (configurable per-call)
    */
-  private readonly MAX_MATCHES = 5;
+  private readonly DEFAULT_MAX_MATCHES = 3;
+
+  /**
+   * Confidence score for regex pattern matches
+   */
+  private readonly REGEX_MATCH_CONFIDENCE = 0.95;
 
   constructor(docsManager: TerragruntDocsManager) {
     // Store for future use: dynamic pattern extraction from documentation,
@@ -101,12 +106,41 @@ export class ErrorPatternMatcher {
    * @param context Optional additional context information
    * @returns Complete diagnosis with matches, advice, and debugging steps
    */
-  async diagnoseError(errorMessage: string, context?: Partial<ErrorContext>): Promise<ErrorDiagnosisResult> {
+  async diagnoseError(
+    errorMessage: string,
+    context?: Partial<ErrorContext>,
+    options?: {
+      maxMatches?: number;
+      minConfidence?: number;
+      enableFuzzyMatching?: boolean;
+    }
+  ): Promise<ErrorDiagnosisResult> {
+    // Handle edge case: empty or null error message
+    if (!errorMessage || errorMessage.trim().length === 0) {
+      return {
+        matches: [],
+        generalAdvice: this.getGeneralAdvice(),
+        debuggingSteps: this.getDebuggingSteps(),
+        relatedErrors: [],
+        overallConfidence: 0
+      };
+    }
+
+    // Truncate very long error messages for performance (keep first 5000 chars)
+    const truncatedMessage = errorMessage.length > 5000
+      ? errorMessage.substring(0, 5000)
+      : errorMessage;
+
     // Ensure patterns are loaded
     await this.loadPatterns();
 
-    // Check cache first
-    const cacheKey = this.getCacheKey(errorMessage);
+    // Extract options with defaults
+    const maxMatches = options?.maxMatches ?? this.DEFAULT_MAX_MATCHES;
+    const minConfidence = options?.minConfidence ?? this.DEFAULT_MIN_CONFIDENCE;
+    const enableFuzzyMatching = options?.enableFuzzyMatching ?? true;
+
+    // Check cache first (include options in cache key)
+    const cacheKey = this.getCacheKey(truncatedMessage, maxMatches, minConfidence, enableFuzzyMatching);
     const cachedMatches = this.matchCache.get(cacheKey);
     
     let matches: ErrorMatch[];
@@ -115,11 +149,15 @@ export class ErrorPatternMatcher {
       matches = cachedMatches;
     } else {
       // Extract context from error message
-      const extractedContext = this.extractErrorContext(errorMessage);
+      const extractedContext = this.extractErrorContext(truncatedMessage);
       const fullContext = { ...extractedContext, ...context };
 
       // Find all matching patterns
-      matches = this.matchError(errorMessage, fullContext);
+      matches = this.matchError(truncatedMessage, fullContext, {
+        maxMatches,
+        minConfidence,
+        enableFuzzyMatching
+      });
       
       // Cache the results
       this.matchCache.set(cacheKey, matches);
@@ -143,9 +181,18 @@ export class ErrorPatternMatcher {
   /**
    * Match error message against all patterns and return ranked matches.
    */
-  private matchError(errorMessage: string, context: ErrorContext): ErrorMatch[] {
+  private matchError(
+    errorMessage: string,
+    context: ErrorContext,
+    options: {
+      maxMatches: number;
+      minConfidence: number;
+      enableFuzzyMatching: boolean;
+    }
+  ): ErrorMatch[] {
     const matches: ErrorMatch[] = [];
     const normalizedMessage = errorMessage.toLowerCase();
+    let regexMatchCount = 0;
 
     for (const pattern of this.patterns) {
       // Try exact regex match first
@@ -154,28 +201,43 @@ export class ErrorPatternMatcher {
       if (regexMatch) {
         matches.push({
           pattern,
-          confidence: 1.0, // Exact regex match
+          confidence: this.REGEX_MATCH_CONFIDENCE, // 0.95 for regex matches
           context,
           likelyCause: pattern.likelyCauses[0] || 'Unknown cause',
           solutions: pattern.solutions,
           documentationRefs: pattern.documentationRefs
         });
+        regexMatchCount++;
+        continue;
+      }
+
+      // Skip fuzzy matching if disabled
+      if (!options.enableFuzzyMatching) {
+        continue;
+      }
+      
+      // Skip fuzzy matching if we have enough high-quality regex matches (optimization)
+      // Use 2x threshold to account for potential duplicates removed during deduplication
+      if (regexMatchCount >= options.maxMatches * 2) {
         continue;
       }
 
       // Try fuzzy matching on pattern description and name
-      const descriptionMatch = this.fuzzyMatch(
+      const descriptionSimilarity = this.calculateSimilarity(
         pattern.description.toLowerCase(),
         normalizedMessage
       );
-      const nameMatch = this.fuzzyMatch(
+      const nameSimilarity = this.calculateSimilarity(
         pattern.name.toLowerCase(),
         normalizedMessage
       );
 
-      const confidence = Math.max(descriptionMatch, nameMatch);
+      const maxSimilarity = Math.max(descriptionSimilarity, nameSimilarity);
+      
+      // Map similarity to confidence score using the specified ranges
+      const confidence = this.mapSimilarityToConfidence(maxSimilarity);
 
-      if (confidence >= this.MIN_CONFIDENCE_THRESHOLD) {
+      if (confidence >= options.minConfidence) {
         matches.push({
           pattern,
           confidence,
@@ -187,10 +249,10 @@ export class ErrorPatternMatcher {
       }
     }
 
-    // Sort by confidence (highest first) and limit results
-    return matches
+    // Sort by confidence (highest first), deduplicate, and limit results
+    return this.deduplicateMatches(matches)
       .sort((a, b) => b.confidence - a.confidence)
-      .slice(0, this.MAX_MATCHES);
+      .slice(0, options.maxMatches);
   }
 
   /**
@@ -230,32 +292,56 @@ export class ErrorPatternMatcher {
         .join('\n');
     }
 
+    // Extract module/component
+    const moduleMatch = errorMessage.match(/module[:\s]+([^\s,]+)/i);
+    if (moduleMatch) {
+      context.module = moduleMatch[1];
+    }
+
+    // Extract backend type
+    const backendMatch = errorMessage.match(/backend[:\s]+(s3|gcs|azurerm|azure|local|remote)/i);
+    if (backendMatch) {
+      context.backend = backendMatch[1];
+    }
+
+    // Extract OS (if present)
+    const osMatch = errorMessage.match(/\b(linux|darwin|windows|macos)\b/i);
+    if (osMatch) {
+      context.os = osMatch[1];
+    }
+
     return context;
   }
 
   /**
-   * Calculate fuzzy match confidence between two strings using Levenshtein distance.
+   * Calculate raw similarity score between two strings.
    * 
    * @param pattern The pattern to match against
    * @param text The text to search in
-   * @returns Confidence score 0-1 (1 = perfect match)
+   * @returns Raw similarity score 0-1 (1 = perfect match)
    */
-  private fuzzyMatch(pattern: string, text: string): number {
+  private calculateSimilarity(pattern: string, text: string): number {
     // Check for exact substring match first
     if (text.includes(pattern)) {
-      return 0.9;
+      return 1.0;
     }
 
     // Check for partial word matches
-    const patternWords = pattern.split(/\s+/);
-    const textWords = text.split(/\s+/);
+    const patternWords = pattern.split(/\s+/).filter(w => w.length > 0);
+    const textWords = text.split(/\s+/).filter(w => w.length > 0);
+    
+    if (patternWords.length === 0) {
+      return 0;
+    }
+    
     const matchingWords = patternWords.filter(pw => 
       textWords.some(tw => tw.includes(pw) || pw.includes(tw))
     );
     
     if (matchingWords.length > 0) {
       const wordMatchRatio = matchingWords.length / patternWords.length;
-      return 0.5 + (wordMatchRatio * 0.3); // 0.5-0.8 range
+      // Scale word matches to 0.6-0.9 similarity range
+      return 0.6 + (wordMatchRatio * 0.3);
     }
 
     // Calculate Levenshtein distance for overall similarity
@@ -265,8 +351,52 @@ export class ErrorPatternMatcher {
     const maxLength = Math.max(pattern.length, truncatedText.length);
     const similarity = 1 - (distance / maxLength);
 
-    // Only consider it a match if similarity is above threshold
-    return similarity > this.MAX_EDIT_DISTANCE_RATIO ? similarity * 0.5 : 0;
+    return similarity;
+  }
+
+  /**
+   * Map raw similarity score to confidence score using specified ranges.
+   * 
+   * @param similarity Raw similarity score (0-1)
+   * @returns Confidence score in appropriate range
+   */
+  private mapSimilarityToConfidence(similarity: number): number {
+    if (similarity > 0.8) {
+      // Map 0.8-1.0 to 0.7-0.85
+      return 0.7 + (similarity - 0.8) * 0.75;
+    } else if (similarity >= 0.5) {
+      // Map 0.5-0.8 to 0.4-0.65
+      return 0.4 + (similarity - 0.5) * 0.833;
+    } else {
+      // Map 0.0-0.5 to 0.1-0.35
+      return 0.1 + similarity * 0.5;
+    }
+  }
+
+  /**
+   * Deduplicate matches with identical or very similar solutions.
+   * 
+   * @param matches Array of error matches to deduplicate
+   * @returns Deduplicated array keeping highest confidence for each unique solution
+   */
+  private deduplicateMatches(matches: ErrorMatch[]): ErrorMatch[] {
+    const solutionMap = new Map<string, ErrorMatch>();
+    
+    for (const match of matches) {
+      // Create signature from solutions
+      const signature = match.solutions
+        .map(s => s.explanation.toLowerCase().trim())
+        .sort()
+        .join('|');
+      
+      // Keep the match with highest confidence for each unique solution signature
+      const existing = solutionMap.get(signature);
+      if (!existing || match.confidence > existing.confidence) {
+        solutionMap.set(signature, match);
+      }
+    }
+    
+    return Array.from(solutionMap.values());
   }
 
   /**
@@ -306,11 +436,17 @@ export class ErrorPatternMatcher {
   }
 
   /**
-   * Generate cache key for error message.
+   * Generate cache key for error message including options.
    */
-  private getCacheKey(errorMessage: string): string {
-    // Use first 200 chars as cache key to avoid huge keys
-    return errorMessage.substring(0, 200).toLowerCase().trim();
+  private getCacheKey(
+    errorMessage: string,
+    maxMatches: number,
+    minConfidence: number,
+    enableFuzzyMatching: boolean
+  ): string {
+    // Use first 200 chars plus options as cache key
+    const msgKey = errorMessage.substring(0, 200).toLowerCase().trim();
+    return `${msgKey}|${maxMatches}|${minConfidence}|${enableFuzzyMatching}`;
   }
 
   /**

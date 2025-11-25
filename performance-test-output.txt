@@ -1,0 +1,338 @@
+
+> terragrunt-mcp-server@0.3.0 test
+> vitest run test/performance/performance.test.ts
+
+
+[1m[46m RUN [49m[22m [36mv4.0.3 [39m[90m/Users/olofm/git/terragrunt-mcp-server[39m
+
+[90mstdout[2m | test/performance/performance.test.ts[2m > [22m[2mPerformance Benchmarks
+[22m[39mLoading documentation for performance tests...
+
+[90mstdout[2m | test/performance/performance.test.ts[2m > [22m[2mPerformance Benchmarks
+[22m[39mDecompressed cache: 285905 → 1173795 bytes
+Loaded 85 docs from disk cache (age: 296 minutes)
+
+[90mstdout[2m | test/performance/performance.test.ts[2m > [22m[2mPerformance Benchmarks
+[22m[39mLoaded 85 docs in 20.65ms
+
+[90mstdout[2m | test/performance/performance.test.ts[2m > [22m[2mPerformance Benchmarks[2m > [22m[2m1. Large Result Set Handling[2m > [22m[2mshould handle >100 docs efficiently
+[22m[39m✓ Loaded 85 docs in 0.01ms
+
+[90mstdout[2m | test/performance/performance.test.ts[2m > [22m[2mPerformance Benchmarks[2m > [22m[2m1. Large Result Set Handling[2m > [22m[2mshould list all resources without timeout
+[22m[39mDecompressed cache: 285905 → 1173795 bytes
+Loaded 85 docs from disk cache (age: 296 minutes)
+
+[90mstdout[2m | test/performance/performance.test.ts[2m > [22m[2mPerformance Benchmarks[2m > [22m[2m1. Large Result Set Handling[2m > [22m[2mshould list all resources without timeout
+[22m[39m✓ Listed 58 resources in 17.89ms
+
+[90mstdout[2m | test/performance/performance.test.ts[2m > [22m[2mPerformance Benchmarks[2m > [22m[2m1. Large Result Set Handling[2m > [22m[2mshould handle large section content
+[22m[39m✓ Retrieved 4 docs from section in 0.16ms
+
+[90mstdout[2m | test/performance/performance.test.ts[2m > [22m[2mPerformance Benchmarks[2m > [22m[2m2. Search Performance[2m > [22m[2mshould search with short query efficiently
+[22m[39m✓ Search "dependencies" found 32 results (returned 10) in 0.76ms
+
+[90mstdout[2m | test/performance/performance.test.ts[2m > [22m[2mPerformance Benchmarks[2m > [22m[2m2. Search Performance[2m > [22m[2mshould search with medium query efficiently
+[22m[39m✓ Search "manage dependencies" found 3 results (returned 3) in 0.48ms
+
+[90mstdout[2m | test/performance/performance.test.ts[2m > [22m[2mPerformance Benchmarks[2m > [22m[2m2. Search Performance[2m > [22m[2mshould search with long query efficiently
+[22m[39m✓ Search long query (36 chars) found 0 results (returned 0) in 0.60ms
+
+[90mstdout[2m | test/performance/performance.test.ts[2m > [22m[2mPerformance Benchmarks[2m > [22m[2m2. Search Performance[2m > [22m[2mshould search with different result limits
+[22m[39m  ✓ Limit 5: 83 total, 5 returned in 0.16ms
+
+[90mstdout[2m | test/performance/performance.test.ts[2m > [22m[2mPerformance Benchmarks[2m > [22m[2m2. Search Performance[2m > [22m[2mshould search with different result limits
+[22m[39m  ✓ Limit 10: 83 total, 10 returned in 0.25ms
+
+[90mstdout[2m | test/performance/performance.test.ts[2m > [22m[2mPerformance Benchmarks[2m > [22m[2m2. Search Performance[2m > [22m[2mshould search with different result limits
+[22m[39m  ✓ Limit 20: 83 total, 20 returned in 0.05ms
+
+[90mstdout[2m | test/performance/performance.test.ts[2m > [22m[2mPerformance Benchmarks[2m > [22m[2m2. Search Performance[2m > [22m[2mshould search with different result limits
+[22m[39m  ✓ Limit 50: 83 total, 50 returned in 0.13ms
+
+[90mstdout[2m | test/performance/performance.test.ts[2m > [22m[2mPerformance Benchmarks[2m > [22m[2m3. Memory Usage During Cache Load[2m > [22m[2mshould load cache without excessive memory growth
+[22m[39mDecompressed cache: 285905 → 1173795 bytes
+Loaded 85 docs from disk cache (age: 296 minutes)
+
+[90mstdout[2m | test/performance/performance.test.ts[2m > [22m[2mPerformance Benchmarks[2m > [22m[2m3. Memory Usage During Cache Load[2m > [22m[2mshould load cache without excessive memory growth
+[22m[39m✓ Heap growth: 7.18MB
+  Initial: 33.83MB
+  Final: 41.02MB
+
+[90mstdout[2m | test/performance/performance.test.ts[2m > [22m[2mPerformance Benchmarks[2m > [22m[2m3. Memory Usage During Cache Load[2m > [22m[2mshould cache docs in memory for fast subsequent access
+[22m[39mDecompressed cache: 285905 → 1173795 bytes
+Loaded 85 docs from disk cache (age: 296 minutes)
+
+[90mstdout[2m | test/performance/performance.test.ts[2m > [22m[2mPerformance Benchmarks[2m > [22m[2m3. Memory Usage During Cache Load[2m > [22m[2mshould cache docs in memory for fast subsequent access
+[22m[39m✓ Cold cache: 17.39ms, Warm cache: 0.01ms
+  Speedup: 2119.1x faster
+
+[90mstdout[2m | test/performance/performance.test.ts[2m > [22m[2mPerformance Benchmarks[2m > [22m[2m4. Response Time Benchmarks for Each Tool
+[22m[39mWarming up tool handler cache...
+
+[90mstdout[2m | test/performance/performance.test.ts[2m > [22m[2mPerformance Benchmarks[2m > [22m[2m4. Response Time Benchmarks for Each Tool
+[22m[39mDecompressed cache: 285905 → 1173795 bytes
+Loaded 85 docs from disk cache (age: 296 minutes)
+
+[90mstdout[2m | test/performance/performance.test.ts[2m > [22m[2mPerformance Benchmarks[2m > [22m[2m4. Response Time Benchmarks for Each Tool
+[22m[39mCache warmed up
+
+[90mstdout[2m | test/performance/performance.test.ts[2m > [22m[2mPerformance Benchmarks[2m > [22m[2m4. Response Time Benchmarks for Each Tool[2m > [22m[2mshould execute search_terragrunt_docs in <1 second
+[22m[39mDecompressed cache: 285905 → 1173795 bytes
+Loaded 85 docs from disk cache (age: 296 minutes)
+
+[90mstdout[2m | test/performance/performance.test.ts[2m > [22m[2mPerformance Benchmarks[2m > [22m[2m4. Response Time Benchmarks for Each Tool[2m > [22m[2mshould execute search_terragrunt_docs in <1 second
+[22m[39m✓ search_terragrunt_docs: 19.57ms
+
+[90mstdout[2m | test/performance/performance.test.ts[2m > [22m[2mPerformance Benchmarks[2m > [22m[2m4. Response Time Benchmarks for Each Tool[2m > [22m[2mshould execute get_terragrunt_sections in <500ms
+[22m[39m✓ get_terragrunt_sections: 0.05ms
+
+[90mstdout[2m | test/performance/performance.test.ts[2m > [22m[2mPerformance Benchmarks[2m > [22m[2m4. Response Time Benchmarks for Each Tool[2m > [22m[2mshould execute get_section_docs in <1 second
+[22m[39m✓ get_section_docs: 0.17ms
+
+[90mstdout[2m | test/performance/performance.test.ts[2m > [22m[2mPerformance Benchmarks[2m > [22m[2m4. Response Time Benchmarks for Each Tool[2m > [22m[2mshould execute get_cli_command_help in <1 second
+[22m[39m✓ get_cli_command_help: 0.18ms
+
+[90mstdout[2m | test/performance/performance.test.ts[2m > [22m[2mPerformance Benchmarks[2m > [22m[2m4. Response Time Benchmarks for Each Tool[2m > [22m[2mshould execute get_hcl_config_reference in <1 second
+[22m[39m✓ get_hcl_config_reference: 0.79ms
+
+[90mstdout[2m | test/performance/performance.test.ts[2m > [22m[2mPerformance Benchmarks[2m > [22m[2m4. Response Time Benchmarks for Each Tool[2m > [22m[2mshould execute get_code_examples in <1.5 seconds
+[22m[39m✓ get_code_examples: 6.14ms
+
+[90mstdout[2m | test/performance/performance.test.ts[2m > [22m[2mPerformance Benchmarks[2m > [22m[2m4. Response Time Benchmarks for Each Tool[2m > [22m[2mshould benchmark all tools sequentially
+[22m[39m
+  Sequential tool execution benchmark:
+
+[90mstdout[2m | test/performance/performance.test.ts[2m > [22m[2mPerformance Benchmarks[2m > [22m[2m4. Response Time Benchmarks for Each Tool[2m > [22m[2mshould benchmark all tools sequentially
+[22m[39m    search_terragrunt_docs: 0.92ms
+
+[90mstdout[2m | test/performance/performance.test.ts[2m > [22m[2mPerformance Benchmarks[2m > [22m[2m4. Response Time Benchmarks for Each Tool[2m > [22m[2mshould benchmark all tools sequentially
+[22m[39m    get_terragrunt_sections: 0.14ms
+
+[90mstdout[2m | test/performance/performance.test.ts[2m > [22m[2mPerformance Benchmarks[2m > [22m[2m4. Response Time Benchmarks for Each Tool[2m > [22m[2mshould benchmark all tools sequentially
+[22m[39m    get_section_docs: 0.08ms
+
+[90mstdout[2m | test/performance/performance.test.ts[2m > [22m[2mPerformance Benchmarks[2m > [22m[2m4. Response Time Benchmarks for Each Tool[2m > [22m[2mshould benchmark all tools sequentially
+[22m[39m    get_cli_command_help: 0.22ms
+
+[90mstdout[2m | test/performance/performance.test.ts[2m > [22m[2mPerformance Benchmarks[2m > [22m[2m4. Response Time Benchmarks for Each Tool[2m > [22m[2mshould benchmark all tools sequentially
+[22m[39m    get_hcl_config_reference: 0.75ms
+
+[90mstdout[2m | test/performance/performance.test.ts[2m > [22m[2mPerformance Benchmarks[2m > [22m[2m4. Response Time Benchmarks for Each Tool[2m > [22m[2mshould benchmark all tools sequentially
+[22m[39m    get_code_examples: 5.72ms
+  Total: 8.12ms
+
+[90mstdout[2m | test/performance/performance.test.ts[2m > [22m[2mPerformance Benchmarks[2m > [22m[2m5. Concurrent Request Handling[2m > [22m[2mshould handle 5 concurrent searches
+[22m[39m✓ 5 concurrent searches in 1.45ms
+
+[90mstdout[2m | test/performance/performance.test.ts[2m > [22m[2mPerformance Benchmarks[2m > [22m[2m5. Concurrent Request Handling[2m > [22m[2mshould handle 10 concurrent tool executions
+[22m[39m✓ 10 concurrent tool executions in 9.71ms
+  Average: 0.97ms per tool
+
+[90mstdout[2m | test/performance/performance.test.ts[2m > [22m[2mPerformance Benchmarks[2m > [22m[2m5. Concurrent Request Handling[2m > [22m[2mshould handle 20 concurrent doc fetches
+[22m[39m✓ 20 concurrent doc fetches in 0.07ms
+  Average: 0.00ms per fetch
+
+[90mstdout[2m | test/performance/performance.test.ts[2m > [22m[2mPerformance Benchmarks[2m > [22m[2m5. Concurrent Request Handling[2m > [22m[2mshould handle mixed concurrent operations
+[22m[39m✓ 15 mixed concurrent operations in 2.70ms
+  Average: 0.18ms per operation
+
+[90mstdout[2m | test/performance/performance.test.ts[2m > [22m[2mPerformance Benchmarks[2m > [22m[2m6. Cache Performance[2m > [22m[2mshould demonstrate disk cache speedup on fresh instance
+[22m[39mDecompressed cache: 285905 → 1173795 bytes
+Loaded 85 docs from disk cache (age: 296 minutes)
+
+[90mstdout[2m | test/performance/performance.test.ts[2m > [22m[2mPerformance Benchmarks[2m > [22m[2m6. Cache Performance[2m > [22m[2mshould demonstrate disk cache speedup on fresh instance
+[22m[39m✓ Fresh instance loaded 85 docs from disk cache in 14.98ms
+
+[90mstdout[2m | test/performance/performance.test.ts[2m > [22m[2mPerformance Benchmarks[2m > [22m[2m6. Cache Performance[2m > [22m[2mshould handle repeated section lookups efficiently
+[22m[39m✓ 100 section lookups in 1.88ms (avg: 0.02ms)
+
+[90mstdout[2m | test/performance/performance.test.ts[2m > [22m[2mPerformance Benchmarks[2m > [22m[2m7. Stress Tests[2m > [22m[2mshould handle very large search result limit
+[22m[39m✓ Search returned 83 total results, sliced to 83 in 0.04ms
+
+[90mstdout[2m | test/performance/performance.test.ts[2m > [22m[2mPerformance Benchmarks[2m > [22m[2m7. Stress Tests[2m > [22m[2mshould handle rapid-fire sequential searches
+[22m[39m✓ 50 sequential searches in 18.46ms (avg: 0.37ms)
+
+[90mstdout[2m | test/performance/performance.test.ts[2m > [22m[2mPerformance Benchmarks[2m > [22m[2m8. Function Lookup Performance[2m > [22m[2mget_terragrunt_function[2m > [22m[2mshould handle first call (cache miss) in <200ms
+[22m[39mDecompressed cache: 285905 → 1173795 bytes
+Loaded 85 docs from disk cache (age: 296 minutes)
+
+[90mstdout[2m | test/performance/performance.test.ts[2m > [22m[2mPerformance Benchmarks[2m > [22m[2m8. Function Lookup Performance[2m > [22m[2mget_terragrunt_function[2m > [22m[2mshould handle first call (cache miss) in <200ms
+[22m[39m✓ First function lookup (cache miss): 50.84ms
+
+[90mstdout[2m | test/performance/performance.test.ts[2m > [22m[2mPerformance Benchmarks[2m > [22m[2m8. Function Lookup Performance[2m > [22m[2mget_terragrunt_function[2m > [22m[2mshould handle cached lookup in <10ms
+[22m[39m✓ Cached function lookup: 3.57ms
+
+[90mstdout[2m | test/performance/performance.test.ts[2m > [22m[2mPerformance Benchmarks[2m > [22m[2m8. Function Lookup Performance[2m > [22m[2mget_terragrunt_function[2m > [22m[2mshould handle 100 cached lookups with average <10ms
+[22m[39m✓ 100 cached lookups in 3.98ms (avg: 0.04ms)
+
+[90mstdout[2m | test/performance/performance.test.ts[2m > [22m[2mPerformance Benchmarks[2m > [22m[2m8. Function Lookup Performance[2m > [22m[2mget_terragrunt_function[2m > [22m[2mshould handle lookup with examples in <15ms
+[22m[39m✓ Function lookup with examples: 0.05ms
+
+[90mstdout[2m | test/performance/performance.test.ts[2m > [22m[2mPerformance Benchmarks[2m > [22m[2m8. Function Lookup Performance[2m > [22m[2mget_terragrunt_function[2m > [22m[2mshould handle lookup without examples in <10ms
+[22m[39m✓ Function lookup without examples: 0.02ms
+
+[90mstdout[2m | test/performance/performance.test.ts[2m > [22m[2mPerformance Benchmarks[2m > [22m[2m8. Function Lookup Performance[2m > [22m[2mget_terragrunt_function[2m > [22m[2mshould have consistent performance across different functions
+[22m[39m✓ 3 different functions: avg 0.01ms, max 0.02ms
+
+[90mstdout[2m | test/performance/performance.test.ts[2m > [22m[2mPerformance Benchmarks[2m > [22m[2m8. Function Lookup Performance[2m > [22m[2mlist_terragrunt_functions[2m > [22m[2mshould list all functions in <50ms
+[22m[39m✓ List all functions (30 total): 0.97ms
+
+[90mstdout[2m | test/performance/performance.test.ts[2m > [22m[2mPerformance Benchmarks[2m > [22m[2m8. Function Lookup Performance[2m > [22m[2mlist_terragrunt_functions[2m > [22m[2mshould filter by category in <30ms
+[22m[39m✓ Filter by category='path' (11 results): 0.18ms
+
+[90mstdout[2m | test/performance/performance.test.ts[2m > [22m[2mPerformance Benchmarks[2m > [22m[2m8. Function Lookup Performance[2m > [22m[2mlist_terragrunt_functions[2m > [22m[2mshould search by keyword in <100ms
+[22m[39m✓ Search 'path' (13 results): 0.77ms
+
+[90mstdout[2m | test/performance/performance.test.ts[2m > [22m[2mPerformance Benchmarks[2m > [22m[2m8. Function Lookup Performance[2m > [22m[2mlist_terragrunt_functions[2m > [22m[2mshould respect limit parameter in <30ms
+[22m[39m✓ List with limit=10 (10 results): 0.16ms
+
+[90mstdout[2m | test/performance/performance.test.ts[2m > [22m[2mPerformance Benchmarks[2m > [22m[2m8. Function Lookup Performance[2m > [22m[2mlist_terragrunt_functions[2m > [22m[2mshould handle combined filters in <100ms
+[22m[39m✓ Combined filters (category+search+limit, 3 results): 0.30ms
+
+[90mstdout[2m | test/performance/performance.test.ts[2m > [22m[2mPerformance Benchmarks[2m > [22m[2m8. Function Lookup Performance[2m > [22m[2mConcurrent Access[2m > [22m[2mshould handle 10 parallel function lookups efficiently
+[22m[39m✓ 10 parallel lookups in 0.16ms (avg: 0.02ms)
+
+[90mstdout[2m | test/performance/performance.test.ts[2m > [22m[2mPerformance Benchmarks[2m > [22m[2m8. Function Lookup Performance[2m > [22m[2mConcurrent Access[2m > [22m[2mshould handle mixed concurrent operations (get + list)
+[22m[39m✓ 5 mixed concurrent operations: 0.31ms
+
+[90mstdout[2m | test/performance/performance.test.ts[2m > [22m[2mPerformance Benchmarks[2m > [22m[2m8. Function Lookup Performance[2m > [22m[2mMemory Usage[2m > [22m[2mshould keep function cache under 2MB
+[22m[39m✓ Function cache loaded (30 functions): heap increase 0.02MB
+
+[90mstdout[2m | test/performance/performance.test.ts[2m > [22m[2mPerformance Benchmarks[2m > [22m[2m8. Function Lookup Performance[2m > [22m[2mMemory Usage[2m > [22m[2mshould not leak memory on repeated lookups
+[22m[39m✓ 2000 lookups: first 1000 +1.17MB, second 1000 +1.15MB, total +2.33MB
+
+[90mstdout[2m | test/performance/performance.test.ts[2m > [22m[2mPerformance Benchmarks[2m > [22m[2m9. Best Practices Analysis Performance[2m > [22m[2mBasic Analysis Benchmarks[2m > [22m[2mshould analyze first topic (cold start) in <2s
+[22m[39m✓ First topic analysis (cold start): 1363.37ms
+
+[90mstdout[2m | test/performance/performance.test.ts[2m > [22m[2mPerformance Benchmarks[2m > [22m[2m9. Best Practices Analysis Performance[2m > [22m[2mBasic Analysis Benchmarks[2m > [22m[2mshould analyze second topic (warm cache) in <500ms
+[22m[39m✓ Second topic analysis (warm cache): 8.50ms
+
+[90mstdout[2m | test/performance/performance.test.ts[2m > [22m[2mPerformance Benchmarks[2m > [22m[2m9. Best Practices Analysis Performance[2m > [22m[2mBasic Analysis Benchmarks[2m > [22m[2mshould retrieve cached analysis in <50ms
+[22m[39m✓ Cached analysis retrieval: 0.02ms
+
+[90mstdout[2m | test/performance/performance.test.ts[2m > [22m[2mPerformance Benchmarks[2m > [22m[2m9. Best Practices Analysis Performance[2m > [22m[2mBasic Analysis Benchmarks[2m > [22m[2mshould analyze with experience level filter in <400ms
+[22m[39m✓ Analysis with experience filter: 9.14ms
+
+[90mstdout[2m | test/performance/performance.test.ts[2m > [22m[2mPerformance Benchmarks[2m > [22m[2m9. Best Practices Analysis Performance[2m > [22m[2mBasic Analysis Benchmarks[2m > [22m[2mshould analyze all 7 topics with average <300ms per topic
+[22m[39m✓ All 7 topics analyzed: avg 5.15ms, min 0.01ms, max 9.61ms
+
+[90mstdout[2m | test/performance/performance.test.ts[2m > [22m[2mPerformance Benchmarks[2m > [22m[2m9. Best Practices Analysis Performance[2m > [22m[2mBasic Analysis Benchmarks[2m > [22m[2mshould analyze complex topic (dependencies) in <300ms after cache warm-up
+[22m[39m✓ Complex topic with filter (cached): 6.62ms
+
+[90mstdout[2m | test/performance/performance.test.ts[2m > [22m[2mPerformance Benchmarks[2m > [22m[2m9. Best Practices Analysis Performance[2m > [22m[2mBasic Analysis Benchmarks[2m > [22m[2mshould have consistent performance across topics (variance <50% of mean)
+[22m[39m✓ Topic performance consistency: mean 0.00ms, std dev 0.00ms, CV 25.08%
+  Individual timings: module_organization=0.0ms, state_management=0.0ms, dependencies=0.0ms, ci_cd=0.0ms, security=0.0ms, performance=0.0ms, testing=0.0ms
+
+[90mstdout[2m | test/performance/performance.test.ts[2m > [22m[2mPerformance Benchmarks[2m > [22m[2m9. Best Practices Analysis Performance[2m > [22m[2mPattern Operations Performance[2m > [22m[2mshould measure pattern extraction overhead
+[22m[39m✓ Pattern extraction overhead: first 0.02ms, cached 0.00ms, overhead 0.02ms
+
+[90mstdout[2m | test/performance/performance.test.ts[2m > [22m[2mPerformance Benchmarks[2m > [22m[2m9. Best Practices Analysis Performance[2m > [22m[2mPattern Operations Performance[2m > [22m[2mshould efficiently search patterns across different topics
+[22m[39m✓ Pattern search across topics: avg 0.01ms, timings [0.0, 0.0, 0.0]ms
+
+[90mstdout[2m | test/performance/performance.test.ts[2m > [22m[2mPerformance Benchmarks[2m > [22m[2m9. Best Practices Analysis Performance[2m > [22m[2mPattern Operations Performance[2m > [22m[2mshould detect antipatterns efficiently
+[22m[39m✓ Antipattern detection: 0.01ms
+
+[90mstdout[2m | test/performance/performance.test.ts[2m > [22m[2mPerformance Benchmarks[2m > [22m[2m9. Best Practices Analysis Performance[2m > [22m[2mPattern Operations Performance[2m > [22m[2mshould rank recommendations efficiently
+[22m[39m✓ Recommendation ranking: 9.04ms
+
+[90mstdout[2m | test/performance/performance.test.ts[2m > [22m[2mPerformance Benchmarks[2m > [22m[2m9. Best Practices Analysis Performance[2m > [22m[2mConcurrent Operations[2m > [22m[2mshould handle parallel requests for same topic efficiently (<100ms with caching)
+[22m[39m✓ 5 parallel same-topic requests: total 0.01ms, avg 0.00ms per request
+
+[90mstdout[2m | test/performance/performance.test.ts[2m > [22m[2mPerformance Benchmarks[2m > [22m[2m9. Best Practices Analysis Performance[2m > [22m[2mConcurrent Operations[2m > [22m[2mshould handle parallel requests for different topics without race conditions
+[22m[39m✓ 4 parallel different-topic requests: total 0.04ms, avg 0.01ms per request
+
+[90mstdout[2m | test/performance/performance.test.ts[2m > [22m[2mPerformance Benchmarks[2m > [22m[2m9. Best Practices Analysis Performance[2m > [22m[2mMemory Profiling[2m > [22m[2mshould maintain pattern cache size <10MB after analyzing all topics
+[22m[39m✓ Pattern cache memory (all 7 topics): 0.01MB
+
+[90mstdout[2m | test/performance/performance.test.ts[2m > [22m[2mPerformance Benchmarks[2m > [22m[2m9. Best Practices Analysis Performance[2m > [22m[2mMemory Profiling[2m > [22m[2mshould maintain reasonable recommendation memory footprint
+[22m[39m✓ Recommendation cache (7 topics × 3 levels): total 0.04MB, avg 0.002MB per result
+
+[90mstdout[2m | test/performance/performance.test.ts[2m > [22m[2mPerformance Benchmarks[2m > [22m[2m9. Best Practices Analysis Performance[2m > [22m[2mMemory Profiling[2m > [22m[2mshould not leak memory on 1000 repeated lookups (<5MB growth)
+[22m[39m✓ 2000 cached lookups: first 1000 +1.78MB, second 1000 +1.84MB, total +3.62MB
+
+[90mstdout[2m | test/performance/performance.test.ts[2m > [22m[2mPerformance Benchmarks
+[22m[39m
+Final Memory Usage:
+  Heap Used: 54.58MB
+  Heap Total: 80.92MB
+  RSS: 131.31MB
+
+ [31m❯[39m test/performance/performance.test.ts [2m([22m[2m56 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[33m 1742[2mms[22m[39m
+       [32m✓[39m should handle >100 docs efficiently[32m 1[2mms[22m[39m
+       [32m✓[39m should list all resources without timeout[32m 18[2mms[22m[39m
+       [32m✓[39m should handle large section content[32m 1[2mms[22m[39m
+       [32m✓[39m should search with short query efficiently[32m 1[2mms[22m[39m
+       [32m✓[39m should search with medium query efficiently[32m 1[2mms[22m[39m
+       [32m✓[39m should search with long query efficiently[32m 1[2mms[22m[39m
+       [32m✓[39m should search with different result limits[32m 1[2mms[22m[39m
+       [32m✓[39m should load cache without excessive memory growth[32m 16[2mms[22m[39m
+       [32m✓[39m should cache docs in memory for fast subsequent access[32m 18[2mms[22m[39m
+       [32m✓[39m should execute search_terragrunt_docs in <1 second[32m 20[2mms[22m[39m
+       [32m✓[39m should execute get_terragrunt_sections in <500ms[32m 0[2mms[22m[39m
+       [32m✓[39m should execute get_section_docs in <1 second[32m 0[2mms[22m[39m
+       [32m✓[39m should execute get_cli_command_help in <1 second[32m 0[2mms[22m[39m
+       [32m✓[39m should execute get_hcl_config_reference in <1 second[32m 1[2mms[22m[39m
+       [32m✓[39m should execute get_code_examples in <1.5 seconds[32m 7[2mms[22m[39m
+       [32m✓[39m should benchmark all tools sequentially[32m 9[2mms[22m[39m
+       [32m✓[39m should handle 5 concurrent searches[32m 2[2mms[22m[39m
+       [32m✓[39m should handle 10 concurrent tool executions[32m 10[2mms[22m[39m
+       [32m✓[39m should handle 20 concurrent doc fetches[32m 1[2mms[22m[39m
+       [32m✓[39m should handle mixed concurrent operations[32m 3[2mms[22m[39m
+       [32m✓[39m should demonstrate disk cache speedup on fresh instance[32m 15[2mms[22m[39m
+       [32m✓[39m should handle repeated section lookups efficiently[32m 2[2mms[22m[39m
+       [32m✓[39m should handle very large search result limit[32m 0[2mms[22m[39m
+       [32m✓[39m should handle rapid-fire sequential searches[32m 19[2mms[22m[39m
+         [32m✓[39m should handle first call (cache miss) in <200ms[32m 52[2mms[22m[39m
+         [32m✓[39m should handle cached lookup in <10ms[32m 5[2mms[22m[39m
+         [32m✓[39m should handle 100 cached lookups with average <10ms[32m 5[2mms[22m[39m
+         [32m✓[39m should handle lookup with examples in <15ms[32m 1[2mms[22m[39m
+         [32m✓[39m should handle lookup without examples in <10ms[32m 1[2mms[22m[39m
+         [32m✓[39m should have consistent performance across different functions[32m 1[2mms[22m[39m
+         [32m✓[39m should list all functions in <50ms[32m 2[2mms[22m[39m
+         [32m✓[39m should filter by category in <30ms[32m 1[2mms[22m[39m
+         [32m✓[39m should search by keyword in <100ms[32m 2[2mms[22m[39m
+         [32m✓[39m should respect limit parameter in <30ms[32m 1[2mms[22m[39m
+         [32m✓[39m should handle combined filters in <100ms[32m 2[2mms[22m[39m
+         [32m✓[39m should handle 10 parallel function lookups efficiently[32m 2[2mms[22m[39m
+         [32m✓[39m should handle mixed concurrent operations (get + list)[32m 1[2mms[22m[39m
+         [32m✓[39m should keep function cache under 2MB[32m 1[2mms[22m[39m
+         [32m✓[39m should not leak memory on repeated lookups[32m 5[2mms[22m[39m
+         [33m[2m✓[22m[39m should analyze first topic (cold start) in <2s [33m 1364[2mms[22m[39m
+         [32m✓[39m should analyze second topic (warm cache) in <500ms[32m 9[2mms[22m[39m
+         [32m✓[39m should retrieve cached analysis in <50ms[32m 9[2mms[22m[39m
+         [32m✓[39m should analyze with experience level filter in <400ms[32m 10[2mms[22m[39m
+         [32m✓[39m should analyze all 7 topics with average <300ms per topic[32m 37[2mms[22m[39m
+         [32m✓[39m should analyze complex topic (dependencies) in <300ms after cache warm-up[32m 7[2mms[22m[39m
+         [32m✓[39m should have consistent performance across topics (variance <50% of mean)[32m 1[2mms[22m[39m
+         [32m✓[39m should measure pattern extraction overhead[32m 0[2mms[22m[39m
+         [32m✓[39m should efficiently search patterns across different topics[32m 1[2mms[22m[39m
+         [32m✓[39m should detect antipatterns efficiently[32m 0[2mms[22m[39m
+         [32m✓[39m should rank recommendations efficiently[32m 10[2mms[22m[39m
+         [32m✓[39m should handle parallel requests for same topic efficiently (<100ms with caching)[32m 1[2mms[22m[39m
+         [32m✓[39m should handle parallel requests for different topics without race conditions[32m 1[2mms[22m[39m
+[31m         [31m×[31m should handle mixed concurrent operations (with and without filters)[39m[32m 6[2mms[22m[39m
+         [32m✓[39m should maintain pattern cache size <10MB after analyzing all topics[32m 0[2mms[22m[39m
+         [32m✓[39m should maintain reasonable recommendation memory footprint[32m 1[2mms[22m[39m
+         [32m✓[39m should not leak memory on 1000 repeated lookups (<5MB growth)[32m 5[2mms[22m[39m
+
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 1 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m test/performance/performance.test.ts[2m > [22mPerformance Benchmarks[2m > [22m9. Best Practices Analysis Performance[2m > [22mConcurrent Operations[2m > [22mshould handle mixed concurrent operations (with and without filters)
+[31m[1mAssertionError[22m: expected undefined to be defined[39m
+[36m [2m❯[22m test/performance/performance.test.ts:[2m1179:34[22m[39m
+    [90m1177| [39m        results[33m.[39m[34mforEach[39m((result[33m,[39m index) [33m=>[39m {
+    [90m1178| [39m          [34mexpect[39m(result)[33m.[39m[34mtoBeDefined[39m()[33m;[39m
+    [90m1179| [39m          [34mexpect[39m(result[33m.[39mtopic)[33m.[39m[34mtoBe[39m(operations[index][33m.[39mtopic)[33m;[39m
+    [90m   | [39m                                 [31m^[39m
+    [90m1180| [39m          [34mexpect[39m(result[33m.[39mrecommendations)[33m.[39m[34mtoBeDefined[39m()[33m;[39m
+    [90m1181| [39m        })[33m;[39m
+[90m [2m❯[22m test/performance/performance.test.ts:[2m1177:17[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[31m1 failed[39m[22m[2m | [22m[1m[32m55 passed[39m[22m[90m (56)[39m
+[2m   Start at [22m 15:24:47
+[2m   Duration [22m 2.41s[2m (transform 247ms, setup 0ms, collect 490ms, tests 1.74s, environment 0ms, prepare 10ms)[22m
+
