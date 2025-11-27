@@ -165,7 +165,7 @@ export class SolutionRetriever {
 
     // Search with per-query timeout
     for (const query of searchQueries.slice(0, 5)) {
-      let timeoutId: ReturnType<typeof setTimeout>;
+      let timeoutId: ReturnType<typeof setTimeout> | undefined;
       const timeoutPromise = new Promise<TerragruntDoc[]>((_, reject) => {
         timeoutId = setTimeout(() => reject(new Error('Search timeout')), opts.searchTimeoutMs);
       });
@@ -173,7 +173,7 @@ export class SolutionRetriever {
       try {
         const docsPromise = this.docsManager.searchDocs(query);
         const docs = await Promise.race([docsPromise, timeoutPromise]);
-        clearTimeout(timeoutId!); // Clear timeout on success
+        clearTimeout(timeoutId); // Clear timeout on success
         
         for (const doc of docs) {
           if (!seenUrls.has(doc.url)) {
@@ -182,7 +182,7 @@ export class SolutionRetriever {
           }
         }
       } catch (error) {
-        clearTimeout(timeoutId!); // Clear timeout on error
+        clearTimeout(timeoutId); // Clear timeout on error
         if (error instanceof Error && error.message === 'Search timeout') {
           console.warn(`Documentation search timed out for query: ${query}`);
           continue; // Continue to next query instead of breaking
@@ -412,9 +412,8 @@ export class SolutionRetriever {
     // Match inline code that looks like commands
     const inlineCommandRegex = /`((?:terragrunt|terraform|tg)\s+[^`]+)`/gi;
     
-    // Extract from fenced code blocks
-    let match;
-    while ((match = codeBlockRegex.exec(content)) !== null) {
+    // Extract from fenced code blocks using matchAll for cleaner handling
+    for (const match of content.matchAll(codeBlockRegex)) {
       const codeContent = match[1].trim();
       const lines = codeContent.split('\n');
       
@@ -429,8 +428,8 @@ export class SolutionRetriever {
         // Check if it looks like a command
         if (this.isLikelyCommand(trimmedLine)) {
           // Get context from surrounding text
-          const contextStart = Math.max(0, match.index - 200);
-          const context = content.substring(contextStart, match.index).trim();
+          const contextStart = Math.max(0, (match.index ?? 0) - 200);
+          const context = content.substring(contextStart, match.index ?? 0).trim();
           const description = this.extractDescriptionFromContext(context);
           
           commands.push({
@@ -442,13 +441,14 @@ export class SolutionRetriever {
       }
     }
 
-    // Extract inline commands
-    while ((match = inlineCommandRegex.exec(content)) !== null) {
+    // Extract inline commands using matchAll
+    for (const match of content.matchAll(inlineCommandRegex)) {
       const command = match[1].trim();
       
       if (this.isLikelyCommand(command)) {
-        const contextStart = Math.max(0, match.index - 100);
-        const contextEnd = Math.min(content.length, match.index + match[0].length + 100);
+        const matchIndex = match.index ?? 0;
+        const contextStart = Math.max(0, matchIndex - 100);
+        const contextEnd = Math.min(content.length, matchIndex + match[0].length + 100);
         const context = content.substring(contextStart, contextEnd).trim();
         
         commands.push({
@@ -589,9 +589,6 @@ export class SolutionRetriever {
   }> {
     const steps: Array<{ action: string; command?: string; explanation?: string }> = [];
     
-    // Match numbered lists (1. Step, 2. Step, etc.)
-    const numberedListRegex = /^\s*(\d+)[.)]\s+(.+)$/gm;
-    
     // Match bullet points with action words
     const bulletRegex = /^\s*[-*•]\s+((?:Check|Verify|Run|Execute|Ensure|Make sure|Try|Update|Add|Remove|Fix|Review|Inspect|Debug|Test|Validate).+)$/gim;
     
@@ -603,9 +600,10 @@ export class SolutionRetriever {
     while ((sectionMatch = troubleshootingSectionRegex.exec(content)) !== null) {
       const sectionContent = sectionMatch[1];
       
-      // Extract numbered steps from section
+      // Extract numbered steps from section (create fresh regex to avoid lastIndex issues)
+      const numberedListRegexInstance = /^\s*(\d+)[.)]\s+(.+)$/gm;
       let numMatch;
-      while ((numMatch = numberedListRegex.exec(sectionContent)) !== null) {
+      while ((numMatch = numberedListRegexInstance.exec(sectionContent)) !== null) {
         const stepText = numMatch[2].trim();
         const { action, command } = this.parseStepText(stepText);
         
