@@ -14,7 +14,7 @@ import { ToolHandler } from '../../src/handlers/tools.js';
 describe('Error Diagnosis Integration', () => {
   let toolHandler: ToolHandler;
 
-  beforeAll(async () => {
+  beforeAll(() => {
     toolHandler = new ToolHandler();
   });
 
@@ -148,7 +148,7 @@ describe('Error Diagnosis Integration', () => {
       expect(result.matches.length).toBeGreaterThan(0);
 
       // Each match should have solutions
-      result.matches.forEach((match: { solutions: Array<{ step: string; explanation: string }> }) => {
+      result.matches.forEach((match: { solutions: Array<{ step: number; explanation: string }> }) => {
         expect(Array.isArray(match.solutions)).toBe(true);
         expect(match.solutions.length).toBeGreaterThan(0);
         
