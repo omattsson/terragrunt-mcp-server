@@ -207,6 +207,44 @@ describe('ToolHandler', () => {
       
       expect(tool?.inputSchema.required).toHaveLength(0);
     });
+
+    it('should require error_message parameter for diagnose_terragrunt_error', () => {
+      const tools = toolHandler.getAvailableTools();
+      const diagnoseTool = tools.find(t => t.name === 'diagnose_terragrunt_error');
+      
+      expect(diagnoseTool?.inputSchema.required).toContain('error_message');
+    });
+
+    it('should have correct input schema for diagnose_terragrunt_error', () => {
+      const tools = toolHandler.getAvailableTools();
+      const diagnoseTool = tools.find(t => t.name === 'diagnose_terragrunt_error');
+      
+      expect(diagnoseTool?.inputSchema).toBeDefined();
+      expect(diagnoseTool?.inputSchema.type).toBe('object');
+      expect(diagnoseTool?.inputSchema.properties.error_message).toBeDefined();
+      expect(diagnoseTool?.inputSchema.properties.error_message.type).toBe('string');
+    });
+
+    it('should have optional context parameter for diagnose_terragrunt_error', () => {
+      const tools = toolHandler.getAvailableTools();
+      const diagnoseTool = tools.find(t => t.name === 'diagnose_terragrunt_error');
+      
+      expect(diagnoseTool?.inputSchema.properties.context).toBeDefined();
+      expect(diagnoseTool?.inputSchema.properties.context.type).toBe('object');
+      expect(diagnoseTool?.inputSchema.properties.context.properties.command).toBeDefined();
+      expect(diagnoseTool?.inputSchema.properties.context.properties.backend).toBeDefined();
+    });
+
+    it('should have optional options parameter with defaults for diagnose_terragrunt_error', () => {
+      const tools = toolHandler.getAvailableTools();
+      const diagnoseTool = tools.find(t => t.name === 'diagnose_terragrunt_error');
+      
+      expect(diagnoseTool?.inputSchema.properties.options).toBeDefined();
+      expect(diagnoseTool?.inputSchema.properties.options.properties.maxMatches.default).toBe(3);
+      expect(diagnoseTool?.inputSchema.properties.options.properties.minConfidence.default).toBe(0.3);
+      expect(diagnoseTool?.inputSchema.properties.options.properties.enableFuzzyMatching.default).toBe(true);
+      expect(diagnoseTool?.inputSchema.properties.options.properties.enrichWithDocs.default).toBe(false);
+    });
   });
 
   describe('Tool Execution - search_terragrunt_docs', () => {
@@ -880,44 +918,6 @@ describe('ToolHandler', () => {
       expect(diagnoseTool?.description).toContain('Diagnose');
       expect(diagnoseTool?.description).toContain('Terragrunt');
     });
-
-    it('should have correct input schema for diagnose_terragrunt_error', () => {
-      const tools = toolHandler.getAvailableTools();
-      const diagnoseTool = tools.find(t => t.name === 'diagnose_terragrunt_error');
-      
-      expect(diagnoseTool?.inputSchema).toBeDefined();
-      expect(diagnoseTool?.inputSchema.type).toBe('object');
-      expect(diagnoseTool?.inputSchema.properties.error_message).toBeDefined();
-      expect(diagnoseTool?.inputSchema.properties.error_message.type).toBe('string');
-    });
-
-    it('should require error_message parameter', () => {
-      const tools = toolHandler.getAvailableTools();
-      const diagnoseTool = tools.find(t => t.name === 'diagnose_terragrunt_error');
-      
-      expect(diagnoseTool?.inputSchema.required).toContain('error_message');
-    });
-
-    it('should have optional context parameter', () => {
-      const tools = toolHandler.getAvailableTools();
-      const diagnoseTool = tools.find(t => t.name === 'diagnose_terragrunt_error');
-      
-      expect(diagnoseTool?.inputSchema.properties.context).toBeDefined();
-      expect(diagnoseTool?.inputSchema.properties.context.type).toBe('object');
-      expect(diagnoseTool?.inputSchema.properties.context.properties.command).toBeDefined();
-      expect(diagnoseTool?.inputSchema.properties.context.properties.backend).toBeDefined();
-    });
-
-    it('should have optional options parameter with defaults', () => {
-      const tools = toolHandler.getAvailableTools();
-      const diagnoseTool = tools.find(t => t.name === 'diagnose_terragrunt_error');
-      
-      expect(diagnoseTool?.inputSchema.properties.options).toBeDefined();
-      expect(diagnoseTool?.inputSchema.properties.options.properties.maxMatches.default).toBe(3);
-      expect(diagnoseTool?.inputSchema.properties.options.properties.minConfidence.default).toBe(0.3);
-      expect(diagnoseTool?.inputSchema.properties.options.properties.enableFuzzyMatching.default).toBe(true);
-      expect(diagnoseTool?.inputSchema.properties.options.properties.enrichWithDocs.default).toBe(false);
-    });
   });
 
   describe('Tool Execution - diagnose_terragrunt_error', () => {
@@ -944,8 +944,9 @@ describe('ToolHandler', () => {
         error_message: ''
       });
       
-      // Empty string should still be processed but return no matches
-      expect(result).toBeDefined();
+      // Empty string is rejected by validation (!args?.error_message)
+      expect(result.error).toBeDefined();
+      expect(result.error).toContain('error_message');
     });
 
     it('should return structured diagnosis with confidence scores', async () => {
