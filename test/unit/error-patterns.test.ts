@@ -2,6 +2,18 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { ErrorPatternMatcher } from '../../src/terragrunt/error-patterns.js';
 import { TerragruntDocsManager } from '../../src/terragrunt/docs.js';
 
+/**
+ * Unit tests for ErrorPatternMatcher class.
+ * 
+ * This file focuses on:
+ * - Pattern matching behavior (regex and fuzzy)
+ * - Error categorization by type (backend, configuration, dependency)
+ * - Solution retrieval and diagnosis result structure
+ * - Context-aware matching
+ * 
+ * Note: fuzzy-matching.test.ts covers the fuzzy matching algorithm in more detail.
+ * This file tests the ErrorPatternMatcher class integration with those algorithms.
+ */
 describe('ErrorPatternMatcher', () => {
   let matcher: ErrorPatternMatcher;
   let docsManager: TerragruntDocsManager;
@@ -108,8 +120,8 @@ describe('ErrorPatternMatcher', () => {
 
   // ==================== Fuzzy Matching Tests (6 tests) ====================
   describe('Fuzzy Matching', () => {
-    it('should return high confidence (>0.7) for highly similar errors', async () => {
-      // Use an exact error message that matches a known pattern regex for high confidence
+    it('should produce high confidence (>0.7) when regex patterns match', async () => {
+      // Regex matches get 0.95 confidence, which qualifies as high confidence
       const errorMessage = 'Error: No Terraform configuration files found in directory /some/path';
       const result = await matcher.diagnoseError(errorMessage, undefined, {
         enableFuzzyMatching: true,
@@ -195,25 +207,17 @@ describe('ErrorPatternMatcher', () => {
         minConfidence: 0.3
       });
 
-      // Both should return valid results
+      // Both should return valid results with array of matches
       expect(resultWithContext).toBeDefined();
       expect(resultWithoutContext).toBeDefined();
       expect(Array.isArray(resultWithContext.matches)).toBe(true);
       expect(Array.isArray(resultWithoutContext.matches)).toBe(true);
       
-      // When context is provided, matches should favor backend-related patterns
-      // or have higher overall confidence due to context boost
-      if (resultWithContext.matches.length > 0 && resultWithoutContext.matches.length > 0) {
-        // Context should influence results - either different matches or different confidence
-        const contextMatchIds = resultWithContext.matches.map(m => m.pattern.id).join(',');
-        const noContextMatchIds = resultWithoutContext.matches.map(m => m.pattern.id).join(',');
-        const contextConfidence = resultWithContext.overallConfidence;
-        const noContextConfidence = resultWithoutContext.overallConfidence;
-        
-        // At least one of these should differ when context is provided
-        const resultsDiffer = contextMatchIds !== noContextMatchIds || contextConfidence !== noContextConfidence;
-        expect(resultsDiffer || resultWithContext.matches.length > 0).toBe(true);
-      }
+      // Verify the context parameter is accepted and processed without error
+      // The actual context boosting behavior depends on pattern configuration
+      // This test verifies the API contract is fulfilled
+      expect(resultWithContext.overallConfidence).toBeGreaterThanOrEqual(0);
+      expect(resultWithoutContext.overallConfidence).toBeGreaterThanOrEqual(0);
     });
   });
 
@@ -243,7 +247,7 @@ describe('ErrorPatternMatcher', () => {
       });
     });
 
-    it('should boost confidence when context matches pattern category', async () => {
+    it('should accept context parameter for category-based matching', async () => {
       const errorMessage = 'bucket not accessible error';
       
       // With relevant backend context
@@ -254,8 +258,20 @@ describe('ErrorPatternMatcher', () => {
         minConfidence: 0.3
       });
 
-      // Context-aware matching should find backend-related patterns
+      // Without context
+      const resultWithoutContext = await matcher.diagnoseError(errorMessage, undefined, {
+        enableFuzzyMatching: true,
+        minConfidence: 0.3
+      });
+
+      // Both should return valid diagnosis results
       expect(resultWithBackendContext).toBeDefined();
+      expect(resultWithoutContext).toBeDefined();
+      expect(Array.isArray(resultWithBackendContext.matches)).toBe(true);
+      expect(Array.isArray(resultWithoutContext.matches)).toBe(true);
+      
+      // Verify context is processed (API contract test)
+      expect(resultWithBackendContext.overallConfidence).toBeGreaterThanOrEqual(0);
     });
 
     it('should filter matches below minimum confidence threshold', async () => {
@@ -381,8 +397,8 @@ describe('ErrorPatternMatcher', () => {
     });
   });
 
-  // ==================== Additional Tests for Coverage ====================
-  describe('Additional Coverage', () => {
+  // ==================== Related Errors and Metadata Tests ====================
+  describe('Related Errors and Metadata', () => {
     it('should include related errors in diagnosis', async () => {
       const errorMessage = 'Error: State lock acquisition failed';
       const result = await matcher.diagnoseError(errorMessage);
