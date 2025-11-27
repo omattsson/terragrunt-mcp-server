@@ -207,6 +207,44 @@ describe('ToolHandler', () => {
       
       expect(tool?.inputSchema.required).toHaveLength(0);
     });
+
+    it('should require error_message parameter for diagnose_terragrunt_error', () => {
+      const tools = toolHandler.getAvailableTools();
+      const diagnoseTool = tools.find(t => t.name === 'diagnose_terragrunt_error');
+      
+      expect(diagnoseTool?.inputSchema.required).toContain('error_message');
+    });
+
+    it('should have correct input schema for diagnose_terragrunt_error', () => {
+      const tools = toolHandler.getAvailableTools();
+      const diagnoseTool = tools.find(t => t.name === 'diagnose_terragrunt_error');
+      
+      expect(diagnoseTool?.inputSchema).toBeDefined();
+      expect(diagnoseTool?.inputSchema.type).toBe('object');
+      expect(diagnoseTool?.inputSchema.properties.error_message).toBeDefined();
+      expect(diagnoseTool?.inputSchema.properties.error_message.type).toBe('string');
+    });
+
+    it('should have optional context parameter for diagnose_terragrunt_error', () => {
+      const tools = toolHandler.getAvailableTools();
+      const diagnoseTool = tools.find(t => t.name === 'diagnose_terragrunt_error');
+      
+      expect(diagnoseTool?.inputSchema.properties.context).toBeDefined();
+      expect(diagnoseTool?.inputSchema.properties.context.type).toBe('object');
+      expect(diagnoseTool?.inputSchema.properties.context.properties.command).toBeDefined();
+      expect(diagnoseTool?.inputSchema.properties.context.properties.backend).toBeDefined();
+    });
+
+    it('should have optional options parameter with defaults for diagnose_terragrunt_error', () => {
+      const tools = toolHandler.getAvailableTools();
+      const diagnoseTool = tools.find(t => t.name === 'diagnose_terragrunt_error');
+      
+      expect(diagnoseTool?.inputSchema.properties.options).toBeDefined();
+      expect(diagnoseTool?.inputSchema.properties.options.properties.maxMatches.default).toBe(3);
+      expect(diagnoseTool?.inputSchema.properties.options.properties.minConfidence.default).toBe(0.3);
+      expect(diagnoseTool?.inputSchema.properties.options.properties.enableFuzzyMatching.default).toBe(true);
+      expect(diagnoseTool?.inputSchema.properties.options.properties.enrichWithDocs.default).toBe(false);
+    });
   });
 
   describe('Tool Execution - search_terragrunt_docs', () => {
@@ -868,6 +906,190 @@ describe('ToolHandler', () => {
         expect(firstResult.section).toBeDefined();
         expect(firstResult.snippet).toBeDefined();
       }
+    });
+  });
+
+  describe('Tool Listing - diagnose_terragrunt_error', () => {
+    it('should include diagnose_terragrunt_error tool in tools list', () => {
+      const tools = toolHandler.getAvailableTools();
+      
+      const diagnoseTool = tools.find(t => t.name === 'diagnose_terragrunt_error');
+      expect(diagnoseTool).toBeDefined();
+      expect(diagnoseTool?.description).toContain('Diagnose');
+      expect(diagnoseTool?.description).toContain('Terragrunt');
+    });
+  });
+
+  describe('Tool Execution - diagnose_terragrunt_error', () => {
+    it('should execute with valid error message', async () => {
+      const result = await toolHandler.executeTool('diagnose_terragrunt_error', {
+        error_message: 'Backend initialization required, please run "terraform init"'
+      });
+      
+      expect(result).toBeDefined();
+      expect(result.success).toBe(true);
+      expect(result.matches).toBeDefined();
+      expect(Array.isArray(result.matches)).toBe(true);
+    });
+
+    it('should return error for missing error_message', async () => {
+      const result = await toolHandler.executeTool('diagnose_terragrunt_error', {});
+      
+      expect(result.error).toBeDefined();
+      expect(result.error).toContain('error_message');
+    });
+
+    it('should return error for empty error_message', async () => {
+      const result = await toolHandler.executeTool('diagnose_terragrunt_error', {
+        error_message: ''
+      });
+      
+      // Empty string is rejected by validation (!args?.error_message)
+      expect(result.error).toBeDefined();
+      expect(result.error).toContain('error_message');
+    });
+
+    it('should return structured diagnosis with confidence scores', async () => {
+      const result = await toolHandler.executeTool('diagnose_terragrunt_error', {
+        error_message: 'Error acquiring the state lock'
+      });
+      
+      expect(result.success).toBe(true);
+      expect(typeof result.overallConfidence).toBe('number');
+      expect(result.overallConfidence).toBeGreaterThanOrEqual(0);
+      expect(result.overallConfidence).toBeLessThanOrEqual(1);
+    });
+
+    it('should include match details with pattern info', async () => {
+      const result = await toolHandler.executeTool('diagnose_terragrunt_error', {
+        error_message: 'Error acquiring the state lock'
+      });
+      
+      expect(result.success).toBe(true);
+      if (result.matches.length > 0) {
+        const match = result.matches[0];
+        expect(match.patternId).toBeDefined();
+        expect(match.patternName).toBeDefined();
+        expect(match.category).toBeDefined();
+        expect(typeof match.confidence).toBe('number');
+      }
+    });
+
+    it('should include debugging steps', async () => {
+      const result = await toolHandler.executeTool('diagnose_terragrunt_error', {
+        error_message: 'Error acquiring the state lock'
+      });
+      
+      expect(result.success).toBe(true);
+      expect(result.debuggingSteps || result.orderedDebuggingSteps).toBeDefined();
+    });
+
+    it('should handle context parameter', async () => {
+      const result = await toolHandler.executeTool('diagnose_terragrunt_error', {
+        error_message: 'Backend initialization required',
+        context: {
+          command: 'terragrunt apply',
+          backend: 's3',
+          os: 'linux'
+        }
+      });
+      
+      expect(result.success).toBe(true);
+      expect(result.matches).toBeDefined();
+    });
+
+    it('should handle options parameter', async () => {
+      const result = await toolHandler.executeTool('diagnose_terragrunt_error', {
+        error_message: 'Error acquiring the state lock',
+        options: {
+          maxMatches: 5,
+          minConfidence: 0.5,
+          enableFuzzyMatching: true
+        }
+      });
+      
+      expect(result.success).toBe(true);
+      expect(result.matches.length).toBeLessThanOrEqual(5);
+    });
+
+    it('should handle enrichWithDocs option', async () => {
+      const result = await toolHandler.executeTool('diagnose_terragrunt_error', {
+        error_message: 'Backend initialization required',
+        options: {
+          enrichWithDocs: true
+        }
+      });
+      
+      expect(result.success).toBe(true);
+      // When enrichWithDocs is true, response should have enrichment fields
+      if (result.enrichmentSuccessful) {
+        expect(result.richSolutions || result.documentationLinks).toBeDefined();
+      }
+    });
+
+    it('should handle includeDestructiveCommands option', async () => {
+      const result = await toolHandler.executeTool('diagnose_terragrunt_error', {
+        error_message: 'Error acquiring the state lock',
+        options: {
+          enrichWithDocs: true,
+          includeDestructiveCommands: false
+        }
+      });
+      
+      expect(result.success).toBe(true);
+    });
+
+    it('should rank matches by confidence', async () => {
+      const result = await toolHandler.executeTool('diagnose_terragrunt_error', {
+        error_message: 'Error acquiring the state lock'
+      });
+      
+      expect(result.success).toBe(true);
+      if (result.matches.length >= 2) {
+        // Matches should be sorted by confidence (highest first)
+        for (let i = 0; i < result.matches.length - 1; i++) {
+          expect(result.matches[i].confidence).toBeGreaterThanOrEqual(result.matches[i + 1].confidence);
+        }
+      }
+    });
+
+    it('should return general advice', async () => {
+      const result = await toolHandler.executeTool('diagnose_terragrunt_error', {
+        error_message: 'Error acquiring the state lock'
+      });
+      
+      expect(result.success).toBe(true);
+      expect(result.generalAdvice).toBeDefined();
+      expect(Array.isArray(result.generalAdvice)).toBe(true);
+    });
+
+    it('should handle unknown errors gracefully', async () => {
+      const result = await toolHandler.executeTool('diagnose_terragrunt_error', {
+        error_message: 'Some completely unknown error xyz123'
+      });
+      
+      expect(result.success).toBe(true);
+      // Should still return a valid response even with no matches
+      expect(result.matches).toBeDefined();
+      expect(Array.isArray(result.matches)).toBe(true);
+    });
+
+    it('should handle very long error messages', async () => {
+      const longError = 'Error: '.repeat(1000) + 'actual error message';
+      const result = await toolHandler.executeTool('diagnose_terragrunt_error', {
+        error_message: longError
+      });
+      
+      expect(result).toBeDefined();
+      expect(result.success !== undefined || result.error !== undefined).toBe(true);
+    });
+
+    it('should return JSON-serializable results', async () => {
+      const result = await toolHandler.executeTool('diagnose_terragrunt_error', {
+        error_message: 'Backend initialization required'
+      });
+      
+      expect(() => JSON.stringify(result)).not.toThrow();
     });
   });
 });
