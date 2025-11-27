@@ -94,8 +94,8 @@ export class SolutionRetriever {
   ): Promise<EnrichedDiagnosisResult> {
     const opts = { ...DEFAULT_OPTIONS, ...options };
     
-    // Generate cache key from diagnosis
-    const cacheKey = this.generateCacheKey(diagnosis);
+    // Generate cache key from diagnosis and options
+    const cacheKey = this.generateCacheKey(diagnosis, opts);
     
     // Check cache first
     const cached = this.enrichmentCache.get(cacheKey);
@@ -163,15 +163,17 @@ export class SolutionRetriever {
     const allDocs: TerragruntDoc[] = [];
     const seenUrls = new Set<string>();
 
-    // Search with timeout
-    const timeoutPromise = new Promise<TerragruntDoc[]>((_, reject) => {
-      setTimeout(() => reject(new Error('Search timeout')), opts.searchTimeoutMs);
-    });
+    // Search with per-query timeout
+    for (const query of searchQueries.slice(0, 5)) {
+      let timeoutId: ReturnType<typeof setTimeout>;
+      const timeoutPromise = new Promise<TerragruntDoc[]>((_, reject) => {
+        timeoutId = setTimeout(() => reject(new Error('Search timeout')), opts.searchTimeoutMs);
+      });
 
-    try {
-      for (const query of searchQueries.slice(0, 5)) {
+      try {
         const docsPromise = this.docsManager.searchDocs(query);
         const docs = await Promise.race([docsPromise, timeoutPromise]);
+        clearTimeout(timeoutId!); // Clear timeout on success
         
         for (const doc of docs) {
           if (!seenUrls.has(doc.url)) {
@@ -179,11 +181,12 @@ export class SolutionRetriever {
             allDocs.push(doc);
           }
         }
-      }
-    } catch (error) {
-      if (error instanceof Error && error.message === 'Search timeout') {
-        console.warn('Documentation search timed out');
-      } else {
+      } catch (error) {
+        clearTimeout(timeoutId!); // Clear timeout on error
+        if (error instanceof Error && error.message === 'Search timeout') {
+          console.warn(`Documentation search timed out for query: ${query}`);
+          continue; // Continue to next query instead of breaking
+        }
         throw error;
       }
     }
@@ -351,12 +354,19 @@ export class SolutionRetriever {
 
       // Create solutions from troubleshooting steps
       for (const step of steps.slice(0, 3)) {
+        const safetyLevel = step.command ? this.validateCommand(step.command) : 'safe';
+        
+        // Filter out destructive commands if not allowed
+        if (!opts.includeDestructiveCommands && safetyLevel === 'destructive') {
+          continue;
+        }
+
         solutions.push({
           step: step.action,
           command: step.command,
           explanation: step.explanation || `From documentation: ${doc.title}`,
-          warnings: step.command ? this.generateWarnings(step.command, this.validateCommand(step.command)) : [],
-          safetyLevel: step.command ? this.validateCommand(step.command) : 'safe',
+          warnings: step.command ? this.generateWarnings(step.command, safetyLevel) : [],
+          safetyLevel,
           source: 'documentation'
         });
       }
@@ -695,9 +705,10 @@ export class SolutionRetriever {
 
     // Add generic debugging steps from diagnosis
     for (const step of diagnosis.debuggingSteps) {
-      // Check if this step is already covered
+      // Check if this step is already covered (use safe substring)
+      const compareStr = step.length > 20 ? step.substring(0, 20) : step;
       const isDuplicate = steps.some(s => 
-        s.action.toLowerCase().includes(step.toLowerCase().substring(0, 20))
+        s.action.toLowerCase().includes(compareStr.toLowerCase())
       );
       
       if (!isDuplicate) {
@@ -714,9 +725,10 @@ export class SolutionRetriever {
       const docSteps = this.extractTroubleshootingSteps(doc.content);
       
       for (const docStep of docSteps.slice(0, 2)) {
-        // Check for duplicates
+        // Check for duplicates (use safe substring)
+        const compareStr = docStep.action.length > 20 ? docStep.action.substring(0, 20) : docStep.action;
         const isDuplicate = steps.some(s => 
-          s.action.toLowerCase().includes(docStep.action.toLowerCase().substring(0, 20)) ||
+          s.action.toLowerCase().includes(compareStr.toLowerCase()) ||
           (docStep.command && s.verificationCommand === docStep.command)
         );
         
@@ -1028,15 +1040,16 @@ export class SolutionRetriever {
   // ==================== Utility Methods ====================
 
   /**
-   * Generate cache key from diagnosis.
+   * Generate cache key from diagnosis and options.
    */
-  private generateCacheKey(diagnosis: ErrorDiagnosisResult): string {
+  private generateCacheKey(diagnosis: ErrorDiagnosisResult, options: SolutionRetrievalOptions): string {
     const matchIds = diagnosis.matches
       .slice(0, 3)
       .map(m => m.pattern.id)
       .join('|');
     
-    return `diag_${matchIds}_${diagnosis.overallConfidence.toFixed(2)}`;
+    const optionsKey = `${options.includeDestructiveCommands ?? true}_${options.maxSolutions ?? 5}`;
+    return `diag_${matchIds}_${diagnosis.overallConfidence.toFixed(2)}_${optionsKey}`;
   }
 
   /**

@@ -1,7 +1,7 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { SolutionRetriever } from '../../src/terragrunt/solution-retriever.js';
 import { TerragruntDocsManager, TerragruntDoc } from '../../src/terragrunt/docs.js';
-import { ErrorDiagnosisResult, ErrorMatch, ErrorPattern, ErrorContext } from '../../src/types/terragrunt.js';
+import { ErrorDiagnosisResult, ErrorMatch } from '../../src/types/terragrunt.js';
 
 // Mock TerragruntDocsManager
 class MockDocsManager {
