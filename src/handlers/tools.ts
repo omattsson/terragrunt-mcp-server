@@ -10,6 +10,7 @@ import { FilesystemTemplateLoader } from '../terragrunt/templates/loaders/filesy
 import { CustomTemplateLoader } from '../terragrunt/templates/loaders/custom.js';
 import { TemplateValidator } from '../terragrunt/templates/validator.js';
 import { FileWriter } from '../terragrunt/file-writer.js';
+import { ErrorPatternMatcher } from '../terragrunt/error-patterns.js';
 
 export interface Tool {
     name: string;
@@ -22,6 +23,7 @@ export class ToolHandler {
     private docsManager: TerragruntDocsManager;
     private functionsManager: TerragruntFunctionsManager;
     private bestPracticesAnalyzer: BestPracticesAnalyzer;
+    private errorPatternMatcher: ErrorPatternMatcher;
     private functionsLoaded: boolean = false;
     private templatesManager: TemplatesManager;
     private templateLibrary: ConfigTemplateLibrary;
@@ -33,6 +35,7 @@ export class ToolHandler {
         this.docsManager = new TerragruntDocsManager();
         this.functionsManager = new TerragruntFunctionsManager(this.docsManager);
         this.bestPracticesAnalyzer = new BestPracticesAnalyzer(this.docsManager);
+        this.errorPatternMatcher = new ErrorPatternMatcher(this.docsManager);
         
         // Initialize templates manager with builtin and filesystem loaders
         this.templatesManager = new TemplatesManager([
@@ -334,6 +337,81 @@ export class ToolHandler {
                         { required: ['filePath'] }
                     ]
                 }
+            },
+            {
+                name: 'diagnose_terragrunt_error',
+                description: 'Diagnose a Terragrunt error message and get actionable solutions, debugging steps, and relevant documentation. Supports fuzzy matching and can optionally enrich results with documentation-sourced solutions.',
+                inputSchema: {
+                    type: 'object',
+                    properties: {
+                        error_message: {
+                            type: 'string',
+                            description: 'The error message from Terragrunt to diagnose'
+                        },
+                        context: {
+                            type: 'object',
+                            description: 'Optional context about the error',
+                            properties: {
+                                command: {
+                                    type: 'string',
+                                    description: 'The terragrunt command that was run (e.g., "terragrunt apply")'
+                                },
+                                version: {
+                                    type: 'string',
+                                    description: 'Terragrunt version if known'
+                                },
+                                os: {
+                                    type: 'string',
+                                    description: 'Operating system (linux, darwin, windows)'
+                                },
+                                filePath: {
+                                    type: 'string',
+                                    description: 'Path to the terragrunt.hcl file if known'
+                                },
+                                module: {
+                                    type: 'string',
+                                    description: 'Module name if applicable'
+                                },
+                                backend: {
+                                    type: 'string',
+                                    description: 'Backend type (s3, gcs, azurerm, etc.)'
+                                }
+                            }
+                        },
+                        options: {
+                            type: 'object',
+                            description: 'Options for diagnosis',
+                            properties: {
+                                maxMatches: {
+                                    type: 'number',
+                                    description: 'Maximum number of pattern matches to return (default: 3)',
+                                    default: 3
+                                },
+                                minConfidence: {
+                                    type: 'number',
+                                    description: 'Minimum confidence score for matches 0-1 (default: 0.3)',
+                                    default: 0.3
+                                },
+                                enableFuzzyMatching: {
+                                    type: 'boolean',
+                                    description: 'Enable fuzzy matching for partial matches (default: true)',
+                                    default: true
+                                },
+                                enrichWithDocs: {
+                                    type: 'boolean',
+                                    description: 'Enrich diagnosis with documentation-sourced solutions and links (default: false)',
+                                    default: false
+                                },
+                                includeDestructiveCommands: {
+                                    type: 'boolean',
+                                    description: 'Include destructive commands in solutions (default: true)',
+                                    default: true
+                                }
+                            }
+                        }
+                    },
+                    required: ['error_message']
+                }
             }
         ];
     }
@@ -450,6 +528,16 @@ export class ToolHandler {
                         args.overwrite ?? false,
                         args.createBackup ?? true,
                         args.createParentDirs ?? true
+                    );
+
+                case 'diagnose_terragrunt_error':
+                    if (!args?.error_message) {
+                        return { error: 'error_message parameter is required' };
+                    }
+                    return await this.diagnoseTerragruntError(
+                        args.error_message,
+                        args.context,
+                        args.options
                     );
 
                 default:
@@ -889,6 +977,95 @@ export class ToolHandler {
                 backedUp: false,
                 error: error instanceof Error ? error.message : 'Failed to write file',
                 errorType: 'UNKNOWN_ERROR'
+            };
+        }
+    }
+
+    /**
+     * Diagnose a Terragrunt error and provide solutions
+     */
+    private async diagnoseTerragruntError(
+        errorMessage: string,
+        context?: {
+            command?: string;
+            version?: string;
+            os?: string;
+            filePath?: string;
+            module?: string;
+            backend?: string;
+        },
+        options?: {
+            maxMatches?: number;
+            minConfidence?: number;
+            enableFuzzyMatching?: boolean;
+            enrichWithDocs?: boolean;
+            includeDestructiveCommands?: boolean;
+        }
+    ): Promise<any> {
+        try {
+            const diagnosis = await this.errorPatternMatcher.diagnoseError(
+                errorMessage,
+                context,
+                {
+                    maxMatches: options?.maxMatches,
+                    minConfidence: options?.minConfidence,
+                    enableFuzzyMatching: options?.enableFuzzyMatching,
+                    enrichWithDocs: options?.enrichWithDocs,
+                    enrichmentOptions: {
+                        includeDestructiveCommands: options?.includeDestructiveCommands
+                    }
+                }
+            );
+
+            // Format the response based on whether enrichment was requested
+            if (options?.enrichWithDocs && 'richSolutions' in diagnosis) {
+                return {
+                    success: true,
+                    overallConfidence: diagnosis.overallConfidence,
+                    matchCount: diagnosis.matches.length,
+                    enrichmentSuccessful: diagnosis.enrichmentSuccessful,
+                    enrichmentError: diagnosis.enrichmentError,
+                    matches: diagnosis.matches.map(m => ({
+                        patternId: m.pattern.id,
+                        patternName: m.pattern.name,
+                        category: m.pattern.category,
+                        confidence: m.confidence,
+                        description: m.pattern.description,
+                        likelyCause: m.likelyCause,
+                        solutions: m.solutions,
+                        documentationRefs: m.documentationRefs
+                    })),
+                    richSolutions: diagnosis.richSolutions,
+                    orderedDebuggingSteps: diagnosis.orderedDebuggingSteps,
+                    documentationLinks: diagnosis.documentationLinks,
+                    relatedErrorDetails: diagnosis.relatedErrorDetails,
+                    generalAdvice: diagnosis.generalAdvice
+                };
+            }
+
+            return {
+                success: true,
+                overallConfidence: diagnosis.overallConfidence,
+                matchCount: diagnosis.matches.length,
+                matches: diagnosis.matches.map(m => ({
+                    patternId: m.pattern.id,
+                    patternName: m.pattern.name,
+                    category: m.pattern.category,
+                    confidence: m.confidence,
+                    description: m.pattern.description,
+                    likelyCause: m.likelyCause,
+                    solutions: m.solutions,
+                    documentationRefs: m.documentationRefs
+                })),
+                debuggingSteps: diagnosis.debuggingSteps,
+                relatedErrors: diagnosis.relatedErrors,
+                generalAdvice: diagnosis.generalAdvice
+            };
+        } catch (error) {
+            console.error('Error diagnosing Terragrunt error:', error);
+            return {
+                success: false,
+                error: error instanceof Error ? error.message : 'Failed to diagnose error'
             };
         }
     }
