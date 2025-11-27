@@ -1,10 +1,13 @@
 import { TerragruntDocsManager } from './docs.js';
+import { SolutionRetriever } from './solution-retriever.js';
 import { LRUCache } from 'lru-cache';
 import {
   ErrorPattern,
   ErrorContext,
   ErrorMatch,
-  ErrorDiagnosisResult
+  ErrorDiagnosisResult,
+  EnrichedDiagnosisResult,
+  SolutionRetrievalOptions
 } from '../types/terragrunt.js';
 
 /**
@@ -33,6 +36,7 @@ import {
  */
 export class ErrorPatternMatcher {
   private readonly docsManager: TerragruntDocsManager;
+  private readonly solutionRetriever: SolutionRetriever;
   private readonly matchCache: LRUCache<string, ErrorMatch[]>;
   private patterns: ErrorPattern[] = [];
   private patternsLoaded: boolean = false;
@@ -62,6 +66,9 @@ export class ErrorPatternMatcher {
     // fetching updated solution links, and cross-referencing error patterns
     // with official Terragrunt docs
     this.docsManager = docsManager;
+    
+    // Initialize solution retriever for documentation enrichment
+    this.solutionRetriever = new SolutionRetriever(docsManager);
     
     // Initialize LRU cache for match results
     this.matchCache = new LRUCache<string, ErrorMatch[]>({
@@ -104,6 +111,7 @@ export class ErrorPatternMatcher {
    * 
    * @param errorMessage The error message to analyze
    * @param context Optional additional context information
+   * @param options Options for matching and enrichment
    * @returns Complete diagnosis with matches, advice, and debugging steps
    */
   async diagnoseError(
@@ -113,17 +121,33 @@ export class ErrorPatternMatcher {
       maxMatches?: number;
       minConfidence?: number;
       enableFuzzyMatching?: boolean;
+      enrichWithDocs?: boolean;
+      enrichmentOptions?: SolutionRetrievalOptions;
     }
-  ): Promise<ErrorDiagnosisResult> {
+  ): Promise<ErrorDiagnosisResult | EnrichedDiagnosisResult> {
     // Handle edge case: empty or null error message
     if (!errorMessage || errorMessage.trim().length === 0) {
-      return {
+      const emptyResult: ErrorDiagnosisResult = {
         matches: [],
         generalAdvice: this.getGeneralAdvice(),
         debuggingSteps: this.getDebuggingSteps(),
         relatedErrors: [],
         overallConfidence: 0
       };
+
+      // Return enriched empty result if enrichment requested
+      if (options?.enrichWithDocs) {
+        return {
+          ...emptyResult,
+          richSolutions: [],
+          orderedDebuggingSteps: [],
+          documentationLinks: [],
+          relatedErrorDetails: [],
+          enrichmentSuccessful: true
+        };
+      }
+
+      return emptyResult;
     }
 
     // Truncate very long error messages for performance (keep first 5000 chars)
@@ -138,6 +162,7 @@ export class ErrorPatternMatcher {
     const maxMatches = options?.maxMatches ?? this.DEFAULT_MAX_MATCHES;
     const minConfidence = options?.minConfidence ?? this.DEFAULT_MIN_CONFIDENCE;
     const enableFuzzyMatching = options?.enableFuzzyMatching ?? true;
+    const enrichWithDocs = options?.enrichWithDocs ?? false;
 
     // Check cache first (include options in cache key)
     const cacheKey = this.getCacheKey(truncatedMessage, maxMatches, minConfidence, enableFuzzyMatching);
@@ -168,14 +193,42 @@ export class ErrorPatternMatcher {
       ? matches[0].confidence
       : 0;
 
-    // Generate diagnosis result
-    return {
+    // Generate basic diagnosis result
+    const diagnosis: ErrorDiagnosisResult = {
       matches,
       generalAdvice: this.getGeneralAdvice(),
       debuggingSteps: this.getDebuggingSteps(),
       relatedErrors: this.getRelatedErrors(matches),
       overallConfidence
     };
+
+    // Enrich with documentation if requested
+    if (enrichWithDocs) {
+      try {
+        return await this.solutionRetriever.enrichDiagnosis(
+          diagnosis,
+          options?.enrichmentOptions
+        );
+      } catch (error) {
+        // Graceful fallback: return enriched result with error flag
+        console.error('Failed to enrich diagnosis with documentation:', error);
+        return {
+          ...diagnosis,
+          richSolutions: [],
+          orderedDebuggingSteps: diagnosis.debuggingSteps.map((step, i) => ({
+            order: i + 1,
+            action: step,
+            explanation: 'Standard debugging step'
+          })),
+          documentationLinks: [],
+          relatedErrorDetails: [],
+          enrichmentSuccessful: false,
+          enrichmentError: error instanceof Error ? error.message : 'Unknown error'
+        };
+      }
+    }
+
+    return diagnosis;
   }
 
   /**
