@@ -248,12 +248,18 @@ describe('MCP Protocol Compliance - diagnose_terragrunt_error', () => {
       expect('matches' in result).toBe(true);
       expect('generalAdvice' in result).toBe(true);
 
-      // Enriched fields should be present
+      // Enriched fields should be present (different from non-enriched)
       expect('richSolutions' in result).toBe(true);
-      expect('orderedDebuggingSteps' in result).toBe(true);
+      expect('orderedDebuggingSteps' in result).toBe(true); // Instead of debuggingSteps
       expect('documentationLinks' in result).toBe(true);
-      expect('relatedErrorDetails' in result).toBe(true);
+      expect('relatedErrorDetails' in result).toBe(true); // Instead of relatedErrors
       expect('enrichmentSuccessful' in result).toBe(true);
+
+      // Verify enriched uses different field names than non-enriched
+      // Non-enriched uses: debuggingSteps, relatedErrors
+      // Enriched uses: orderedDebuggingSteps, relatedErrorDetails
+      expect('orderedDebuggingSteps' in result).toBe(true);
+      expect('relatedErrorDetails' in result).toBe(true);
     });
 
     it('should handle concurrent executions correctly', async () => {
@@ -403,12 +409,12 @@ describe('MCP Protocol Compliance - diagnose_terragrunt_error', () => {
       expect(result.error).toContain('required'); // Should explain what's wrong
     });
 
-    it('should not expose internal errors to clients', async () => {
+    it('should not expose stack traces in validation errors', async () => {
       const result = await toolHandler.executeTool('diagnose_terragrunt_error', {
         error_message: null as unknown as string // Test null handling - should be caught by required validation
       });
 
-      // Should return safe error message
+      // Should return safe error message without stack traces
       if (result.error) {
         expect(result.error).not.toContain('stack');
         expect(result.error).not.toContain('at Object');
