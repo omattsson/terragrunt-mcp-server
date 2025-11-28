@@ -170,7 +170,7 @@ describe('MCP Protocol Compliance - diagnose_terragrunt_error', () => {
     });
   });
 
-  // ==================== Request/Response Format (5 tests) ====================
+  // ==================== Request/Response Format (6 tests) ====================
   describe('Request/Response Format Compliance', () => {
     it('should execute successfully with minimal params', async () => {
       const result = await toolHandler.executeTool('diagnose_terragrunt_error', {
@@ -232,6 +232,7 @@ describe('MCP Protocol Compliance - diagnose_terragrunt_error', () => {
       expect('matches' in result).toBe(true);
       expect('debuggingSteps' in result).toBe(true);
       expect('generalAdvice' in result).toBe(true);
+      expect('relatedErrors' in result).toBe(true);
     });
 
     it('should include enriched fields when enrichWithDocs is enabled', async () => {
@@ -240,6 +241,14 @@ describe('MCP Protocol Compliance - diagnose_terragrunt_error', () => {
         options: { enrichWithDocs: true }
       });
 
+      // Base fields should still be present
+      expect('success' in result).toBe(true);
+      expect('overallConfidence' in result).toBe(true);
+      expect('matchCount' in result).toBe(true);
+      expect('matches' in result).toBe(true);
+      expect('generalAdvice' in result).toBe(true);
+
+      // Enriched fields should be present
       expect('richSolutions' in result).toBe(true);
       expect('orderedDebuggingSteps' in result).toBe(true);
       expect('documentationLinks' in result).toBe(true);
@@ -380,8 +389,9 @@ describe('MCP Protocol Compliance - diagnose_terragrunt_error', () => {
         
         expect(result).toBeDefined();
         expect(typeof result).toBe('object');
-        // Should have either success=true or error property
-        expect(result.success === true || result.error !== undefined).toBe(true);
+        // For invalid input, should have error defined and not success: true
+        expect(result.error).toBeDefined();
+        expect(result.success).not.toBe(true);
       }
     });
 
