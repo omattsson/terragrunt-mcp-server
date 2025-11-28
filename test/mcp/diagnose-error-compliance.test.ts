@@ -91,6 +91,8 @@ describe('MCP Protocol Compliance - diagnose_terragrunt_error', () => {
       expect(optionsProp.properties.enableFuzzyMatching.default).toBe(true);
       expect(optionsProp.properties.enrichWithDocs).toBeDefined();
       expect(optionsProp.properties.enrichWithDocs.default).toBe(false);
+      expect(optionsProp.properties.includeDestructiveCommands).toBeDefined();
+      expect(optionsProp.properties.includeDestructiveCommands.default).toBe(true);
       
       // Options should NOT be in required array
       const required = diagnoseTool?.inputSchema.required || [];
@@ -145,6 +147,7 @@ describe('MCP Protocol Compliance - diagnose_terragrunt_error', () => {
 
     it('should validate context property types when provided', () => {
       const contextProp = diagnoseTool?.inputSchema.properties.context;
+      expect(contextProp).toBeDefined();
       
       // All context properties should be strings
       expect(contextProp.properties.command.type).toBe('string');
@@ -157,6 +160,7 @@ describe('MCP Protocol Compliance - diagnose_terragrunt_error', () => {
 
     it('should validate options property types', () => {
       const optionsProp = diagnoseTool?.inputSchema.properties.options;
+      expect(optionsProp).toBeDefined();
       
       expect(optionsProp.properties.maxMatches.type).toBe('number');
       expect(optionsProp.properties.minConfidence.type).toBe('number');
@@ -228,6 +232,19 @@ describe('MCP Protocol Compliance - diagnose_terragrunt_error', () => {
       expect('matches' in result).toBe(true);
       expect('debuggingSteps' in result).toBe(true);
       expect('generalAdvice' in result).toBe(true);
+    });
+
+    it('should include enriched fields when enrichWithDocs is enabled', async () => {
+      const result = await toolHandler.executeTool('diagnose_terragrunt_error', {
+        error_message: 'Error: Backend configuration changed',
+        options: { enrichWithDocs: true }
+      });
+
+      expect('richSolutions' in result).toBe(true);
+      expect('orderedDebuggingSteps' in result).toBe(true);
+      expect('documentationLinks' in result).toBe(true);
+      expect('relatedErrorDetails' in result).toBe(true);
+      expect('enrichmentSuccessful' in result).toBe(true);
     });
 
     it('should handle concurrent executions correctly', async () => {
@@ -350,7 +367,7 @@ describe('MCP Protocol Compliance - diagnose_terragrunt_error', () => {
       expect(result.error).toContain('error_message');
     });
 
-    it('should return error object not throw for invalid input', async () => {
+    it('should return error object and not throw for invalid input', async () => {
       // Test with various invalid inputs - should all return error objects, not throw
       const testCases = [
         {},
@@ -378,7 +395,7 @@ describe('MCP Protocol Compliance - diagnose_terragrunt_error', () => {
 
     it('should not expose internal errors to clients', async () => {
       const result = await toolHandler.executeTool('diagnose_terragrunt_error', {
-        error_message: null as unknown as string // Invalid type
+        error_message: null as unknown as string // Test null handling - should be caught by required validation
       });
 
       // Should return safe error message
