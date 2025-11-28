@@ -1,8 +1,7 @@
-import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
+import { describe, it, expect, beforeAll } from 'vitest';
 import { ToolHandler } from '../../src/handlers/tools.js';
-import { ResourceHandler } from '../../src/handlers/resources.js';
-import { TerragruntDocsManager } from '../../src/terragrunt/docs.js';
 import { ErrorPatternMatcher } from '../../src/terragrunt/error-patterns.js';
+import { TerragruntDocsManager } from '../../src/terragrunt/docs.js';
 
 /**
  * Edge Case Tests for Error Diagnosis (Issue #50)
@@ -24,17 +23,15 @@ import { ErrorPatternMatcher } from '../../src/terragrunt/error-patterns.js';
  */
 describe('Edge Case Tests: Error Diagnosis', () => {
     let toolHandler: ToolHandler;
-    let resourceHandler: ResourceHandler;
-    let docsManager: TerragruntDocsManager;
     let errorPatternMatcher: ErrorPatternMatcher;
 
     beforeAll(async () => {
-        docsManager = new TerragruntDocsManager();
-        resourceHandler = new ResourceHandler(docsManager);
-        errorPatternMatcher = new ErrorPatternMatcher(docsManager);
-        toolHandler = new ToolHandler(docsManager, resourceHandler, errorPatternMatcher);
+        // ToolHandler creates its own dependencies internally
+        toolHandler = new ToolHandler();
         
-        // Ensure patterns are loaded
+        // Create separate ErrorPatternMatcher for pattern loading verification
+        const docsManager = new TerragruntDocsManager();
+        errorPatternMatcher = new ErrorPatternMatcher(docsManager);
         await errorPatternMatcher.loadPatterns();
     });
 
