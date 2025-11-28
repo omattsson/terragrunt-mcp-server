@@ -42,9 +42,11 @@ describe('Edge Case Tests: Error Diagnosis', () => {
                 error_message: ''
             });
 
-            // Should return error or empty matches, NOT throw
+            // Empty string is falsy, so should return validation error, NOT throw
             expect(result).toBeDefined();
             expect(() => JSON.stringify(result)).not.toThrow();
+            expect(result.error).toBeDefined();
+            expect(result.error).toBe('error_message parameter is required');
         });
 
         it('should handle whitespace-only error message', async () => {
@@ -744,8 +746,8 @@ Cycle 3: f -> g -> h -> i -> f`;
                 error_message: 'Error: Backend configuration changed',
                 context: {
                     command: 'a'.repeat(10000),
-                    filePath: '/'.concat('path/'.repeat(1000)),
-                    module: 'module-'.concat('nested/'.repeat(500))
+                    filePath: '/' + 'path/'.repeat(1000),
+                    module: 'module-' + 'nested/'.repeat(500)
                 }
             });
 
