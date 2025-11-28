@@ -700,4 +700,150 @@ describe('TerragruntConfigGenerator', () => {
       expect(result.config).not.toContain('project');
     });
   });
+
+  describe('AWS S3 Advanced Backend Template', () => {
+    it('should generate minimal config with only required fields', async () => {
+      const result = await generator.generateConfig({
+        useCase: 'remote_state',
+        backend: 'aws-s3-backend-advanced',
+        options: {
+          bucket: 'my-bucket',
+          key: 'terraform.tfstate',
+          region: 'us-east-1',
+        },
+      });
+
+      expect(result.config).toContain('backend = "s3"');
+      expect(result.config).toContain('bucket         = "my-bucket"');
+      expect(result.config).toContain('key            = "terraform.tfstate"');
+      expect(result.config).toContain('region         = "us-east-1"');
+      // Optional fields should not appear
+      expect(result.config).not.toContain('dynamodb_table');
+      expect(result.config).not.toContain('kms_key_id');
+      expect(result.config).not.toContain('role_arn');
+      expect(result.config).not.toContain('profile');
+      expect(result.config).not.toContain('endpoint');
+      // No Mustache syntax should remain
+      expect(result.config).not.toMatch(/\{\{[#^\/]?\w+\}\}/);
+    });
+
+    it('should generate config with KMS encryption', async () => {
+      const result = await generator.generateConfig({
+        useCase: 'remote_state',
+        backend: 'aws-s3-backend-advanced',
+        options: {
+          bucket: 'my-bucket',
+          key: 'terraform.tfstate',
+          region: 'us-east-1',
+          encrypt: true,
+          kms_key_id: 'arn:aws:kms:us-east-1:123456789012:key/12345678-1234-1234-1234-123456789012',
+        },
+      });
+
+      expect(result.config).toContain('bucket         = "my-bucket"');
+      expect(result.config).toContain('encrypt        = true');
+      expect(result.config).toContain('kms_key_id     = "arn:aws:kms:us-east-1:123456789012:key/12345678-1234-1234-1234-123456789012"');
+    });
+
+    it('should generate config for cross-account access', async () => {
+      const result = await generator.generateConfig({
+        useCase: 'remote_state',
+        backend: 'aws-s3-backend-advanced',
+        options: {
+          bucket: 'shared-bucket',
+          key: 'prod/terraform.tfstate',
+          region: 'us-west-2',
+          role_arn: 'arn:aws:iam::987654321098:role/TerraformRole',
+          session_name: 'terraform-prod',
+        },
+      });
+
+      expect(result.config).toContain('bucket         = "shared-bucket"');
+      expect(result.config).toContain('region         = "us-west-2"');
+      expect(result.config).toContain('role_arn       = "arn:aws:iam::987654321098:role/TerraformRole"');
+      expect(result.config).toContain('session_name   = "terraform-prod"');
+    });
+
+    it('should generate config for LocalStack testing', async () => {
+      const result = await generator.generateConfig({
+        useCase: 'remote_state',
+        backend: 'aws-s3-backend-advanced',
+        options: {
+          bucket: 'test-bucket',
+          key: 'test.tfstate',
+          region: 'us-east-1',
+          endpoint: 'http://localhost:4566',
+          skip_credentials_validation: true,
+        },
+      });
+
+      expect(result.config).toContain('bucket         = "test-bucket"');
+      expect(result.config).toContain('endpoint       = "http://localhost:4566"');
+      expect(result.config).toContain('skip_credentials_validation = true');
+    });
+
+    it('should generate config with all optional fields', async () => {
+      const result = await generator.generateConfig({
+        useCase: 'remote_state',
+        backend: 'aws-s3-backend-advanced',
+        options: {
+          bucket: 'my-bucket',
+          key: 'terraform.tfstate',
+          region: 'us-east-1',
+          dynamodb_table: 'terraform-locks',
+          encrypt: true,
+          kms_key_id: 'arn:aws:kms:us-east-1:123456789012:key/test-key',
+          role_arn: 'arn:aws:iam::123456789012:role/TerraformRole',
+          session_name: 'terraform-session',
+          profile: 'development',
+          endpoint: 'http://localhost:4566',
+          workspace_key_prefix: 'workspaces',
+          skip_credentials_validation: true,
+        },
+      });
+
+      expect(result.config).toContain('bucket         = "my-bucket"');
+      expect(result.config).toContain('key            = "terraform.tfstate"');
+      expect(result.config).toContain('region         = "us-east-1"');
+      expect(result.config).toContain('dynamodb_table = "terraform-locks"');
+      expect(result.config).toContain('encrypt        = true');
+      expect(result.config).toContain('kms_key_id     = "arn:aws:kms:us-east-1:123456789012:key/test-key"');
+      expect(result.config).toContain('role_arn       = "arn:aws:iam::123456789012:role/TerraformRole"');
+      expect(result.config).toContain('session_name   = "terraform-session"');
+      expect(result.config).toContain('profile        = "development"');
+      expect(result.config).toContain('endpoint       = "http://localhost:4566"');
+      expect(result.config).toContain('workspace_key_prefix = "workspaces"');
+      expect(result.config).toContain('skip_credentials_validation = true');
+    });
+
+    it('should generate config with DynamoDB locking', async () => {
+      const result = await generator.generateConfig({
+        useCase: 'remote_state',
+        backend: 'aws-s3-backend-advanced',
+        options: {
+          bucket: 'my-bucket',
+          key: 'terraform.tfstate',
+          region: 'us-east-1',
+          dynamodb_table: 'my-lock-table',
+        },
+      });
+
+      expect(result.config).toContain('dynamodb_table = "my-lock-table"');
+    });
+
+    it('should generate config with AWS profile', async () => {
+      const result = await generator.generateConfig({
+        useCase: 'remote_state',
+        backend: 'aws-s3-backend-advanced',
+        options: {
+          bucket: 'my-bucket',
+          key: 'terraform.tfstate',
+          region: 'us-east-1',
+          profile: 'production',
+        },
+      });
+
+      expect(result.config).toContain('profile        = "production"');
+    });
+  });
 });
