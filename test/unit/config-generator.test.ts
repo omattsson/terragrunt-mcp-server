@@ -574,4 +574,130 @@ describe('TerragruntConfigGenerator', () => {
       expect(result.config).toContain('dependency');
     });
   });
+
+  describe('conditional rendering (Mustache)', () => {
+    it('should include conditional blocks when variable is provided', async () => {
+      const result = await generator.generateConfig({
+        useCase: 'remote_state',
+        backend: 'gcp',
+        options: {
+          bucket: 'my-gcs-bucket',
+          prefix: 'terraform/state',
+          project: 'my-gcp-project',
+        },
+      });
+
+      // Project should be included since it was provided
+      expect(result.config).toContain('project');
+      expect(result.config).toContain('my-gcp-project');
+    });
+
+    it('should exclude conditional blocks when variable is not provided', async () => {
+      const result = await generator.generateConfig({
+        useCase: 'remote_state',
+        backend: 'gcp',
+        options: {
+          bucket: 'my-gcs-bucket',
+          prefix: 'terraform/state',
+          // project and credentials are optional
+        },
+      });
+
+      // Required fields should be present
+      expect(result.config).toContain('bucket');
+      expect(result.config).toContain('my-gcs-bucket');
+      expect(result.config).toContain('prefix');
+      
+      // Optional fields should NOT have their Mustache conditional syntax
+      expect(result.config).not.toContain('{{#project}}');
+      expect(result.config).not.toContain('{{/project}}');
+      expect(result.config).not.toContain('{{#credentials}}');
+      expect(result.config).not.toContain('{{/credentials}}');
+    });
+
+    it('should handle GCP backend with all optional fields', async () => {
+      const result = await generator.generateConfig({
+        useCase: 'remote_state',
+        backend: 'gcp',
+        options: {
+          bucket: 'my-gcs-bucket',
+          prefix: 'terraform/state',
+          project: 'my-gcp-project',
+          credentials: '/path/to/credentials.json',
+        },
+      });
+
+      expect(result.config).toContain('bucket');
+      expect(result.config).toContain('prefix');
+      expect(result.config).toContain('project');
+      expect(result.config).toContain('credentials');
+      expect(result.config).toContain('my-gcp-project');
+      expect(result.config).toContain('/path/to/credentials.json');
+    });
+
+    it('should handle GCP backend with only required fields', async () => {
+      const result = await generator.generateConfig({
+        useCase: 'remote_state',
+        backend: 'gcp',
+        options: {
+          bucket: 'my-gcs-bucket',
+          prefix: 'terraform/state',
+        },
+      });
+
+      expect(result.config).toContain('bucket');
+      expect(result.config).toContain('prefix');
+      // Should not contain project or credentials values when not provided
+      expect(result.config).not.toContain('project');
+      expect(result.config).not.toContain('credentials');
+    });
+
+    it('should not leave Mustache syntax in output', async () => {
+      const result = await generator.generateConfig({
+        useCase: 'remote_state',
+        backend: 'gcp',
+        options: {
+          bucket: 'test-bucket',
+          prefix: 'state/',
+        },
+      });
+
+      // No Mustache syntax should remain in output
+      expect(result.config).not.toMatch(/\{\{[#^\/]?\w+\}\}/);
+    });
+
+    it('should preserve non-conditional variable substitution', async () => {
+      const result = await generator.generateConfig({
+        useCase: 'remote_state',
+        backend: 's3',
+        options: {
+          bucket: 'my-bucket',
+          key: 'terraform.tfstate',
+          region: 'us-east-1',
+          dynamodb_table: 'locks',
+        },
+      });
+
+      // Standard substitution should still work
+      expect(result.config).toContain('bucket         = "my-bucket"');
+      expect(result.config).toContain('region         = "us-east-1"');
+      // No Mustache syntax should remain
+      expect(result.config).not.toMatch(/\{\{[#^\/]?\w+\}\}/);
+    });
+
+    it('should handle empty string values as falsy for conditionals', async () => {
+      const result = await generator.generateConfig({
+        useCase: 'remote_state',
+        backend: 'gcp',
+        options: {
+          bucket: 'my-gcs-bucket',
+          prefix: 'terraform/state',
+          project: '', // Empty string should be treated as not provided
+        },
+      });
+
+      // Empty string project should not appear in output
+      expect(result.config).not.toContain('project');
+    });
+  });
 });

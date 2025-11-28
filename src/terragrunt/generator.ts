@@ -3,6 +3,7 @@ import { validateHCL } from './hcl-validator.js';
 import { ConfigTemplateLibrary, UseCase } from './library.js';
 import { ConfigTemplate, ConfigVariable } from '../types/templates.js';
 import { GenerateConfigParams, GeneratedConfig, VariableValidationResult } from '../types/generator.js';
+import Mustache from 'mustache';
 
 /**
  * TerragruntConfigGenerator generates complete terragrunt.hcl configurations
@@ -98,21 +99,57 @@ export class TerragruntConfigGenerator {
   }
 
   /**
-   * Build configuration from template with variable substitution
+   * Build configuration from template with variable substitution.
+   * 
+   * Uses two-phase rendering:
+   * 1. Phase 1: Process Mustache conditionals ({{#var}}...{{/var}}, {{^var}}...{{/var}})
+   * 2. Phase 2: Type-aware value substitution for remaining {{variable}} placeholders
+   * 
+   * This approach allows optional fields in templates while preserving
+   * HCL type-aware formatting (strings quoted, booleans/numbers unquoted).
    */
   private async buildFromTemplate(template: ConfigTemplate, values: Record<string, string | number | boolean>): Promise<string> {
-    let config = template.templateHcl;
-
     // Find variable metadata for type-aware substitution
     const variableMap = new Map<string, ConfigVariable>();
     for (const variable of template.variables) {
       variableMap.set(variable.name, variable);
     }
 
-    // Replace all {{variable}} placeholders
+    // ============================================================
+    // Phase 1: Process Mustache conditionals
+    // ============================================================
+    // Create a context object for Mustache where:
+    // - Variables with values are truthy (their presence enables conditional blocks)
+    // - Variables without values are falsy (conditional blocks are removed)
+    // 
+    // We use placeholder markers instead of actual values so that
+    // Phase 2 can do type-aware substitution.
+    const mustacheContext: Record<string, string | boolean> = {};
+    
+    for (const variable of template.variables) {
+      const value = values[variable.name];
+      if (value !== undefined && value !== null && value !== '') {
+        // Variable has a value - make it truthy for conditionals
+        // Use a unique placeholder that won't conflict with other content
+        mustacheContext[variable.name] = `__PLACEHOLDER_${variable.name}__`;
+      }
+      // If variable has no value, it won't be in context (falsy for Mustache)
+    }
+
+    // Disable Mustache's HTML escaping since we're generating HCL, not HTML
+    Mustache.escape = (text: string) => text;
+    
+    // Render conditionals - this removes {{#var}}...{{/var}} blocks for missing variables
+    // and keeps them (with placeholders) for present variables
+    let config = Mustache.render(template.templateHcl, mustacheContext);
+
+    // ============================================================
+    // Phase 2: Type-aware value substitution
+    // ============================================================
+    // Now replace all placeholders with properly formatted values
     for (const [name, value] of Object.entries(values)) {
       const variable = variableMap.get(name);
-      const placeholder = `{{${name}}}`;
+      const placeholder = `__PLACEHOLDER_${name}__`;
 
       // Type-aware substitution
       let substitutedValue: string;
@@ -129,12 +166,39 @@ export class TerragruntConfigGenerator {
         const escapedValue = stringValue.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
         
         // Check if placeholder is already within quotes in template
-        const quotedPattern = new RegExp(`"${placeholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}"`, 'g');
+        const quotedPattern = new RegExp(`"${placeholder}"`, 'g');
         if (config.match(quotedPattern)) {
           // Already quoted in template, substitute without adding quotes
           substitutedValue = escapedValue;
         } else {
           // Not quoted, add quotes
+          substitutedValue = `"${escapedValue}"`;
+        }
+      }
+
+      config = config.replace(new RegExp(placeholder, 'g'), substitutedValue);
+    }
+
+    // Also handle any remaining {{variable}} placeholders that weren't in conditionals
+    // (backward compatibility with simple templates)
+    for (const [name, value] of Object.entries(values)) {
+      const variable = variableMap.get(name);
+      const placeholder = `{{${name}}}`;
+
+      // Type-aware substitution
+      let substitutedValue: string;
+      if (variable?.type === 'boolean') {
+        substitutedValue = String(value);
+      } else if (variable?.type === 'number') {
+        substitutedValue = String(value);
+      } else {
+        const stringValue = String(value);
+        const escapedValue = stringValue.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+        
+        const quotedPattern = new RegExp(`"${placeholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}"`, 'g');
+        if (config.match(quotedPattern)) {
+          substitutedValue = escapedValue;
+        } else {
           substitutedValue = `"${escapedValue}"`;
         }
       }
