@@ -75,7 +75,7 @@ This page provides a comprehensive overview of the Terragrunt MCP Server's archi
 
 #### ToolHandler (`tools.ts`)
 
-- Implements 6 specialized documentation tools
+- Implements 12 specialized documentation and troubleshooting tools
 - Validates input parameters
 - Executes tool-specific logic
 - Returns structured JSON responses
@@ -97,7 +97,59 @@ This page provides a comprehensive overview of the Terragrunt MCP Server's archi
 - Search and retrieval operations
 - Fallback handling
 
-### 4. Type Definitions (`src/types/`)
+### 4. Error Diagnosis Layer (`src/terragrunt/error-patterns.ts`)
+
+**Purpose**: Pattern matching and diagnosis for Terragrunt error messages
+
+**Key Classes**:
+- `ErrorPatternMatcher`: Main diagnosis engine
+- `SolutionRetriever`: Documentation-based solution enrichment
+
+**Architecture**:
+
+```text
+┌─────────────────────────────────────────────────────────────┐
+│                   ErrorPatternMatcher                        │
+│  ┌─────────────────────────────────────────────────────┐    │
+│  │  Pattern Database (66 patterns, 7 categories)       │    │
+│  │  • configuration (38)  • dependency (13)            │    │
+│  │  • backend (4)         • state (3)                  │    │
+│  │  • terraform (3)       • authentication (3)         │    │
+│  │  • network (2)                                      │    │
+│  └─────────────────────────────────────────────────────┘    │
+│                           │                                  │
+│  ┌────────────────────────▼────────────────────────────┐    │
+│  │  Matching Engine                                    │    │
+│  │  • Regex matching (confidence: 0.95)                │    │
+│  │  • Fuzzy matching (Levenshtein distance)            │    │
+│  │  • Context extraction                               │    │
+│  └─────────────────────────────────────────────────────┘    │
+│                           │                                  │
+│  ┌────────────────────────▼────────────────────────────┐    │
+│  │  LRU Cache (100 entries)                            │    │
+│  │  • Caches diagnosis results                         │    │
+│  │  • Improves repeated query performance              │    │
+│  └─────────────────────────────────────────────────────┘    │
+└─────────────────────────────────────────────────────────────┘
+                            │
+                            ▼
+┌─────────────────────────────────────────────────────────────┐
+│                   SolutionRetriever                          │
+│  • Searches documentation for solutions                      │
+│  • Extracts relevant documentation links                     │
+│  • Orders debugging steps                                    │
+│  • Enriches patterns with doc content                        │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Features**:
+- Pattern matching with regex and fuzzy string matching
+- Confidence scoring (0-1 scale)
+- LRU caching for performance
+- Documentation enrichment via SolutionRetriever
+- Solution safety level classification (safe, caution, destructive)
+
+### 5. Type Definitions (`src/types/`)
 
 **Purpose**: TypeScript type safety and interface definitions
 

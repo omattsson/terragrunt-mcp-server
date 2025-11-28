@@ -183,6 +183,31 @@ Extract and analyze best practices, patterns, antipatterns, and recommendations 
 "What should I avoid when setting up dependencies?"
 ```
 
+#### 12. **`diagnose_terragrunt_error`** - Error Diagnosis and Troubleshooting
+
+Diagnose Terragrunt error messages and get actionable solutions, debugging steps, and relevant documentation links. Uses pattern matching with 66 error patterns across 7 categories.
+
+- **Parameters**:
+  - `error_message` (string, required): The error message from Terragrunt to diagnose
+  - `context` (object, optional): Additional context (command, version, os, filePath, module, backend)
+  - `options` (object, optional): Diagnosis options
+    - `maxMatches` (number): Maximum matches to return (default: 3)
+    - `minConfidence` (number): Minimum confidence score 0-1 (default: 0.3)
+    - `enableFuzzyMatching` (boolean): Enable fuzzy matching (default: true)
+    - `enrichWithDocs` (boolean): Enrich with documentation-sourced solutions (default: false)
+- **Returns**: Matches with confidence scores, solutions, debugging steps, related errors, and documentation links
+- **Use cases**: Troubleshooting errors, getting actionable solutions, finding relevant documentation
+
+**Example prompts:**
+
+```text
+"I'm getting this error: Error acquiring the state lock"
+"Help me fix: Backend configuration changed since last init"
+"Diagnose this terragrunt error and tell me how to fix it"
+```
+
+See the [Troubleshooting Guide](docs/Troubleshooting-Guide.md) for detailed usage examples and best practices.
+
 ### 📖 Resources
 
 - Complete documentation overview with section breakdown
