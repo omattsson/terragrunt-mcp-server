@@ -117,7 +117,6 @@ export const backendTemplates: ConfigTemplate[] = [
         description: 'Enable encryption at rest',
         type: 'boolean',
         required: false,
-        defaultValue: true,
       },
       {
         name: 'kms_key_id',
@@ -149,7 +148,7 @@ export const backendTemplates: ConfigTemplate[] = [
       },
       {
         name: 'endpoint',
-        description: 'Custom S3 endpoint URL (for LocalStack/Minio)',
+        description: 'Custom S3 endpoint URL (for LocalStack/MinIO)',
         type: 'string',
         required: false,
         example: 'http://localhost:4566',
@@ -166,7 +165,6 @@ export const backendTemplates: ConfigTemplate[] = [
         description: 'Skip AWS credentials validation',
         type: 'boolean',
         required: false,
-        defaultValue: false,
       },
     ],
     templateHcl: `remote_state {

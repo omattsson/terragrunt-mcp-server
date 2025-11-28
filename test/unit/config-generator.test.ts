@@ -717,12 +717,16 @@ describe('TerragruntConfigGenerator', () => {
       expect(result.config).toContain('bucket         = "my-bucket"');
       expect(result.config).toContain('key            = "terraform.tfstate"');
       expect(result.config).toContain('region         = "us-east-1"');
-      // Optional fields should not appear
+      // All optional fields should not appear when not provided
       expect(result.config).not.toContain('dynamodb_table');
+      expect(result.config).not.toContain('encrypt');
       expect(result.config).not.toContain('kms_key_id');
       expect(result.config).not.toContain('role_arn');
+      expect(result.config).not.toContain('session_name');
       expect(result.config).not.toContain('profile');
       expect(result.config).not.toContain('endpoint');
+      expect(result.config).not.toContain('workspace_key_prefix');
+      expect(result.config).not.toContain('skip_credentials_validation');
       // No Mustache syntax should remain
       expect(result.config).not.toMatch(/\{\{[#^\/]?\w+\}\}/);
     });
