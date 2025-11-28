@@ -849,5 +849,21 @@ describe('TerragruntConfigGenerator', () => {
 
       expect(result.config).toContain('profile        = "production"');
     });
+
+    it('should generate config with explicit encrypt: false', async () => {
+      const result = await generator.generateConfig({
+        useCase: 'remote_state',
+        backend: 'aws-s3-backend-advanced',
+        options: {
+          bucket: 'my-bucket',
+          key: 'terraform.tfstate',
+          region: 'us-east-1',
+          encrypt: false,
+        },
+      });
+
+      expect(result.config).toContain('bucket         = "my-bucket"');
+      expect(result.config).toContain('encrypt        = false');
+    });
   });
 });
