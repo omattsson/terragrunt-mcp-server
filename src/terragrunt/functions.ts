@@ -485,6 +485,14 @@ export const STATIC_BUILTIN_FUNCTIONS: TerragruntFunction[] = [
 ];
 
 /**
+ * Pre-computed Set of normalized static function names for O(1) lookups.
+ * Used by isStaticFunction() for efficient membership checks.
+ */
+const STATIC_FUNCTION_NAMES = new Set(
+  STATIC_BUILTIN_FUNCTIONS.map(fn => fn.name.trim().toLowerCase())
+);
+
+/**
  * Manages Terragrunt built-in function metadata with an LRU cache.
  *
  * Notes:
@@ -518,7 +526,7 @@ export class TerragruntFunctionsManager {
     // Step 1: Load static built-in function definitions first (authoritative)
     for (const fn of STATIC_BUILTIN_FUNCTIONS) {
       const key = this.normalizeKey(fn.name);
-      this.functionsCache.set(key, { ...fn });
+      this.functionsCache.set(key, fn);
     }
 
     // Step 2: Try to enrich with doc-extracted functions
@@ -579,6 +587,7 @@ export class TerragruntFunctionsManager {
 
   /**
    * Check if a function is defined in the static built-in functions list.
+   * Uses pre-computed Set for O(1) lookup performance.
    * @param name The function name to check
    * @returns true if the function is in the static definitions
    */
@@ -587,7 +596,7 @@ export class TerragruntFunctionsManager {
       return false;
     }
     const normalizedName = this.normalizeKey(name);
-    return STATIC_BUILTIN_FUNCTIONS.some(fn => this.normalizeKey(fn.name) === normalizedName);
+    return STATIC_FUNCTION_NAMES.has(normalizedName);
   }
 
   /**
