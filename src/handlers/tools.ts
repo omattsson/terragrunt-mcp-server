@@ -895,7 +895,7 @@ export class ToolHandler {
      * exact match and search match response paths.
      */
     private formatBlockResponse(
-        block: import('../types/hcl-blocks.js').HCLBlock,
+        block: HCLBlock,
         additionalProps?: Record<string, unknown>
     ): Record<string, unknown> {
         const response: Record<string, unknown> = {
