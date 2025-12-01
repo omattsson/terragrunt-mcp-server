@@ -303,6 +303,16 @@ describe('MCP Protocol Compliance', () => {
       
       expect(cliHelpTool).toBeDefined();
       expect(cliHelpTool?.inputSchema.properties.command).toBeDefined();
+      expect(cliHelpTool?.description).toContain('aliases');
+    });
+
+    it('should include list_cli_commands tool', () => {
+      const tools = toolHandler.getAvailableTools();
+      const listCliTool = tools.find(t => t.name === 'list_cli_commands');
+      
+      expect(listCliTool).toBeDefined();
+      expect(listCliTool?.inputSchema.properties.category).toBeDefined();
+      expect(listCliTool?.inputSchema.properties.search).toBeDefined();
     });
 
     it('should include get_hcl_config_reference tool', () => {
@@ -422,9 +432,54 @@ describe('MCP Protocol Compliance', () => {
       expect(result.command).toBe('plan');
       
       if (!result.error) {
-        expect(result.title).toBeDefined();
-        expect(result.content).toBeDefined();
+        expect(result.description).toBeDefined();
+        expect(result.usage).toBeDefined();
+        expect(result.examples).toBeDefined();
+        expect(result.formattedHelp).toBeDefined();
       }
+    });
+
+    it('should return all categories for list_cli_commands tool', async () => {
+      const result = await toolHandler.executeTool('list_cli_commands', {});
+
+      expect(result.categories).toBeDefined();
+      expect(Array.isArray(result.categories)).toBe(true);
+      expect(result.totalCategories).toBeGreaterThan(0);
+      expect(result.totalCommands).toBeGreaterThan(15);
+      
+      const categoryIds = result.categories.map((c: any) => c.id);
+      expect(categoryIds).toContain('main');
+      expect(categoryIds).toContain('shortcut');
+      expect(categoryIds).toContain('configuration');
+    });
+
+    it('should filter list_cli_commands by category', async () => {
+      const result = await toolHandler.executeTool('list_cli_commands', {
+        category: 'shortcut'
+      });
+
+      expect(result.category).toBe('shortcut');
+      expect(result.commands).toBeDefined();
+      expect(Array.isArray(result.commands)).toBe(true);
+      
+      const names = result.commands.map((c: any) => c.name);
+      expect(names).toContain('plan');
+      expect(names).toContain('apply');
+      expect(names).toContain('destroy');
+    });
+
+    it('should search list_cli_commands by query', async () => {
+      const result = await toolHandler.executeTool('list_cli_commands', {
+        search: 'validate'
+      });
+
+      expect(result.search).toBe('validate');
+      expect(result.results).toBeDefined();
+      expect(Array.isArray(result.results)).toBe(true);
+      
+      const names = result.results.map((r: any) => r.name);
+      expect(names).toContain('validate-inputs');
+      expect(names).toContain('hcl validate');
     });
 
     it('should return structured response for HCL config tool', async () => {

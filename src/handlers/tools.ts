@@ -11,6 +11,7 @@ import { CustomTemplateLoader } from '../terragrunt/templates/loaders/custom.js'
 import { TemplateValidator } from '../terragrunt/templates/validator.js';
 import { FileWriter } from '../terragrunt/file-writer.js';
 import { ErrorPatternMatcher } from '../terragrunt/error-patterns.js';
+import { CLICommandsManager } from '../terragrunt/cli-commands.js';
 
 export interface Tool {
     name: string;
@@ -24,6 +25,7 @@ export class ToolHandler {
     private functionsManager: TerragruntFunctionsManager;
     private bestPracticesAnalyzer: BestPracticesAnalyzer;
     private errorPatternMatcher: ErrorPatternMatcher;
+    private cliCommandsManager: CLICommandsManager;
     private functionsLoaded: boolean = false;
     private templatesManager: TemplatesManager;
     private templateLibrary: ConfigTemplateLibrary;
@@ -36,6 +38,7 @@ export class ToolHandler {
         this.functionsManager = new TerragruntFunctionsManager(this.docsManager);
         this.bestPracticesAnalyzer = new BestPracticesAnalyzer(this.docsManager);
         this.errorPatternMatcher = new ErrorPatternMatcher(this.docsManager);
+        this.cliCommandsManager = new CLICommandsManager();
         
         // Initialize templates manager with builtin and filesystem loaders
         this.templatesManager = new TemplatesManager([
@@ -159,16 +162,35 @@ export class ToolHandler {
             },
             {
                 name: 'get_cli_command_help',
-                description: 'Get detailed help documentation for a specific Terragrunt CLI command',
+                description: 'Get detailed help documentation for a specific Terragrunt CLI command including options, usage, and examples. Supports command aliases like "run-all" (→ run --all) and "hclfmt" (→ hcl fmt).',
                 inputSchema: {
                     type: 'object',
                     properties: {
                         command: {
                             type: 'string',
-                            description: 'The Terragrunt CLI command name (e.g., "plan", "apply", "run-all", "hclfmt")'
+                            description: 'The Terragrunt CLI command name (e.g., "plan", "apply", "run", "run-all", "hcl fmt", "hclfmt", "validate-inputs", "destroy")'
                         }
                     },
                     required: ['command']
+                }
+            },
+            {
+                name: 'list_cli_commands',
+                description: 'List all available Terragrunt CLI commands organized by category (main, backend, stack, catalog, discovery, configuration, shortcut)',
+                inputSchema: {
+                    type: 'object',
+                    properties: {
+                        category: {
+                            type: 'string',
+                            description: 'Optional category filter to show only commands in that category',
+                            enum: ['main', 'backend', 'stack', 'catalog', 'discovery', 'configuration', 'shortcut']
+                        },
+                        search: {
+                            type: 'string',
+                            description: 'Optional search query to filter commands by name or description'
+                        }
+                    },
+                    required: []
                 }
             },
             {
@@ -439,6 +461,10 @@ export class ToolHandler {
                         return { error: 'command parameter is required' };
                     }
                     return await this.getCliCommandHelp(args.command);
+                
+                case 'list_cli_commands':
+                    return await this.listCliCommands(args?.category, args?.search);
+
                 case 'get_terragrunt_function':
                     if (!args?.function_name) {
                         return { error: 'function_name parameter is required' };
@@ -612,13 +638,57 @@ export class ToolHandler {
     }
 
     private async getCliCommandHelp(command: string): Promise<any> {
+        // First, try to get structured documentation from CLICommandsManager
+        const structuredCmd = this.cliCommandsManager.getCommand(command);
+        
+        if (structuredCmd) {
+            // Return comprehensive structured documentation
+            return {
+                command: structuredCmd.name,
+                aliases: structuredCmd.aliases,
+                category: structuredCmd.category,
+                description: structuredCmd.description,
+                usage: structuredCmd.usage,
+                details: structuredCmd.details,
+                options: structuredCmd.options.map(opt => ({
+                    flag: opt.flag,
+                    shortFlag: opt.shortFlag,
+                    type: opt.type,
+                    description: opt.description,
+                    defaultValue: opt.defaultValue,
+                    envVar: opt.envVar,
+                    required: opt.required,
+                    example: opt.example
+                })),
+                examples: structuredCmd.examples.map(ex => ({
+                    description: ex.description,
+                    command: ex.command,
+                    output: ex.output
+                })),
+                relatedCommands: structuredCmd.relatedCommands,
+                notes: structuredCmd.notes,
+                deprecated: structuredCmd.deprecated,
+                documentationUrl: structuredCmd.documentationUrl,
+                // Include formatted markdown help
+                formattedHelp: this.cliCommandsManager.formatCommandHelp(structuredCmd)
+            };
+        }
+
+        // Fallback to docs manager for commands not in structured data
         const doc = await this.docsManager.getCliCommandHelp(command);
 
         if (!doc) {
+            // Provide helpful suggestions
+            const searchResults = this.cliCommandsManager.searchCommands(command);
+            const suggestions = searchResults.slice(0, 3).map(r => r.command.name);
+            const allCommands = this.cliCommandsManager.getAllCommands().map(c => c.name);
+            
             return {
                 command,
                 error: `No CLI command documentation found for: ${command}`,
-                suggestion: 'Try searching with search_terragrunt_docs or use get_section_docs with section "reference" to see all available CLI commands'
+                suggestions: suggestions.length > 0 ? suggestions : undefined,
+                availableCommands: allCommands,
+                hint: 'Use list_cli_commands to see all available commands organized by category'
             };
         }
 
@@ -627,7 +697,62 @@ export class ToolHandler {
             title: doc.title,
             url: doc.url,
             content: doc.content,
-            lastUpdated: doc.lastUpdated
+            lastUpdated: doc.lastUpdated,
+            source: 'documentation'
+        };
+    }
+
+    /**
+     * List all CLI commands, optionally filtered by category or search query
+     */
+    private async listCliCommands(
+        category?: 'main' | 'backend' | 'stack' | 'catalog' | 'discovery' | 'configuration' | 'shortcut',
+        search?: string
+    ): Promise<any> {
+        if (search) {
+            // Search for matching commands
+            const results = this.cliCommandsManager.searchCommands(search);
+            return {
+                search,
+                results: results.map(r => ({
+                    name: r.command.name,
+                    aliases: r.command.aliases,
+                    category: r.command.category,
+                    description: r.command.description,
+                    usage: r.command.usage,
+                    score: r.score,
+                    matchType: r.matchType
+                })),
+                totalResults: results.length
+            };
+        }
+
+        if (category) {
+            // Filter by category
+            const commands = this.cliCommandsManager.getCommandsByCategory(category);
+            return {
+                category,
+                commands: commands.map(cmd => ({
+                    name: cmd.name,
+                    aliases: cmd.aliases,
+                    description: cmd.description,
+                    usage: cmd.usage
+                })),
+                totalCommands: commands.length
+            };
+        }
+
+        // Return all commands organized by category
+        const categories = this.cliCommandsManager.getCategories();
+        return {
+            categories: categories.map(cat => ({
+                id: cat.id,
+                name: cat.name,
+                description: cat.description,
+                commands: cat.commands
+            })),
+            totalCategories: categories.length,
+            totalCommands: this.cliCommandsManager.getAllCommands().length
         };
     }
 
