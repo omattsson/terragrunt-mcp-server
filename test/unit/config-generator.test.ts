@@ -866,4 +866,167 @@ describe('TerragruntConfigGenerator', () => {
       expect(result.config).toContain('encrypt        = false');
     });
   });
+
+  describe('Azure Blob Storage Advanced Backend Template', () => {
+    it('should generate minimal config with only required fields', async () => {
+      const result = await generator.generateConfig({
+        useCase: 'remote_state',
+        backend: 'azure-blob-backend-advanced',
+        options: {
+          resource_group_name: 'rg-terraform-state',
+          storage_account_name: 'tfstatestorage',
+          container_name: 'tfstate',
+          key: 'terraform.tfstate',
+        },
+      });
+
+      expect(result.config).toContain('backend = "azurerm"');
+      expect(result.config).toContain('resource_group_name  = "rg-terraform-state"');
+      expect(result.config).toContain('storage_account_name = "tfstatestorage"');
+      expect(result.config).toContain('container_name       = "tfstate"');
+      expect(result.config).toContain('key                  = "terraform.tfstate"');
+      // All optional fields should not appear when not provided
+      expect(result.config).not.toContain('subscription_id');
+      expect(result.config).not.toContain('tenant_id');
+      expect(result.config).not.toContain('client_id');
+      expect(result.config).not.toContain('client_secret');
+      expect(result.config).not.toContain('use_msi');
+      expect(result.config).not.toContain('sas_token');
+      expect(result.config).not.toContain('snapshot');
+      expect(result.config).not.toContain('use_azuread_auth');
+      // No Mustache syntax should remain
+      expect(result.config).not.toMatch(/\{\{[#^\/]?\w+\}\}/);
+    });
+
+    it('should generate config with Service Principal authentication', async () => {
+      const result = await generator.generateConfig({
+        useCase: 'remote_state',
+        backend: 'azure-blob-backend-advanced',
+        options: {
+          resource_group_name: 'rg-terraform-state',
+          storage_account_name: 'tfstatestorage',
+          container_name: 'tfstate',
+          key: 'terraform.tfstate',
+          subscription_id: 'sub-12345678-1234-1234-1234-123456789012',
+          tenant_id: 'tenant-12345678-1234-1234-1234-123456789012',
+          client_id: 'client-12345678-1234-1234-1234-123456789012',
+          client_secret: 'super-secret-value',
+        },
+      });
+
+      expect(result.config).toContain('backend = "azurerm"');
+      expect(result.config).toContain('resource_group_name  = "rg-terraform-state"');
+      expect(result.config).toContain('subscription_id      = "sub-12345678-1234-1234-1234-123456789012"');
+      expect(result.config).toContain('tenant_id            = "tenant-12345678-1234-1234-1234-123456789012"');
+      expect(result.config).toContain('client_id            = "client-12345678-1234-1234-1234-123456789012"');
+      expect(result.config).toContain('client_secret        = "super-secret-value"');
+    });
+
+    it('should generate config with Managed Service Identity (MSI)', async () => {
+      const result = await generator.generateConfig({
+        useCase: 'remote_state',
+        backend: 'azure-blob-backend-advanced',
+        options: {
+          resource_group_name: 'rg-terraform-state',
+          storage_account_name: 'tfstatestorage',
+          container_name: 'tfstate',
+          key: 'terraform.tfstate',
+          subscription_id: 'sub-12345678-1234-1234-1234-123456789012',
+          use_msi: true,
+        },
+      });
+
+      expect(result.config).toContain('backend = "azurerm"');
+      expect(result.config).toContain('resource_group_name  = "rg-terraform-state"');
+      expect(result.config).toContain('subscription_id      = "sub-12345678-1234-1234-1234-123456789012"');
+      expect(result.config).toContain('use_msi              = true');
+      // Should NOT have Service Principal fields
+      expect(result.config).not.toContain('client_id');
+      expect(result.config).not.toContain('client_secret');
+    });
+
+    it('should generate config with SAS token authentication', async () => {
+      const result = await generator.generateConfig({
+        useCase: 'remote_state',
+        backend: 'azure-blob-backend-advanced',
+        options: {
+          resource_group_name: 'rg-terraform-state',
+          storage_account_name: 'tfstatestorage',
+          container_name: 'tfstate',
+          key: 'terraform.tfstate',
+          sas_token: 'sv=2021-06-08&ss=b&srt=sco&sp=rwdlacup&se=2024-12-31',
+        },
+      });
+
+      expect(result.config).toContain('backend = "azurerm"');
+      expect(result.config).toContain('resource_group_name  = "rg-terraform-state"');
+      expect(result.config).toContain('sas_token            = "sv=2021-06-08&ss=b&srt=sco&sp=rwdlacup&se=2024-12-31"');
+      // Should NOT have other auth fields
+      expect(result.config).not.toContain('use_msi');
+      expect(result.config).not.toContain('client_id');
+      expect(result.config).not.toContain('client_secret');
+    });
+
+    it('should generate config with Azure AD authentication', async () => {
+      const result = await generator.generateConfig({
+        useCase: 'remote_state',
+        backend: 'azure-blob-backend-advanced',
+        options: {
+          resource_group_name: 'rg-terraform-state',
+          storage_account_name: 'tfstatestorage',
+          container_name: 'tfstate',
+          key: 'terraform.tfstate',
+          tenant_id: 'tenant-12345678-1234-1234-1234-123456789012',
+          use_azuread_auth: true,
+        },
+      });
+
+      expect(result.config).toContain('backend = "azurerm"');
+      expect(result.config).toContain('resource_group_name  = "rg-terraform-state"');
+      expect(result.config).toContain('tenant_id            = "tenant-12345678-1234-1234-1234-123456789012"');
+      expect(result.config).toContain('use_azuread_auth     = true');
+    });
+
+    it('should generate config with snapshot enabled', async () => {
+      const result = await generator.generateConfig({
+        useCase: 'remote_state',
+        backend: 'azure-blob-backend-advanced',
+        options: {
+          resource_group_name: 'rg-terraform-state',
+          storage_account_name: 'tfstatestorage',
+          container_name: 'tfstate',
+          key: 'terraform.tfstate',
+          snapshot: true,
+        },
+      });
+
+      expect(result.config).toContain('backend = "azurerm"');
+      expect(result.config).toContain('resource_group_name  = "rg-terraform-state"');
+      expect(result.config).toContain('snapshot             = true');
+    });
+
+    it('should render boolean fields when explicitly set to false', async () => {
+      const result = await generator.generateConfig({
+        useCase: 'remote_state',
+        backend: 'azure-blob-backend-advanced',
+        options: {
+          resource_group_name: 'rg-terraform-state',
+          storage_account_name: 'tfstatestorage',
+          container_name: 'tfstate',
+          key: 'terraform.tfstate',
+          use_msi: false,
+          snapshot: false,
+          use_azuread_auth: false,
+        },
+      });
+
+      expect(result.config).toContain('backend = "azurerm"');
+      expect(result.config).toContain('resource_group_name  = "rg-terraform-state"');
+      // Boolean false values SHOULD appear when explicitly provided
+      // (this allows users to explicitly disable features)
+      expect(result.config).toContain('use_msi              = false');
+      expect(result.config).toContain('snapshot             = false');
+      expect(result.config).toContain('use_azuread_auth     = false');
+    });
+  });
 });

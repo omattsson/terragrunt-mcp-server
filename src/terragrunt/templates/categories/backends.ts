@@ -284,6 +284,147 @@ export const backendTemplates: ConfigTemplate[] = [
 }`,
   },
 
+  // Azure Blob Storage Advanced Backend
+  {
+    id: 'azure-blob-backend-advanced',
+    name: 'Azure Blob Storage Advanced Remote State Backend',
+    description: 'Advanced Azure Blob Storage backend with multiple authentication methods (Service Principal, MSI, SAS Token, Azure AD) and snapshot support',
+    category: 'backend',
+    cloudProvider: 'azure',
+    source: 'azure-config',
+    tags: ['remote-state', 'azure', 'azurerm', 'blob-storage', 'backend', 'advanced'],
+    variables: [
+      {
+        name: 'resource_group_name',
+        description: 'Resource group containing storage account',
+        type: 'string',
+        required: true,
+        example: 'rg-terraform-state',
+      },
+      {
+        name: 'storage_account_name',
+        description: 'Storage account name',
+        type: 'string',
+        required: true,
+        example: 'tfstatestorage',
+      },
+      {
+        name: 'container_name',
+        description: 'Blob container name',
+        type: 'string',
+        required: true,
+        example: 'tfstate',
+      },
+      {
+        name: 'key',
+        description: 'Path to state file within container',
+        type: 'string',
+        required: true,
+        example: '${path_relative_to_include("site")}/terraform.tfstate',
+      },
+      {
+        name: 'subscription_id',
+        description: 'Azure subscription ID (optional for scoped access)',
+        type: 'string',
+        required: false,
+        example: 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx',
+      },
+      {
+        name: 'tenant_id',
+        description: 'Azure AD tenant ID for authentication',
+        type: 'string',
+        required: false,
+        example: 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx',
+      },
+      {
+        name: 'client_id',
+        description: 'Service principal client ID',
+        type: 'string',
+        required: false,
+        example: 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx',
+      },
+      {
+        name: 'client_secret',
+        description: 'Service principal client secret',
+        type: 'string',
+        required: false,
+        sensitive: true,
+        example: 'your-client-secret',
+      },
+      {
+        name: 'use_msi',
+        description: 'Use Managed Service Identity for authentication',
+        type: 'boolean',
+        required: false,
+      },
+      {
+        name: 'sas_token',
+        description: 'Storage SAS token for authentication',
+        type: 'string',
+        required: false,
+        sensitive: true,
+        example: 'sv=2021-06-08&ss=b&srt=sco&sp=rwdlacup&se=...',
+      },
+      {
+        name: 'snapshot',
+        description: 'Enable snapshot support for point-in-time recovery',
+        type: 'boolean',
+        required: false,
+      },
+      {
+        name: 'use_azuread_auth',
+        description: 'Use Azure AD authentication instead of access keys',
+        type: 'boolean',
+        required: false,
+      },
+    ],
+    templateHcl: `remote_state {
+  backend = "azurerm"
+  config = {
+    resource_group_name  = "{{resource_group_name}}"
+    storage_account_name = "{{storage_account_name}}"
+    container_name       = "{{container_name}}"
+    key                  = "{{key}}"
+{{#subscription_id}}
+    subscription_id      = "{{subscription_id}}"
+{{/subscription_id}}
+{{#tenant_id}}
+    tenant_id            = "{{tenant_id}}"
+{{/tenant_id}}
+{{#client_id}}
+    client_id            = "{{client_id}}"
+{{/client_id}}
+{{#client_secret}}
+    client_secret        = "{{client_secret}}"
+{{/client_secret}}
+{{#use_msi}}
+    use_msi              = {{use_msi}}
+{{/use_msi}}
+{{#sas_token}}
+    sas_token            = "{{sas_token}}"
+{{/sas_token}}
+{{#snapshot}}
+    snapshot             = {{snapshot}}
+{{/snapshot}}
+{{#use_azuread_auth}}
+    use_azuread_auth     = {{use_azuread_auth}}
+{{/use_azuread_auth}}
+  }
+}`,
+    example: `remote_state {
+  backend = "azurerm"
+  config = {
+    resource_group_name  = "rg-terraform-state"
+    storage_account_name = "tfstatestorage"
+    container_name       = "tfstate"
+    key                  = "\${path_relative_to_include(\"site\")}/terraform.tfstate"
+    subscription_id      = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+    tenant_id            = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+    use_azuread_auth     = true
+  }
+}`,
+  },
+
   // GCP GCS Remote State Backend
   {
     id: 'gcp-gcs-backend',

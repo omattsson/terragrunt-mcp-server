@@ -14,7 +14,7 @@ describe('TemplatesManager', () => {
       const templates = await manager.getAllTemplates();
       
       expect(templates.length).toBeGreaterThanOrEqual(3);
-      expect(templates.length).toBe(10); // Total templates after Sprint 2 + advanced S3 backend
+      expect(templates.length).toBe(11); // Total templates after Sprint 2 + advanced S3 backend + advanced Azure backend
     });
 
     it('should only load templates once', async () => {
@@ -76,7 +76,7 @@ describe('TemplatesManager', () => {
     it('should return all templates', async () => {
       const templates = await manager.getAllTemplates();
       
-      expect(templates).toHaveLength(10);
+      expect(templates).toHaveLength(11);
       
       const ids = templates.map(t => t.id);
       expect(ids).toContain('aws-s3-backend');
@@ -106,7 +106,7 @@ describe('TemplatesManager', () => {
     it('should filter by category', async () => {
       const backendTemplates = await manager.searchTemplates({ category: 'backend' });
       
-      expect(backendTemplates).toHaveLength(4); // AWS S3, AWS S3 Advanced, Azure Blob, GCP GCS
+      expect(backendTemplates).toHaveLength(5); // AWS S3, AWS S3 Advanced, Azure Blob, Azure Blob Advanced, GCP GCS
       expect(backendTemplates.every(t => t.category === 'backend')).toBe(true);
     });
 
@@ -129,7 +129,7 @@ describe('TemplatesManager', () => {
         tags: ['remote-state'] 
       });
       
-      expect(remoteStateTemplates).toHaveLength(4); // AWS S3, AWS S3 Advanced, Azure Blob, GCP GCS
+      expect(remoteStateTemplates).toHaveLength(5); // AWS S3, AWS S3 Advanced, Azure Blob, Azure Blob Advanced, GCP GCS
       expect(remoteStateTemplates.every(t => t.tags.includes('remote-state'))).toBe(true);
     });
 
@@ -159,7 +159,7 @@ describe('TemplatesManager', () => {
     it('should return correct metadata', async () => {
       const metadata = await manager.getMetadata();
       
-      expect(metadata.totalTemplates).toBe(10);
+      expect(metadata.totalTemplates).toBe(11);
       expect(metadata.categories).toContain('backend');
       expect(metadata.categories).toContain('provider');
       expect(metadata.cloudProviders).toContain('aws');
@@ -248,7 +248,7 @@ describe('TemplatesManager', () => {
       
       const afterClear = await manager.getAllTemplates();
       // After clear, loadTemplates will reinitialize
-      expect(afterClear.length).toBe(10);
+      expect(afterClear.length).toBe(11);
     });
   });
 });
