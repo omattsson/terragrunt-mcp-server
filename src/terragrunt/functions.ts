@@ -36,6 +36,455 @@ export interface TerragruntFunction {
 }
 
 /**
+ * Function categories for Terragrunt built-in functions
+ */
+export type FunctionCategory = 'path' | 'environment' | 'aws' | 'terraform' | 'file' | 'execution' | 'utility';
+
+/**
+ * Static, curated definitions of all Terragrunt built-in functions.
+ * These definitions guarantee complete coverage and serve as the authoritative reference.
+ * Doc-extracted functions may enrich these with additional examples.
+ */
+export const STATIC_BUILTIN_FUNCTIONS: TerragruntFunction[] = [
+  // ============================================================================
+  // PATH FUNCTIONS (10)
+  // ============================================================================
+  {
+    name: 'find_in_parent_folders',
+    signature: 'find_in_parent_folders(name, [fallback])',
+    description: 'Searches up the directory tree from the current terragrunt.hcl file and returns the absolute path to the first file in a parent folder with a given name. If no file is found and no fallback is provided, exits with an error.',
+    parameters: [
+      { name: 'name', type: 'string', required: true, description: 'The filename to search for in parent directories' },
+      { name: 'fallback', type: 'string', required: false, description: 'Value to return if the file is not found (prevents error)', default: undefined }
+    ],
+    returnType: 'string',
+    category: 'path',
+    examples: [
+      { code: 'include "root" {\n  path = find_in_parent_folders("root.hcl")\n}', description: 'Find and include root configuration', useCase: 'include-parent' },
+      { code: 'find_in_parent_folders("env.hcl", "fallback.hcl")', description: 'Find env config with fallback if not found', useCase: 'fallback' },
+      { code: 'locals {\n  common = read_terragrunt_config(find_in_parent_folders("common.hcl"))\n}', description: 'Read common configuration from parent', useCase: 'read-config' }
+    ],
+    relatedFunctions: ['get_terragrunt_dir', 'get_parent_terragrunt_dir', 'read_terragrunt_config']
+  },
+  {
+    name: 'path_relative_to_include',
+    signature: 'path_relative_to_include([name])',
+    description: 'Returns the relative path between the current terragrunt.hcl file and the path specified in its include block. Useful for generating unique state keys based on directory structure.',
+    parameters: [
+      { name: 'name', type: 'string', required: false, description: 'The name of the include block to use when multiple include blocks exist', default: undefined }
+    ],
+    returnType: 'string',
+    category: 'path',
+    examples: [
+      { code: 'remote_state {\n  backend = "s3"\n  config = {\n    key = "${path_relative_to_include()}/terraform.tfstate"\n  }\n}', description: 'Generate unique state key based on directory path', useCase: 'state-key' },
+      { code: 'path_relative_to_include("root")', description: 'Get path relative to specific named include', useCase: 'named-include' }
+    ],
+    relatedFunctions: ['path_relative_from_include', 'find_in_parent_folders', 'get_terragrunt_dir']
+  },
+  {
+    name: 'path_relative_from_include',
+    signature: 'path_relative_from_include([name])',
+    description: 'Returns the relative path from the path specified in the include block to the current terragrunt.hcl file. This is the counterpart of path_relative_to_include().',
+    parameters: [
+      { name: 'name', type: 'string', required: false, description: 'The name of the include block to use when multiple include blocks exist', default: undefined }
+    ],
+    returnType: 'string',
+    category: 'path',
+    examples: [
+      { code: 'terraform {\n  source = "${path_relative_from_include()}/../sources//${path_relative_to_include()}"\n}', description: 'Construct source path relative to include', useCase: 'source-path' },
+      { code: 'arguments = [\n  "-var-file=${get_terragrunt_dir()}/${path_relative_from_include()}/common.tfvars"\n]', description: 'Reference common tfvars from root', useCase: 'var-file' }
+    ],
+    relatedFunctions: ['path_relative_to_include', 'get_terragrunt_dir', 'get_parent_terragrunt_dir']
+  },
+  {
+    name: 'get_terragrunt_dir',
+    signature: 'get_terragrunt_dir()',
+    description: 'Returns the directory where the Terragrunt configuration file (by default terragrunt.hcl) lives. Useful for constructing paths relative to your Terragrunt configuration.',
+    parameters: [],
+    returnType: 'string',
+    category: 'path',
+    examples: [
+      { code: 'arguments = [\n  "-var-file=${get_terragrunt_dir()}/../common.tfvars"\n]', description: 'Reference files relative to terragrunt.hcl', useCase: 'var-file' },
+      { code: 'terraform {\n  source = "${get_terragrunt_dir()}/../modules//vpc"\n}', description: 'Reference local modules', useCase: 'local-module' }
+    ],
+    relatedFunctions: ['get_parent_terragrunt_dir', 'get_original_terragrunt_dir', 'get_working_dir']
+  },
+  {
+    name: 'get_working_dir',
+    signature: 'get_working_dir()',
+    description: 'Returns the absolute path where Terragrunt runs OpenTofu/Terraform commands. Useful for managing file substitutions in the temporary working directory.',
+    parameters: [],
+    returnType: 'string',
+    category: 'path',
+    examples: [
+      { code: 'locals {\n  working_dir = get_working_dir()\n}', description: 'Get the Terraform working directory', useCase: 'working-dir' }
+    ],
+    relatedFunctions: ['get_terragrunt_dir', 'get_original_terragrunt_dir']
+  },
+  {
+    name: 'get_parent_terragrunt_dir',
+    signature: 'get_parent_terragrunt_dir([name])',
+    description: 'Returns the absolute directory where the Terragrunt parent configuration file lives. Similar to get_terragrunt_dir() but returns the root instead of the leaf of your terragrunt configurations.',
+    parameters: [
+      { name: 'name', type: 'string', required: false, description: 'The name of the include block when multiple includes exist', default: undefined }
+    ],
+    returnType: 'string',
+    category: 'path',
+    examples: [
+      { code: 'arguments = [\n  "-var-file=${get_parent_terragrunt_dir()}/common.tfvars"\n]', description: 'Reference common vars from parent directory', useCase: 'common-vars' },
+      { code: 'terraform {\n  source = "${get_parent_terragrunt_dir(\\"root\\")}/modules/vpc"\n}', description: 'Reference modules from named parent include', useCase: 'named-include' }
+    ],
+    relatedFunctions: ['get_terragrunt_dir', 'get_original_terragrunt_dir', 'find_in_parent_folders']
+  },
+  {
+    name: 'get_original_terragrunt_dir',
+    signature: 'get_original_terragrunt_dir()',
+    description: 'Returns the directory where the original Terragrunt configuration file lives. Primarily useful when one config is being read from another via read_terragrunt_config().',
+    parameters: [],
+    returnType: 'string',
+    category: 'path',
+    examples: [
+      { code: 'locals {\n  original_dir = get_original_terragrunt_dir()\n}', description: 'Get the original terragrunt.hcl directory when reading configs', useCase: 'read-config' }
+    ],
+    relatedFunctions: ['get_terragrunt_dir', 'get_parent_terragrunt_dir', 'read_terragrunt_config']
+  },
+  {
+    name: 'get_repo_root',
+    signature: 'get_repo_root()',
+    description: 'Returns the absolute path to the root of the Git repository. Errors if the file is not located in a Git repository.',
+    parameters: [],
+    returnType: 'string',
+    category: 'path',
+    examples: [
+      { code: 'inputs = {\n  config_path = "${get_repo_root()}/config/app.conf"\n}', description: 'Reference files from repository root', useCase: 'repo-files' }
+    ],
+    relatedFunctions: ['get_path_from_repo_root', 'get_path_to_repo_root']
+  },
+  {
+    name: 'get_path_from_repo_root',
+    signature: 'get_path_from_repo_root()',
+    description: 'Returns the path from the root of the Git repository to the current directory. Errors if the file is not in a Git repository.',
+    parameters: [],
+    returnType: 'string',
+    category: 'path',
+    examples: [
+      { code: 'remote_state {\n  config = {\n    key = "${get_path_from_repo_root()}/terraform.tfstate"\n  }\n}', description: 'Generate state key based on repo path', useCase: 'state-key' }
+    ],
+    relatedFunctions: ['get_repo_root', 'get_path_to_repo_root', 'path_relative_to_include']
+  },
+  {
+    name: 'get_path_to_repo_root',
+    signature: 'get_path_to_repo_root()',
+    description: 'Returns the relative path from the current directory to the root of the Git repository. Errors if the file is not in a Git repository.',
+    parameters: [],
+    returnType: 'string',
+    category: 'path',
+    examples: [
+      { code: 'terraform {\n  source = "${get_path_to_repo_root()}//modules/example"\n}', description: 'Reference modules relative to repo root', useCase: 'module-source' }
+    ],
+    relatedFunctions: ['get_repo_root', 'get_path_from_repo_root']
+  },
+
+  // ============================================================================
+  // ENVIRONMENT FUNCTIONS (2)
+  // ============================================================================
+  {
+    name: 'get_env',
+    signature: 'get_env(name, [default])',
+    description: 'Returns the value of the environment variable with the given name. If the variable is not set and no default is provided, throws an error. Tip: OpenTofu/Terraform reads TF_VAR_* environment variables automatically.',
+    parameters: [
+      { name: 'name', type: 'string', required: true, description: 'The name of the environment variable' },
+      { name: 'default', type: 'string', required: false, description: 'Default value if the variable is not set', default: undefined }
+    ],
+    returnType: 'string',
+    category: 'environment',
+    examples: [
+      { code: 'remote_state {\n  config = {\n    bucket = get_env("TG_BUCKET")\n  }\n}', description: 'Read required environment variable', useCase: 'required-env' },
+      { code: 'locals {\n  env = get_env("ENVIRONMENT", "dev")\n}', description: 'Read environment variable with default', useCase: 'default-env' }
+    ],
+    relatedFunctions: ['get_platform']
+  },
+  {
+    name: 'get_platform',
+    signature: 'get_platform()',
+    description: 'Returns the current operating system. Useful for platform-specific configurations. Returns values like "darwin", "linux", "windows", "freebsd".',
+    parameters: [],
+    returnType: 'string',
+    category: 'environment',
+    examples: [
+      { code: 'inputs = {\n  platform = get_platform()\n}', description: 'Pass platform to Terraform', useCase: 'platform-input' },
+      { code: 'locals {\n  is_mac = get_platform() == "darwin"\n}', description: 'Conditional logic based on OS', useCase: 'conditional' }
+    ],
+    relatedFunctions: ['get_env']
+  },
+
+  // ============================================================================
+  // AWS FUNCTIONS (4)
+  // ============================================================================
+  {
+    name: 'get_aws_account_id',
+    signature: 'get_aws_account_id()',
+    description: 'Returns the AWS account ID associated with the current set of credentials. Note: The value can change during HCL parsing, for example after evaluation of the iam_role attribute.',
+    parameters: [],
+    returnType: 'string',
+    category: 'aws',
+    examples: [
+      { code: 'remote_state {\n  config = {\n    bucket = "mycompany-${get_aws_account_id()}"\n  }\n}', description: 'Create account-specific bucket name', useCase: 'bucket-name' },
+      { code: 'terraform {\n  extra_arguments "account_vars" {\n    arguments = ["-var-file=${get_aws_account_id()}.tfvars"]\n  }\n}', description: 'Load account-specific variables', useCase: 'account-vars' }
+    ],
+    relatedFunctions: ['get_aws_account_alias', 'get_aws_caller_identity_arn', 'get_aws_caller_identity_user_id']
+  },
+  {
+    name: 'get_aws_account_alias',
+    signature: 'get_aws_account_alias()',
+    description: 'Returns the AWS account alias associated with the current credentials. Returns an empty string if no alias is set. Note: The value can change during HCL parsing.',
+    parameters: [],
+    returnType: 'string',
+    category: 'aws',
+    examples: [
+      { code: 'inputs = {\n  account_alias = get_aws_account_alias()\n}', description: 'Pass account alias to Terraform', useCase: 'account-alias' }
+    ],
+    relatedFunctions: ['get_aws_account_id', 'get_aws_caller_identity_arn']
+  },
+  {
+    name: 'get_aws_caller_identity_arn',
+    signature: 'get_aws_caller_identity_arn()',
+    description: 'Returns the ARN of the AWS identity associated with the current credentials. Note: The value can change during HCL parsing, for example after evaluation of the iam_role attribute.',
+    parameters: [],
+    returnType: 'string',
+    category: 'aws',
+    examples: [
+      { code: 'inputs = {\n  caller_arn = get_aws_caller_identity_arn()\n}', description: 'Pass caller ARN to Terraform', useCase: 'caller-arn' }
+    ],
+    relatedFunctions: ['get_aws_account_id', 'get_aws_caller_identity_user_id']
+  },
+  {
+    name: 'get_aws_caller_identity_user_id',
+    signature: 'get_aws_caller_identity_user_id()',
+    description: 'Returns the User ID of the AWS identity associated with the current credentials. Note: The value can change during HCL parsing, for example after evaluation of the iam_role attribute.',
+    parameters: [],
+    returnType: 'string',
+    category: 'aws',
+    examples: [
+      { code: 'inputs = {\n  caller_user_id = get_aws_caller_identity_user_id()\n}', description: 'Pass caller user ID to Terraform', useCase: 'caller-user-id' }
+    ],
+    relatedFunctions: ['get_aws_account_id', 'get_aws_caller_identity_arn']
+  },
+
+  // ============================================================================
+  // TERRAFORM COMMAND FUNCTIONS (6)
+  // ============================================================================
+  {
+    name: 'get_terraform_commands_that_need_vars',
+    signature: 'get_terraform_commands_that_need_vars()',
+    description: 'Returns the list of OpenTofu/Terraform commands that accept -var and -var-file parameters. Use this in extra_arguments blocks to apply variable files only to relevant commands.',
+    parameters: [],
+    returnType: 'list(string)',
+    category: 'terraform',
+    examples: [
+      { code: 'terraform {\n  extra_arguments "common_vars" {\n    commands = get_terraform_commands_that_need_vars()\n    arguments = ["-var-file=common.tfvars"]\n  }\n}', description: 'Apply var file to all relevant commands', useCase: 'var-file' }
+    ],
+    relatedFunctions: ['get_terraform_commands_that_need_input', 'get_terraform_commands_that_need_locking', 'get_terraform_commands_that_need_parallelism']
+  },
+  {
+    name: 'get_terraform_commands_that_need_input',
+    signature: 'get_terraform_commands_that_need_input()',
+    description: 'Returns the list of OpenTofu/Terraform commands that accept the -input=(true or false) parameter. Use this to disable interactive input in CI/CD pipelines.',
+    parameters: [],
+    returnType: 'list(string)',
+    category: 'terraform',
+    examples: [
+      { code: 'terraform {\n  extra_arguments "disable_input" {\n    commands = get_terraform_commands_that_need_input()\n    arguments = ["-input=false"]\n  }\n}', description: 'Disable interactive input for all relevant commands', useCase: 'disable-input' }
+    ],
+    relatedFunctions: ['get_terraform_commands_that_need_vars', 'get_terraform_commands_that_need_locking']
+  },
+  {
+    name: 'get_terraform_commands_that_need_locking',
+    signature: 'get_terraform_commands_that_need_locking()',
+    description: 'Returns the list of OpenTofu/Terraform commands that accept the -lock-timeout parameter. Use this to configure lock timeout for state operations.',
+    parameters: [],
+    returnType: 'list(string)',
+    category: 'terraform',
+    examples: [
+      { code: 'terraform {\n  extra_arguments "retry_lock" {\n    commands = get_terraform_commands_that_need_locking()\n    arguments = ["-lock-timeout=20m"]\n  }\n}', description: 'Set lock timeout for all locking commands', useCase: 'lock-timeout' }
+    ],
+    relatedFunctions: ['get_terraform_commands_that_need_vars', 'get_terraform_commands_that_need_parallelism']
+  },
+  {
+    name: 'get_terraform_commands_that_need_parallelism',
+    signature: 'get_terraform_commands_that_need_parallelism()',
+    description: 'Returns the list of OpenTofu/Terraform commands that accept the -parallelism parameter. Use this to limit concurrent operations.',
+    parameters: [],
+    returnType: 'list(string)',
+    category: 'terraform',
+    examples: [
+      { code: 'terraform {\n  extra_arguments "parallelism" {\n    commands = get_terraform_commands_that_need_parallelism()\n    arguments = ["-parallelism=5"]\n  }\n}', description: 'Limit parallelism for all relevant commands', useCase: 'parallelism' }
+    ],
+    relatedFunctions: ['get_terraform_commands_that_need_vars', 'get_terraform_commands_that_need_locking']
+  },
+  {
+    name: 'get_terraform_command',
+    signature: 'get_terraform_command()',
+    description: 'Returns the current OpenTofu/Terraform command being executed (e.g., "apply", "plan", "init"). Useful for conditional logic based on the command.',
+    parameters: [],
+    returnType: 'string',
+    category: 'terraform',
+    examples: [
+      { code: 'inputs = {\n  current_command = get_terraform_command()\n}', description: 'Pass current command to Terraform', useCase: 'command-input' },
+      { code: 'locals {\n  is_apply = get_terraform_command() == "apply"\n}', description: 'Conditional logic based on command', useCase: 'conditional' }
+    ],
+    relatedFunctions: ['get_terraform_cli_args']
+  },
+  {
+    name: 'get_terraform_cli_args',
+    signature: 'get_terraform_cli_args()',
+    description: 'Returns the CLI arguments passed to the current OpenTofu/Terraform command. Useful for inspecting or passing through arguments.',
+    parameters: [],
+    returnType: 'list(string)',
+    category: 'terraform',
+    examples: [
+      { code: 'inputs = {\n  cli_args = get_terraform_cli_args()\n}', description: 'Pass CLI args to Terraform', useCase: 'cli-args' }
+    ],
+    relatedFunctions: ['get_terraform_command']
+  },
+
+  // ============================================================================
+  // FILE FUNCTIONS (4)
+  // ============================================================================
+  {
+    name: 'read_terragrunt_config',
+    signature: 'read_terragrunt_config(config_path, [default_val])',
+    description: 'Parses a Terragrunt config file and returns a map of its contents. Exposes all blocks and attributes including locals, inputs, and dependency outputs. Also supports reading terragrunt.stack.hcl and terragrunt.values.hcl files.',
+    parameters: [
+      { name: 'config_path', type: 'string', required: true, description: 'Path to the terragrunt config file to read' },
+      { name: 'default_val', type: 'any', required: false, description: 'Default value to return if the file does not exist', default: undefined }
+    ],
+    returnType: 'map',
+    category: 'file',
+    examples: [
+      { code: 'locals {\n  common = read_terragrunt_config(find_in_parent_folders("common.hcl"))\n}\ninputs = merge(local.common.inputs, { })', description: 'Read and merge common configuration', useCase: 'merge-config' },
+      { code: 'locals {\n  deps = read_terragrunt_config("common_deps.hcl")\n}\ninputs = {\n  vpc_id = local.deps.dependency.vpc.outputs.vpc_id\n}', description: 'Access dependency outputs from another config', useCase: 'dependency-outputs' },
+      { code: 'locals {\n  optional = read_terragrunt_config("optional.hcl", {inputs = {}})\n}', description: 'Read optional config with default', useCase: 'optional-config' }
+    ],
+    relatedFunctions: ['find_in_parent_folders', 'read_tfvars_file']
+  },
+  {
+    name: 'read_tfvars_file',
+    signature: 'read_tfvars_file(file_path)',
+    description: 'Reads a .tfvars or .tfvars.json file and returns a map of the variables defined in it. Useful for incorporating existing Terraform variable files.',
+    parameters: [
+      { name: 'file_path', type: 'string', required: true, description: 'Path to the .tfvars or .tfvars.json file' }
+    ],
+    returnType: 'map',
+    category: 'file',
+    examples: [
+      { code: 'locals {\n  vars = read_tfvars_file("common.tfvars")\n}\ninputs = merge(local.vars, { })', description: 'Read and merge tfvars file', useCase: 'merge-tfvars' },
+      { code: 'locals {\n  backend = read_tfvars_file("backend.tfvars")\n}\nremote_state {\n  config = {\n    region = local.backend.region\n  }\n}', description: 'Use tfvars for backend configuration', useCase: 'backend-config' }
+    ],
+    relatedFunctions: ['read_terragrunt_config']
+  },
+  {
+    name: 'sops_decrypt_file',
+    signature: 'sops_decrypt_file(file_path)',
+    description: 'Decrypts a file encrypted with SOPS (Secrets OPerationS). Supports YAML, JSON, ENV, INI, and raw text formats. Requires SOPS to be configured with appropriate key management (AWS KMS, GCP KMS, Azure Key Vault, HashiCorp Vault, or PGP).',
+    parameters: [
+      { name: 'file_path', type: 'string', required: true, description: 'Path to the SOPS-encrypted file' }
+    ],
+    returnType: 'string',
+    category: 'file',
+    examples: [
+      { code: 'locals {\n  secrets = yamldecode(sops_decrypt_file("secrets.yaml"))\n}\ninputs = merge(local.secrets, { })', description: 'Decrypt and parse YAML secrets', useCase: 'yaml-secrets' },
+      { code: 'locals {\n  secrets = try(jsondecode(sops_decrypt_file("secrets.json")), {})\n}', description: 'Decrypt JSON with fallback', useCase: 'json-fallback' }
+    ],
+    relatedFunctions: ['read_terragrunt_config']
+  },
+  {
+    name: 'mark_as_read',
+    signature: 'mark_as_read(file_path)',
+    description: 'Marks a file as read for the --queue-include-units-reading flag. Use this when a file is read by external tools (like Terraform) but Terragrunt needs to track the dependency. Requires absolute path.',
+    parameters: [
+      { name: 'file_path', type: 'string', required: true, description: 'Absolute path to the file to mark as read' }
+    ],
+    returnType: 'string',
+    category: 'file',
+    examples: [
+      { code: 'locals {\n  filename = mark_as_read("/path/to/config.txt")\n}\ninputs = {\n  config_file = local.filename\n}', description: 'Mark file as read for queue inclusion', useCase: 'queue-include' },
+      { code: 'locals {\n  files = [for f in fileset("./config", "*.yaml") : file(mark_as_read(abspath("${get_terragrunt_dir()}/config/${f}")))]\n}', description: 'Mark multiple files as read', useCase: 'multiple-files' }
+    ],
+    relatedFunctions: ['read_terragrunt_config']
+  },
+
+  // ============================================================================
+  // EXECUTION FUNCTIONS (1)
+  // ============================================================================
+  {
+    name: 'run_cmd',
+    signature: 'run_cmd([flags], command, ...args)',
+    description: 'Runs a shell command and returns stdout as the result. Executes in the same folder as the terragrunt.hcl file. Supports special flags: --terragrunt-quiet (suppress output), --terragrunt-global-cache (cache globally), --terragrunt-no-cache (disable caching). Results are cached by default based on directory and command.',
+    parameters: [
+      { name: 'flags', type: 'string', required: false, description: 'Optional flags: --terragrunt-quiet, --terragrunt-global-cache, --terragrunt-no-cache', default: undefined },
+      { name: 'command', type: 'string', required: true, description: 'The command to execute' },
+      { name: 'args', type: 'string...', required: false, description: 'Arguments to pass to the command', default: undefined }
+    ],
+    returnType: 'string',
+    category: 'execution',
+    examples: [
+      { code: 'remote_state {\n  config = {\n    bucket = run_cmd("./get_bucket_name.sh")\n  }\n}', description: 'Run script to get dynamic value', useCase: 'dynamic-value' },
+      { code: 'locals {\n  secret = run_cmd("--terragrunt-quiet", "./decrypt.sh", "secret_name")\n}', description: 'Run command with suppressed output for secrets', useCase: 'secret-value' },
+      { code: 'locals {\n  account_id = run_cmd("--terragrunt-global-cache", "aws", "sts", "get-caller-identity", "--query", "Account", "--output", "text")\n}', description: 'Cache result globally across configurations', useCase: 'global-cache' },
+      { code: 'locals {\n  timestamp = run_cmd("--terragrunt-no-cache", "date", "+%s")\n}', description: 'Disable caching for dynamic values', useCase: 'no-cache' }
+    ],
+    relatedFunctions: ['get_env']
+  },
+
+  // ============================================================================
+  // UTILITY FUNCTIONS (3)
+  // ============================================================================
+  {
+    name: 'get_terragrunt_source_cli_flag',
+    signature: 'get_terragrunt_source_cli_flag()',
+    description: 'Returns the value passed via --source CLI flag or TG_SOURCE environment variable. Returns empty string if not set. Useful for local development overrides and conditional logic.',
+    parameters: [],
+    returnType: 'string',
+    category: 'utility',
+    examples: [
+      { code: 'locals {\n  is_local_dev = get_terragrunt_source_cli_flag() != ""\n}', description: 'Detect local development mode', useCase: 'local-dev' },
+      { code: 'dependency "vpc" {\n  mock_outputs = get_terragrunt_source_cli_flag() != "" ? jsondecode(file("${get_terragrunt_source_cli_flag()}/mocks/vpc.json")) : {}\n}', description: 'Load mocks from local source', useCase: 'local-mocks' }
+    ],
+    relatedFunctions: ['get_env']
+  },
+  {
+    name: 'get_default_retryable_errors',
+    signature: 'get_default_retryable_errors()',
+    description: 'Returns the default list of retryable error patterns that Terragrunt uses for transient failures. Use in the errors block to seed retry configuration with sensible defaults.',
+    parameters: [],
+    returnType: 'list(string)',
+    category: 'utility',
+    examples: [
+      { code: 'errors {\n  retry "default_errors" {\n    retryable_errors = get_default_retryable_errors()\n    max_attempts = 3\n    sleep_interval_sec = 5\n  }\n}', description: 'Use default retryable errors', useCase: 'default-retry' },
+      { code: 'errors {\n  retry "combined" {\n    retryable_errors = concat(get_default_retryable_errors(), [".*my custom error.*"])\n    max_attempts = 5\n  }\n}', description: 'Combine default and custom retryable errors', useCase: 'custom-retry' }
+    ],
+    relatedFunctions: []
+  },
+  {
+    name: 'constraint_check',
+    signature: 'constraint_check(version, constraint)',
+    description: 'Checks if a version satisfies a constraint. Useful for conditional logic based on module versions. Supports the same constraint syntax as terragrunt_version_constraint and terraform_version_constraint.',
+    parameters: [
+      { name: 'version', type: 'string', required: true, description: 'The version to check (e.g., "1.2.3")' },
+      { name: 'constraint', type: 'string', required: true, description: 'The constraint to check against (e.g., ">= 2.0.0")' }
+    ],
+    returnType: 'bool',
+    category: 'utility',
+    examples: [
+      { code: 'locals {\n  module_version = "2.1.0"\n  needs_v2 = constraint_check(local.module_version, ">= 2.0.0")\n}\ninputs = local.needs_v2 ? { new_input = "value" } : { old_input = "value" }', description: 'Conditional inputs based on module version', useCase: 'version-conditional' },
+      { code: 'feature "module_version" {\n  default = "1.2.3"\n}\nlocals {\n  is_v2 = constraint_check(feature.module_version.value, ">= 2.0.0")\n}', description: 'Use with feature flags', useCase: 'feature-flag' }
+    ],
+    relatedFunctions: []
+  }
+];
+
+/**
  * Manages Terragrunt built-in function metadata with an LRU cache.
  *
  * Notes:
@@ -60,40 +509,88 @@ export class TerragruntFunctionsManager {
 
   /**
    * Load and parse Terragrunt built-in function definitions into the cache.
-   * Extracts functions from the HCL functions reference documentation page.
+   * First loads static curated definitions, then enriches with doc-extracted functions.
    */
   async loadFunctions(): Promise<void> {
-    // Load Terragrunt documentation from the docs manager
-    const allDocs = await this.docsManager.fetchLatestDocs();
-
-    // Prefer the canonical HCL functions reference page(s)
-    const functionDocs = allDocs.filter(d =>
-      d.section === 'reference' && (
-        d.url.includes('/docs/reference/hcl/functions/') ||
-        d.title.toLowerCase().includes('built-in function') ||
-        d.title.toLowerCase().includes('function')
-      )
-    );
-
-    // Clear and repopulate cache
+    // Clear cache before repopulating
     this.functionsCache.clear();
 
-    for (const doc of functionDocs) {
-      const extracted = this.extractFunctionsFromContent(doc.content);
-      for (const fn of extracted) {
-        const key = this.normalizeKey(fn.name);
-        if (!this.functionsCache.has(key)) {
-          this.functionsCache.set(key, {
-            ...fn,
-            category: fn.category || 'functions'
-          });
-        }
-      }
+    // Step 1: Load static built-in function definitions first (authoritative)
+    for (const fn of STATIC_BUILTIN_FUNCTIONS) {
+      const key = this.normalizeKey(fn.name);
+      this.functionsCache.set(key, { ...fn });
     }
 
-    // If nothing was extracted, leave cache empty; callers handle empty states
+    // Step 2: Try to enrich with doc-extracted functions
+    try {
+      const allDocs = await this.docsManager.fetchLatestDocs();
+
+      // Prefer the canonical HCL functions reference page(s)
+      const functionDocs = allDocs.filter(d =>
+        d.section === 'reference' && (
+          d.url.includes('/docs/reference/hcl/functions/') ||
+          d.title.toLowerCase().includes('built-in function') ||
+          d.title.toLowerCase().includes('function')
+        )
+      );
+
+      for (const doc of functionDocs) {
+        const extracted = this.extractFunctionsFromContent(doc.content);
+        for (const fn of extracted) {
+          const key = this.normalizeKey(fn.name);
+          const existing = this.functionsCache.get(key);
+          
+          if (existing) {
+            // Enrich existing static definition with doc-extracted examples
+            // Only add examples that don't already exist
+            const existingCodes = new Set(existing.examples.map(e => e.code));
+            const newExamples = fn.examples.filter(e => !existingCodes.has(e.code));
+            if (newExamples.length > 0) {
+              this.functionsCache.set(key, {
+                ...existing,
+                examples: [...existing.examples, ...newExamples]
+              });
+            }
+          } else {
+            // New function from docs (not in static list)
+            this.functionsCache.set(key, {
+              ...fn,
+              category: fn.category || 'functions'
+            });
+          }
+        }
+      }
+    } catch (error) {
+      // If doc extraction fails, we still have static definitions
+      console.warn('Doc extraction failed, using static definitions only:', error);
+    }
+
     return;
-  }  /**
+  }
+
+  /**
+   * Returns all static built-in function definitions.
+   * These are the authoritative, curated definitions that are always available.
+   * @returns Array of all static function definitions
+   */
+  getStaticFunctions(): TerragruntFunction[] {
+    return [...STATIC_BUILTIN_FUNCTIONS];
+  }
+
+  /**
+   * Check if a function is defined in the static built-in functions list.
+   * @param name The function name to check
+   * @returns true if the function is in the static definitions
+   */
+  isStaticFunction(name: string): boolean {
+    if (!name || !name.trim()) {
+      return false;
+    }
+    const normalizedName = this.normalizeKey(name);
+    return STATIC_BUILTIN_FUNCTIONS.some(fn => this.normalizeKey(fn.name) === normalizedName);
+  }
+
+  /**
    * Retrieve a function definition by name, case-insensitively.
    * @param name The function name (e.g., "get_env", "find_in_parent_folders")
    * @returns TerragruntFunction if found, otherwise null
