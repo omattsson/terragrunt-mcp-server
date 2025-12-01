@@ -486,4 +486,117 @@ export const backendTemplates: ConfigTemplate[] = [
   }
 }`,
   },
+
+  // GCP GCS Advanced Remote State Backend
+  {
+    id: 'gcp-gcs-backend-advanced',
+    name: 'GCP GCS Advanced Remote State Backend',
+    description: 'Advanced Google Cloud Storage backend with KMS encryption, service account impersonation, and custom endpoint support',
+    category: 'backend',
+    cloudProvider: 'gcp',
+    source: 'builtin',
+    tags: ['remote-state', 'gcs', 'gcp', 'backend', 'advanced'],
+    variables: [
+      {
+        name: 'bucket',
+        description: 'GCS bucket name for remote state',
+        type: 'string',
+        required: true,
+        example: 'my-terraform-state',
+      },
+      {
+        name: 'prefix',
+        description: 'Path prefix within bucket',
+        type: 'string',
+        required: true,
+        example: 'terraform/state',
+      },
+      {
+        name: 'project',
+        description: 'GCP project ID',
+        type: 'string',
+        required: false,
+        example: 'my-gcp-project',
+      },
+      {
+        name: 'credentials',
+        description: 'Path to GCP credentials file',
+        type: 'string',
+        required: false,
+        example: '/path/to/credentials.json',
+      },
+      {
+        name: 'location',
+        description: 'Storage location for data residency requirements',
+        type: 'string',
+        required: false,
+        example: 'us-central1',
+      },
+      {
+        name: 'encryption_key',
+        description: 'Customer-supplied encryption key (Base64-encoded 256-bit)',
+        type: 'string',
+        required: false,
+        example: 'base64-encoded-key',
+      },
+      {
+        name: 'kms_encryption_key',
+        description: 'Cloud KMS key name for encryption',
+        type: 'string',
+        required: false,
+        example: 'projects/PROJECT_ID/locations/LOCATION/keyRings/RING/cryptoKeys/KEY',
+      },
+      {
+        name: 'impersonate_service_account',
+        description: 'Service account email for impersonation',
+        type: 'string',
+        required: false,
+        example: 'terraform@project.iam.gserviceaccount.com',
+      },
+      {
+        name: 'storage_custom_endpoint',
+        description: 'Custom storage endpoint URL (for emulators or private endpoints)',
+        type: 'string',
+        required: false,
+        example: 'http://localhost:4443/storage/v1/',
+      },
+    ],
+    templateHcl: `remote_state {
+  backend = "gcs"
+  config = {
+    bucket      = "{{bucket}}"
+    prefix      = "{{prefix}}"
+{{#project}}
+    project     = "{{project}}"
+{{/project}}
+{{#credentials}}
+    credentials = "{{credentials}}"
+{{/credentials}}
+{{#location}}
+    location    = "{{location}}"
+{{/location}}
+{{#encryption_key}}
+    encryption_key = "{{encryption_key}}"
+{{/encryption_key}}
+{{#kms_encryption_key}}
+    kms_encryption_key = "{{kms_encryption_key}}"
+{{/kms_encryption_key}}
+{{#impersonate_service_account}}
+    impersonate_service_account = "{{impersonate_service_account}}"
+{{/impersonate_service_account}}
+{{#storage_custom_endpoint}}
+    storage_custom_endpoint = "{{storage_custom_endpoint}}"
+{{/storage_custom_endpoint}}
+  }
+}`,
+    example: `remote_state {
+  backend = "gcs"
+  config = {
+    bucket      = "my-terraform-state"
+    prefix      = "terraform/state"
+    project     = "my-gcp-project"
+    kms_encryption_key = "projects/my-project/locations/us/keyRings/terraform/cryptoKeys/state"
+  }
+}`,
+  },
 ];

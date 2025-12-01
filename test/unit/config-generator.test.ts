@@ -1029,4 +1029,128 @@ describe('TerragruntConfigGenerator', () => {
       expect(result.config).toContain('use_azuread_auth     = false');
     });
   });
+
+  describe('GCP GCS Advanced Backend Template', () => {
+    it('should generate minimal config with only required fields', async () => {
+      const result = await generator.generateConfig({
+        useCase: 'remote_state',
+        backend: 'gcp-gcs-backend-advanced',
+        options: {
+          bucket: 'my-tf-state',
+          prefix: 'terraform/state',
+        },
+      });
+
+      expect(result.config).toContain('backend = "gcs"');
+      expect(result.config).toContain('bucket      = "my-tf-state"');
+      expect(result.config).toContain('prefix      = "terraform/state"');
+      // All optional fields should not appear when not provided
+      expect(result.config).not.toContain('project');
+      expect(result.config).not.toContain('credentials');
+      expect(result.config).not.toContain('location');
+      expect(result.config).not.toContain('encryption_key');
+      expect(result.config).not.toContain('kms_encryption_key');
+      expect(result.config).not.toContain('impersonate_service_account');
+      expect(result.config).not.toContain('storage_custom_endpoint');
+      // No Mustache syntax should remain
+      expect(result.config).not.toMatch(/\{\{[#^\/]?\w+\}\}/);
+    });
+
+    it('should generate config with KMS encryption', async () => {
+      const result = await generator.generateConfig({
+        useCase: 'remote_state',
+        backend: 'gcp-gcs-backend-advanced',
+        options: {
+          bucket: 'my-tf-state',
+          prefix: 'terraform/state',
+          project: 'my-project',
+          kms_encryption_key: 'projects/my-project/locations/us/keyRings/terraform/cryptoKeys/state',
+        },
+      });
+
+      expect(result.config).toContain('backend = "gcs"');
+      expect(result.config).toContain('bucket      = "my-tf-state"');
+      expect(result.config).toContain('project     = "my-project"');
+      expect(result.config).toContain('kms_encryption_key = "projects/my-project/locations/us/keyRings/terraform/cryptoKeys/state"');
+    });
+
+    it('should generate config with service account impersonation', async () => {
+      const result = await generator.generateConfig({
+        useCase: 'remote_state',
+        backend: 'gcp-gcs-backend-advanced',
+        options: {
+          bucket: 'my-tf-state',
+          prefix: 'terraform/state',
+          impersonate_service_account: 'terraform@my-project.iam.gserviceaccount.com',
+          location: 'us-central1',
+        },
+      });
+
+      expect(result.config).toContain('backend = "gcs"');
+      expect(result.config).toContain('bucket      = "my-tf-state"');
+      expect(result.config).toContain('impersonate_service_account = "terraform@my-project.iam.gserviceaccount.com"');
+      expect(result.config).toContain('location    = "us-central1"');
+    });
+
+    it('should generate config with custom endpoint for emulator', async () => {
+      const result = await generator.generateConfig({
+        useCase: 'remote_state',
+        backend: 'gcp-gcs-backend-advanced',
+        options: {
+          bucket: 'test-bucket',
+          prefix: 'test',
+          storage_custom_endpoint: 'http://localhost:4443/storage/v1/',
+        },
+      });
+
+      expect(result.config).toContain('backend = "gcs"');
+      expect(result.config).toContain('bucket      = "test-bucket"');
+      expect(result.config).toContain('storage_custom_endpoint = "http://localhost:4443/storage/v1/"');
+    });
+
+    it('should generate config with customer-supplied encryption', async () => {
+      const result = await generator.generateConfig({
+        useCase: 'remote_state',
+        backend: 'gcp-gcs-backend-advanced',
+        options: {
+          bucket: 'my-tf-state',
+          prefix: 'terraform/state',
+          encryption_key: 'YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXoxMjM0NTY=',
+        },
+      });
+
+      expect(result.config).toContain('backend = "gcs"');
+      expect(result.config).toContain('bucket      = "my-tf-state"');
+      expect(result.config).toContain('encryption_key = "YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXoxMjM0NTY="');
+    });
+
+    it('should generate config with all optional fields', async () => {
+      const result = await generator.generateConfig({
+        useCase: 'remote_state',
+        backend: 'gcp-gcs-backend-advanced',
+        options: {
+          bucket: 'my-tf-state',
+          prefix: 'terraform/state',
+          project: 'my-project',
+          credentials: '/path/to/credentials.json',
+          location: 'us-central1',
+          encryption_key: 'YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXoxMjM0NTY=',
+          kms_encryption_key: 'projects/my-project/locations/us/keyRings/terraform/cryptoKeys/state',
+          impersonate_service_account: 'terraform@my-project.iam.gserviceaccount.com',
+          storage_custom_endpoint: 'http://localhost:4443/storage/v1/',
+        },
+      });
+
+      expect(result.config).toContain('backend = "gcs"');
+      expect(result.config).toContain('bucket      = "my-tf-state"');
+      expect(result.config).toContain('prefix      = "terraform/state"');
+      expect(result.config).toContain('project     = "my-project"');
+      expect(result.config).toContain('credentials = "/path/to/credentials.json"');
+      expect(result.config).toContain('location    = "us-central1"');
+      expect(result.config).toContain('encryption_key = "YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXoxMjM0NTY="');
+      expect(result.config).toContain('kms_encryption_key = "projects/my-project/locations/us/keyRings/terraform/cryptoKeys/state"');
+      expect(result.config).toContain('impersonate_service_account = "terraform@my-project.iam.gserviceaccount.com"');
+      expect(result.config).toContain('storage_custom_endpoint = "http://localhost:4443/storage/v1/"');
+    });
+  });
 });
