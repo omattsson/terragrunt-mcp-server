@@ -19,6 +19,8 @@ A Model Context Protocol (MCP) server that provides comprehensive Terragrunt doc
 - [Available Tools](Available-Tools.md) - Complete reference for all 11 tools
 - [Best Practices Guide](Best-Practices-Guide.md) - Comprehensive guide to Terragrunt best practices
 - [Configuration Generator](Configuration-Generator.md) - Generate Terragrunt configurations
+- [Advanced Backend Templates](Advanced-Backend-Templates.md) - Enterprise backend configurations with KMS, cross-account, MSI
+- [Custom Templates](Custom-Templates.md) - Create and use organization-specific templates
 - [File Writing Guide](File-Writing-Guide.md) - Secure file writing with directory whitelisting
 - [HCL Validation](HCL-Validation.md) - Built-in syntax validation for generated configs
 - [Architecture Overview](Architecture-Overview.md) - Understanding the caching and MCP implementation
@@ -55,6 +57,8 @@ A Model Context Protocol (MCP) server that provides comprehensive Terragrunt doc
 
 ## Recent Updates
 
+- 🔧 Advanced backend templates with KMS, cross-account, MSI support
+- 📖 CLI command help documentation (24 commands)
 - ✨ 6 specialized documentation tools (v0.2.0)
 - 🔄 Multi-tier caching with network resilience
 - 🐳 Docker support with docker-compose

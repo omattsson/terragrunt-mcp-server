@@ -18,6 +18,17 @@ This MCP server enables AI assistants to access and search the complete Terragru
 - **Organized Sections**: Browse documentation by categories (getting-started, reference, features, etc.)
 - **Persistent Cache**: Cache survives server restarts (stored in `.cache/terragrunt-docs/`)
 
+### ⚙️ Configuration Generator
+
+- **Tiered Templates**: Essential (4-5 vars) and Advanced (9-12 vars) backend templates
+- **Multi-Cloud Support**: AWS S3, Azure Blob Storage, GCP GCS backends
+- **Advanced Features**: KMS encryption, cross-account access, managed identity, service account impersonation
+- **Mustache Conditionals**: Smart rendering includes only provided options
+- **HCL Validation**: Automatic syntax validation of generated configurations
+- **Custom Templates**: Extend with organization-specific templates
+
+See [Advanced Backend Templates](docs/Advanced-Backend-Templates.md) for enterprise configuration options.
+
 ### 🔧 Available Tools
 
 Eleven specialized tools for different documentation needs:

@@ -155,6 +155,103 @@ Each variable in the `variables` array must include:
 }
 ```
 
+## Mustache Conditional Syntax
+
+Templates use [Mustache](https://mustache.github.io/) syntax for variable substitution and conditional rendering. This enables templates to include only the options that are provided, keeping generated configurations clean.
+
+### Basic Variable Substitution
+
+Use double curly braces to substitute a variable value:
+
+```hcl
+bucket = "{{bucket}}"
+region = "{{region}}"
+```
+
+### Conditional Sections
+
+Use section tags to conditionally include blocks when a variable is provided:
+
+```hcl
+{{#kms_key_id}}
+    kms_key_id = "{{kms_key_id}}"
+{{/kms_key_id}}
+{{#role_arn}}
+    role_arn = "{{role_arn}}"
+{{/role_arn}}
+```
+
+If `kms_key_id` is not provided, the entire block (including the line) is omitted from the output.
+
+### Inverted Sections
+
+Use inverted sections to include content when a variable is **not** provided:
+
+```hcl
+{{^use_msi}}
+    # Default: use access key authentication
+{{/use_msi}}
+{{#use_msi}}
+    use_msi = {{use_msi}}
+{{/use_msi}}
+```
+
+### Complete Example
+
+Here's a custom advanced template using conditionals:
+
+```json
+{
+  "id": "my-org-s3-backend-advanced",
+  "name": "Organization S3 Backend (Advanced)",
+  "description": "S3 backend with optional KMS and cross-account support",
+  "category": "backend",
+  "cloudProvider": "aws",
+  "templateHcl": "remote_state {\n  backend = \"s3\"\n  config = {\n    bucket         = \"{{bucket}}\"\n    key            = \"{{key}}\"\n    region         = \"{{region}}\"\n{{#dynamodb_table}}\n    dynamodb_table = \"{{dynamodb_table}}\"\n{{/dynamodb_table}}\n{{#encrypt}}\n    encrypt        = {{encrypt}}\n{{/encrypt}}\n{{#kms_key_id}}\n    kms_key_id     = \"{{kms_key_id}}\"\n{{/kms_key_id}}\n{{#role_arn}}\n    role_arn       = \"{{role_arn}}\"\n{{/role_arn}}\n  }\n}",
+  "variables": [
+    { "name": "bucket", "type": "string", "required": true },
+    { "name": "key", "type": "string", "required": true },
+    { "name": "region", "type": "string", "required": true },
+    { "name": "dynamodb_table", "type": "string", "required": false },
+    { "name": "encrypt", "type": "boolean", "required": false },
+    { "name": "kms_key_id", "type": "string", "required": false },
+    { "name": "role_arn", "type": "string", "required": false }
+  ],
+  "tags": ["aws", "s3", "advanced", "kms", "cross-account"]
+}
+```
+
+When called with only required variables:
+
+```hcl
+remote_state {
+  backend = "s3"
+  config = {
+    bucket = "my-state"
+    key    = "terraform.tfstate"
+    region = "us-east-1"
+  }
+}
+```
+
+When called with KMS and role_arn:
+
+```hcl
+remote_state {
+  backend = "s3"
+  config = {
+    bucket     = "my-state"
+    key        = "terraform.tfstate"
+    region     = "us-east-1"
+    encrypt    = true
+    kms_key_id = "arn:aws:kms:us-east-1:123456789012:key/..."
+    role_arn   = "arn:aws:iam::123456789012:role/TerraformRole"
+  }
+}
+```
+
+> 💡 See [Advanced Backend Templates](Advanced-Backend-Templates.md) for more examples of Mustache conditionals in production templates.
+
 ## Validation
 
 Templates are automatically validated for:

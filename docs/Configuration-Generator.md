@@ -4,14 +4,25 @@ The Terragrunt Configuration Generator (`generate_terragrunt_config` tool) helps
 
 ## Overview
 
-The generator provides **9 templates** covering **5 use cases** across multiple cloud providers:
+The generator provides **12 templates** covering **5 use cases** across multiple cloud providers:
 
-- **Remote State Management**: AWS S3, Azure Blob Storage, Google Cloud Storage
+- **Remote State Management**: AWS S3, Azure Blob Storage, Google Cloud Storage (Essential + Advanced tiers)
 - **Provider Generation**: AWS provider blocks with account validation
 - **Dependencies**: Module dependency configurations with mock outputs
 - **Hooks**: Before/after hooks for automation and validation
 - **Inputs**: Variable configuration for Terraform modules
 - **Version Constraints**: Terraform version requirements
+
+### Template Tiers
+
+Backend templates are available in two tiers:
+
+| Tier | Description | Use Case |
+|------|-------------|----------|
+| **Essential** | Core required options (4-5 vars) | Quick setup, development |
+| **Advanced** | Extended enterprise options (9-12 vars) | Production, cross-account, KMS encryption |
+
+See [Advanced Backend Templates](Advanced-Backend-Templates.md) for detailed documentation on advanced templates.
 
 ## Quick Start
 
@@ -382,17 +393,22 @@ inputs = {
 
 ### Complete Template List
 
-| Template ID | Use Case | Cloud Provider | Description |
-|-------------|----------|----------------|-------------|
-| `aws-s3-backend` | remote_state | AWS | S3 + DynamoDB state backend |
-| `azure-blob-backend` | remote_state | Azure | Azure Blob Storage with AD auth |
-| `gcp-gcs-backend` | remote_state | GCP | Google Cloud Storage backend |
-| `aws-generate-provider` | provider_generation | AWS | AWS provider with account validation |
-| `dependency-single` | dependencies | Multi-cloud | Single module dependency |
-| `before-hook` | hooks | Multi-cloud | Execute commands before operations |
-| `after-hook` | hooks | Multi-cloud | Execute commands after operations |
-| `inputs-basic` | inputs | Multi-cloud | Basic input variables |
-| `terraform-version` | configuration | Multi-cloud | Terraform version constraints |
+| Template ID | Use Case | Cloud Provider | Tier | Description |
+|-------------|----------|----------------|------|-------------|
+| `aws-s3-backend` | remote_state | AWS | Essential | S3 + DynamoDB state backend (5 vars) |
+| `aws-s3-backend-advanced` | remote_state | AWS | Advanced | S3 with KMS, cross-account, custom endpoints (12 vars) |
+| `azure-blob-backend` | remote_state | Azure | Essential | Azure Blob Storage with AD auth (5 vars) |
+| `azure-blob-backend-advanced` | remote_state | Azure | Advanced | Azure Blob with MSI, SAS, snapshot support (12 vars) |
+| `gcp-gcs-backend` | remote_state | GCP | Essential | Google Cloud Storage backend (4 vars) |
+| `gcp-gcs-backend-advanced` | remote_state | GCP | Advanced | GCS with KMS, impersonation, custom endpoints (9 vars) |
+| `aws-generate-provider` | provider_generation | AWS | - | AWS provider with account validation |
+| `dependency-single` | dependencies | Multi-cloud | - | Single module dependency |
+| `before-hook` | hooks | Multi-cloud | - | Execute commands before operations |
+| `after-hook` | hooks | Multi-cloud | - | Execute commands after operations |
+| `inputs-basic` | inputs | Multi-cloud | - | Basic input variables |
+| `terraform-version` | configuration | Multi-cloud | - | Terraform version constraints |
+
+> 💡 **Tip**: For advanced backend features like KMS encryption, cross-account access, or managed identity authentication, see [Advanced Backend Templates](Advanced-Backend-Templates.md).
 
 ## Common Scenarios
 
