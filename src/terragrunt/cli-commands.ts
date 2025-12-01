@@ -90,11 +90,9 @@ export class CLICommandsManager {
       }
 
       // Alias match
-      for (const alias of cmd.aliases) {
-        if (this.normalizeCommandName(alias) === normalized) {
-          results.push({ command: cmd, score: 0.95, matchType: 'alias' });
-          break;
-        }
+      if (cmd.aliases.some(alias => this.normalizeCommandName(alias) === normalized)) {
+        results.push({ command: cmd, score: 0.95, matchType: 'alias' });
+        continue;
       }
 
       // Partial match in name
@@ -358,7 +356,7 @@ dependencies defined in terragrunt.hcl files.`,
           command: 'terragrunt run --all -- apply',
         },
         {
-          description: 'Run terraform plan with auto-approve on all modules',
+          description: 'Run terraform apply with auto-approve on all modules',
           command: 'terragrunt run --all -- apply -auto-approve',
         },
         {
