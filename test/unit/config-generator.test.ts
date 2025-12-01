@@ -1124,7 +1124,9 @@ describe('TerragruntConfigGenerator', () => {
       expect(result.config).toContain('encryption_key = "YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXoxMjM0NTY="');
     });
 
-    it('should generate config with all optional fields', async () => {
+    it('should generate config with all non-conflicting optional fields', async () => {
+      // Note: encryption_key and kms_encryption_key are mutually exclusive in GCS backend
+      // Using kms_encryption_key here; encryption_key is tested separately above
       const result = await generator.generateConfig({
         useCase: 'remote_state',
         backend: 'gcp-gcs-backend-advanced',
@@ -1134,7 +1136,6 @@ describe('TerragruntConfigGenerator', () => {
           project: 'my-project',
           credentials: '/path/to/credentials.json',
           location: 'us-central1',
-          encryption_key: 'YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXoxMjM0NTY=',
           kms_encryption_key: 'projects/my-project/locations/us/keyRings/terraform/cryptoKeys/state',
           impersonate_service_account: 'terraform@my-project.iam.gserviceaccount.com',
           storage_custom_endpoint: 'http://localhost:4443/storage/v1/',
@@ -1147,7 +1148,6 @@ describe('TerragruntConfigGenerator', () => {
       expect(result.config).toContain('project     = "my-project"');
       expect(result.config).toContain('credentials = "/path/to/credentials.json"');
       expect(result.config).toContain('location    = "us-central1"');
-      expect(result.config).toContain('encryption_key = "YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXoxMjM0NTY="');
       expect(result.config).toContain('kms_encryption_key = "projects/my-project/locations/us/keyRings/terraform/cryptoKeys/state"');
       expect(result.config).toContain('impersonate_service_account = "terraform@my-project.iam.gserviceaccount.com"');
       expect(result.config).toContain('storage_custom_endpoint = "http://localhost:4443/storage/v1/"');
