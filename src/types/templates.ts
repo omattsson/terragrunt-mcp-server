@@ -9,6 +9,7 @@ export interface ConfigVariable {
   required: boolean;
   defaultValue?: any;
   example?: string;
+  sensitive?: boolean;
 }
 
 export interface ConfigTemplate {
