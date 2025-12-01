@@ -12,6 +12,8 @@ import { TemplateValidator } from '../terragrunt/templates/validator.js';
 import { FileWriter } from '../terragrunt/file-writer.js';
 import { ErrorPatternMatcher } from '../terragrunt/error-patterns.js';
 import { CLICommandsManager } from '../terragrunt/cli-commands.js';
+import { HCLBlocksManager } from '../terragrunt/hcl-blocks.js';
+import type { HCLBlock } from '../types/hcl-blocks.js';
 
 export interface Tool {
     name: string;
@@ -26,6 +28,7 @@ export class ToolHandler {
     private bestPracticesAnalyzer: BestPracticesAnalyzer;
     private errorPatternMatcher: ErrorPatternMatcher;
     private cliCommandsManager: CLICommandsManager;
+    private hclBlocksManager: HCLBlocksManager;
     private functionsLoaded: boolean = false;
     private templatesManager: TemplatesManager;
     private templateLibrary: ConfigTemplateLibrary;
@@ -39,6 +42,7 @@ export class ToolHandler {
         this.bestPracticesAnalyzer = new BestPracticesAnalyzer(this.docsManager);
         this.errorPatternMatcher = new ErrorPatternMatcher(this.docsManager);
         this.cliCommandsManager = new CLICommandsManager();
+        this.hclBlocksManager = new HCLBlocksManager();
         
         // Initialize templates manager with builtin and filesystem loaders
         this.templatesManager = new TemplatesManager([
@@ -195,16 +199,26 @@ export class ToolHandler {
             },
             {
                 name: 'get_hcl_config_reference',
-                description: 'Get documentation for HCL configuration blocks, attributes, or functions used in terragrunt.hcl',
+                description: 'Get comprehensive documentation for Terragrunt HCL configuration blocks including syntax, attributes, examples, and usage. Supports structured block definitions for terraform, remote_state, locals, inputs, include, dependency, generate, hooks, and more.',
                 inputSchema: {
                     type: 'object',
                     properties: {
                         config: {
                             type: 'string',
-                            description: 'HCL block, attribute, or function name (e.g., "terraform", "remote_state", "dependency", "inputs")'
+                            description: 'HCL block name to get documentation for (e.g., "terraform", "remote_state", "dependency", "inputs", "include", "generate", "locals")'
+                        },
+                        category: {
+                            type: 'string',
+                            description: 'Filter blocks by category',
+                            enum: ['core', 'modules', 'generation', 'execution', 'iam', 'terraform']
+                        },
+                        listBlocks: {
+                            type: 'boolean',
+                            description: 'If true, list all available HCL blocks (optionally filtered by category)',
+                            default: false
                         }
                     },
-                    required: ['config']
+                    required: []
                 }
             },
             {
@@ -481,10 +495,11 @@ export class ToolHandler {
                     );
 
                 case 'get_hcl_config_reference':
-                    if (!args?.config) {
-                        return { error: 'config parameter is required' };
-                    }
-                    return await this.getHclConfigReference(args.config);
+                    return await this.getHclConfigReference(
+                        args?.config,
+                        args?.category,
+                        args?.listBlocks ?? false
+                    );
                 case 'get_code_examples':
                     if (!args?.topic) {
                         return { error: 'topic parameter is required' };
@@ -756,29 +771,172 @@ export class ToolHandler {
         };
     }
 
-    private async getHclConfigReference(config: string): Promise<any> {
-        const docs = await this.docsManager.getHclConfigReference(config);
-
-        if (docs.length === 0) {
+    private async getHclConfigReference(
+        config?: string,
+        category?: string,
+        listBlocks?: boolean
+    ): Promise<any> {
+        // List all blocks (optionally filtered by category)
+        if (listBlocks) {
+            const blocks = this.hclBlocksManager.listBlocks(
+                category as Parameters<typeof this.hclBlocksManager.listBlocks>[0]
+            );
+            const categories = this.hclBlocksManager.getCategories();
+            
             return {
-                config,
-                error: `No HCL configuration documentation found for: ${config}`,
-                suggestion: 'Try searching with search_terragrunt_docs or use get_section_docs with section "reference" to see all available HCL configurations'
+                blocks: blocks.map(block => ({
+                    name: block.name,
+                    displayName: block.displayName,
+                    description: block.description,
+                    category: block.category,
+                    attributeCount: block.attributes.length,
+                    exampleCount: block.examples.length,
+                    docsUrl: block.docsUrl
+                })),
+                categories: categories.map(cat => ({
+                    category: cat.category,
+                    name: cat.name,
+                    description: cat.description,
+                    blockCount: cat.blockCount
+                })),
+                totalBlocks: blocks.length,
+                message: category 
+                    ? `Found ${blocks.length} HCL blocks in category '${category}'`
+                    : `Found ${blocks.length} total HCL blocks across ${categories.length} categories`
             };
         }
 
+        // Get specific block documentation
+        if (config) {
+            // First try structured block data (preferred)
+            const block = this.hclBlocksManager.getBlock(config);
+            
+            if (block) {
+                // Return comprehensive structured documentation
+                return this.formatBlockResponse(block);
+            }
+
+            // Try search if exact match not found
+            const searchResults = this.hclBlocksManager.searchBlocks(config);
+            if (searchResults.length > 0) {
+                // Return best match with suggestions
+                const bestMatch = searchResults[0];
+                const response = this.formatBlockResponse(bestMatch.block, {
+                    matchInfo: {
+                        matchType: bestMatch.matchType,
+                        score: bestMatch.score,
+                        searchQuery: config
+                    }
+                });
+
+                // Add suggestions if there are other close matches
+                if (searchResults.length > 1) {
+                    (response as any).otherMatches = searchResults.slice(1, 4).map(r => ({
+                        name: r.block.name,
+                        displayName: r.block.displayName,
+                        score: r.score,
+                        matchType: r.matchType
+                    }));
+                }
+
+                return response;
+            }
+
+            // Fall back to scraped documentation as last resort
+            const docs = await this.docsManager.getHclConfigReference(config);
+            if (docs.length > 0) {
+                return {
+                    config,
+                    source: 'scraped-docs',
+                    results: docs.map(doc => ({
+                        title: doc.title,
+                        url: doc.url,
+                        content: doc.content.length > 800
+                            ? doc.content.substring(0, 800) + '...'
+                            : doc.content,
+                        lastUpdated: doc.lastUpdated
+                    })),
+                    totalResults: docs.length,
+                    note: 'Documentation from scraped sources. Use listBlocks=true to see all available structured HCL block definitions.'
+                };
+            }
+
+            // No matches found
+            return {
+                config,
+                error: `No HCL configuration documentation found for: ${config}`,
+                suggestion: 'Use listBlocks=true to see all available HCL blocks, or try one of these common blocks: terraform, remote_state, locals, inputs, include, dependency, generate',
+                availableBlocks: this.hclBlocksManager.listBlocks().map(b => b.name)
+            };
+        }
+
+        // No parameters - return summary with categories
+        const categories = this.hclBlocksManager.getCategories();
         return {
-            config,
-            results: docs.map(doc => ({
-                title: doc.title,
-                url: doc.url,
-                content: doc.content.length > 800
-                    ? doc.content.substring(0, 800) + '...'
-                    : doc.content,
-                lastUpdated: doc.lastUpdated
+            message: 'Use config parameter to get documentation for a specific HCL block, or listBlocks=true to see all blocks',
+            categories: categories.map(cat => ({
+                category: cat.category,
+                name: cat.name,
+                description: cat.description,
+                blockCount: cat.blockCount
             })),
-            totalResults: docs.length
+            totalBlocks: this.hclBlocksManager.getBlockCount(),
+            exampleUsage: [
+                { description: 'Get terraform block docs', params: { config: 'terraform' } },
+                { description: 'List all blocks', params: { listBlocks: true } },
+                { description: 'List core category', params: { listBlocks: true, category: 'core' } }
+            ]
         };
+    }
+
+    /**
+     * Format an HCL block into a comprehensive response object.
+     * Centralizes the formatting logic to avoid code duplication between
+     * exact match and search match response paths.
+     */
+    private formatBlockResponse(
+        block: HCLBlock,
+        additionalProps?: Record<string, unknown>
+    ): Record<string, unknown> {
+        const response: Record<string, unknown> = {
+            config: block.name,
+            displayName: block.displayName,
+            description: block.description,
+            category: block.category,
+            syntax: block.syntax,
+            attributes: block.attributes.map(attr => ({
+                name: attr.name,
+                type: attr.type,
+                required: attr.required,
+                description: attr.description,
+                defaultValue: attr.defaultValue,
+                example: attr.example,
+                validValues: attr.validValues,
+                nestedAttributes: attr.nestedAttributes?.map(nested => ({
+                    name: nested.name,
+                    type: nested.type,
+                    required: nested.required,
+                    description: nested.description,
+                    defaultValue: nested.defaultValue,
+                    example: nested.example,
+                    validValues: nested.validValues
+                }))
+            })),
+            examples: block.examples.map(ex => ({
+                description: ex.description,
+                code: ex.code
+            })),
+            relatedBlocks: block.relatedBlocks,
+            docsUrl: block.docsUrl,
+            markdown: this.hclBlocksManager.formatBlockAsMarkdown(block)
+        };
+
+        // Merge any additional properties (e.g., matchInfo, otherMatches)
+        if (additionalProps) {
+            Object.assign(response, additionalProps);
+        }
+
+        return response;
     }
 
     private async getCodeExamples(topic: string, limit: number = 5): Promise<any> {
