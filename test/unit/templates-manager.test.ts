@@ -14,7 +14,7 @@ describe('TemplatesManager', () => {
       const templates = await manager.getAllTemplates();
       
       expect(templates.length).toBeGreaterThanOrEqual(3);
-      expect(templates.length).toBe(9); // Total templates after Sprint 2
+      expect(templates.length).toBe(10); // Total templates after Sprint 2 + advanced S3 backend
     });
 
     it('should only load templates once', async () => {
@@ -76,10 +76,11 @@ describe('TemplatesManager', () => {
     it('should return all templates', async () => {
       const templates = await manager.getAllTemplates();
       
-      expect(templates).toHaveLength(9);
+      expect(templates).toHaveLength(10);
       
       const ids = templates.map(t => t.id);
       expect(ids).toContain('aws-s3-backend');
+      expect(ids).toContain('aws-s3-backend-advanced');
       expect(ids).toContain('azure-blob-backend');
       expect(ids).toContain('aws-generate-provider');
     });
@@ -105,21 +106,21 @@ describe('TemplatesManager', () => {
     it('should filter by category', async () => {
       const backendTemplates = await manager.searchTemplates({ category: 'backend' });
       
-      expect(backendTemplates).toHaveLength(3); // AWS S3, Azure Blob, GCP GCS
+      expect(backendTemplates).toHaveLength(4); // AWS S3, AWS S3 Advanced, Azure Blob, GCP GCS
       expect(backendTemplates.every(t => t.category === 'backend')).toBe(true);
     });
 
     it('should filter by cloud provider', async () => {
       const awsTemplates = await manager.searchTemplates({ cloudProvider: 'aws' });
       
-      expect(awsTemplates).toHaveLength(2);
+      expect(awsTemplates).toHaveLength(3); // S3, S3 Advanced, Provider
       expect(awsTemplates.every(t => t.cloudProvider === 'aws')).toBe(true);
     });
 
     it('should filter by source', async () => {
       const gruntworkTemplates = await manager.searchTemplates({ source: 'gruntwork' });
       
-      expect(gruntworkTemplates).toHaveLength(2);
+      expect(gruntworkTemplates).toHaveLength(3); // S3, S3 Advanced, Provider
       expect(gruntworkTemplates.every(t => t.source === 'gruntwork')).toBe(true);
     });
 
@@ -128,7 +129,7 @@ describe('TemplatesManager', () => {
         tags: ['remote-state'] 
       });
       
-      expect(remoteStateTemplates).toHaveLength(3); // AWS S3, Azure Blob, GCP GCS
+      expect(remoteStateTemplates).toHaveLength(4); // AWS S3, AWS S3 Advanced, Azure Blob, GCP GCS
       expect(remoteStateTemplates.every(t => t.tags.includes('remote-state'))).toBe(true);
     });
 
@@ -139,8 +140,9 @@ describe('TemplatesManager', () => {
         source: 'gruntwork',
       });
       
-      expect(results).toHaveLength(1);
-      expect(results[0].id).toBe('aws-s3-backend');
+      expect(results).toHaveLength(2); // AWS S3 and AWS S3 Advanced
+      expect(results.map(r => r.id)).toContain('aws-s3-backend');
+      expect(results.map(r => r.id)).toContain('aws-s3-backend-advanced');
     });
 
     it('should return empty array when no matches', async () => {
@@ -157,7 +159,7 @@ describe('TemplatesManager', () => {
     it('should return correct metadata', async () => {
       const metadata = await manager.getMetadata();
       
-      expect(metadata.totalTemplates).toBe(9);
+      expect(metadata.totalTemplates).toBe(10);
       expect(metadata.categories).toContain('backend');
       expect(metadata.categories).toContain('provider');
       expect(metadata.cloudProviders).toContain('aws');
@@ -246,7 +248,7 @@ describe('TemplatesManager', () => {
       
       const afterClear = await manager.getAllTemplates();
       // After clear, loadTemplates will reinitialize
-      expect(afterClear.length).toBe(9);
+      expect(afterClear.length).toBe(10);
     });
   });
 });

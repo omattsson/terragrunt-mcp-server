@@ -74,6 +74,148 @@ export const backendTemplates: ConfigTemplate[] = [
 }`,
   },
 
+  // AWS S3 Advanced Remote State Backend
+  {
+    id: 'aws-s3-backend-advanced',
+    name: 'AWS S3 Advanced Remote State Backend',
+    description: 'Advanced S3 backend with KMS encryption, cross-account access, and custom endpoint support',
+    category: 'backend',
+    cloudProvider: 'aws',
+    source: 'gruntwork',
+    tags: ['remote-state', 's3', 'dynamodb', 'aws', 'backend', 'advanced', 'kms', 'cross-account'],
+    variables: [
+      {
+        name: 'bucket',
+        description: 'S3 bucket name for Terraform state',
+        type: 'string',
+        required: true,
+        example: 'my-terraform-state',
+      },
+      {
+        name: 'key',
+        description: 'Path to state file within bucket',
+        type: 'string',
+        required: true,
+        example: '${path_relative_to_include()}/terraform.tfstate',
+      },
+      {
+        name: 'region',
+        description: 'AWS region for S3 bucket',
+        type: 'string',
+        required: true,
+        example: 'us-east-1',
+      },
+      {
+        name: 'dynamodb_table',
+        description: 'DynamoDB table for state locking',
+        type: 'string',
+        required: false,
+        example: 'terraform-locks',
+      },
+      {
+        name: 'encrypt',
+        description: 'Enable encryption at rest',
+        type: 'boolean',
+        required: false,
+      },
+      {
+        name: 'kms_key_id',
+        description: 'KMS key ARN for server-side encryption',
+        type: 'string',
+        required: false,
+        example: 'arn:aws:kms:us-east-1:123456789012:key/12345678-1234-1234-1234-123456789012',
+      },
+      {
+        name: 'role_arn',
+        description: 'IAM role ARN for cross-account access',
+        type: 'string',
+        required: false,
+        example: 'arn:aws:iam::123456789012:role/TerraformStateRole',
+      },
+      {
+        name: 'session_name',
+        description: 'Session name for assumed role',
+        type: 'string',
+        required: false,
+        example: 'terraform-session',
+      },
+      {
+        name: 'profile',
+        description: 'AWS CLI profile name for authentication',
+        type: 'string',
+        required: false,
+        example: 'development',
+      },
+      {
+        name: 'endpoint',
+        description: 'Custom S3 endpoint URL (for LocalStack/MinIO)',
+        type: 'string',
+        required: false,
+        example: 'http://localhost:4566',
+      },
+      {
+        name: 'workspace_key_prefix',
+        description: 'Prefix for workspace-specific state files',
+        type: 'string',
+        required: false,
+        example: 'workspaces',
+      },
+      {
+        name: 'skip_credentials_validation',
+        description: 'Skip AWS credentials validation',
+        type: 'boolean',
+        required: false,
+      },
+    ],
+    templateHcl: `remote_state {
+  backend = "s3"
+  config = {
+    bucket         = "{{bucket}}"
+    key            = "{{key}}"
+    region         = "{{region}}"
+{{#dynamodb_table}}
+    dynamodb_table = "{{dynamodb_table}}"
+{{/dynamodb_table}}
+{{#encrypt}}
+    encrypt        = {{encrypt}}
+{{/encrypt}}
+{{#kms_key_id}}
+    kms_key_id     = "{{kms_key_id}}"
+{{/kms_key_id}}
+{{#role_arn}}
+    role_arn       = "{{role_arn}}"
+{{/role_arn}}
+{{#session_name}}
+    session_name   = "{{session_name}}"
+{{/session_name}}
+{{#profile}}
+    profile        = "{{profile}}"
+{{/profile}}
+{{#endpoint}}
+    endpoint       = "{{endpoint}}"
+{{/endpoint}}
+{{#workspace_key_prefix}}
+    workspace_key_prefix = "{{workspace_key_prefix}}"
+{{/workspace_key_prefix}}
+{{#skip_credentials_validation}}
+    skip_credentials_validation = {{skip_credentials_validation}}
+{{/skip_credentials_validation}}
+  }
+}`,
+    example: `remote_state {
+  backend = "s3"
+  config = {
+    bucket         = "my-terraform-state"
+    key            = "\${path_relative_to_include()}/terraform.tfstate"
+    region         = "us-east-1"
+    encrypt        = true
+    dynamodb_table = "terraform-locks"
+    kms_key_id     = "arn:aws:kms:us-east-1:123456789012:key/12345678-1234-1234-1234-123456789012"
+    role_arn       = "arn:aws:iam::987654321098:role/TerraformStateRole"
+  }
+}`,
+  },
+
   // Azure Blob Storage Backend
   {
     id: 'azure-blob-backend',
