@@ -14,7 +14,7 @@ The Terragrunt MCP Server provides **13 specialized tools** for accessing and se
 | `get_cli_command_help` | CLI command help | Command syntax, options, and examples |
 | `list_cli_commands` | List CLI commands | Browsing available CLI commands by category |
 | `get_hcl_config_reference` | HCL config reference | Writing terragrunt.hcl files |
-| `get_code_examples` | Find code snippets | Learning by example |
+| `get_code_examples` | Find code snippets | Learning by example, advanced patterns |
 | `generate_terragrunt_config` | Configuration generator | Quick setup and best practices |
 | `write_terragrunt_config` | Write configs to disk | Saving generated configurations |
 | `analyze_best_practices` | Analyze practices by topic | Learning best practices and patterns |
@@ -369,19 +369,35 @@ The tool automatically resolves common aliases:
 
 ## 7. get_code_examples
 
-**Purpose**: Find code examples and snippets related to specific Terragrunt topics or patterns.
+**Purpose**: Find code examples and snippets related to specific Terragrunt topics or patterns. Supports both documentation search and curated advanced examples with best practices.
 
 ### Parameters — get_code_examples
 
-- **`topic`** (string, required): Topic or pattern (e.g., "remote state", "dependencies", "before hooks")
+- **`topic`** (string, optional*): Topic or pattern (e.g., "remote state", "dependencies", "before hooks")
 - **`limit`** (number, optional): Max documents to return (default: 5, max: 10)
+- **`advanced`** (boolean, optional): If true, return curated advanced examples with best practices (default: false)
+- **`category`** (string, optional): Filter advanced examples by category: "hooks", "generate", "environment", "dependencies", "dry-patterns"
+- **`listCategories`** (boolean, optional): List all available advanced example categories
+
+*topic is required when advanced=false, optional when advanced=true
+
+### Advanced Example Categories
+
+| Category | Description | Example Patterns |
+|----------|-------------|------------------|
+| `hooks` | Before/after hooks | validation, notifications, error handling |
+| `generate` | Generate blocks | backend, provider, version constraints |
+| `environment` | Environment config | hierarchies, merging, feature flags |
+| `dependencies` | Dependency patterns | mock outputs, skip, complex graphs |
+| `dry-patterns` | DRY patterns | includes, read_terragrunt_config |
 
 ### Use Cases — get_code_examples
 
 - Learning by example
 - Finding implementation patterns
 - Quick reference for syntax
-- Copying working code snippets
+- Advanced configuration with best practices
+- Understanding common pitfalls
 
 ### Example Prompts — get_code_examples
 
@@ -389,14 +405,17 @@ The tool automatically resolves common aliases:
 "Show me examples of using dependencies in Terragrunt"
 "Find code snippets for remote state configuration"
 "What are some examples of before_hook usage?"
-"Show me how to use generate blocks with examples"
+"Show me advanced examples for hooks"
+"Get curated examples for environment-specific configs"
+"List all advanced example categories"
 ```
 
-### Example Response — get_code_examples
+### Example Response — get_code_examples (documentation mode)
 
 ```json
 {
   "topic": "dependency",
+  "source": "documentation",
   "examples": [
     {
       "documentTitle": "Quick Start",
@@ -411,6 +430,47 @@ The tool automatically resolves common aliases:
   ],
   "totalDocuments": 3,
   "hasMore": false
+}
+```
+
+### Example Response — get_code_examples (advanced mode)
+
+```json
+{
+  "topic": "before_hook",
+  "source": "advanced-examples",
+  "matchInfo": {
+    "matchType": "tag",
+    "score": 0.8
+  },
+  "example": {
+    "id": "before-hook-validation",
+    "name": "Pre-Apply Validation Hook",
+    "description": "Run validation scripts before apply to catch issues early",
+    "category": "hooks",
+    "complexity": "intermediate",
+    "code": "terraform {\n  before_hook \"validate_inputs\" {\n    commands = [\"apply\", \"plan\"]\n    execute = [\"./scripts/validate-inputs.sh\"]\n  }\n}",
+    "useCases": [
+      "Validate input variables before expensive operations",
+      "Run custom compliance checks before apply"
+    ],
+    "bestPractices": [
+      "Keep validation scripts fast",
+      "Use exit codes to signal failures"
+    ],
+    "pitfalls": [
+      "Long-running validations can frustrate developers",
+      "Validation scripts must be idempotent"
+    ],
+    "relatedExamples": [
+      { "id": "after-hook-notification", "relationship": "Pair with notifications" }
+    ],
+    "tags": ["hooks", "validation", "before_hook"]
+  },
+  "otherMatches": [
+    { "id": "hook-multi-command", "name": "Multi-Command Hook Pipeline" }
+  ],
+  "totalMatches": 4
 }
 ```
 

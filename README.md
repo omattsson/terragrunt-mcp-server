@@ -78,13 +78,21 @@ Get documentation for HCL configuration blocks, attributes, and functions used i
 
 #### 6. **`get_code_examples`** - Find Code Examples
 
-Find code examples and snippets related to specific Terragrunt topics or patterns.
+Find code examples and snippets related to specific Terragrunt topics or patterns. Supports both documentation search and curated advanced examples with best practices.
 
 - **Parameters**:
-  - `topic` (string, required): Topic or pattern (e.g., "remote state", "dependencies", "before hooks")
+  - `topic` (string, optional*): Topic or pattern (e.g., "remote state", "dependencies", "before hooks")
   - `limit` (number, optional): Max documents to return (default: 5, max: 10)
-- **Returns**: Code snippets with context from relevant documentation
-- **Use cases**: Learning by example, implementation patterns, quick references
+  - `advanced` (boolean, optional): If true, return curated advanced examples with best practices (default: false)
+  - `category` (string, optional): Filter advanced examples by category: "hooks", "generate", "environment", "dependencies", "dry-patterns"
+  - `listCategories` (boolean, optional): List all available advanced example categories
+
+  *topic is required when advanced=false, optional when advanced=true
+
+- **Returns**:
+  - With `advanced=false`: Code snippets from documentation
+  - With `advanced=true`: Curated examples with code, use cases, best practices, pitfalls, and related examples
+- **Use cases**: Learning by example, implementation patterns, advanced configuration guidance
 
 #### 7. **`get_terragrunt_function`** - Built-in Function Reference
 

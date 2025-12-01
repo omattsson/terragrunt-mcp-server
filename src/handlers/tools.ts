@@ -13,7 +13,9 @@ import { FileWriter } from '../terragrunt/file-writer.js';
 import { ErrorPatternMatcher } from '../terragrunt/error-patterns.js';
 import { CLICommandsManager } from '../terragrunt/cli-commands.js';
 import { HCLBlocksManager } from '../terragrunt/hcl-blocks.js';
+import { AdvancedExamplesManager } from '../terragrunt/advanced-examples.js';
 import type { HCLBlock } from '../types/hcl-blocks.js';
+import type { AdvancedExampleCategory } from '../types/advanced-examples.js';
 
 export interface Tool {
     name: string;
@@ -29,6 +31,7 @@ export class ToolHandler {
     private errorPatternMatcher: ErrorPatternMatcher;
     private cliCommandsManager: CLICommandsManager;
     private hclBlocksManager: HCLBlocksManager;
+    private advancedExamplesManager: AdvancedExamplesManager;
     private functionsLoaded: boolean = false;
     private templatesManager: TemplatesManager;
     private templateLibrary: ConfigTemplateLibrary;
@@ -43,6 +46,7 @@ export class ToolHandler {
         this.errorPatternMatcher = new ErrorPatternMatcher(this.docsManager);
         this.cliCommandsManager = new CLICommandsManager();
         this.hclBlocksManager = new HCLBlocksManager();
+        this.advancedExamplesManager = new AdvancedExamplesManager();
         
         // Initialize templates manager with builtin and filesystem loaders
         this.templatesManager = new TemplatesManager([
@@ -223,7 +227,7 @@ export class ToolHandler {
             },
             {
                 name: 'get_code_examples',
-                description: 'Find code examples and snippets related to a specific Terragrunt topic or pattern',
+                description: 'Find code examples and snippets related to a specific Terragrunt topic or pattern. Use advanced=true for curated, well-documented examples with best practices.',
                 inputSchema: {
                     type: 'object',
                     properties: {
@@ -237,9 +241,24 @@ export class ToolHandler {
                             default: 5,
                             minimum: 1,
                             maximum: 10
+                        },
+                        advanced: {
+                            type: 'boolean',
+                            description: 'If true, return curated advanced examples with best practices, use cases, and pitfalls. If false, search scraped documentation.',
+                            default: false
+                        },
+                        category: {
+                            type: 'string',
+                            description: 'Filter advanced examples by category (only used when advanced=true)',
+                            enum: ['hooks', 'generate', 'environment', 'dependencies', 'dry-patterns']
+                        },
+                        listCategories: {
+                            type: 'boolean',
+                            description: 'If true, list all available advanced example categories with counts',
+                            default: false
                         }
                     },
-                    required: ['topic']
+                    required: []
                 }
             },
             {
@@ -501,10 +520,13 @@ export class ToolHandler {
                         args?.listBlocks ?? false
                     );
                 case 'get_code_examples':
-                    if (!args?.topic) {
-                        return { error: 'topic parameter is required' };
-                    }
-                    return await this.getCodeExamples(args.topic, args?.limit);
+                    return await this.getCodeExamples(
+                        args?.topic,
+                        args?.limit,
+                        args?.advanced ?? false,
+                        args?.category,
+                        args?.listCategories ?? false
+                    );
 
                 case 'analyze_best_practices':
                     if (!args?.topic) {
@@ -939,19 +961,68 @@ export class ToolHandler {
         return response;
     }
 
-    private async getCodeExamples(topic: string, limit: number = 5): Promise<any> {
+    private async getCodeExamples(
+        topic?: string,
+        limit: number = 5,
+        advanced: boolean = false,
+        category?: AdvancedExampleCategory,
+        listCategories: boolean = false
+    ): Promise<any> {
+        // List advanced example categories
+        if (listCategories) {
+            const categories = this.advancedExamplesManager.getCategories();
+            return {
+                categories: categories.map(cat => ({
+                    category: cat.category,
+                    name: cat.name,
+                    description: cat.description,
+                    exampleCount: cat.exampleCount
+                })),
+                totalExamples: this.advancedExamplesManager.getExampleCount(),
+                message: 'Use advanced=true with topic or category to get curated examples'
+            };
+        }
+
+        // Advanced examples mode
+        if (advanced) {
+            return this.getAdvancedCodeExamples(topic, limit, category);
+        }
+
+        // Original doc-scraped examples mode (requires topic)
+        if (!topic) {
+            return {
+                error: 'topic parameter is required when advanced=false',
+                suggestion: 'Use advanced=true to browse curated examples, or provide a topic to search documentation'
+            };
+        }
+
         const results = await this.docsManager.getCodeExamples(topic);
 
         if (results.length === 0) {
+            // Suggest advanced examples as alternative
+            const advancedResults = this.advancedExamplesManager.searchExamples(topic);
+            if (advancedResults.length > 0) {
+                return {
+                    topic,
+                    error: `No code examples found in documentation for: ${topic}`,
+                    suggestion: `Try advanced=true to see ${advancedResults.length} curated example(s) matching this topic`,
+                    advancedMatches: advancedResults.slice(0, 3).map(r => ({
+                        id: r.example.id,
+                        name: r.example.name,
+                        category: r.example.category
+                    }))
+                };
+            }
             return {
                 topic,
                 error: `No code examples found for: ${topic}`,
-                suggestion: 'Try a broader search term or use search_terragrunt_docs to find relevant documentation'
+                suggestion: 'Try a broader search term, use search_terragrunt_docs, or try advanced=true for curated examples'
             };
         }
 
         return {
             topic,
+            source: 'documentation',
             examples: results.slice(0, limit).map(result => ({
                 documentTitle: result.doc.title,
                 documentUrl: result.doc.url,
@@ -961,6 +1032,108 @@ export class ToolHandler {
             })),
             totalDocuments: results.length,
             hasMore: results.length > limit
+        };
+    }
+
+    private getAdvancedCodeExamples(
+        topic?: string,
+        limit: number = 5,
+        category?: AdvancedExampleCategory
+    ): any {
+        // List examples by category
+        if (category && !topic) {
+            const examples = this.advancedExamplesManager.listExamples(category);
+            return {
+                category,
+                source: 'advanced-examples',
+                examples: examples.slice(0, limit).map(ex => ({
+                    id: ex.id,
+                    name: ex.name,
+                    description: ex.description,
+                    complexity: ex.complexity,
+                    tags: ex.tags,
+                    useCaseCount: ex.useCases.length,
+                    bestPracticeCount: ex.bestPractices.length
+                })),
+                totalExamples: examples.length,
+                hasMore: examples.length > limit,
+                message: `Found ${examples.length} advanced example(s) in category '${category}'`
+            };
+        }
+
+        // Search by topic
+        if (topic) {
+            const searchResults = this.advancedExamplesManager.searchExamples(topic);
+            
+            // Filter by category if provided
+            const filteredResults = category
+                ? searchResults.filter(r => r.example.category === category)
+                : searchResults;
+
+            if (filteredResults.length === 0) {
+                const categories = this.advancedExamplesManager.getCategories();
+                return {
+                    topic,
+                    category,
+                    source: 'advanced-examples',
+                    error: `No advanced examples found for: ${topic}`,
+                    suggestion: 'Try a different search term or browse by category',
+                    availableCategories: categories.map(c => c.category)
+                };
+            }
+
+            // Return best match with full details
+            const bestMatch = filteredResults[0].example;
+            return {
+                topic,
+                source: 'advanced-examples',
+                matchInfo: {
+                    matchType: filteredResults[0].matchType,
+                    score: filteredResults[0].score
+                },
+                example: {
+                    id: bestMatch.id,
+                    name: bestMatch.name,
+                    description: bestMatch.description,
+                    category: bestMatch.category,
+                    complexity: bestMatch.complexity,
+                    code: bestMatch.code,
+                    useCases: bestMatch.useCases,
+                    bestPractices: bestMatch.bestPractices,
+                    pitfalls: bestMatch.pitfalls,
+                    relatedExamples: bestMatch.relatedExamples,
+                    tags: bestMatch.tags,
+                    docsUrl: bestMatch.docsUrl,
+                    markdown: this.advancedExamplesManager.formatExampleAsMarkdown(bestMatch)
+                },
+                otherMatches: filteredResults.slice(1, limit).map(r => ({
+                    id: r.example.id,
+                    name: r.example.name,
+                    category: r.example.category,
+                    matchType: r.matchType,
+                    score: r.score
+                })),
+                totalMatches: filteredResults.length
+            };
+        }
+
+        // No topic or category - return overview
+        const categories = this.advancedExamplesManager.getCategories();
+        return {
+            source: 'advanced-examples',
+            message: 'Provide a topic to search, or a category to browse advanced examples',
+            categories: categories.map(cat => ({
+                category: cat.category,
+                name: cat.name,
+                description: cat.description,
+                exampleCount: cat.exampleCount
+            })),
+            totalExamples: this.advancedExamplesManager.getExampleCount(),
+            exampleUsage: [
+                { description: 'Search by topic', params: { advanced: true, topic: 'before_hook' } },
+                { description: 'Browse by category', params: { advanced: true, category: 'hooks' } },
+                { description: 'Get specific example', params: { advanced: true, topic: 'hook-error-handling' } }
+            ]
         };
     }
 
