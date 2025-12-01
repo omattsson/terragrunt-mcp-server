@@ -1,6 +1,6 @@
 # Available Tools
 
-The Terragrunt MCP Server provides **12 specialized tools** for accessing and searching Terragrunt documentation, generating configurations, analyzing best practices, diagnosing errors, and writing files. Each tool is designed for specific use cases to help you find the information you need quickly.
+The Terragrunt MCP Server provides **13 specialized tools** for accessing and searching Terragrunt documentation, generating configurations, analyzing best practices, diagnosing errors, and writing files. Each tool is designed for specific use cases to help you find the information you need quickly.
 
 ## Tool Overview
 
@@ -11,7 +11,8 @@ The Terragrunt MCP Server provides **12 specialized tools** for accessing and se
 | `list_terragrunt_functions` | List functions | Browsing available built-in functions |
 | `get_terragrunt_sections` | List sections | Understanding doc structure |
 | `get_section_docs` | Section retrieval | Deep diving into topics |
-| `get_cli_command_help` | CLI command help | Command syntax and options |
+| `get_cli_command_help` | CLI command help | Command syntax, options, and examples |
+| `list_cli_commands` | List CLI commands | Browsing available CLI commands by category |
 | `get_hcl_config_reference` | HCL config reference | Writing terragrunt.hcl files |
 | `get_code_examples` | Find code snippets | Learning by example |
 | `generate_terragrunt_config` | Configuration generator | Quick setup and best practices |
@@ -158,43 +159,172 @@ None required.
 
 ## 4. get_cli_command_help
 
-**Purpose**: Get detailed help documentation for specific Terragrunt CLI commands.
+**Purpose**: Get detailed help documentation for specific Terragrunt CLI commands, including options, usage patterns, and practical examples.
 
 ### Parameters — get_cli_command_help
 
-- **`command`** (string, required): Command name (e.g., "plan", "apply", "run-all", "hclfmt")
+- **`command`** (string, required): Command name (e.g., "plan", "apply", "run-all", "hclfmt", "hcl fmt", "validate-inputs")
+
+### Supported Aliases
+
+The tool automatically resolves common aliases:
+
+| Input | Resolves To |
+|-------|-------------|
+| `run-all` | `run` (with `--all` flag) |
+| `hclfmt` | `hcl fmt` |
+| `fmt` | `hcl fmt` |
+| `hclvalidate` | `hcl validate` |
+| `bootstrap` | `backend bootstrap` |
+| `graph` | `dag graph` |
 
 ### Use Cases — get_cli_command_help
 
-- Learning command syntax
-- Understanding command options and flags
+- Learning command syntax and options
+- Understanding available flags and their defaults
+- Finding practical usage examples
+- Discovering related commands
 - CLI troubleshooting
-- Discovering command capabilities
 
 ### Example Prompts — get_cli_command_help
 
 ```text
 "How do I use the terragrunt plan command?"
-"What options are available for terragrunt run-all?"
+"What options are available for terragrunt run with --all?"
 "Show me help for the hclfmt command"
-"Explain the terragrunt render command"
+"Explain the terragrunt validate-inputs command"
+"What's the difference between run and run-all?"
 ```
 
 ### Example Response — get_cli_command_help
 
 ```json
 {
-  "command": "render",
-  "title": "render",
-  "url": "https://terragrunt.gruntwork.io/docs/reference/cli/commands/render/",
-  "content": "Generate a simplified version of the Terragrunt configuration with all includes and dependencies resolved...",
-  "lastUpdated": "2025-10-23"
+  "command": "plan",
+  "aliases": [],
+  "category": "shortcut",
+  "description": "Shortcut for running terraform plan through Terragrunt.",
+  "usage": "terragrunt plan [flags]",
+  "details": "A convenience shortcut equivalent to 'terragrunt run -- plan'...",
+  "options": [
+    {
+      "flag": "--all",
+      "description": "Run plan on all modules in the stack",
+      "type": "boolean",
+      "defaultValue": "false"
+    },
+    {
+      "flag": "-out",
+      "description": "Save the plan to a file",
+      "type": "path",
+      "example": "-out=tfplan"
+    }
+  ],
+  "examples": [
+    {
+      "description": "Run plan on current module",
+      "command": "terragrunt plan"
+    },
+    {
+      "description": "Plan all modules",
+      "command": "terragrunt plan --all"
+    }
+  ],
+  "relatedCommands": ["apply", "destroy", "run", "validate-inputs"],
+  "notes": ["Equivalent to: terragrunt run -- plan"],
+  "documentationUrl": "https://terragrunt.gruntwork.io/docs/reference/cli/",
+  "formattedHelp": "# plan\n\nShortcut for running terraform plan..."
 }
 ```
 
 ---
 
-## 5. get_hcl_config_reference
+## 5. list_cli_commands
+
+**Purpose**: List all available Terragrunt CLI commands organized by category, with optional filtering and search.
+
+### Parameters — list_cli_commands
+
+- **`category`** (string, optional): Filter by category. Values: `main`, `backend`, `stack`, `catalog`, `discovery`, `configuration`, `shortcut`
+- **`search`** (string, optional): Search query to filter commands by name or description
+
+### Command Categories
+
+| Category | Description | Example Commands |
+|----------|-------------|------------------|
+| `main` | Primary execution commands | `run`, `exec` |
+| `shortcut` | Terraform command shortcuts | `plan`, `apply`, `destroy`, `init` |
+| `configuration` | HCL and config tools | `hcl fmt`, `hcl validate`, `render`, `validate-inputs` |
+| `backend` | State backend management | `backend bootstrap`, `backend delete`, `backend migrate` |
+| `stack` | Multi-module operations | `stack run`, `stack output`, `stack clean` |
+| `catalog` | Module catalogs | `catalog`, `scaffold` |
+| `discovery` | Module discovery | `find`, `list` |
+
+### Use Cases — list_cli_commands
+
+- Discovering available commands
+- Understanding command organization
+- Finding commands by category
+- Searching for specific functionality
+
+### Example Prompts — list_cli_commands
+
+```text
+"List all Terragrunt CLI commands"
+"What configuration commands are available?"
+"Show me backend-related commands"
+"Search for commands related to validation"
+```
+
+### Example Response — list_cli_commands (all categories)
+
+```json
+{
+  "categories": [
+    {
+      "id": "main",
+      "name": "Main Commands",
+      "description": "Primary Terragrunt commands for executing Terraform operations",
+      "commands": ["run", "exec"]
+    },
+    {
+      "id": "shortcut",
+      "name": "Shortcut Commands",
+      "description": "Convenience shortcuts for common Terraform commands",
+      "commands": ["plan", "apply", "destroy", "init", "output"]
+    }
+  ],
+  "totalCategories": 7,
+  "totalCommands": 23
+}
+```
+
+### Example Response — list_cli_commands (filtered by category)
+
+```json
+{
+  "category": "configuration",
+  "commands": [
+    {
+      "name": "hcl fmt",
+      "aliases": ["hclfmt", "fmt"],
+      "description": "Format Terragrunt HCL configuration files.",
+      "usage": "terragrunt hcl fmt [flags] [path]"
+    },
+    {
+      "name": "validate-inputs",
+      "aliases": [],
+      "description": "Validate that all required inputs are provided and match expected types.",
+      "usage": "terragrunt validate-inputs [flags]"
+    }
+  ],
+  "totalCommands": 6
+}
+```
+
+---
+
+## 6. get_hcl_config_reference
 
 **Purpose**: Get documentation for HCL configuration blocks, attributes, and functions used in `terragrunt.hcl`.
 
@@ -237,7 +367,7 @@ None required.
 
 ---
 
-## 6. get_code_examples
+## 7. get_code_examples
 
 **Purpose**: Find code examples and snippets related to specific Terragrunt topics or patterns.
 
@@ -286,7 +416,7 @@ None required.
 
 ---
 
-## 7. get_terragrunt_function
+## 8. get_terragrunt_function
 
 **Purpose**: Retrieve a specific Terragrunt built-in function by name.
 
@@ -321,7 +451,7 @@ None required.
 
 ---
 
-## 8. list_terragrunt_functions
+## 9. list_terragrunt_functions
 
 **Purpose**: List Terragrunt built-in functions, optionally filtered by category.
 
@@ -351,7 +481,7 @@ None required.
 
 ---
 
-## 9. generate_terragrunt_config
+## 10. generate_terragrunt_config
 
 **Purpose**: Generate complete `terragrunt.hcl` configurations from battle-tested templates based on your use case and cloud provider.
 
@@ -440,7 +570,7 @@ The tool provides **9 templates** covering **5 use cases**:
 
 ---
 
-## 10. write_terragrunt_config
+## 11. write_terragrunt_config
 
 **Purpose**: Write generated Terragrunt configurations to disk with security validation and backup support.
 
@@ -599,7 +729,7 @@ See [File Writing Guide](File-Writing-Guide.md) for detailed security configurat
 
 ---
 
-## 11. analyze_best_practices
+## 12. analyze_best_practices
 
 **Purpose**: Analyze and retrieve best practices for specific Terragrunt topics with experience-level filtering. Extracts patterns, recommendations, antipatterns, and real-world examples from documentation.
 
@@ -698,7 +828,7 @@ See [File Writing Guide](File-Writing-Guide.md) for detailed security configurat
 <!-- Note: The "configuration" template (Terraform version constraints) is included as part of the "inputs" use case. -->
 ---
 
-## 12. diagnose_terragrunt_error
+## 13. diagnose_terragrunt_error
 
 **Purpose**: Diagnose Terragrunt error messages and get actionable solutions, debugging steps, and relevant documentation links.
 

@@ -344,10 +344,12 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
 
       expect(result).toBeDefined();
       expect(result.command).toBe('nonexistent-command-xyz');
-      // Should either return error or empty result with suggestion
+      // Should return error with helpful information
       if (result.error) {
         expect(result.error).toContain('No CLI command documentation found');
-        expect(result.suggestion).toBeDefined();
+        // New implementation provides hint and available commands
+        expect(result.hint || result.suggestion).toBeDefined();
+        expect(result.availableCommands).toBeDefined();
       }
     });
 
@@ -535,7 +537,7 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
 
   describe('CLI Command Help Edge Cases', () => {
     it('should handle common CLI commands', async () => {
-      const commands = ['plan', 'apply', 'init', 'validate', 'run-all'];
+      const commands = ['plan', 'apply', 'init', 'validate-inputs', 'run-all'];
       
       for (const cmd of commands) {
         const result = await toolHandler.executeTool('get_cli_command_help', {
@@ -543,11 +545,12 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
         });
 
         expect(result).toBeDefined();
-        expect(result.command).toBe(cmd);
-        // Some commands may not have docs - that's OK
+        // command field should be the canonical name (run-all resolves to run)
+        expect(result.command).toBeDefined();
+        // Structured commands should have description and usage
         if (!result.error) {
-          expect(result.title).toBeDefined();
-          expect(result.content).toBeDefined();
+          expect(result.description).toBeDefined();
+          expect(result.usage).toBeDefined();
         }
       }
     });
@@ -558,7 +561,9 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
       });
 
       expect(result).toBeDefined();
-      expect(result.command).toBe('run-all');
+      // run-all resolves to run command
+      expect(result.command).toBe('run');
+      expect(result.aliases).toContain('run-all');
     });
 
     it('should handle command with uppercase', async () => {
@@ -567,8 +572,72 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
       });
 
       expect(result).toBeDefined();
-      expect(result.command).toBe('PLAN');
-      // May normalize or not find - either is acceptable
+      // Should normalize to lowercase
+      expect(result.command).toBe('plan');
+    });
+
+    it('should resolve hclfmt alias to hcl fmt', async () => {
+      const result = await toolHandler.executeTool('get_cli_command_help', {
+        command: 'hclfmt'
+      });
+
+      expect(result).toBeDefined();
+      expect(result.command).toBe('hcl fmt');
+      expect(result.aliases).toContain('hclfmt');
+    });
+
+    it('should return comprehensive options for run command', async () => {
+      const result = await toolHandler.executeTool('get_cli_command_help', {
+        command: 'run'
+      });
+
+      expect(result).toBeDefined();
+      expect(result.command).toBe('run');
+      expect(result.options).toBeDefined();
+      expect(result.options.length).toBeGreaterThan(10);
+      
+      const flagNames = result.options.map((o: any) => o.flag);
+      expect(flagNames).toContain('--all');
+      expect(flagNames).toContain('--parallelism');
+    });
+
+    it('should provide formatted markdown help', async () => {
+      const result = await toolHandler.executeTool('get_cli_command_help', {
+        command: 'plan'
+      });
+
+      expect(result.formattedHelp).toBeDefined();
+      expect(result.formattedHelp).toContain('# plan');
+      expect(result.formattedHelp).toContain('## Usage');
+      expect(result.formattedHelp).toContain('```bash');
+    });
+  });
+
+  describe('List CLI Commands Edge Cases', () => {
+    it('should list all command categories', async () => {
+      const result = await toolHandler.executeTool('list_cli_commands', {});
+
+      expect(result.categories).toBeDefined();
+      expect(result.totalCommands).toBeGreaterThan(15);
+    });
+
+    it('should filter by category', async () => {
+      const result = await toolHandler.executeTool('list_cli_commands', {
+        category: 'backend'
+      });
+
+      expect(result.commands).toBeDefined();
+      const names = result.commands.map((c: any) => c.name);
+      expect(names).toContain('backend bootstrap');
+    });
+
+    it('should search commands', async () => {
+      const result = await toolHandler.executeTool('list_cli_commands', {
+        search: 'format'
+      });
+
+      expect(result.results).toBeDefined();
+      expect(result.results.length).toBeGreaterThan(0);
     });
   });
 

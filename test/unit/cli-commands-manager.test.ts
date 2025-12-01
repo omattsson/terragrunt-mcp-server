@@ -1,0 +1,591 @@
+/**
+ * Unit tests for CLICommandsManager
+ * 
+ * Tests for the CLI command help documentation feature (Issue #101)
+ */
+
+import { describe, it, expect, beforeEach } from 'vitest';
+import { CLICommandsManager } from '../../src/terragrunt/cli-commands.js';
+import type { CLICommand, CLICommandCategory } from '../../src/types/cli-commands.js';
+
+describe('CLICommandsManager', () => {
+    let manager: CLICommandsManager;
+
+    beforeEach(() => {
+        manager = new CLICommandsManager();
+    });
+
+    describe('getCommand', () => {
+        describe('exact name matching', () => {
+            it('should get command by exact name', () => {
+                const cmd = manager.getCommand('run');
+                expect(cmd).not.toBeNull();
+                expect(cmd?.name).toBe('run');
+                expect(cmd?.category).toBe('main');
+            });
+
+            it('should get plan command', () => {
+                const cmd = manager.getCommand('plan');
+                expect(cmd).not.toBeNull();
+                expect(cmd?.name).toBe('plan');
+                expect(cmd?.category).toBe('shortcut');
+            });
+
+            it('should get apply command', () => {
+                const cmd = manager.getCommand('apply');
+                expect(cmd).not.toBeNull();
+                expect(cmd?.name).toBe('apply');
+                expect(cmd?.description).toContain('terraform apply');
+            });
+
+            it('should get destroy command', () => {
+                const cmd = manager.getCommand('destroy');
+                expect(cmd).not.toBeNull();
+                expect(cmd?.name).toBe('destroy');
+                expect(cmd?.notes).toBeDefined();
+                expect(cmd?.notes?.some(n => n.includes('Destructive'))).toBe(true);
+            });
+
+            it('should get hcl fmt command', () => {
+                const cmd = manager.getCommand('hcl fmt');
+                expect(cmd).not.toBeNull();
+                expect(cmd?.name).toBe('hcl fmt');
+                expect(cmd?.category).toBe('configuration');
+            });
+
+            it('should get validate-inputs command', () => {
+                const cmd = manager.getCommand('validate-inputs');
+                expect(cmd).not.toBeNull();
+                expect(cmd?.name).toBe('validate-inputs');
+            });
+
+            it('should be case-insensitive', () => {
+                const cmd1 = manager.getCommand('RUN');
+                const cmd2 = manager.getCommand('Run');
+                const cmd3 = manager.getCommand('run');
+                
+                expect(cmd1?.name).toBe('run');
+                expect(cmd2?.name).toBe('run');
+                expect(cmd3?.name).toBe('run');
+            });
+
+            it('should handle whitespace normalization', () => {
+                const cmd = manager.getCommand('  hcl   fmt  ');
+                expect(cmd?.name).toBe('hcl fmt');
+            });
+
+            it('should return null for unknown command', () => {
+                const cmd = manager.getCommand('nonexistent-command');
+                expect(cmd).toBeNull();
+            });
+        });
+
+        describe('alias resolution', () => {
+            it('should resolve run-all alias to run command', () => {
+                const cmd = manager.getCommand('run-all');
+                expect(cmd).not.toBeNull();
+                expect(cmd?.name).toBe('run');
+                expect(cmd?.aliases).toContain('run-all');
+            });
+
+            it('should resolve hclfmt alias to hcl fmt command', () => {
+                const cmd = manager.getCommand('hclfmt');
+                expect(cmd).not.toBeNull();
+                expect(cmd?.name).toBe('hcl fmt');
+                expect(cmd?.aliases).toContain('hclfmt');
+            });
+
+            it('should resolve fmt alias to hcl fmt command', () => {
+                const cmd = manager.getCommand('fmt');
+                expect(cmd).not.toBeNull();
+                expect(cmd?.name).toBe('hcl fmt');
+            });
+
+            it('should resolve graph alias to dag graph command', () => {
+                const cmd = manager.getCommand('graph');
+                expect(cmd).not.toBeNull();
+                expect(cmd?.name).toBe('dag graph');
+            });
+
+            it('should resolve bootstrap alias to backend bootstrap', () => {
+                const cmd = manager.getCommand('bootstrap');
+                expect(cmd).not.toBeNull();
+                expect(cmd?.name).toBe('backend bootstrap');
+            });
+
+            it('should resolve hclvalidate alias to hcl validate', () => {
+                const cmd = manager.getCommand('hclvalidate');
+                expect(cmd).not.toBeNull();
+                expect(cmd?.name).toBe('hcl validate');
+            });
+
+            it('should resolve render-json alias to render', () => {
+                const cmd = manager.getCommand('render-json');
+                expect(cmd).not.toBeNull();
+                expect(cmd?.name).toBe('render');
+            });
+        });
+    });
+
+    describe('searchCommands', () => {
+        it('should find exact matches with highest score', () => {
+            const results = manager.searchCommands('plan');
+            expect(results.length).toBeGreaterThan(0);
+            expect(results[0].command.name).toBe('plan');
+            expect(results[0].score).toBe(1.0);
+            expect(results[0].matchType).toBe('exact');
+        });
+
+        it('should find alias matches', () => {
+            const results = manager.searchCommands('run-all');
+            expect(results.length).toBeGreaterThan(0);
+            expect(results[0].command.name).toBe('run');
+            expect(results[0].matchType).toBe('alias');
+        });
+
+        it('should find partial matches in command names', () => {
+            const results = manager.searchCommands('validate');
+            expect(results.length).toBeGreaterThan(0);
+            // Should find validate-inputs, hcl validate, etc.
+            const names = results.map(r => r.command.name);
+            expect(names).toContain('validate-inputs');
+            expect(names).toContain('hcl validate');
+        });
+
+        it('should find fuzzy matches in descriptions', () => {
+            const results = manager.searchCommands('format');
+            expect(results.length).toBeGreaterThan(0);
+            // hcl fmt description mentions "Format"
+            const names = results.map(r => r.command.name);
+            expect(names).toContain('hcl fmt');
+        });
+
+        it('should sort results by score descending', () => {
+            const results = manager.searchCommands('apply');
+            for (let i = 1; i < results.length; i++) {
+                expect(results[i - 1].score).toBeGreaterThanOrEqual(results[i].score);
+            }
+        });
+
+        it('should return empty array for no matches', () => {
+            const results = manager.searchCommands('xyznonexistent123');
+            expect(results).toEqual([]);
+        });
+
+        it('should deduplicate results', () => {
+            const results = manager.searchCommands('run');
+            const names = results.map(r => r.command.name);
+            const uniqueNames = [...new Set(names)];
+            expect(names.length).toBe(uniqueNames.length);
+        });
+    });
+
+    describe('getAllCommands', () => {
+        it('should return all defined commands', () => {
+            const commands = manager.getAllCommands();
+            expect(commands.length).toBeGreaterThan(15);
+        });
+
+        it('should include all major command categories', () => {
+            const commands = manager.getAllCommands();
+            const categories = new Set(commands.map(c => c.category));
+            
+            expect(categories.has('main')).toBe(true);
+            expect(categories.has('shortcut')).toBe(true);
+            expect(categories.has('configuration')).toBe(true);
+            expect(categories.has('backend')).toBe(true);
+        });
+
+        it('should include required fields for all commands', () => {
+            const commands = manager.getAllCommands();
+            
+            for (const cmd of commands) {
+                expect(cmd.name).toBeDefined();
+                expect(cmd.name.length).toBeGreaterThan(0);
+                expect(cmd.description).toBeDefined();
+                expect(cmd.description.length).toBeGreaterThan(0);
+                expect(cmd.usage).toBeDefined();
+                expect(cmd.category).toBeDefined();
+                expect(Array.isArray(cmd.aliases)).toBe(true);
+                expect(Array.isArray(cmd.options)).toBe(true);
+                expect(Array.isArray(cmd.examples)).toBe(true);
+                expect(Array.isArray(cmd.relatedCommands)).toBe(true);
+            }
+        });
+    });
+
+    describe('getCommandsByCategory', () => {
+        it('should return main commands', () => {
+            const commands = manager.getCommandsByCategory('main');
+            expect(commands.length).toBeGreaterThan(0);
+            expect(commands.every(c => c.category === 'main')).toBe(true);
+            
+            const names = commands.map(c => c.name);
+            expect(names).toContain('run');
+            expect(names).toContain('exec');
+        });
+
+        it('should return shortcut commands', () => {
+            const commands = manager.getCommandsByCategory('shortcut');
+            expect(commands.length).toBeGreaterThan(0);
+            
+            const names = commands.map(c => c.name);
+            expect(names).toContain('plan');
+            expect(names).toContain('apply');
+            expect(names).toContain('destroy');
+            expect(names).toContain('init');
+            expect(names).toContain('output');
+        });
+
+        it('should return configuration commands', () => {
+            const commands = manager.getCommandsByCategory('configuration');
+            expect(commands.length).toBeGreaterThan(0);
+            
+            const names = commands.map(c => c.name);
+            expect(names).toContain('hcl fmt');
+            expect(names).toContain('hcl validate');
+            expect(names).toContain('render');
+            expect(names).toContain('validate-inputs');
+        });
+
+        it('should return backend commands', () => {
+            const commands = manager.getCommandsByCategory('backend');
+            expect(commands.length).toBeGreaterThan(0);
+            
+            const names = commands.map(c => c.name);
+            expect(names).toContain('backend bootstrap');
+            expect(names).toContain('backend delete');
+            expect(names).toContain('backend migrate');
+        });
+
+        it('should return stack commands', () => {
+            const commands = manager.getCommandsByCategory('stack');
+            expect(commands.length).toBeGreaterThan(0);
+            
+            const names = commands.map(c => c.name);
+            expect(names).toContain('stack run');
+            expect(names).toContain('stack output');
+        });
+
+        it('should return catalog commands', () => {
+            const commands = manager.getCommandsByCategory('catalog');
+            expect(commands.length).toBeGreaterThan(0);
+            
+            const names = commands.map(c => c.name);
+            expect(names).toContain('catalog');
+            expect(names).toContain('scaffold');
+        });
+
+        it('should return discovery commands', () => {
+            const commands = manager.getCommandsByCategory('discovery');
+            expect(commands.length).toBeGreaterThan(0);
+            
+            const names = commands.map(c => c.name);
+            expect(names).toContain('find');
+            expect(names).toContain('list');
+        });
+
+        it('should return empty array for invalid category', () => {
+            // TypeScript should catch this, but testing runtime behavior
+            const commands = manager.getCommandsByCategory('invalid' as CLICommandCategory);
+            expect(commands).toEqual([]);
+        });
+    });
+
+    describe('getCategories', () => {
+        it('should return all categories with commands', () => {
+            const categories = manager.getCategories();
+            expect(categories.length).toBeGreaterThan(0);
+        });
+
+        it('should include category metadata', () => {
+            const categories = manager.getCategories();
+            
+            for (const cat of categories) {
+                expect(cat.id).toBeDefined();
+                expect(cat.name).toBeDefined();
+                expect(cat.description).toBeDefined();
+                expect(Array.isArray(cat.commands)).toBe(true);
+                expect(cat.commands.length).toBeGreaterThan(0);
+            }
+        });
+
+        it('should have descriptive category names', () => {
+            const categories = manager.getCategories();
+            const names = categories.map(c => c.name);
+            
+            expect(names).toContain('Main Commands');
+            expect(names).toContain('Shortcut Commands');
+            expect(names).toContain('Configuration Commands');
+        });
+
+        it('should list command names in each category', () => {
+            const categories = manager.getCategories();
+            const mainCategory = categories.find(c => c.id === 'main');
+            
+            expect(mainCategory).toBeDefined();
+            expect(mainCategory?.commands).toContain('run');
+        });
+    });
+
+    describe('formatCommandHelp', () => {
+        it('should format command as markdown', () => {
+            const cmd = manager.getCommand('plan');
+            expect(cmd).not.toBeNull();
+            
+            const help = manager.formatCommandHelp(cmd!);
+            
+            expect(help).toContain('# plan');
+            expect(help).toContain('## Usage');
+            expect(help).toContain('```bash');
+            expect(help).toContain('terragrunt plan');
+        });
+
+        it('should include options section', () => {
+            const cmd = manager.getCommand('run');
+            expect(cmd).not.toBeNull();
+            
+            const help = manager.formatCommandHelp(cmd!);
+            
+            expect(help).toContain('## Options');
+            expect(help).toContain('--all');
+            expect(help).toContain('--parallelism');
+        });
+
+        it('should include examples section', () => {
+            const cmd = manager.getCommand('hcl fmt');
+            expect(cmd).not.toBeNull();
+            
+            const help = manager.formatCommandHelp(cmd!);
+            
+            expect(help).toContain('## Examples');
+            expect(help).toContain('terragrunt hcl fmt');
+        });
+
+        it('should include aliases section when aliases exist', () => {
+            const cmd = manager.getCommand('hcl fmt');
+            expect(cmd).not.toBeNull();
+            
+            const help = manager.formatCommandHelp(cmd!);
+            
+            expect(help).toContain('## Aliases');
+            expect(help).toContain('hclfmt');
+        });
+
+        it('should include related commands', () => {
+            const cmd = manager.getCommand('plan');
+            expect(cmd).not.toBeNull();
+            
+            const help = manager.formatCommandHelp(cmd!);
+            
+            expect(help).toContain('## Related Commands');
+            expect(help).toContain('apply');
+        });
+
+        it('should include notes when present', () => {
+            const cmd = manager.getCommand('destroy');
+            expect(cmd).not.toBeNull();
+            
+            const help = manager.formatCommandHelp(cmd!);
+            
+            expect(help).toContain('## Notes');
+            expect(help).toContain('Destructive');
+        });
+
+        it('should include documentation URL when present', () => {
+            const cmd = manager.getCommand('run');
+            expect(cmd).not.toBeNull();
+            
+            const help = manager.formatCommandHelp(cmd!);
+            
+            expect(help).toContain('## Documentation');
+            expect(help).toContain('terragrunt.gruntwork.io');
+        });
+    });
+
+    describe('command data completeness', () => {
+        describe('run command', () => {
+            let cmd: CLICommand | null;
+
+            beforeEach(() => {
+                cmd = manager.getCommand('run');
+            });
+
+            it('should have comprehensive options', () => {
+                expect(cmd?.options.length).toBeGreaterThan(10);
+                
+                const flagNames = cmd?.options.map(o => o.flag);
+                expect(flagNames).toContain('--all');
+                expect(flagNames).toContain('--graph');
+                expect(flagNames).toContain('--filter');
+                expect(flagNames).toContain('--parallelism');
+                expect(flagNames).toContain('--terragrunt-config');
+            });
+
+            it('should have --all option with correct properties', () => {
+                const allOption = cmd?.options.find(o => o.flag === '--all');
+                expect(allOption).toBeDefined();
+                expect(allOption?.shortFlag).toBe('-a');
+                expect(allOption?.type).toBe('boolean');
+                expect(allOption?.description).toContain('all modules');
+            });
+
+            it('should have multiple examples', () => {
+                expect(cmd?.examples.length).toBeGreaterThan(3);
+            });
+
+            it('should have run-all alias', () => {
+                expect(cmd?.aliases).toContain('run-all');
+            });
+        });
+
+        describe('hcl fmt command', () => {
+            let cmd: CLICommand | null;
+
+            beforeEach(() => {
+                cmd = manager.getCommand('hcl fmt');
+            });
+
+            it('should have formatting options', () => {
+                const flagNames = cmd?.options.map(o => o.flag);
+                expect(flagNames).toContain('--check');
+                expect(flagNames).toContain('--diff');
+                expect(flagNames).toContain('--write');
+            });
+
+            it('should have hclfmt and fmt aliases', () => {
+                expect(cmd?.aliases).toContain('hclfmt');
+                expect(cmd?.aliases).toContain('fmt');
+            });
+
+            it('should include CI/CD usage note', () => {
+                expect(cmd?.notes?.some(n => n.includes('CI') || n.includes('pre-commit'))).toBe(true);
+            });
+        });
+
+        describe('validate-inputs command', () => {
+            let cmd: CLICommand | null;
+
+            beforeEach(() => {
+                cmd = manager.getCommand('validate-inputs');
+            });
+
+            it('should exist', () => {
+                expect(cmd).not.toBeNull();
+            });
+
+            it('should be in configuration category', () => {
+                expect(cmd?.category).toBe('configuration');
+            });
+
+            it('should have validation options', () => {
+                const flagNames = cmd?.options.map(o => o.flag);
+                expect(flagNames).toContain('--strict');
+            });
+
+            it('should have related commands', () => {
+                expect(cmd?.relatedCommands).toContain('hcl validate');
+                expect(cmd?.relatedCommands).toContain('plan');
+            });
+        });
+
+        describe('plan command', () => {
+            let cmd: CLICommand | null;
+
+            beforeEach(() => {
+                cmd = manager.getCommand('plan');
+            });
+
+            it('should be a shortcut command', () => {
+                expect(cmd?.category).toBe('shortcut');
+            });
+
+            it('should have terraform-style options', () => {
+                const flagNames = cmd?.options.map(o => o.flag);
+                expect(flagNames).toContain('-out');
+                expect(flagNames).toContain('-target');
+                expect(flagNames).toContain('-var');
+            });
+
+            it('should mention equivalence to run -- plan', () => {
+                expect(cmd?.notes?.some(n => n.includes('run -- plan'))).toBe(true);
+            });
+        });
+
+        describe('backend bootstrap command', () => {
+            let cmd: CLICommand | null;
+
+            beforeEach(() => {
+                cmd = manager.getCommand('backend bootstrap');
+            });
+
+            it('should exist with bootstrap alias', () => {
+                expect(cmd).not.toBeNull();
+                expect(cmd?.aliases).toContain('bootstrap');
+            });
+
+            it('should describe backend creation', () => {
+                expect(cmd?.description).toContain('remote state');
+            });
+
+            it('should relate to other backend commands', () => {
+                expect(cmd?.relatedCommands).toContain('backend delete');
+                expect(cmd?.relatedCommands).toContain('backend migrate');
+            });
+        });
+    });
+
+    describe('option data completeness', () => {
+        it('should have required fields for all options', () => {
+            const commands = manager.getAllCommands();
+            
+            for (const cmd of commands) {
+                for (const opt of cmd.options) {
+                    expect(opt.flag).toBeDefined();
+                    expect(opt.flag.startsWith('-')).toBe(true);
+                    expect(opt.type).toBeDefined();
+                    expect(['boolean', 'string', 'integer', 'list', 'path']).toContain(opt.type);
+                    expect(opt.description).toBeDefined();
+                    expect(opt.description.length).toBeGreaterThan(0);
+                }
+            }
+        });
+
+        it('should have consistent short flag format', () => {
+            const commands = manager.getAllCommands();
+            
+            for (const cmd of commands) {
+                for (const opt of cmd.options) {
+                    if (opt.shortFlag) {
+                        expect(opt.shortFlag.startsWith('-')).toBe(true);
+                        expect(opt.shortFlag.length).toBe(2); // e.g., "-a"
+                    }
+                }
+            }
+        });
+    });
+
+    describe('example data completeness', () => {
+        it('should have required fields for all examples', () => {
+            const commands = manager.getAllCommands();
+            
+            for (const cmd of commands) {
+                for (const ex of cmd.examples) {
+                    expect(ex.description).toBeDefined();
+                    expect(ex.description.length).toBeGreaterThan(0);
+                    expect(ex.command).toBeDefined();
+                    expect(ex.command.length).toBeGreaterThan(0);
+                    expect(ex.command).toContain('terragrunt');
+                }
+            }
+        });
+
+        it('should have at least one example per command', () => {
+            const commands = manager.getAllCommands();
+            
+            for (const cmd of commands) {
+                expect(cmd.examples.length).toBeGreaterThan(0);
+            }
+        });
+    });
+});

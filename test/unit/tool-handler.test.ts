@@ -370,8 +370,9 @@ describe('ToolHandler', () => {
       });
       
       expect(result.command).toBe('plan');
-      expect(result.title).toBeDefined();
-      expect(result.content).toBeDefined();
+      expect(result.description).toBeDefined();
+      expect(result.usage).toBeDefined();
+      expect(result.formattedHelp).toBeDefined();
     });
 
     it('should return error for invalid command', async () => {
@@ -382,15 +383,44 @@ describe('ToolHandler', () => {
       });
       
       expect(result.error).toBeDefined();
-      expect(result.suggestion).toBeDefined();
+      expect(result.hint).toBeDefined();
+      expect(result.availableCommands).toBeDefined();
     });
 
-    it('should include URL in response', async () => {
+    it('should include documentation URL in response', async () => {
       const result = await toolHandler.executeTool('get_cli_command_help', {
         command: 'plan'
       });
       
-      expect(result.url).toBeDefined();
+      expect(result.documentationUrl).toBeDefined();
+    });
+
+    it('should resolve command aliases', async () => {
+      const result = await toolHandler.executeTool('get_cli_command_help', {
+        command: 'run-all'
+      });
+      
+      expect(result.command).toBe('run');
+      expect(result.aliases).toContain('run-all');
+    });
+
+    it('should include examples in response', async () => {
+      const result = await toolHandler.executeTool('get_cli_command_help', {
+        command: 'plan'
+      });
+      
+      expect(result.examples).toBeDefined();
+      expect(result.examples.length).toBeGreaterThan(0);
+    });
+
+    it('should include options in response', async () => {
+      const result = await toolHandler.executeTool('get_cli_command_help', {
+        command: 'run'
+      });
+      
+      expect(result.options).toBeDefined();
+      expect(result.options.length).toBeGreaterThan(0);
+      expect(result.options.some((o: any) => o.flag === '--all')).toBe(true);
     });
   });
 
