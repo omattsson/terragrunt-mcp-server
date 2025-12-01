@@ -58,7 +58,7 @@ A Model Context Protocol (MCP) server that provides comprehensive Terragrunt doc
 ## Recent Updates
 
 - 🔧 Advanced backend templates with KMS, cross-account, MSI support
-- 📖 CLI command help documentation (23 commands)
+- 📖 CLI command help documentation (24 commands)
 - ✨ 6 specialized documentation tools (v0.2.0)
 - 🔄 Multi-tier caching with network resilience
 - 🐳 Docker support with docker-compose

@@ -46,7 +46,7 @@ Or specify explicitly via the API:
 
 {
   "useCase": "remote_state", 
-  "backend": "s3-advanced",  // Uses aws-s3-backend-advanced
+  "backend": "aws-s3-backend-advanced",  // Uses aws-s3-backend-advanced
   "options": { ... }
 }
 ```
@@ -427,16 +427,16 @@ remote_state {
 
 2. **Switch template** - Use the advanced backend variant:
    ```
-   backend: "s3-advanced"   # Instead of "s3"
-   backend: "azurerm-advanced"  # Instead of "azurerm"
-   backend: "gcs-advanced"  # Instead of "gcs"
+   backend: "aws-s3-backend-advanced"   # Instead of "s3"
+   backend: "azure-blob-backend-advanced"  # Instead of "azurerm"
+   backend: "gcp-gcs-backend-advanced"  # Instead of "gcs"
    ```
 
 3. **Add new options** - Include only the options you need:
    ```json
    {
      "useCase": "remote_state",
-     "backend": "s3-advanced",
+     "backend": "aws-s3-backend-advanced",
      "options": {
        "bucket": "my-state",
        "key": "${path_relative_to_include()}/terraform.tfstate",
