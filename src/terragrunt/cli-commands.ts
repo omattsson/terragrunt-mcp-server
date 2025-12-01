@@ -1486,5 +1486,3 @@ and configuring the backend.`,
   }
 }
 
-// Export singleton instance
-export const cliCommandsManager = new CLICommandsManager();
