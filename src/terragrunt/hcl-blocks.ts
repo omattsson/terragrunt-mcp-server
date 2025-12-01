@@ -1043,11 +1043,16 @@ export class HCLBlocksManager {
       }
 
       // Alias match
+      let aliasMatched = false;
       for (const [alias, target] of this.aliases) {
         if (alias.includes(normalized) && target === block.name) {
           results.push({ block, score: 0.85, matchType: 'alias' });
+          aliasMatched = true;
           break;
         }
+      }
+      if (aliasMatched) {
+        continue;
       }
 
       // Description match

@@ -861,7 +861,15 @@ export class ToolHandler {
                         required: attr.required,
                         description: attr.description,
                         defaultValue: attr.defaultValue,
-                        example: attr.example
+                        example: attr.example,
+                        validValues: attr.validValues,
+                        nestedAttributes: attr.nestedAttributes?.map(nested => ({
+                            name: nested.name,
+                            type: nested.type,
+                            required: nested.required,
+                            description: nested.description,
+                            example: nested.example
+                        }))
                     })),
                     examples: bestMatch.block.examples.map(ex => ({
                         description: ex.description,
@@ -932,7 +940,7 @@ export class ToolHandler {
             exampleUsage: [
                 { description: 'Get terraform block docs', params: { config: 'terraform' } },
                 { description: 'List all blocks', params: { listBlocks: true } },
-                { description: 'List hooks category', params: { listBlocks: true, category: 'hooks' } }
+                { description: 'List core category', params: { listBlocks: true, category: 'core' } }
             ]
         };
     }
