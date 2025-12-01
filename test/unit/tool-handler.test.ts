@@ -187,11 +187,12 @@ describe('ToolHandler', () => {
       expect(tool?.inputSchema.required).toContain('command');
     });
 
-    it('should require config parameter for get_hcl_config_reference', () => {
+    it('should not require any parameters for get_hcl_config_reference (supports listBlocks mode)', () => {
       const tools = toolHandler.getAvailableTools();
       const tool = tools.find(t => t.name === 'get_hcl_config_reference');
       
-      expect(tool?.inputSchema.required).toContain('config');
+      // config is optional - can use listBlocks=true instead
+      expect(tool?.inputSchema.required).toEqual([]);
     });
 
     it('should require topic parameter for get_code_examples', () => {
@@ -425,40 +426,66 @@ describe('ToolHandler', () => {
   });
 
   describe('Tool Execution - get_hcl_config_reference', () => {
-    it('should return docs for valid config', async () => {
+    it('should return structured docs for valid config from HCLBlocksManager', async () => {
       const result = await toolHandler.executeTool('get_hcl_config_reference', {
         config: 'terraform'
       });
       
       expect(result.config).toBe('terraform');
-      expect(result.results).toBeDefined();
+      expect(result.displayName).toBeDefined();
+      expect(result.description).toBeDefined();
+      expect(result.attributes).toBeDefined();
+      expect(result.examples).toBeDefined();
+      expect(result.markdown).toBeDefined();
     });
 
-    it('should return error for invalid config', async () => {
+    it('should return error for completely unknown config', async () => {
       mockDocsManager.getHclConfigReference.mockResolvedValueOnce([]);
 
       const result = await toolHandler.executeTool('get_hcl_config_reference', {
-        config: 'nonexistent'
+        config: 'xyznonexistent123abc'
       });
       
       expect(result.error).toBeDefined();
       expect(result.suggestion).toBeDefined();
     });
 
-    it('should truncate long content', async () => {
-      const longDoc = {
-        ...mockDocs[0],
-        content: 'a'.repeat(1500)
-      };
-      mockDocsManager.getHclConfigReference.mockResolvedValueOnce([longDoc]);
-
+    it('should list all blocks when listBlocks is true', async () => {
       const result = await toolHandler.executeTool('get_hcl_config_reference', {
-        config: 'test'
+        listBlocks: true
       });
       
-      if (result.results && result.results.length > 0) {
-        expect(result.results[0].content.length).toBeLessThanOrEqual(803);
-      }
+      expect(result.blocks).toBeDefined();
+      expect(result.categories).toBeDefined();
+      expect(result.totalBlocks).toBeGreaterThan(10);
+    });
+
+    it('should filter blocks by category', async () => {
+      const result = await toolHandler.executeTool('get_hcl_config_reference', {
+        listBlocks: true,
+        category: 'core'
+      });
+      
+      expect(result.blocks).toBeDefined();
+      expect(result.blocks.every((b: any) => b.category === 'core')).toBe(true);
+    });
+
+    it('should return summary when no parameters provided', async () => {
+      const result = await toolHandler.executeTool('get_hcl_config_reference', {});
+      
+      expect(result.message).toBeDefined();
+      expect(result.categories).toBeDefined();
+      expect(result.exampleUsage).toBeDefined();
+    });
+
+    it('should handle search and return best match', async () => {
+      const result = await toolHandler.executeTool('get_hcl_config_reference', {
+        config: 'remote'
+      });
+      
+      expect(result.config).toBe('remote_state');
+      expect(result.matchInfo).toBeDefined();
+      expect(result.matchInfo.matchType).toBe('name');
     });
   });
 

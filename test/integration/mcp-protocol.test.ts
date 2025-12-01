@@ -490,9 +490,22 @@ describe('MCP Protocol Compliance', () => {
       expect(result.config).toBe('terraform');
       
       if (!result.error) {
-        expect(result.results).toBeDefined();
-        expect(Array.isArray(result.results)).toBe(true);
+        // New structured response from HCLBlocksManager
+        expect(result.displayName).toBeDefined();
+        expect(result.attributes).toBeDefined();
+        expect(result.examples).toBeDefined();
+        expect(result.markdown).toBeDefined();
       }
+    });
+
+    it('should return block list when listBlocks is true', async () => {
+      const result = await toolHandler.executeTool('get_hcl_config_reference', {
+        listBlocks: true
+      });
+
+      expect(result.blocks).toBeDefined();
+      expect(Array.isArray(result.blocks)).toBe(true);
+      expect(result.totalBlocks).toBeGreaterThan(10);
     });
 
     it('should return structured response for code examples tool', async () => {
