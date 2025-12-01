@@ -149,14 +149,11 @@ const ADVANCED_EXAMPLES: AdvancedExample[] = [
     run_on_error = true
   }
 
-  # Error notification hook
+  # Error notification hook - runs only when command fails
   after_hook "notify_on_failure" {
     commands     = ["apply"]
-    execute      = [
-      "bash", "-c",
-      "if [ $? -ne 0 ]; then ./scripts/alert-failure.sh '\${path_relative_to_include()}'; fi"
-    ]
-    run_on_error = true
+    execute      = ["./scripts/alert-failure.sh", "\${path_relative_to_include()}"]
+    run_on_error = true  # Only runs on error, no need to check exit code
   }
 
   # State backup before risky operations
