@@ -13,6 +13,7 @@ import { FileWriter } from '../terragrunt/file-writer.js';
 import { ErrorPatternMatcher } from '../terragrunt/error-patterns.js';
 import { CLICommandsManager } from '../terragrunt/cli-commands.js';
 import { HCLBlocksManager } from '../terragrunt/hcl-blocks.js';
+import type { HCLBlock } from '../types/hcl-blocks.js';
 
 export interface Tool {
     name: string;
@@ -812,36 +813,7 @@ export class ToolHandler {
             
             if (block) {
                 // Return comprehensive structured documentation
-                return {
-                    config: block.name,
-                    displayName: block.displayName,
-                    description: block.description,
-                    category: block.category,
-                    syntax: block.syntax,
-                    attributes: block.attributes.map(attr => ({
-                        name: attr.name,
-                        type: attr.type,
-                        required: attr.required,
-                        description: attr.description,
-                        defaultValue: attr.defaultValue,
-                        example: attr.example,
-                        validValues: attr.validValues,
-                        nestedAttributes: attr.nestedAttributes?.map(nested => ({
-                            name: nested.name,
-                            type: nested.type,
-                            required: nested.required,
-                            description: nested.description,
-                            example: nested.example
-                        }))
-                    })),
-                    examples: block.examples.map(ex => ({
-                        description: ex.description,
-                        code: ex.code
-                    })),
-                    relatedBlocks: block.relatedBlocks,
-                    docsUrl: block.docsUrl,
-                    markdown: this.hclBlocksManager.formatBlockAsMarkdown(block)
-                };
+                return this.formatBlockResponse(block);
             }
 
             // Try search if exact match not found
@@ -849,45 +821,17 @@ export class ToolHandler {
             if (searchResults.length > 0) {
                 // Return best match with suggestions
                 const bestMatch = searchResults[0];
-                const response: any = {
-                    config: bestMatch.block.name,
-                    displayName: bestMatch.block.displayName,
-                    description: bestMatch.block.description,
-                    category: bestMatch.block.category,
-                    syntax: bestMatch.block.syntax,
-                    attributes: bestMatch.block.attributes.map(attr => ({
-                        name: attr.name,
-                        type: attr.type,
-                        required: attr.required,
-                        description: attr.description,
-                        defaultValue: attr.defaultValue,
-                        example: attr.example,
-                        validValues: attr.validValues,
-                        nestedAttributes: attr.nestedAttributes?.map(nested => ({
-                            name: nested.name,
-                            type: nested.type,
-                            required: nested.required,
-                            description: nested.description,
-                            example: nested.example
-                        }))
-                    })),
-                    examples: bestMatch.block.examples.map(ex => ({
-                        description: ex.description,
-                        code: ex.code
-                    })),
-                    relatedBlocks: bestMatch.block.relatedBlocks,
-                    docsUrl: bestMatch.block.docsUrl,
+                const response = this.formatBlockResponse(bestMatch.block, {
                     matchInfo: {
                         matchType: bestMatch.matchType,
                         score: bestMatch.score,
                         searchQuery: config
-                    },
-                    markdown: this.hclBlocksManager.formatBlockAsMarkdown(bestMatch.block)
-                };
+                    }
+                });
 
                 // Add suggestions if there are other close matches
                 if (searchResults.length > 1) {
-                    response.otherMatches = searchResults.slice(1, 4).map(r => ({
+                    (response as any).otherMatches = searchResults.slice(1, 4).map(r => ({
                         name: r.block.name,
                         displayName: r.block.displayName,
                         score: r.score,
@@ -943,6 +887,56 @@ export class ToolHandler {
                 { description: 'List core category', params: { listBlocks: true, category: 'core' } }
             ]
         };
+    }
+
+    /**
+     * Format an HCL block into a comprehensive response object.
+     * Centralizes the formatting logic to avoid code duplication between
+     * exact match and search match response paths.
+     */
+    private formatBlockResponse(
+        block: import('../types/hcl-blocks.js').HCLBlock,
+        additionalProps?: Record<string, unknown>
+    ): Record<string, unknown> {
+        const response: Record<string, unknown> = {
+            config: block.name,
+            displayName: block.displayName,
+            description: block.description,
+            category: block.category,
+            syntax: block.syntax,
+            attributes: block.attributes.map(attr => ({
+                name: attr.name,
+                type: attr.type,
+                required: attr.required,
+                description: attr.description,
+                defaultValue: attr.defaultValue,
+                example: attr.example,
+                validValues: attr.validValues,
+                nestedAttributes: attr.nestedAttributes?.map(nested => ({
+                    name: nested.name,
+                    type: nested.type,
+                    required: nested.required,
+                    description: nested.description,
+                    defaultValue: nested.defaultValue,
+                    example: nested.example,
+                    validValues: nested.validValues
+                }))
+            })),
+            examples: block.examples.map(ex => ({
+                description: ex.description,
+                code: ex.code
+            })),
+            relatedBlocks: block.relatedBlocks,
+            docsUrl: block.docsUrl,
+            markdown: this.hclBlocksManager.formatBlockAsMarkdown(block)
+        };
+
+        // Merge any additional properties (e.g., matchInfo, otherMatches)
+        if (additionalProps) {
+            Object.assign(response, additionalProps);
+        }
+
+        return response;
     }
 
     private async getCodeExamples(topic: string, limit: number = 5): Promise<any> {

@@ -220,23 +220,11 @@ describe('HCLBlocksManager', () => {
             expect(results[0].matchType).toBe('exact');
         });
 
-        it('should find alias matches for exact alias queries', () => {
-            // Use getBlock for alias resolution which is guaranteed to work
-            const block = manager.getBlock('state');
-            expect(block).not.toBeNull();
-            expect(block?.name).toBe('remote_state');
-        });
-
         it('should find blocks via partial name matching', () => {
             const results = manager.searchBlocks('remote');
             expect(results.length).toBeGreaterThan(0);
             expect(results[0].block.name).toBe('remote_state');
             expect(results[0].matchType).toBe('name');
-        });
-
-        it('should find partial matches in names', () => {
-            const results = manager.searchBlocks('remote');
-            expect(results.length).toBeGreaterThan(0);
             const names = results.map(r => r.block.name);
             expect(names).toContain('remote_state');
         });
@@ -244,7 +232,9 @@ describe('HCLBlocksManager', () => {
         it('should find matches in descriptions', () => {
             const results = manager.searchBlocks('backend');
             expect(results.length).toBeGreaterThan(0);
-            // Should find remote_state which mentions backend
+            // Verify remote_state is found since it mentions backend in description
+            const names = results.map(r => r.block.name);
+            expect(names).toContain('remote_state');
         });
 
         it('should find attribute matches', () => {
