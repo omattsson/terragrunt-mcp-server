@@ -195,11 +195,15 @@ describe('ToolHandler', () => {
       expect(tool?.inputSchema.required).toEqual([]);
     });
 
-    it('should require topic parameter for get_code_examples', () => {
+    it('should have optional topic parameter for get_code_examples (advanced mode)', () => {
       const tools = toolHandler.getAvailableTools();
       const tool = tools.find(t => t.name === 'get_code_examples');
       
-      expect(tool?.inputSchema.required).toContain('topic');
+      // topic is now optional - can use advanced mode without topic
+      expect(tool?.inputSchema.required).toEqual([]);
+      expect(tool?.inputSchema.properties.advanced).toBeDefined();
+      expect(tool?.inputSchema.properties.category).toBeDefined();
+      expect(tool?.inputSchema.properties.listCategories).toBeDefined();
     });
 
     it('should have no required parameters for get_terragrunt_sections', () => {
