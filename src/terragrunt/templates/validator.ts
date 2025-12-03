@@ -451,7 +451,7 @@ export class TemplateValidator {
   }
 
   /**
-   * Check if a template is deprecated and log a warning
+   * Check if a template is deprecated
    * @returns true if the template is deprecated
    */
   isDeprecated(template: ConfigTemplate): boolean {

@@ -42,9 +42,9 @@ export interface DeprecationInfo {
  * Compatibility requirements for a template
  */
 export interface CompatibilityInfo {
-  /** Minimum Terragrunt version required (semver constraint) */
+  /** Terragrunt version constraint (semver constraint) */
   terragruntVersion?: string;
-  /** Minimum Terraform version required (semver constraint) */
+  /** Terraform version constraint (semver constraint) */
   terraformVersion?: string;
 }
 
