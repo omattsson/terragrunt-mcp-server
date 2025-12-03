@@ -69,7 +69,7 @@
       "required": false,
       "description": "The Tenant ID of the Microsoft Entra ID principal. Required when using service principal authentication (with client_secret or client_certificate_path), OIDC authentication (use_oidc), and optionally with Azure AD authentication (use_azuread_auth). Can also be set via ARM_TENANT_ID environment variable.",
       "example": "00000000-0000-0000-0000-000000000000",
-      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+      "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
     },
     {
       "name": "subscription_id",
@@ -77,7 +77,7 @@
       "required": false,
       "description": "The Subscription ID of the storage account. Required for management plane authentication when using lookup_blob_endpoint or Access Key Lookup method. Can also be set via ARM_SUBSCRIPTION_ID environment variable.",
       "example": "00000000-0000-0000-0000-000000000000",
-      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+      "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
     },
     {
       "name": "resource_group_name",
@@ -156,7 +156,7 @@
       "required": false,
       "description": "The Client ID of the Microsoft Entra ID Service Principal, App Registration, or User Assigned Managed Identity. Required for OIDC, Client Secret, and Client Certificate authentication methods. Can also be set via ARM_CLIENT_ID environment variable.",
       "example": "00000000-0000-0000-0000-000000000000",
-      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+      "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
       "conflictsWith": ["access_key", "sas_token"]
     },
     {
@@ -238,14 +238,16 @@
       "type": "string",
       "required": false,
       "description": "The ID Token when authenticating using OpenID Connect. Only required for advanced scenarios or third party integrations. Can also be set via ARM_OIDC_TOKEN environment variable.",
-      "sensitive": true
+      "sensitive": true,
+      "conflictsWith": ["oidc_token_file_path"]
     },
     {
       "name": "oidc_token_file_path",
       "type": "string",
       "required": false,
       "description": "The path to a file containing an ID token when authenticating using OpenID Connect. Can also be set via ARM_OIDC_TOKEN_FILE_PATH environment variable.",
-      "example": "/path/to/oidc_token.txt"
+      "example": "/path/to/oidc_token.txt",
+      "conflictsWith": ["oidc_token"]
     },
     {
       "name": "ado_pipeline_service_connection_id",
@@ -253,7 +255,7 @@
       "required": false,
       "description": "The Azure DevOps Pipeline Service Connection ID required for OIDC authentication with Azure DevOps. Can also be set via ARM_ADO_PIPELINE_SERVICE_CONNECTION_ID or ARM_OIDC_AZURE_SERVICE_CONNECTION_ID environment variables.",
       "example": "00000000-0000-0000-0000-000000000000",
-      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+      "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
     }
   ]
 }

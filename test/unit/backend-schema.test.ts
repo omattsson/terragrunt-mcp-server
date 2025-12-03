@@ -834,7 +834,8 @@ describe('Real Azure Blob Schema File', () => {
       const attr = getAttributeByName(schema, attrName);
       expect(attr).toBeDefined();
       expect(attr?.pattern).toBeDefined();
-      expect(attr?.pattern).toContain('[0-9a-f]');
+      // GUID pattern should accept both uppercase and lowercase hex digits
+      expect(attr?.pattern).toContain('[0-9a-fA-F]');
     }
   });
 
