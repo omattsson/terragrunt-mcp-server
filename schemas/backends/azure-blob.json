@@ -67,7 +67,7 @@
       "name": "tenant_id",
       "type": "string",
       "required": false,
-      "description": "The Tenant ID of the Microsoft Entra ID principal. Required for Microsoft Entra ID authentication methods. Can also be set via ARM_TENANT_ID environment variable.",
+      "description": "The Tenant ID of the Microsoft Entra ID principal. Required when using service principal authentication (with client_secret or client_certificate_path), OIDC authentication (use_oidc), and optionally with Azure AD authentication (use_azuread_auth). Can also be set via ARM_TENANT_ID environment variable.",
       "example": "00000000-0000-0000-0000-000000000000",
       "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
     },
@@ -139,7 +139,7 @@
       "description": "The Access Key used to authenticate to the storage account data plane. Not recommended for new workloads - use Microsoft Entra ID authentication instead. Can also be set via ARM_ACCESS_KEY environment variable.",
       "sensitive": true,
       "example": "abcdefghijklmnopqrstuvwxyz0123456789...",
-      "conflictsWith": ["sas_token", "use_azuread_auth", "use_cli", "use_oidc", "use_msi", "use_aks_workload_identity", "client_id", "client_secret", "client_certificate_path"]
+      "conflictsWith": ["sas_token", "use_azuread_auth", "use_cli", "use_oidc", "use_msi", "use_aks_workload_identity", "client_id", "client_id_file_path", "client_secret", "client_secret_file_path", "client_certificate_path", "client_certificate"]
     },
     {
       "name": "sas_token",
@@ -148,7 +148,7 @@
       "description": "The SAS Token used to authenticate to the storage account data plane. Not recommended for new workloads - use Microsoft Entra ID authentication instead. Can also be set via ARM_SAS_TOKEN environment variable.",
       "sensitive": true,
       "example": "?sv=2019-12-12&ss=b&srt=sco&sp=rwdlacx&se=2024-12-31T23:59:59Z&st=2024-01-01T00:00:00Z&spr=https&sig=...",
-      "conflictsWith": ["access_key", "use_azuread_auth", "use_cli", "use_oidc", "use_msi", "use_aks_workload_identity", "client_id", "client_secret", "client_certificate_path"]
+      "conflictsWith": ["access_key", "use_azuread_auth", "use_cli", "use_oidc", "use_msi", "use_aks_workload_identity", "client_id", "client_id_file_path", "client_secret", "client_secret_file_path", "client_certificate_path", "client_certificate"]
     },
     {
       "name": "client_id",
@@ -156,7 +156,8 @@
       "required": false,
       "description": "The Client ID of the Microsoft Entra ID Service Principal, App Registration, or User Assigned Managed Identity. Required for OIDC, Client Secret, and Client Certificate authentication methods. Can also be set via ARM_CLIENT_ID environment variable.",
       "example": "00000000-0000-0000-0000-000000000000",
-      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+      "conflictsWith": ["access_key", "sas_token"]
     },
     {
       "name": "client_id_file_path",
@@ -173,7 +174,7 @@
       "description": "The Client Secret of the Service Principal. Not recommended - use OIDC or Managed Identity instead. Can also be set via ARM_CLIENT_SECRET environment variable.",
       "sensitive": true,
       "requiredWith": ["client_id"],
-      "conflictsWith": ["client_certificate_path", "client_certificate", "use_cli", "use_oidc", "use_msi", "access_key", "sas_token"]
+      "conflictsWith": ["client_certificate_path", "client_certificate", "use_cli", "use_oidc", "use_msi", "use_aks_workload_identity", "access_key", "sas_token"]
     },
     {
       "name": "client_secret_file_path",
