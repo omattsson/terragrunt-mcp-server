@@ -12,6 +12,42 @@ export interface ConfigVariable {
   sensitive?: boolean;
 }
 
+/**
+ * Changelog entry for template version history
+ */
+export interface ChangelogEntry {
+  /** Version this entry describes (semver format) */
+  version: string;
+  /** Date of the version release (ISO 8601 format) */
+  date: string;
+  /** List of changes in this version */
+  changes: string[];
+  /** Whether this version contains breaking changes */
+  breaking?: boolean;
+}
+
+/**
+ * Deprecation information for templates
+ */
+export interface DeprecationInfo {
+  /** Version when the template was deprecated (semver format) */
+  since: string;
+  /** Reason for deprecation */
+  reason: string;
+  /** ID of the replacement template (if available) */
+  replacement?: string;
+}
+
+/**
+ * Compatibility requirements for a template
+ */
+export interface CompatibilityInfo {
+  /** Minimum Terragrunt version required (semver constraint) */
+  terragruntVersion?: string;
+  /** Minimum Terraform version required (semver constraint) */
+  terraformVersion?: string;
+}
+
 export interface ConfigTemplate {
   id: string;
   name: string;
@@ -23,6 +59,14 @@ export interface ConfigTemplate {
   example?: string;
   source: 'gruntwork' | 'azure-config' | 'documentation' | 'builtin' | 'custom' | 'filesystem';
   tags: string[];
+  /** Template version (semver format, e.g., "1.0.0") */
+  version?: string;
+  /** Version history and changelog */
+  changelog?: ChangelogEntry[];
+  /** Deprecation status and migration info */
+  deprecated?: DeprecationInfo;
+  /** Compatibility requirements */
+  compatibility?: CompatibilityInfo;
 }
 
 export interface TemplateMetadata {

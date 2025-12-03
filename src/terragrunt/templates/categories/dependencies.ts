@@ -14,6 +14,7 @@ export const dependencyTemplates: ConfigTemplate[] = [
     category: 'dependency',
     cloudProvider: 'multi',
     source: 'builtin',
+    version: '1.0.0',
     tags: ['dependency', 'module', 'outputs'],
     variables: [
       {
