@@ -340,7 +340,16 @@ export async function loadBackendSchema(
       throw new Error(message);
     }
     console.error(message, error);
-    throw error;
+    // Return empty schema structure when not throwing
+    return {
+      id: '',
+      name: '',
+      description: '',
+      provider: 'other',
+      backend: '',
+      terraformDocsUrl: '',
+      attributes: [],
+    } as BackendSchema;
   }
 
   let data: unknown;
@@ -352,7 +361,16 @@ export async function loadBackendSchema(
       throw new Error(message);
     }
     console.error(message, error);
-    throw error;
+    // Return empty schema structure when not throwing
+    return {
+      id: '',
+      name: '',
+      description: '',
+      provider: 'other',
+      backend: '',
+      terraformDocsUrl: '',
+      attributes: [],
+    } as BackendSchema;
   }
 
   if (validate) {
@@ -405,6 +423,11 @@ export async function loadAllBackendSchemas(
     const filePath = join(directory, file);
     try {
       const schema = await loadBackendSchema(filePath, { ...options, throwOnError: false });
+      
+      // Skip schemas with empty IDs (failed to load properly)
+      if (!schema.id) {
+        continue;
+      }
       
       if (schemas.has(schema.id)) {
         const warning = `Duplicate schema ID "${schema.id}" in file ${filePath}, skipping`;

@@ -738,8 +738,12 @@ describe('Real S3 Schema File', () => {
       expect(sensitive.length).toBeGreaterThan(0);
       
     } catch (error) {
-      // Schema file might not exist in test environment - that's OK
-      console.log('S3 schema file not found, skipping test');
+      // Only skip if schema file doesn't exist - re-throw validation errors
+      if (error instanceof Error && error.message.includes('Failed to read schema file')) {
+        console.log('S3 schema file not found, skipping test');
+      } else {
+        throw error;
+      }
     }
   });
 });
