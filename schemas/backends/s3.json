@@ -1,0 +1,258 @@
+{
+  "$schema": "../backend-schema.json",
+  "id": "s3",
+  "name": "AWS S3 Backend",
+  "description": "Stores state as a given key in a given bucket on Amazon S3. This backend also supports state locking and consistency checking via DynamoDB.",
+  "provider": "aws",
+  "backend": "s3",
+  "terraformDocsUrl": "https://developer.hashicorp.com/terraform/language/backend/s3",
+  "version": "1.0.0",
+  "lastUpdated": "2024-12-03",
+  "attributes": [
+    {
+      "name": "bucket",
+      "type": "string",
+      "required": true,
+      "description": "Name of the S3 bucket where the state file will be stored.",
+      "example": "my-terraform-state-bucket",
+      "pattern": "^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$"
+    },
+    {
+      "name": "key",
+      "type": "string",
+      "required": true,
+      "description": "Path to the state file inside the S3 bucket. When using a non-default workspace, the state path will be /workspace_key_prefix/workspace_name/key.",
+      "example": "path/to/my/terraform.tfstate"
+    },
+    {
+      "name": "region",
+      "type": "string",
+      "required": false,
+      "description": "AWS region of the S3 bucket. If not specified, the region will be determined from the AWS_REGION or AWS_DEFAULT_REGION environment variables.",
+      "example": "us-east-1",
+      "validValues": [
+        "us-east-1", "us-east-2", "us-west-1", "us-west-2",
+        "af-south-1", "ap-east-1", "ap-south-1", "ap-south-2",
+        "ap-northeast-1", "ap-northeast-2", "ap-northeast-3",
+        "ap-southeast-1", "ap-southeast-2", "ap-southeast-3", "ap-southeast-4",
+        "ca-central-1", "eu-central-1", "eu-central-2",
+        "eu-west-1", "eu-west-2", "eu-west-3",
+        "eu-north-1", "eu-south-1", "eu-south-2",
+        "me-central-1", "me-south-1",
+        "sa-east-1"
+      ]
+    },
+    {
+      "name": "encrypt",
+      "type": "boolean",
+      "required": false,
+      "description": "Whether to enable server side encryption of the state file. When true, uses AES-256 encryption by default.",
+      "defaultValue": false,
+      "example": true
+    },
+    {
+      "name": "dynamodb_table",
+      "type": "string",
+      "required": false,
+      "description": "Name of DynamoDB table used for state locking and consistency. The table must have a partition key named LockID with type String. If not configured, state locking will be disabled.",
+      "example": "terraform-locks"
+    },
+    {
+      "name": "kms_key_id",
+      "type": "string",
+      "required": false,
+      "description": "Amazon Resource Name (ARN) of a KMS Key to use for encrypting the state. Requires encrypt to be true.",
+      "example": "arn:aws:kms:us-east-1:123456789012:key/12345678-1234-1234-1234-123456789012",
+      "requiredWith": ["encrypt"],
+      "pattern": "^arn:aws:kms:[a-z0-9-]+:[0-9]{12}:key/[a-f0-9-]+$"
+    },
+    {
+      "name": "acl",
+      "type": "string",
+      "required": false,
+      "description": "Canned ACL to be applied to the state file.",
+      "deprecated": true,
+      "deprecatedMessage": "Use bucket policies instead of canned ACLs. AWS recommends disabling ACLs for most use cases.",
+      "validValues": ["private", "public-read", "public-read-write", "authenticated-read", "aws-exec-read", "bucket-owner-read", "bucket-owner-full-control"]
+    },
+    {
+      "name": "workspace_key_prefix",
+      "type": "string",
+      "required": false,
+      "description": "Prefix applied to the state path inside the bucket when using workspaces. Defaults to 'env:'.",
+      "defaultValue": "env:",
+      "example": "workspaces"
+    },
+    {
+      "name": "force_path_style",
+      "type": "boolean",
+      "required": false,
+      "description": "Enable path-style S3 URLs (https://s3.amazonaws.com/BUCKET/KEY) instead of virtual-hosted-style (https://BUCKET.s3.amazonaws.com/KEY). Useful for S3-compatible services.",
+      "deprecated": true,
+      "deprecatedMessage": "Use use_path_style instead.",
+      "defaultValue": false
+    },
+    {
+      "name": "use_path_style",
+      "type": "boolean",
+      "required": false,
+      "description": "Enable path-style S3 URLs. Replaces the deprecated force_path_style argument.",
+      "defaultValue": false,
+      "conflictsWith": ["force_path_style"]
+    },
+    {
+      "name": "profile",
+      "type": "string",
+      "required": false,
+      "description": "Name of the AWS profile to use for authentication. If not set, uses the default profile or environment variables.",
+      "example": "production"
+    },
+    {
+      "name": "access_key",
+      "type": "string",
+      "required": false,
+      "description": "AWS access key ID. Use of static credentials is discouraged; prefer IAM roles, environment variables, or AWS CLI profiles.",
+      "sensitive": true,
+      "requiredWith": ["secret_key"]
+    },
+    {
+      "name": "secret_key",
+      "type": "string",
+      "required": false,
+      "description": "AWS secret access key. Use of static credentials is discouraged; prefer IAM roles, environment variables, or AWS CLI profiles.",
+      "sensitive": true,
+      "requiredWith": ["access_key"]
+    },
+    {
+      "name": "token",
+      "type": "string",
+      "required": false,
+      "description": "Session token for temporary credentials. Required when using temporary credentials (STS assume role, etc.).",
+      "sensitive": true
+    },
+    {
+      "name": "role_arn",
+      "type": "string",
+      "required": false,
+      "description": "Amazon Resource Name (ARN) of an IAM role to assume before accessing the S3 bucket.",
+      "example": "arn:aws:iam::123456789012:role/TerraformStateRole",
+      "pattern": "^arn:aws:iam::[0-9]{12}:role/.+$"
+    },
+    {
+      "name": "external_id",
+      "type": "string",
+      "required": false,
+      "description": "External ID to use when assuming the IAM role specified in role_arn.",
+      "example": "terraform-state-access"
+    },
+    {
+      "name": "session_name",
+      "type": "string",
+      "required": false,
+      "description": "Session name to use when assuming the IAM role specified in role_arn.",
+      "defaultValue": "terraform"
+    },
+    {
+      "name": "skip_credentials_validation",
+      "type": "boolean",
+      "required": false,
+      "description": "Skip the credentials validation via STS API. Useful for testing or when using third-party S3-compatible services.",
+      "defaultValue": false
+    },
+    {
+      "name": "skip_metadata_api_check",
+      "type": "boolean",
+      "required": false,
+      "description": "Skip the EC2 metadata API check. Useful when running outside of AWS or when metadata service is unavailable.",
+      "defaultValue": false
+    },
+    {
+      "name": "skip_region_validation",
+      "type": "boolean",
+      "required": false,
+      "description": "Skip static validation of region name. Useful for AWS-compatible implementations that may have custom regions.",
+      "defaultValue": false
+    },
+    {
+      "name": "skip_requesting_account_id",
+      "type": "boolean",
+      "required": false,
+      "description": "Skip requesting the account ID. Useful for AWS-compatible implementations that do not support STS.",
+      "defaultValue": false
+    },
+    {
+      "name": "skip_s3_checksum",
+      "type": "boolean",
+      "required": false,
+      "description": "Skip automatic checksum verification of S3 objects. May be useful for S3-compatible services that don't support checksums.",
+      "defaultValue": false
+    },
+    {
+      "name": "sse_customer_key",
+      "type": "string",
+      "required": false,
+      "description": "The base64-encoded 256-bit encryption key to use for server-side encryption with customer-provided keys (SSE-C).",
+      "sensitive": true,
+      "conflictsWith": ["kms_key_id"]
+    },
+    {
+      "name": "max_retries",
+      "type": "number",
+      "required": false,
+      "description": "Maximum number of retries for AWS API requests.",
+      "defaultValue": 5,
+      "minValue": 0,
+      "maxValue": 100
+    },
+    {
+      "name": "endpoints",
+      "type": "object",
+      "required": false,
+      "description": "Custom endpoints for AWS services. Useful for LocalStack, MinIO, or other S3-compatible services."
+    },
+    {
+      "name": "shared_credentials_files",
+      "type": "list",
+      "required": false,
+      "description": "List of paths to shared credentials files. If not set, defaults to ~/.aws/credentials."
+    },
+    {
+      "name": "shared_config_files",
+      "type": "list",
+      "required": false,
+      "description": "List of paths to shared config files. If not set, defaults to ~/.aws/config."
+    },
+    {
+      "name": "assume_role_duration_seconds",
+      "type": "number",
+      "required": false,
+      "description": "Number of seconds to restrict the assume role session duration. Must be between 900 and the maximum session duration configured for the role.",
+      "minValue": 900,
+      "maxValue": 43200
+    },
+    {
+      "name": "assume_role_policy",
+      "type": "string",
+      "required": false,
+      "description": "IAM policy in JSON format to use as a session policy for the assumed role. Restricts the effective permissions of the assumed role."
+    },
+    {
+      "name": "assume_role_policy_arns",
+      "type": "list",
+      "required": false,
+      "description": "Amazon Resource Names (ARNs) of IAM Policies to use as managed session policies for the assumed role."
+    },
+    {
+      "name": "assume_role_tags",
+      "type": "map",
+      "required": false,
+      "description": "Map of assume role session tags."
+    },
+    {
+      "name": "assume_role_transitive_tag_keys",
+      "type": "list",
+      "required": false,
+      "description": "Set of assume role session tag keys to pass to subsequent sessions."
+    }
+  ]
+}

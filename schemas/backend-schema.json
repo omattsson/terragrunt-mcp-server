@@ -1,0 +1,188 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/omattsson/terragrunt-mcp-server/schemas/backend-schema.json",
+  "title": "Backend Schema",
+  "description": "Schema for defining Terraform backend configurations with complete attribute metadata",
+  "type": "object",
+  "required": ["id", "name", "description", "provider", "backend", "terraformDocsUrl", "attributes"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "Reference to the JSON schema for this file (for editor support)"
+    },
+    "id": {
+      "type": "string",
+      "description": "Unique identifier for this backend schema (e.g., 's3', 'azurerm', 'gcs')",
+      "pattern": "^[a-z][a-z0-9-]*$",
+      "minLength": 1,
+      "maxLength": 50
+    },
+    "name": {
+      "type": "string",
+      "description": "Human-readable name (e.g., 'AWS S3 Backend')",
+      "minLength": 1,
+      "maxLength": 100
+    },
+    "description": {
+      "type": "string",
+      "description": "Description of what this backend does",
+      "minLength": 1,
+      "maxLength": 500
+    },
+    "provider": {
+      "type": "string",
+      "description": "Cloud provider (e.g., 'aws', 'azure', 'gcp')",
+      "enum": ["aws", "azure", "gcp", "other"]
+    },
+    "backend": {
+      "type": "string",
+      "description": "Terraform backend type (e.g., 's3', 'azurerm', 'gcs')",
+      "pattern": "^[a-z][a-z0-9-]*$",
+      "minLength": 1,
+      "maxLength": 50
+    },
+    "terraformDocsUrl": {
+      "type": "string",
+      "description": "URL to official Terraform documentation for this backend",
+      "format": "uri",
+      "pattern": "^https?://"
+    },
+    "attributes": {
+      "type": "array",
+      "description": "All supported attributes for this backend",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/definitions/BackendAttribute"
+      }
+    },
+    "version": {
+      "type": "string",
+      "description": "Schema version (semver format)",
+      "pattern": "^\\d+\\.\\d+\\.\\d+(-[a-zA-Z0-9.-]+)?(\\+[a-zA-Z0-9.-]+)?$"
+    },
+    "lastUpdated": {
+      "type": "string",
+      "description": "ISO 8601 date when schema was last updated",
+      "format": "date"
+    }
+  },
+  "definitions": {
+    "BackendAttribute": {
+      "type": "object",
+      "description": "Complete definition of a backend attribute with validation rules",
+      "required": ["name", "type", "required", "description"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Attribute identifier (e.g., 'bucket', 'region', 'encrypt')",
+          "pattern": "^[a-z][a-z0-9_]*$",
+          "minLength": 1,
+          "maxLength": 50
+        },
+        "type": {
+          "type": "string",
+          "description": "Terraform type of the attribute",
+          "enum": ["string", "number", "boolean", "list", "map", "object"]
+        },
+        "required": {
+          "type": "boolean",
+          "description": "Whether this attribute is required"
+        },
+        "description": {
+          "type": "string",
+          "description": "Human-readable description of what the attribute does",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "example": {
+          "description": "Example value demonstrating usage",
+          "oneOf": [
+            { "type": "string" },
+            { "type": "number" },
+            { "type": "boolean" }
+          ]
+        },
+        "defaultValue": {
+          "description": "Default value if not specified",
+          "oneOf": [
+            { "type": "string" },
+            { "type": "number" },
+            { "type": "boolean" },
+            { "type": "null" }
+          ]
+        },
+        "sensitive": {
+          "type": "boolean",
+          "description": "Whether the attribute value should be marked as sensitive",
+          "default": false
+        },
+        "deprecated": {
+          "type": "boolean",
+          "description": "Whether this attribute is deprecated",
+          "default": false
+        },
+        "deprecatedMessage": {
+          "type": "string",
+          "description": "Message explaining why deprecated and what to use instead",
+          "maxLength": 500
+        },
+        "validValues": {
+          "type": "array",
+          "description": "Array of allowed values (enum validation)",
+          "minItems": 1,
+          "items": {
+            "oneOf": [
+              { "type": "string" },
+              { "type": "number" },
+              { "type": "boolean" }
+            ]
+          }
+        },
+        "minValue": {
+          "type": "number",
+          "description": "Minimum value for numeric attributes"
+        },
+        "maxValue": {
+          "type": "number",
+          "description": "Maximum value for numeric attributes"
+        },
+        "pattern": {
+          "type": "string",
+          "description": "Regex pattern for string validation",
+          "format": "regex"
+        },
+        "conflictsWith": {
+          "type": "array",
+          "description": "Array of attribute names that conflict with this one",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]*$"
+          }
+        },
+        "requiredWith": {
+          "type": "array",
+          "description": "Array of attribute names that must be specified together with this one",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]*$"
+          }
+        }
+      },
+      "dependencies": {
+        "deprecatedMessage": ["deprecated"],
+        "minValue": {
+          "properties": {
+            "type": { "const": "number" }
+          }
+        },
+        "maxValue": {
+          "properties": {
+            "type": { "const": "number" }
+          }
+        }
+      }
+    }
+  }
+}
