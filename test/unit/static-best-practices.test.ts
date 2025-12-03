@@ -319,7 +319,7 @@ describe('Static Practice Content Quality', () => {
       expect(practicesWithCodeExamples.length).toBeGreaterThan(STATIC_BEST_PRACTICES.length * 0.8);
     });
 
-    it('should have examples longer than 30 characters on average', () => {
+    it('should have examples longer than 100 characters on average', () => {
       let totalLength = 0;
       let totalExamples = 0;
       
