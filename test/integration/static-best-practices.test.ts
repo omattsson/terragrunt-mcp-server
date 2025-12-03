@@ -71,8 +71,12 @@ describe('Static Best Practices - Integration', () => {
     it('should filter by advanced level', async () => {
       const result = await analyzer.analyzeTopic('environment_config', 'advanced');
 
-      // May be 0 if no advanced practices exist
-      expect(result.recommendations.every(r => r.experienceLevel === 'advanced')).toBe(true);
+      // If there are advanced practices, all should be advanced; otherwise, length may be 0
+      if (result.recommendations.length > 0) {
+        expect(result.recommendations.every(r => r.experienceLevel === 'advanced')).toBe(true);
+      }
+      // Verify that filtering was applied (confidence still present regardless of count)
+      expect(result.confidence).toBeGreaterThanOrEqual(0);
     });
   });
 

@@ -2,8 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import type { TerragruntDoc } from '../../src/terragrunt/docs.js';
 import { 
   BestPracticesAnalyzer, 
-  STATIC_BEST_PRACTICES,
-  StaticBestPractice 
+  STATIC_BEST_PRACTICES
 } from '../../src/terragrunt/best-practices.js';
 
 /**

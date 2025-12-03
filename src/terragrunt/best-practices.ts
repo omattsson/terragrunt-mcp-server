@@ -1315,8 +1315,11 @@ export class BestPracticesAnalyzer {
 
   /**
    * Returns static best practices filtered by category.
+   * Note: Returns a new array but contains shared object references to the
+   * original StaticBestPractice objects. The practice objects themselves are
+   * not expected to be mutated during normal usage.
    * @param category The category to filter by
-   * @returns Array of static practices for the given category
+   * @returns Array of static practices for the given category (new array, shared references)
    */
   getStaticPracticesByCategory(category: string): StaticBestPractice[] {
     const normalizedCategory = this.normalizeKey(category);
@@ -1391,6 +1394,30 @@ export class BestPracticesAnalyzer {
     const keywords1 = this.extractKeywords(text1);
     const keywords2 = this.extractKeywords(text2);
 
+    if (keywords1.size === 0 || keywords2.size === 0) {
+      return 0;
+    }
+
+    // Calculate intersection
+    const intersection = new Set(
+      [...keywords1].filter(word => keywords2.has(word))
+    );
+
+    // Calculate union
+    const union = new Set([...keywords1, ...keywords2]);
+
+    // Jaccard similarity = intersection / union
+    return intersection.size / union.size;
+  }
+
+  /**
+   * Calculate Jaccard similarity between two pre-extracted keyword sets.
+   * Optimized version that avoids repeated keyword extraction.
+   * @param keywords1 Pre-extracted keyword set from first text
+   * @param keywords2 Pre-extracted keyword set from second text
+   * @returns Similarity score between 0 and 1
+   */
+  private calculateJaccardSimilarity(keywords1: Set<string>, keywords2: Set<string>): number {
     if (keywords1.size === 0 || keywords2.size === 0) {
       return 0;
     }
@@ -2148,13 +2175,19 @@ export class BestPracticesAnalyzer {
       }
 
       // Step 1: Get static practices for this topic (always available, authoritative)
-      const staticPractices = this.getStaticPracticesByCategory(topic);
-      let staticRecommendations: PracticeRecommendation[] = staticPractices.map(
+      // Filter by experience level early to avoid unnecessary conversion and deduplication work
+      let staticPractices = this.getStaticPracticesByCategory(topic);
+      if (level) {
+        staticPractices = staticPractices.filter(sp => sp.experienceLevel === level);
+      }
+      const staticRecommendations: PracticeRecommendation[] = staticPractices.map(
         sp => this.convertStaticToPracticeRecommendation(sp)
       );
 
       // Step 2: Get doc-extracted practices for this topic
-      const practices = this.practicesCache.get(this.normalizeKey(topic)) || [];
+      let practices = this.practicesCache.get(this.normalizeKey(topic)) || [];
+      // Filter doc practices by experience level early too (if level specified)
+      // Note: doc practices don't have experienceLevel until converted, so we filter recommendations later
 
       // If no static practices and no doc practices, return empty result
       if (staticPractices.length === 0 && practices.length === 0) {
@@ -2178,20 +2211,26 @@ export class BestPracticesAnalyzer {
           const doc = docMap.get(practice.relatedDocs[0]) || relevantDocs[0];
           return this.convertToPracticeRecommendation(practice, doc, topic);
         });
+        // Filter doc recommendations by experience level if specified
+        if (level) {
+          docRecommendations = docRecommendations.filter(r => r.experienceLevel === level);
+        }
       }
 
       // Step 3: Merge static and doc recommendations
       // Static practices come first (authoritative), then unique doc-extracted ones
-      const staticPracticeTexts = new Set(
-        staticRecommendations.map(r => r.practice.toLowerCase().trim())
+      // Pre-compute keyword sets for static practices to optimize O(n*m) deduplication
+      const staticKeywordSets = staticRecommendations.map(r => 
+        this.extractKeywords(r.practice.toLowerCase().trim())
       );
       
       // Only add doc recommendations that are sufficiently different from static ones
+      // Optimized: pre-extracted keywords avoid repeated extraction in loop
       const uniqueDocRecs = docRecommendations.filter(dr => {
-        const drText = dr.practice.toLowerCase().trim();
+        const drKeywords = this.extractKeywords(dr.practice.toLowerCase().trim());
         // Check if this is substantially similar to any static practice
-        for (const staticText of staticPracticeTexts) {
-          if (this.calculateSimilarity(drText, staticText) > 0.7) {
+        for (const staticKeywords of staticKeywordSets) {
+          if (this.calculateJaccardSimilarity(drKeywords, staticKeywords) > 0.7) {
             return false; // Too similar to static, skip
           }
         }
@@ -2200,11 +2239,6 @@ export class BestPracticesAnalyzer {
 
       // Combine recommendations: static first, then unique doc-extracted
       let recommendations = [...staticRecommendations, ...uniqueDocRecs];
-
-      // Filter by experience level if provided
-      if (level) {
-        recommendations = recommendations.filter(r => r.experienceLevel === level);
-      }
 
       // Limit total recommendations to 20 (static practices prioritized)
       recommendations = recommendations.slice(0, 20);
