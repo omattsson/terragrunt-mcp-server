@@ -14,6 +14,7 @@ export const backendTemplates: ConfigTemplate[] = [
     category: 'backend',
     cloudProvider: 'aws',
     source: 'gruntwork',
+    version: '1.0.0',
     tags: ['remote-state', 's3', 'dynamodb', 'aws', 'backend'],
     variables: [
       {
@@ -82,6 +83,7 @@ export const backendTemplates: ConfigTemplate[] = [
     category: 'backend',
     cloudProvider: 'aws',
     source: 'gruntwork',
+    version: '1.0.0',
     tags: ['remote-state', 's3', 'dynamodb', 'aws', 'backend', 'advanced', 'kms', 'cross-account'],
     variables: [
       {
@@ -224,6 +226,7 @@ export const backendTemplates: ConfigTemplate[] = [
     category: 'backend',
     cloudProvider: 'azure',
     source: 'azure-config',
+    version: '1.0.0',
     tags: ['remote-state', 'azure', 'azurerm', 'blob-storage', 'backend'],
     variables: [
       {
@@ -292,6 +295,7 @@ export const backendTemplates: ConfigTemplate[] = [
     category: 'backend',
     cloudProvider: 'azure',
     source: 'azure-config',
+    version: '1.0.0',
     tags: ['remote-state', 'azure', 'azurerm', 'blob-storage', 'backend', 'advanced'],
     variables: [
       {
@@ -433,6 +437,7 @@ export const backendTemplates: ConfigTemplate[] = [
     category: 'backend',
     cloudProvider: 'gcp',
     source: 'builtin',
+    version: '1.0.0',
     tags: ['remote-state', 'gcs', 'gcp', 'backend'],
     variables: [
       {
@@ -495,6 +500,7 @@ export const backendTemplates: ConfigTemplate[] = [
     category: 'backend',
     cloudProvider: 'gcp',
     source: 'builtin',
+    version: '1.0.0',
     tags: ['remote-state', 'gcs', 'gcp', 'backend', 'advanced'],
     variables: [
       {

@@ -14,6 +14,7 @@ export const providerTemplates: ConfigTemplate[] = [
     category: 'provider',
     cloudProvider: 'aws',
     source: 'gruntwork',
+    version: '1.0.0',
     tags: ['provider', 'aws', 'generate'],
     variables: [
       {

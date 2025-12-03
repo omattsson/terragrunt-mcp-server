@@ -14,6 +14,7 @@ export const hookTemplates: ConfigTemplate[] = [
     category: 'hooks',
     cloudProvider: 'multi',
     source: 'builtin',
+    version: '1.0.0',
     tags: ['hooks', 'before', 'automation'],
     variables: [
       {
@@ -70,6 +71,7 @@ export const hookTemplates: ConfigTemplate[] = [
     category: 'hooks',
     cloudProvider: 'multi',
     source: 'builtin',
+    version: '1.0.0',
     tags: ['hooks', 'after', 'automation'],
     variables: [
       {

@@ -14,6 +14,7 @@ export const configurationTemplates: ConfigTemplate[] = [
     category: 'inputs',
     cloudProvider: 'multi',
     source: 'builtin',
+    version: '1.0.0',
     tags: ['inputs', 'variables', 'configuration'],
     variables: [
       {
@@ -55,6 +56,7 @@ export const configurationTemplates: ConfigTemplate[] = [
     category: 'configuration',
     cloudProvider: 'multi',
     source: 'builtin',
+    version: '1.0.0',
     tags: ['version', 'constraint', 'terraform'],
     variables: [
       {

@@ -155,6 +155,194 @@ Each variable in the `variables` array must include:
 }
 ```
 
+## Template Versioning
+
+Templates support versioning to track changes, manage deprecations, and ensure compatibility. This enables safe template evolution and clear migration paths.
+
+### Version Field
+
+Use [semantic versioning](https://semver.org/) (semver) format:
+
+```json
+{
+  "id": "aws-s3-backend",
+  "name": "AWS S3 Backend",
+  "version": "1.2.0",
+  ...
+}
+```
+
+**Version format**: `MAJOR.MINOR.PATCH` (e.g., `1.0.0`, `2.1.3`)
+
+- **MAJOR**: Breaking changes (incompatible with previous versions)
+- **MINOR**: New features (backward compatible)
+- **PATCH**: Bug fixes (backward compatible)
+
+Pre-release versions are also supported: `1.0.0-alpha`, `1.0.0-beta.1`, `2.0.0-rc.1`
+
+### Changelog
+
+Track version history with the `changelog` field:
+
+```json
+{
+  "id": "aws-s3-backend",
+  "version": "2.0.0",
+  "changelog": [
+    {
+      "version": "2.0.0",
+      "date": "2024-06-15",
+      "changes": [
+        "Added KMS encryption support",
+        "Changed default encryption to true",
+        "Removed deprecated 'acl' parameter"
+      ],
+      "breaking": true
+    },
+    {
+      "version": "1.1.0",
+      "date": "2024-03-01",
+      "changes": [
+        "Added cross-account role support",
+        "Added custom endpoint configuration"
+      ]
+    },
+    {
+      "version": "1.0.0",
+      "date": "2024-01-01",
+      "changes": [
+        "Initial release"
+      ]
+    }
+  ],
+  ...
+}
+```
+
+**Changelog entry fields:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `version` | string | Yes | Version this entry describes (semver) |
+| `date` | string | Yes | Release date (ISO 8601: YYYY-MM-DD) |
+| `changes` | string[] | Yes | List of changes in this version |
+| `breaking` | boolean | No | Whether this version has breaking changes |
+
+### Deprecation
+
+Mark templates as deprecated with migration guidance:
+
+```json
+{
+  "id": "aws-s3-backend-legacy",
+  "version": "1.0.0",
+  "deprecated": {
+    "since": "1.0.0",
+    "reason": "Replaced by aws-s3-backend-advanced with better security defaults",
+    "replacement": "aws-s3-backend-advanced"
+  },
+  ...
+}
+```
+
+**Deprecation fields:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `since` | string | Yes | Version when deprecated (semver) |
+| `reason` | string | Yes | Why the template is deprecated |
+| `replacement` | string | No | ID of the recommended replacement template |
+
+When a deprecated template is used, a warning message will be generated:
+
+```text
+⚠️ Template "aws-s3-backend-legacy" is deprecated since version 1.0.0: 
+   Replaced by aws-s3-backend-advanced with better security defaults. 
+   Consider using "aws-s3-backend-advanced" instead.
+```
+
+### Compatibility
+
+Specify version requirements for Terragrunt and Terraform:
+
+```json
+{
+  "id": "aws-s3-backend-modern",
+  "version": "1.0.0",
+  "compatibility": {
+    "terragruntVersion": ">=0.50.0",
+    "terraformVersion": ">=1.5.0"
+  },
+  ...
+}
+```
+
+**Compatibility fields:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `terragruntVersion` | string | Semver constraint for Terragrunt version |
+| `terraformVersion` | string | Semver constraint for Terraform version |
+
+**Supported constraint formats:**
+
+- `>=1.0.0` - Greater than or equal
+- `<=2.0.0` - Less than or equal
+- `>1.0.0` - Greater than
+- `<2.0.0` - Less than
+- `=1.0.0` - Exactly equal
+- `~>0.50` - Pessimistic constraint (>=0.50.0, <1.0.0)
+- `>=1.0.0, <2.0.0` - Range constraint
+
+### Complete Versioning Example
+
+Here's a fully versioned template:
+
+```json
+{
+  "id": "org-s3-backend",
+  "name": "Organization S3 Backend",
+  "description": "Standard S3 backend for our organization",
+  "category": "backend",
+  "cloudProvider": "aws",
+  "version": "2.0.0",
+  "changelog": [
+    {
+      "version": "2.0.0",
+      "date": "2024-06-15",
+      "changes": [
+        "BREAKING: encryption now required by default",
+        "Added KMS key rotation support",
+        "Improved cross-account access"
+      ],
+      "breaking": true
+    },
+    {
+      "version": "1.0.0",
+      "date": "2024-01-01",
+      "changes": ["Initial release"]
+    }
+  ],
+  "compatibility": {
+    "terragruntVersion": ">=0.55.0",
+    "terraformVersion": ">=1.6.0"
+  },
+  "templateHcl": "remote_state {\n  backend = \"s3\"\n  ...\n}",
+  "variables": [...],
+  "tags": ["aws", "s3", "organization"]
+}
+```
+
+### Versioning Best Practices
+
+1. **Start at 1.0.0**: Use `1.0.0` for production-ready templates
+2. **Document Breaking Changes**: Always set `breaking: true` and describe what changed
+3. **Keep Changelog Updated**: Add entries for every release
+4. **Use Deprecation Warnings**: Guide users to new templates before removing old ones
+5. **Specify Compatibility**: Help users know which tool versions work with your template
+6. **Version Control**: Store templates in Git to track version history
+7. **Migration Guides**: For breaking changes, include migration steps in changelog
+
 ## Mustache Conditional Syntax
 
 Templates use [Mustache](https://mustache.github.io/) syntax for variable substitution and conditional rendering. This enables templates to include only the options that are provided, keeping generated configurations clean.
