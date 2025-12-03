@@ -873,3 +873,236 @@ describe('Real Azure Blob Schema File', () => {
     }
   });
 });
+
+describe('Real AWS S3 Complete Schema File', () => {
+  it('should load and validate the AWS S3 complete schema', async () => {
+    const schemaPath = join(process.cwd(), 'schemas', 'backends', 'aws-s3-complete.json');
+    const schema = await loadBackendSchema(schemaPath);
+    
+    expect(schema.id).toBe('aws-s3-complete');
+    expect(schema.provider).toBe('aws');
+    expect(schema.backend).toBe('s3');
+    expect(schema.attributes.length).toBeGreaterThan(50);
+  });
+
+  it('should have correct required attributes', async () => {
+    const schemaPath = join(process.cwd(), 'schemas', 'backends', 'aws-s3-complete.json');
+    const schema = await loadBackendSchema(schemaPath);
+    
+    const required = getRequiredAttributes(schema);
+    expect(required).toHaveLength(2);
+    
+    const requiredNames = required.map(a => a.name);
+    expect(requiredNames).toContain('bucket');
+    expect(requiredNames).toContain('key');
+  });
+
+  it('should have sensitive attributes for secrets', async () => {
+    const schemaPath = join(process.cwd(), 'schemas', 'backends', 'aws-s3-complete.json');
+    const schema = await loadBackendSchema(schemaPath);
+    
+    const sensitive = getSensitiveAttributes(schema);
+    expect(sensitive.length).toBeGreaterThanOrEqual(5);
+    
+    const sensitiveNames = sensitive.map(a => a.name);
+    expect(sensitiveNames).toContain('access_key');
+    expect(sensitiveNames).toContain('secret_key');
+    expect(sensitiveNames).toContain('token');
+    expect(sensitiveNames).toContain('sse_customer_key');
+    expect(sensitiveNames).toContain('assume_role_with_web_identity_web_identity_token');
+  });
+
+  it('should have S3-native locking attribute', async () => {
+    const schemaPath = join(process.cwd(), 'schemas', 'backends', 'aws-s3-complete.json');
+    const schema = await loadBackendSchema(schemaPath);
+    
+    const useLockfile = getAttributeByName(schema, 'use_lockfile');
+    expect(useLockfile).toBeDefined();
+    expect(useLockfile?.type).toBe('boolean');
+    expect(useLockfile?.defaultValue).toBe(false);
+  });
+
+  it('should have deprecated DynamoDB locking attributes', async () => {
+    const schemaPath = join(process.cwd(), 'schemas', 'backends', 'aws-s3-complete.json');
+    const schema = await loadBackendSchema(schemaPath);
+    
+    const dynamodbTable = getAttributeByName(schema, 'dynamodb_table');
+    expect(dynamodbTable).toBeDefined();
+    expect(dynamodbTable?.deprecated).toBe(true);
+    expect(dynamodbTable?.deprecatedMessage).toContain('use_lockfile');
+  });
+
+  it('should have proper conflict relationships for access_key', async () => {
+    const schemaPath = join(process.cwd(), 'schemas', 'backends', 'aws-s3-complete.json');
+    const schema = await loadBackendSchema(schemaPath);
+    
+    const accessKey = getAttributeByName(schema, 'access_key');
+    expect(accessKey).toBeDefined();
+    expect(accessKey?.requiredWith).toContain('secret_key');
+    expect(accessKey?.conflictsWith).toContain('profile');
+  });
+
+  it('should have proper conflict relationships for allowed_account_ids', async () => {
+    const schemaPath = join(process.cwd(), 'schemas', 'backends', 'aws-s3-complete.json');
+    const schema = await loadBackendSchema(schemaPath);
+    
+    const allowedIds = getAttributeByName(schema, 'allowed_account_ids');
+    expect(allowedIds).toBeDefined();
+    expect(allowedIds?.conflictsWith).toContain('forbidden_account_ids');
+    
+    const forbiddenIds = getAttributeByName(schema, 'forbidden_account_ids');
+    expect(forbiddenIds).toBeDefined();
+    expect(forbiddenIds?.conflictsWith).toContain('allowed_account_ids');
+  });
+
+  it('should have ARN patterns for IAM role attributes', async () => {
+    const schemaPath = join(process.cwd(), 'schemas', 'backends', 'aws-s3-complete.json');
+    const schema = await loadBackendSchema(schemaPath);
+    
+    const arnAttrs = ['assume_role_role_arn', 'assume_role_with_web_identity_role_arn', 'kms_key_id'];
+    for (const attrName of arnAttrs) {
+      const attr = getAttributeByName(schema, attrName);
+      expect(attr).toBeDefined();
+      expect(attr?.pattern).toBeDefined();
+      expect(attr?.pattern).toContain('arn:aws');
+    }
+  });
+
+  it('should have valid AWS region values', async () => {
+    const schemaPath = join(process.cwd(), 'schemas', 'backends', 'aws-s3-complete.json');
+    const schema = await loadBackendSchema(schemaPath);
+    
+    const region = getAttributeByName(schema, 'region');
+    expect(region).toBeDefined();
+    expect(region?.validValues).toBeDefined();
+    expect(region?.validValues).toContain('us-east-1');
+    expect(region?.validValues).toContain('eu-west-1');
+    expect(region?.validValues).toContain('ap-southeast-1');
+  });
+
+  it('should have assume_role attributes', async () => {
+    const schemaPath = join(process.cwd(), 'schemas', 'backends', 'aws-s3-complete.json');
+    const schema = await loadBackendSchema(schemaPath);
+    
+    const assumeRoleAttrs = [
+      'assume_role_role_arn',
+      'assume_role_duration',
+      'assume_role_external_id',
+      'assume_role_policy',
+      'assume_role_policy_arns',
+      'assume_role_session_name',
+      'assume_role_source_identity',
+      'assume_role_tags',
+      'assume_role_transitive_tag_keys'
+    ];
+    for (const attrName of assumeRoleAttrs) {
+      const attr = getAttributeByName(schema, attrName);
+      expect(attr).toBeDefined();
+    }
+  });
+
+  it('should have web identity attributes', async () => {
+    const schemaPath = join(process.cwd(), 'schemas', 'backends', 'aws-s3-complete.json');
+    const schema = await loadBackendSchema(schemaPath);
+    
+    const webIdentityAttrs = [
+      'assume_role_with_web_identity_role_arn',
+      'assume_role_with_web_identity_web_identity_token',
+      'assume_role_with_web_identity_web_identity_token_file'
+    ];
+    for (const attrName of webIdentityAttrs) {
+      const attr = getAttributeByName(schema, attrName);
+      expect(attr).toBeDefined();
+    }
+    
+    // Token and token_file should be mutually exclusive
+    const token = getAttributeByName(schema, 'assume_role_with_web_identity_web_identity_token');
+    const tokenFile = getAttributeByName(schema, 'assume_role_with_web_identity_web_identity_token_file');
+    expect(token?.conflictsWith).toContain('assume_role_with_web_identity_web_identity_token_file');
+    expect(tokenFile?.conflictsWith).toContain('assume_role_with_web_identity_web_identity_token');
+  });
+
+  it('should have endpoint override attributes', async () => {
+    const schemaPath = join(process.cwd(), 'schemas', 'backends', 'aws-s3-complete.json');
+    const schema = await loadBackendSchema(schemaPath);
+    
+    const endpointAttrs = ['endpoints_s3', 'endpoints_iam', 'endpoints_sts', 'endpoints_sso'];
+    for (const attrName of endpointAttrs) {
+      const attr = getAttributeByName(schema, attrName);
+      expect(attr).toBeDefined();
+      expect(attr?.type).toBe('string');
+    }
+  });
+
+  it('should have deprecated legacy endpoint attributes', async () => {
+    const schemaPath = join(process.cwd(), 'schemas', 'backends', 'aws-s3-complete.json');
+    const schema = await loadBackendSchema(schemaPath);
+    
+    const deprecatedEndpoints = ['endpoint', 'iam_endpoint', 'sts_endpoint', 'dynamodb_endpoint'];
+    for (const attrName of deprecatedEndpoints) {
+      const attr = getAttributeByName(schema, attrName);
+      expect(attr).toBeDefined();
+      expect(attr?.deprecated).toBe(true);
+      expect(attr?.deprecatedMessage).toBeDefined();
+    }
+  });
+
+  it('should have network/proxy attributes', async () => {
+    const schemaPath = join(process.cwd(), 'schemas', 'backends', 'aws-s3-complete.json');
+    const schema = await loadBackendSchema(schemaPath);
+    
+    const networkAttrs = ['http_proxy', 'https_proxy', 'no_proxy', 'insecure', 'custom_ca_bundle'];
+    for (const attrName of networkAttrs) {
+      const attr = getAttributeByName(schema, attrName);
+      expect(attr).toBeDefined();
+    }
+  });
+
+  it('should have skip validation attributes', async () => {
+    const schemaPath = join(process.cwd(), 'schemas', 'backends', 'aws-s3-complete.json');
+    const schema = await loadBackendSchema(schemaPath);
+    
+    const skipAttrs = [
+      'skip_credentials_validation',
+      'skip_metadata_api_check',
+      'skip_region_validation',
+      'skip_requesting_account_id',
+      'skip_s3_checksum'
+    ];
+    for (const attrName of skipAttrs) {
+      const attr = getAttributeByName(schema, attrName);
+      expect(attr).toBeDefined();
+      expect(attr?.type).toBe('boolean');
+      expect(attr?.defaultValue).toBe(false);
+    }
+  });
+
+  it('should have retry configuration attributes', async () => {
+    const schemaPath = join(process.cwd(), 'schemas', 'backends', 'aws-s3-complete.json');
+    const schema = await loadBackendSchema(schemaPath);
+    
+    const maxRetries = getAttributeByName(schema, 'max_retries');
+    expect(maxRetries).toBeDefined();
+    expect(maxRetries?.type).toBe('number');
+    expect(maxRetries?.defaultValue).toBe(5);
+    
+    const retryMode = getAttributeByName(schema, 'retry_mode');
+    expect(retryMode).toBeDefined();
+    expect(retryMode?.validValues).toContain('standard');
+    expect(retryMode?.validValues).toContain('adaptive');
+  });
+
+  it('should have encryption attributes with proper conflicts', async () => {
+    const schemaPath = join(process.cwd(), 'schemas', 'backends', 'aws-s3-complete.json');
+    const schema = await loadBackendSchema(schemaPath);
+    
+    const kmsKeyId = getAttributeByName(schema, 'kms_key_id');
+    expect(kmsKeyId).toBeDefined();
+    expect(kmsKeyId?.conflictsWith).toContain('sse_customer_key');
+    
+    const sseCustomerKey = getAttributeByName(schema, 'sse_customer_key');
+    expect(sseCustomerKey).toBeDefined();
+    expect(sseCustomerKey?.sensitive).toBe(true);
+    expect(sseCustomerKey?.conflictsWith).toContain('kms_key_id');
+  });
+});

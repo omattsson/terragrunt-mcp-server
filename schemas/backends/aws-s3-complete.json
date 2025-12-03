@@ -1,0 +1,538 @@
+{
+  "$schema": "../backend-schema.json",
+  "id": "aws-s3-complete",
+  "name": "AWS S3 Backend (Complete)",
+  "description": "Stores state as a given key in a given bucket on Amazon S3. This backend also supports state locking via S3 native locking (use_lockfile) or DynamoDB (deprecated). This is the complete schema covering all available configuration options.",
+  "provider": "aws",
+  "backend": "s3",
+  "terraformDocsUrl": "https://developer.hashicorp.com/terraform/language/settings/backends/s3",
+  "version": "1.0.0",
+  "lastUpdated": "2024-12-03",
+  "attributes": [
+    {
+      "name": "bucket",
+      "type": "string",
+      "required": true,
+      "description": "Name of the S3 bucket where the state file will be stored. It is highly recommended to enable Bucket Versioning on the S3 bucket to allow for state recovery in case of accidental deletions and human error.",
+      "example": "my-terraform-state-bucket",
+      "pattern": "^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$"
+    },
+    {
+      "name": "key",
+      "type": "string",
+      "required": true,
+      "description": "Path to the state file inside the S3 bucket. When using a non-default workspace, the state path will be <workspace_key_prefix>/<workspace_name>/<key>.",
+      "example": "path/to/my/terraform.tfstate"
+    },
+    {
+      "name": "region",
+      "type": "string",
+      "required": false,
+      "description": "AWS Region of the S3 Bucket and DynamoDB Table (if used). Can also be sourced from the AWS_DEFAULT_REGION and AWS_REGION environment variables.",
+      "example": "us-east-1",
+      "validValues": [
+        "us-east-1", "us-east-2", "us-west-1", "us-west-2",
+        "af-south-1", "ap-east-1", "ap-south-1", "ap-south-2",
+        "ap-northeast-1", "ap-northeast-2", "ap-northeast-3",
+        "ap-southeast-1", "ap-southeast-2", "ap-southeast-3", "ap-southeast-4", "ap-southeast-5",
+        "ca-central-1", "ca-west-1",
+        "eu-central-1", "eu-central-2",
+        "eu-west-1", "eu-west-2", "eu-west-3",
+        "eu-north-1", "eu-south-1", "eu-south-2",
+        "il-central-1",
+        "me-central-1", "me-south-1",
+        "sa-east-1"
+      ]
+    },
+    {
+      "name": "encrypt",
+      "type": "boolean",
+      "required": false,
+      "description": "Enable server side encryption of the state and lock files. When true, uses AES-256 encryption by default unless kms_key_id is specified.",
+      "defaultValue": false,
+      "example": true
+    },
+    {
+      "name": "workspace_key_prefix",
+      "type": "string",
+      "required": false,
+      "description": "Prefix applied to the state path inside the bucket when using workspaces. Only relevant when using a non-default workspace. Defaults to 'env:'.",
+      "defaultValue": "env:",
+      "example": "workspaces"
+    },
+    {
+      "name": "use_lockfile",
+      "type": "boolean",
+      "required": false,
+      "description": "Whether to use a lockfile for locking the state file. This enables S3-native state locking. When enabled, requires s3:GetObject, s3:PutObject, and s3:DeleteObject permissions on the lock file (<key>.tflock).",
+      "defaultValue": false,
+      "example": true
+    },
+    {
+      "name": "dynamodb_table",
+      "type": "string",
+      "required": false,
+      "description": "Name of DynamoDB table used for state locking and consistency. The table must have a partition key named LockID with type String. If not configured, state locking will be disabled.",
+      "deprecated": true,
+      "deprecatedMessage": "DynamoDB-based locking is deprecated and will be removed in a future version. Use use_lockfile instead for S3-native locking.",
+      "example": "terraform-locks"
+    },
+    {
+      "name": "kms_key_id",
+      "type": "string",
+      "required": false,
+      "description": "Amazon Resource Name (ARN) of a Key Management Service (KMS) Key to use for encrypting the state and lock files. Note that if this value is specified, Terraform will need kms:Encrypt, kms:Decrypt and kms:GenerateDataKey permissions on this KMS key.",
+      "example": "arn:aws:kms:us-east-1:123456789012:key/12345678-1234-1234-1234-123456789012",
+      "conflictsWith": ["sse_customer_key"],
+      "pattern": "^arn:aws(-[a-z]+)?:kms:[a-z0-9-]+:[0-9]{12}:key/[a-f0-9-]+$"
+    },
+    {
+      "name": "sse_customer_key",
+      "type": "string",
+      "required": false,
+      "description": "The base64-encoded 256-bit encryption key to use for Server-Side Encryption with Customer-Provided Keys (SSE-C). This is the base64-encoded value of the key, which must decode to 256 bits. Can also be sourced from the AWS_SSE_CUSTOMER_KEY environment variable, which is recommended due to the sensitivity of the value.",
+      "sensitive": true,
+      "conflictsWith": ["kms_key_id"]
+    },
+    {
+      "name": "acl",
+      "type": "string",
+      "required": false,
+      "description": "Canned ACL to be applied to the state and lock files.",
+      "deprecated": true,
+      "deprecatedMessage": "Use bucket policies instead of canned ACLs. AWS recommends disabling ACLs for most use cases.",
+      "validValues": ["private", "public-read", "public-read-write", "authenticated-read", "aws-exec-read", "bucket-owner-read", "bucket-owner-full-control"]
+    },
+    {
+      "name": "use_path_style",
+      "type": "boolean",
+      "required": false,
+      "description": "Enable path-style S3 URLs (https://<HOST>/<BUCKET> instead of https://<BUCKET>.<HOST>). Useful for S3-compatible services like MinIO or LocalStack.",
+      "defaultValue": false,
+      "example": true
+    },
+    {
+      "name": "force_path_style",
+      "type": "boolean",
+      "required": false,
+      "description": "Enable path-style S3 URLs. Useful for S3-compatible services.",
+      "deprecated": true,
+      "deprecatedMessage": "Use use_path_style instead.",
+      "defaultValue": false,
+      "conflictsWith": ["use_path_style"]
+    },
+    {
+      "name": "access_key",
+      "type": "string",
+      "required": false,
+      "description": "AWS access key ID. If configured, must also configure secret_key. Can also be sourced from the AWS_ACCESS_KEY_ID environment variable, AWS shared credentials file (~/.aws/credentials), or AWS shared configuration file (~/.aws/config). Use of static credentials is discouraged; prefer IAM roles, environment variables, or AWS CLI profiles.",
+      "sensitive": true,
+      "requiredWith": ["secret_key"],
+      "conflictsWith": ["profile"]
+    },
+    {
+      "name": "secret_key",
+      "type": "string",
+      "required": false,
+      "description": "AWS secret access key. If configured, must also configure access_key. Can also be sourced from the AWS_SECRET_ACCESS_KEY environment variable, AWS shared credentials file (~/.aws/credentials), or AWS shared configuration file (~/.aws/config). Use of static credentials is discouraged; prefer IAM roles, environment variables, or AWS CLI profiles.",
+      "sensitive": true,
+      "requiredWith": ["access_key"],
+      "conflictsWith": ["profile"]
+    },
+    {
+      "name": "token",
+      "type": "string",
+      "required": false,
+      "description": "Multi-Factor Authentication (MFA) token or session token for temporary credentials. Can also be sourced from the AWS_SESSION_TOKEN environment variable.",
+      "sensitive": true
+    },
+    {
+      "name": "profile",
+      "type": "string",
+      "required": false,
+      "description": "Name of AWS profile in AWS shared credentials file (~/.aws/credentials) or AWS shared configuration file (~/.aws/config) to use for credentials and/or configuration. Can also be sourced from the AWS_PROFILE environment variable.",
+      "example": "production",
+      "conflictsWith": ["access_key", "secret_key"]
+    },
+    {
+      "name": "shared_credentials_files",
+      "type": "list",
+      "required": false,
+      "description": "List of paths to AWS shared credentials files. Defaults to ~/.aws/credentials."
+    },
+    {
+      "name": "shared_credentials_file",
+      "type": "string",
+      "required": false,
+      "description": "Path to the AWS shared credentials file. Defaults to ~/.aws/credentials.",
+      "deprecated": true,
+      "deprecatedMessage": "Use shared_credentials_files instead.",
+      "example": "~/.aws/credentials"
+    },
+    {
+      "name": "shared_config_files",
+      "type": "list",
+      "required": false,
+      "description": "List of paths to AWS shared configuration files. Defaults to ~/.aws/config."
+    },
+    {
+      "name": "assume_role_role_arn",
+      "type": "string",
+      "required": false,
+      "description": "Amazon Resource Name (ARN) of the IAM Role to assume for accessing the S3 bucket. This is part of the assume_role configuration block.",
+      "example": "arn:aws:iam::123456789012:role/TerraformStateRole",
+      "pattern": "^arn:aws(-[a-z]+)?:iam::[0-9]{12}:role/.+$"
+    },
+    {
+      "name": "assume_role_duration",
+      "type": "string",
+      "required": false,
+      "description": "The duration individual credentials will be valid. Credentials are automatically renewed up to the maximum defined by the AWS account. Specified using the format <hours>h<minutes>m<seconds>s with any unit being optional. For example, an hour and a half can be specified as 1h30m or 90m. Must be between 15 minutes (15m) and 12 hours (12h).",
+      "example": "1h"
+    },
+    {
+      "name": "assume_role_external_id",
+      "type": "string",
+      "required": false,
+      "description": "External identifier to use when assuming the role. Required by some role trust policies.",
+      "example": "terraform-state-access"
+    },
+    {
+      "name": "assume_role_policy",
+      "type": "string",
+      "required": false,
+      "description": "IAM Policy JSON that further restricts permissions for the IAM Role being assumed. This is a session policy that limits the effective permissions."
+    },
+    {
+      "name": "assume_role_policy_arns",
+      "type": "list",
+      "required": false,
+      "description": "Set of Amazon Resource Names (ARNs) of IAM Policies that further restrict permissions for the IAM Role being assumed."
+    },
+    {
+      "name": "assume_role_session_name",
+      "type": "string",
+      "required": false,
+      "description": "Session name to use when assuming the role. Useful for audit trails.",
+      "defaultValue": "terraform",
+      "example": "terraform-backend"
+    },
+    {
+      "name": "assume_role_source_identity",
+      "type": "string",
+      "required": false,
+      "description": "Source identity specified by the principal assuming the role. Used for audit purposes.",
+      "example": "developer@example.com"
+    },
+    {
+      "name": "assume_role_tags",
+      "type": "map",
+      "required": false,
+      "description": "Map of assume role session tags. These tags are passed to the assumed role session."
+    },
+    {
+      "name": "assume_role_transitive_tag_keys",
+      "type": "list",
+      "required": false,
+      "description": "Set of assume role session tag keys to pass to any subsequent sessions. These tags will be inherited by chained role assumptions."
+    },
+    {
+      "name": "assume_role_with_web_identity_role_arn",
+      "type": "string",
+      "required": false,
+      "description": "Amazon Resource Name (ARN) of the IAM Role to assume using Web Identity Federation. Can also be set with the AWS_ROLE_ARN environment variable.",
+      "example": "arn:aws:iam::123456789012:role/OIDCRole",
+      "pattern": "^arn:aws(-[a-z]+)?:iam::[0-9]{12}:role/.+$"
+    },
+    {
+      "name": "assume_role_with_web_identity_duration",
+      "type": "string",
+      "required": false,
+      "description": "The duration individual credentials will be valid when using Web Identity Federation. Must be between 15 minutes (15m) and 12 hours (12h).",
+      "example": "1h"
+    },
+    {
+      "name": "assume_role_with_web_identity_policy",
+      "type": "string",
+      "required": false,
+      "description": "IAM Policy JSON that further restricts permissions for the IAM Role being assumed via Web Identity."
+    },
+    {
+      "name": "assume_role_with_web_identity_policy_arns",
+      "type": "list",
+      "required": false,
+      "description": "Set of Amazon Resource Names (ARNs) of IAM Policies for the Web Identity assumed role session."
+    },
+    {
+      "name": "assume_role_with_web_identity_session_name",
+      "type": "string",
+      "required": false,
+      "description": "Session name to use when assuming the role via Web Identity. Can also be set with the AWS_ROLE_SESSION_NAME environment variable.",
+      "example": "terraform-oidc"
+    },
+    {
+      "name": "assume_role_with_web_identity_web_identity_token",
+      "type": "string",
+      "required": false,
+      "description": "The value of a web identity token from an OpenID Connect (OIDC) or OAuth provider. One of web_identity_token or web_identity_token_file is required for Web Identity Federation.",
+      "sensitive": true,
+      "conflictsWith": ["assume_role_with_web_identity_web_identity_token_file"]
+    },
+    {
+      "name": "assume_role_with_web_identity_web_identity_token_file",
+      "type": "string",
+      "required": false,
+      "description": "File containing a web identity token from an OpenID Connect (OIDC) or OAuth provider. Can also be set with the AWS_WEB_IDENTITY_TOKEN_FILE environment variable. One of web_identity_token or web_identity_token_file is required for Web Identity Federation.",
+      "example": "/var/run/secrets/eks.amazonaws.com/serviceaccount/token",
+      "conflictsWith": ["assume_role_with_web_identity_web_identity_token"]
+    },
+    {
+      "name": "endpoints_s3",
+      "type": "string",
+      "required": false,
+      "description": "Custom endpoint URL for the AWS S3 API. Can also be sourced from the AWS_ENDPOINT_URL_S3 environment variable. Useful for S3-compatible services like MinIO or LocalStack.",
+      "example": "http://localhost:4566"
+    },
+    {
+      "name": "endpoints_iam",
+      "type": "string",
+      "required": false,
+      "description": "Custom endpoint URL for the AWS IAM API. Can also be sourced from the AWS_ENDPOINT_URL_IAM environment variable.",
+      "example": "http://localhost:4566"
+    },
+    {
+      "name": "endpoints_sts",
+      "type": "string",
+      "required": false,
+      "description": "Custom endpoint URL for the AWS STS API. Can also be sourced from the AWS_ENDPOINT_URL_STS environment variable.",
+      "example": "http://localhost:4566"
+    },
+    {
+      "name": "endpoints_sso",
+      "type": "string",
+      "required": false,
+      "description": "Custom endpoint URL for the AWS IAM Identity Center (formerly known as AWS SSO) API. Can also be sourced from the AWS_ENDPOINT_URL_SSO environment variable.",
+      "example": "http://localhost:4566"
+    },
+    {
+      "name": "endpoints_dynamodb",
+      "type": "string",
+      "required": false,
+      "description": "Custom endpoint URL for the AWS DynamoDB API. Can also be sourced from the AWS_ENDPOINT_URL_DYNAMODB environment variable.",
+      "deprecated": true,
+      "deprecatedMessage": "DynamoDB-based locking is deprecated. Use use_lockfile for S3-native locking instead.",
+      "example": "http://localhost:4566"
+    },
+    {
+      "name": "endpoint",
+      "type": "string",
+      "required": false,
+      "description": "Custom endpoint URL for the AWS S3 API.",
+      "deprecated": true,
+      "deprecatedMessage": "Use endpoints_s3 (or endpoints.s3 in the configuration block) instead.",
+      "example": "http://localhost:4566"
+    },
+    {
+      "name": "iam_endpoint",
+      "type": "string",
+      "required": false,
+      "description": "Custom endpoint URL for the AWS IAM API.",
+      "deprecated": true,
+      "deprecatedMessage": "Use endpoints_iam (or endpoints.iam in the configuration block) instead.",
+      "example": "http://localhost:4566"
+    },
+    {
+      "name": "sts_endpoint",
+      "type": "string",
+      "required": false,
+      "description": "Custom endpoint URL for the AWS STS API.",
+      "deprecated": true,
+      "deprecatedMessage": "Use endpoints_sts (or endpoints.sts in the configuration block) instead.",
+      "example": "http://localhost:4566"
+    },
+    {
+      "name": "dynamodb_endpoint",
+      "type": "string",
+      "required": false,
+      "description": "Custom endpoint URL for the AWS DynamoDB API.",
+      "deprecated": true,
+      "deprecatedMessage": "Use endpoints_dynamodb (or endpoints.dynamodb in the configuration block) instead. Note: DynamoDB-based locking is deprecated.",
+      "example": "http://localhost:4566"
+    },
+    {
+      "name": "http_proxy",
+      "type": "string",
+      "required": false,
+      "description": "URL of a proxy to use for HTTP requests when accessing the AWS API. Can also be set using the HTTP_PROXY or http_proxy environment variables.",
+      "example": "http://proxy.example.com:8080"
+    },
+    {
+      "name": "https_proxy",
+      "type": "string",
+      "required": false,
+      "description": "URL of a proxy to use for HTTPS requests when accessing the AWS API. Can also be set using the HTTPS_PROXY or https_proxy environment variables.",
+      "example": "http://proxy.example.com:8080"
+    },
+    {
+      "name": "no_proxy",
+      "type": "string",
+      "required": false,
+      "description": "Comma-separated list of hosts that should not use HTTP or HTTPS proxies. Each value can be a domain name, an IP address, a CIDR address, or an asterisk (*) to indicate no proxying. Can also be set using the NO_PROXY or no_proxy environment variables.",
+      "example": "localhost,127.0.0.1,169.254.169.254"
+    },
+    {
+      "name": "insecure",
+      "type": "boolean",
+      "required": false,
+      "description": "Whether to explicitly allow the backend to perform insecure SSL requests. If omitted, the default value is false. Use with caution.",
+      "defaultValue": false
+    },
+    {
+      "name": "custom_ca_bundle",
+      "type": "string",
+      "required": false,
+      "description": "File containing custom root and intermediate certificates. Can also be set using the AWS_CA_BUNDLE environment variable. Setting ca_bundle in the shared config file is not supported.",
+      "example": "/path/to/ca-bundle.crt"
+    },
+    {
+      "name": "ec2_metadata_service_endpoint",
+      "type": "string",
+      "required": false,
+      "description": "Custom endpoint URL for the EC2 Instance Metadata Service (IMDS) API. Can also be set with the AWS_EC2_METADATA_SERVICE_ENDPOINT environment variable.",
+      "example": "http://169.254.169.254"
+    },
+    {
+      "name": "ec2_metadata_service_endpoint_mode",
+      "type": "string",
+      "required": false,
+      "description": "Mode to use in communicating with the EC2 Instance Metadata Service. Can also be set with the AWS_EC2_METADATA_SERVICE_ENDPOINT_MODE environment variable.",
+      "validValues": ["IPv4", "IPv6"],
+      "example": "IPv4"
+    },
+    {
+      "name": "allowed_account_ids",
+      "type": "list",
+      "required": false,
+      "description": "List of allowed AWS account IDs to prevent potential destruction of a live environment. Terraform will fail if the account ID does not match one in this list.",
+      "conflictsWith": ["forbidden_account_ids"]
+    },
+    {
+      "name": "forbidden_account_ids",
+      "type": "list",
+      "required": false,
+      "description": "List of forbidden AWS account IDs to prevent potential destruction of a live environment. Terraform will fail if the account ID matches one in this list.",
+      "conflictsWith": ["allowed_account_ids"]
+    },
+    {
+      "name": "max_retries",
+      "type": "number",
+      "required": false,
+      "description": "The maximum number of times an AWS API request is retried on retryable failure.",
+      "defaultValue": 5,
+      "minValue": 0,
+      "maxValue": 100
+    },
+    {
+      "name": "retry_mode",
+      "type": "string",
+      "required": false,
+      "description": "Specifies how retries are attempted. Can also be configured using the AWS_RETRY_MODE environment variable or the shared config file parameter retry_mode.",
+      "validValues": ["standard", "adaptive"],
+      "example": "standard"
+    },
+    {
+      "name": "sts_region",
+      "type": "string",
+      "required": false,
+      "description": "AWS region for STS. If unset, AWS will use the same region for STS as other non-STS operations.",
+      "example": "us-east-1"
+    },
+    {
+      "name": "use_dualstack_endpoint",
+      "type": "boolean",
+      "required": false,
+      "description": "Force the backend to resolve endpoints with DualStack capability. Can also be set with the AWS_USE_DUALSTACK_ENDPOINT environment variable or in a shared config file (use_dualstack_endpoint).",
+      "defaultValue": false
+    },
+    {
+      "name": "use_fips_endpoint",
+      "type": "boolean",
+      "required": false,
+      "description": "Force the backend to resolve endpoints with FIPS capability. Can also be set with the AWS_USE_FIPS_ENDPOINT environment variable or in a shared config file (use_fips_endpoint).",
+      "defaultValue": false
+    },
+    {
+      "name": "skip_credentials_validation",
+      "type": "boolean",
+      "required": false,
+      "description": "Skip the credentials validation via the STS API. Useful for testing and for AWS API implementations that do not have STS available.",
+      "defaultValue": false
+    },
+    {
+      "name": "skip_metadata_api_check",
+      "type": "boolean",
+      "required": false,
+      "description": "Skip usage of EC2 Metadata API. Useful when running outside of AWS or when metadata service is unavailable.",
+      "defaultValue": false
+    },
+    {
+      "name": "skip_region_validation",
+      "type": "boolean",
+      "required": false,
+      "description": "Skip static validation of region name. Useful for AWS-compatible implementations that may have custom regions.",
+      "defaultValue": false
+    },
+    {
+      "name": "skip_requesting_account_id",
+      "type": "boolean",
+      "required": false,
+      "description": "Whether to skip requesting the account ID. Useful for AWS API implementations that do not have the IAM, STS API, or metadata API.",
+      "defaultValue": false
+    },
+    {
+      "name": "skip_s3_checksum",
+      "type": "boolean",
+      "required": false,
+      "description": "Do not include checksum when uploading S3 Objects. Useful for some S3-Compatible APIs that do not support checksums.",
+      "defaultValue": false
+    },
+    {
+      "name": "role_arn",
+      "type": "string",
+      "required": false,
+      "description": "Amazon Resource Name (ARN) of an IAM role to assume before accessing the S3 bucket. This is a legacy attribute; prefer using assume_role_role_arn for new configurations.",
+      "deprecated": true,
+      "deprecatedMessage": "Use the assume_role configuration block with role_arn instead.",
+      "example": "arn:aws:iam::123456789012:role/TerraformStateRole",
+      "pattern": "^arn:aws(-[a-z]+)?:iam::[0-9]{12}:role/.+$"
+    },
+    {
+      "name": "external_id",
+      "type": "string",
+      "required": false,
+      "description": "External ID to use when assuming the IAM role specified in role_arn. This is a legacy attribute; prefer using assume_role_external_id for new configurations.",
+      "deprecated": true,
+      "deprecatedMessage": "Use the assume_role configuration block with external_id instead.",
+      "example": "terraform-state-access"
+    },
+    {
+      "name": "session_name",
+      "type": "string",
+      "required": false,
+      "description": "Session name to use when assuming the IAM role specified in role_arn. This is a legacy attribute; prefer using assume_role_session_name for new configurations.",
+      "deprecated": true,
+      "deprecatedMessage": "Use the assume_role configuration block with session_name instead.",
+      "defaultValue": "terraform"
+    },
+    {
+      "name": "assume_role_duration_seconds",
+      "type": "number",
+      "required": false,
+      "description": "Number of seconds to restrict the assume role session duration. Must be between 900 and the maximum session duration configured for the role. This is a legacy attribute; prefer using assume_role_duration for new configurations.",
+      "deprecated": true,
+      "deprecatedMessage": "Use the assume_role configuration block with duration instead (e.g., '1h' format).",
+      "minValue": 900,
+      "maxValue": 43200
+    }
+  ]
+}
