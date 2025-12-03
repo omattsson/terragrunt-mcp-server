@@ -747,3 +747,129 @@ describe('Real S3 Schema File', () => {
     }
   });
 });
+
+describe('Real Azure Blob Schema File', () => {
+  it('should load and validate the Azure Blob schema', async () => {
+    const schemaPath = join(process.cwd(), 'schemas', 'backends', 'azure-blob.json');
+    
+    const schema = await loadBackendSchema(schemaPath);
+    
+    expect(schema.id).toBe('azurerm');
+    expect(schema.provider).toBe('azure');
+    expect(schema.backend).toBe('azurerm');
+    expect(schema.attributes.length).toBeGreaterThan(20);
+  });
+
+  it('should have correct required attributes', async () => {
+    const schemaPath = join(process.cwd(), 'schemas', 'backends', 'azure-blob.json');
+    const schema = await loadBackendSchema(schemaPath);
+    
+    const required = getRequiredAttributes(schema);
+    expect(required).toHaveLength(3);
+    
+    const requiredNames = required.map(a => a.name);
+    expect(requiredNames).toContain('storage_account_name');
+    expect(requiredNames).toContain('container_name');
+    expect(requiredNames).toContain('key');
+  });
+
+  it('should have sensitive attributes for secrets', async () => {
+    const schemaPath = join(process.cwd(), 'schemas', 'backends', 'azure-blob.json');
+    const schema = await loadBackendSchema(schemaPath);
+    
+    const sensitive = getSensitiveAttributes(schema);
+    expect(sensitive.length).toBeGreaterThanOrEqual(7);
+    
+    const sensitiveNames = sensitive.map(a => a.name);
+    expect(sensitiveNames).toContain('access_key');
+    expect(sensitiveNames).toContain('sas_token');
+    expect(sensitiveNames).toContain('client_secret');
+    expect(sensitiveNames).toContain('client_certificate_password');
+    expect(sensitiveNames).toContain('client_certificate');
+    expect(sensitiveNames).toContain('oidc_token');
+    expect(sensitiveNames).toContain('oidc_request_token');
+  });
+
+  it('should have authentication method attributes', async () => {
+    const schemaPath = join(process.cwd(), 'schemas', 'backends', 'azure-blob.json');
+    const schema = await loadBackendSchema(schemaPath);
+    
+    // Verify all auth method flags exist
+    const authFlags = ['use_azuread_auth', 'use_cli', 'use_oidc', 'use_msi', 'use_aks_workload_identity'];
+    for (const flag of authFlags) {
+      const attr = getAttributeByName(schema, flag);
+      expect(attr).toBeDefined();
+      expect(attr?.type).toBe('boolean');
+    }
+  });
+
+  it('should have proper conflict relationships for access_key', async () => {
+    const schemaPath = join(process.cwd(), 'schemas', 'backends', 'azure-blob.json');
+    const schema = await loadBackendSchema(schemaPath);
+    
+    const accessKey = getAttributeByName(schema, 'access_key');
+    expect(accessKey).toBeDefined();
+    expect(accessKey?.conflictsWith).toBeDefined();
+    expect(accessKey?.conflictsWith).toContain('sas_token');
+    expect(accessKey?.conflictsWith).toContain('use_azuread_auth');
+  });
+
+  it('should have proper conflict relationships for sas_token', async () => {
+    const schemaPath = join(process.cwd(), 'schemas', 'backends', 'azure-blob.json');
+    const schema = await loadBackendSchema(schemaPath);
+    
+    const sasToken = getAttributeByName(schema, 'sas_token');
+    expect(sasToken).toBeDefined();
+    expect(sasToken?.conflictsWith).toBeDefined();
+    expect(sasToken?.conflictsWith).toContain('access_key');
+    expect(sasToken?.conflictsWith).toContain('use_azuread_auth');
+  });
+
+  it('should have GUID patterns for identity attributes', async () => {
+    const schemaPath = join(process.cwd(), 'schemas', 'backends', 'azure-blob.json');
+    const schema = await loadBackendSchema(schemaPath);
+    
+    const guidAttrs = ['tenant_id', 'subscription_id', 'client_id', 'ado_pipeline_service_connection_id'];
+    for (const attrName of guidAttrs) {
+      const attr = getAttributeByName(schema, attrName);
+      expect(attr).toBeDefined();
+      expect(attr?.pattern).toBeDefined();
+      // GUID pattern should accept both uppercase and lowercase hex digits
+      expect(attr?.pattern).toContain('[0-9a-fA-F]');
+    }
+  });
+
+  it('should have valid environment values', async () => {
+    const schemaPath = join(process.cwd(), 'schemas', 'backends', 'azure-blob.json');
+    const schema = await loadBackendSchema(schemaPath);
+    
+    const environment = getAttributeByName(schema, 'environment');
+    expect(environment).toBeDefined();
+    expect(environment?.validValues).toBeDefined();
+    expect(environment?.validValues).toContain('public');
+    expect(environment?.validValues).toContain('china');
+    expect(environment?.validValues).toContain('usgovernment');
+  });
+
+  it('should have storage_account_name pattern for Azure naming', async () => {
+    const schemaPath = join(process.cwd(), 'schemas', 'backends', 'azure-blob.json');
+    const schema = await loadBackendSchema(schemaPath);
+    
+    const storageAccountName = getAttributeByName(schema, 'storage_account_name');
+    expect(storageAccountName).toBeDefined();
+    expect(storageAccountName?.pattern).toBeDefined();
+    // Azure storage account names: 3-24 chars, lowercase letters and numbers only
+    expect(storageAccountName?.pattern).toBe('^[a-z0-9]{3,24}$');
+  });
+
+  it('should have OIDC related attributes', async () => {
+    const schemaPath = join(process.cwd(), 'schemas', 'backends', 'azure-blob.json');
+    const schema = await loadBackendSchema(schemaPath);
+    
+    const oidcAttrs = ['oidc_request_url', 'oidc_request_token', 'oidc_token', 'oidc_token_file_path', 'ado_pipeline_service_connection_id'];
+    for (const attrName of oidcAttrs) {
+      const attr = getAttributeByName(schema, attrName);
+      expect(attr).toBeDefined();
+    }
+  });
+});
