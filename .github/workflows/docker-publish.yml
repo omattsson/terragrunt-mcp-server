@@ -1,6 +1,9 @@
 name: Publish Docker Image
 
 on:
+  push:
+    branches:
+      - main
   workflow_dispatch:
     inputs:
       tag:
@@ -38,8 +41,9 @@ jobs:
         with:
           images: olofdevopsninja/terragrunt-mcp-server
           tags: |
-            type=raw,value=${{ inputs.tag }}
-            type=raw,value=latest,enable=${{ inputs.push_latest }}
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+            type=sha,prefix=
+            type=raw,value=${{ inputs.tag }},enable=${{ github.event_name == 'workflow_dispatch' && inputs.tag != 'latest' }}
       
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
