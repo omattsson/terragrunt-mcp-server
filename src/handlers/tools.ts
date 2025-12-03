@@ -269,7 +269,7 @@ export class ToolHandler {
                     properties: {
                         topic: {
                             type: 'string',
-                            description: 'Topic to analyze. Supported topics: module_organization, state_management, dependencies, ci_cd, security, performance, testing. Typos will trigger intelligent suggestions.'
+                            description: 'Topic to analyze. Supported topics: project_structure, environment_config, module_organization, state_management, dependencies, ci_cd, security, performance, testing. Typos will trigger intelligent suggestions.'
                         },
                         level: {
                             type: 'string',
