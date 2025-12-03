@@ -93,7 +93,7 @@
       "description": "Set to true to use Microsoft Entra ID authentication for storage account data plane authentication. This is the recommended authentication method. Can also be set via ARM_USE_AZUREAD environment variable.",
       "defaultValue": false,
       "example": true,
-      "conflictsWith": ["access_key", "sas_token"]
+      "conflictsWith": ["access_key", "sas_token", "client_secret", "client_secret_file_path", "client_certificate_path", "client_certificate", "use_cli", "use_msi", "use_oidc", "use_aks_workload_identity"]
     },
     {
       "name": "use_cli",
@@ -102,7 +102,7 @@
       "description": "Set to true to use the Azure CLI session for authentication to the storage account management and data plane. Requires a pre-authenticated Azure CLI session. Can also be set via ARM_USE_CLI environment variable.",
       "defaultValue": false,
       "example": true,
-      "conflictsWith": ["access_key", "sas_token", "client_secret", "client_certificate_path", "use_msi", "use_oidc", "use_aks_workload_identity"]
+      "conflictsWith": ["access_key", "sas_token", "client_secret", "client_secret_file_path", "client_certificate_path", "client_certificate", "use_msi", "use_oidc", "use_aks_workload_identity"]
     },
     {
       "name": "use_oidc",
@@ -111,7 +111,7 @@
       "description": "Set to true to use OpenID Connect / Workload identity federation for authentication. This is the recommended method for CI/CD pipelines. Can also be set via ARM_USE_OIDC environment variable.",
       "defaultValue": false,
       "example": true,
-      "conflictsWith": ["access_key", "sas_token", "client_secret", "client_certificate_path", "use_cli", "use_msi", "use_aks_workload_identity"],
+      "conflictsWith": ["access_key", "sas_token", "client_secret", "client_secret_file_path", "client_certificate_path", "client_certificate", "use_cli", "use_msi", "use_aks_workload_identity"],
       "requiredWith": ["client_id"]
     },
     {
@@ -121,7 +121,7 @@
       "description": "Set to true to use a Compute Attached Managed Service Identity for authentication. Can also be set via ARM_USE_MSI environment variable.",
       "defaultValue": false,
       "example": true,
-      "conflictsWith": ["access_key", "sas_token", "client_secret", "client_certificate_path", "use_cli", "use_oidc", "use_aks_workload_identity"]
+      "conflictsWith": ["access_key", "sas_token", "client_secret", "client_secret_file_path", "client_certificate_path", "client_certificate", "use_cli", "use_oidc", "use_aks_workload_identity"]
     },
     {
       "name": "use_aks_workload_identity",
@@ -130,7 +130,7 @@
       "description": "Set to true to use Azure AKS Workload Identity for authentication. Can also be set via ARM_USE_AKS_WORKLOAD_IDENTITY environment variable.",
       "defaultValue": false,
       "example": true,
-      "conflictsWith": ["access_key", "sas_token", "client_secret", "client_certificate_path", "use_cli", "use_oidc", "use_msi"]
+      "conflictsWith": ["access_key", "sas_token", "client_secret", "client_secret_file_path", "client_certificate_path", "client_certificate", "use_cli", "use_oidc", "use_msi"]
     },
     {
       "name": "access_key",
@@ -165,7 +165,7 @@
       "required": false,
       "description": "The path to a file containing the Client ID. Can also be set via ARM_CLIENT_ID_FILE_PATH environment variable.",
       "example": "/path/to/client_id.txt",
-      "conflictsWith": ["access_key", "sas_token"]
+      "conflictsWith": ["access_key", "sas_token", "client_id"]
     },
     {
       "name": "client_secret",
@@ -174,7 +174,7 @@
       "description": "The Client Secret of the Service Principal. Not recommended - use OIDC or Managed Identity instead. Can also be set via ARM_CLIENT_SECRET environment variable.",
       "sensitive": true,
       "requiredWith": ["client_id"],
-      "conflictsWith": ["client_certificate_path", "client_certificate", "use_cli", "use_oidc", "use_msi", "use_aks_workload_identity", "access_key", "sas_token"]
+      "conflictsWith": ["client_certificate_path", "client_certificate", "client_secret_file_path", "use_cli", "use_oidc", "use_msi", "use_aks_workload_identity", "access_key", "sas_token"]
     },
     {
       "name": "client_secret_file_path",
@@ -182,7 +182,8 @@
       "required": false,
       "description": "The path to a file containing the Client Secret. Can also be set via ARM_CLIENT_SECRET_FILE_PATH environment variable.",
       "example": "/path/to/client_secret.txt",
-      "conflictsWith": ["client_certificate_path", "client_certificate", "use_cli", "use_oidc", "use_msi", "use_aks_workload_identity", "access_key", "sas_token"]
+      "requiredWith": ["client_id"],
+      "conflictsWith": ["client_certificate_path", "client_certificate", "client_secret", "use_cli", "use_oidc", "use_msi", "use_aks_workload_identity", "access_key", "sas_token"]
     },
     {
       "name": "client_certificate_path",
