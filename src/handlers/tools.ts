@@ -14,6 +14,7 @@ import { ErrorPatternMatcher } from '../terragrunt/error-patterns.js';
 import { CLICommandsManager } from '../terragrunt/cli-commands.js';
 import { HCLBlocksManager } from '../terragrunt/hcl-blocks.js';
 import { AdvancedExamplesManager } from '../terragrunt/advanced-examples.js';
+import { BlockComparisonManager } from '../terragrunt/comparisons.js';
 import type { HCLBlock } from '../types/hcl-blocks.js';
 import type { AdvancedExampleCategory } from '../types/advanced-examples.js';
 
@@ -32,6 +33,7 @@ export class ToolHandler {
     private cliCommandsManager: CLICommandsManager;
     private hclBlocksManager: HCLBlocksManager;
     private advancedExamplesManager: AdvancedExamplesManager;
+    private blockComparisonManager: BlockComparisonManager;
     private functionsLoaded: boolean = false;
     private templatesManager: TemplatesManager;
     private templateLibrary: ConfigTemplateLibrary;
@@ -47,6 +49,7 @@ export class ToolHandler {
         this.cliCommandsManager = new CLICommandsManager();
         this.hclBlocksManager = new HCLBlocksManager();
         this.advancedExamplesManager = new AdvancedExamplesManager();
+        this.blockComparisonManager = new BlockComparisonManager();
         
         // Initialize templates manager with builtin and filesystem loaders
         this.templatesManager = new TemplatesManager([
@@ -467,6 +470,48 @@ export class ToolHandler {
                     },
                     required: ['error_message']
                 }
+            },
+            {
+                name: 'compare_hcl_blocks',
+                description: 'Compare two similar HCL blocks and explain their differences, use cases, and when to use each. Supports natural language queries like "dependency vs dependencies" or separate block names. Uses fuzzy matching for typo tolerance.',
+                inputSchema: {
+                    type: 'object',
+                    properties: {
+                        block1: {
+                            type: 'string',
+                            description: 'First block name to compare (e.g., "dependency") or a comparison query (e.g., "dependency vs dependencies")'
+                        },
+                        block2: {
+                            type: 'string',
+                            description: 'Second block name to compare (optional if block1 contains both, e.g., "dependency vs dependencies")'
+                        },
+                        listComparisons: {
+                            type: 'boolean',
+                            description: 'If true, list all available block comparisons',
+                            default: false
+                        }
+                    },
+                    required: []
+                }
+            },
+            {
+                name: 'get_pattern_guidance',
+                description: 'Get guidance on choosing between Terragrunt configuration patterns for common scenarios like dependency management, configuration inheritance, and state management. Returns decision criteria, pattern options with pros/cons, and code examples.',
+                inputSchema: {
+                    type: 'object',
+                    properties: {
+                        scenario: {
+                            type: 'string',
+                            description: 'The scenario or pattern to get guidance for (e.g., "managing dependencies", "configuration inheritance", "backend state")'
+                        },
+                        listPatterns: {
+                            type: 'boolean',
+                            description: 'If true, list all available pattern guidance topics',
+                            default: false
+                        }
+                    },
+                    required: []
+                }
             }
         ];
     }
@@ -601,6 +646,19 @@ export class ToolHandler {
                         args.error_message,
                         args.context,
                         args.options
+                    );
+
+                case 'compare_hcl_blocks':
+                    return this.compareHclBlocks(
+                        args?.block1,
+                        args?.block2,
+                        args?.listComparisons ?? false
+                    );
+
+                case 'get_pattern_guidance':
+                    return this.getPatternGuidance(
+                        args?.scenario,
+                        args?.listPatterns ?? false
                     );
 
                 default:
@@ -1524,5 +1582,144 @@ export class ToolHandler {
                 error: error instanceof Error ? error.message : 'Failed to diagnose error'
             };
         }
+    }
+
+    /**
+     * Compare two HCL blocks and explain their differences
+     */
+    private compareHclBlocks(
+        block1?: string,
+        block2?: string,
+        listComparisons: boolean = false
+    ): any {
+        // List all available comparisons
+        if (listComparisons) {
+            const comparisons = this.blockComparisonManager.getAvailableComparisons();
+            const patterns = this.blockComparisonManager.getAvailablePatterns();
+            return {
+                availableComparisons: comparisons,
+                availablePatternTopics: patterns,
+                usage: 'Use block1 and block2 parameters to compare specific blocks, or use block1 with a query like "dependency vs dependencies"'
+            };
+        }
+
+        // Need at least one block to compare
+        if (!block1) {
+            const comparisons = this.blockComparisonManager.getAvailableComparisons();
+            return {
+                error: 'Please specify blocks to compare',
+                availableComparisons: comparisons,
+                examples: [
+                    'block1: "dependency vs dependencies"',
+                    'block1: "dependency", block2: "dependencies"',
+                    'block1: "include vs multiple includes"'
+                ]
+            };
+        }
+
+        const result = this.blockComparisonManager.compareBlocks(block1, block2);
+
+        if (!result.found) {
+            return {
+                found: false,
+                error: result.error,
+                suggestions: result.suggestions,
+                hint: 'Try using listComparisons: true to see all available comparisons'
+            };
+        }
+
+        const comparison = result.comparison!;
+
+        return {
+            found: true,
+            comparison: {
+                id: comparison.id,
+                blocks: comparison.blocks,
+                summary: comparison.summary,
+                block1: {
+                    name: comparison.block1Details.name,
+                    purpose: comparison.block1Details.purpose,
+                    syntax: comparison.block1Details.syntax,
+                    keyFeatures: comparison.block1Details.keyFeatures
+                },
+                block2: {
+                    name: comparison.block2Details.name,
+                    purpose: comparison.block2Details.purpose,
+                    syntax: comparison.block2Details.syntax,
+                    keyFeatures: comparison.block2Details.keyFeatures
+                },
+                keyDifferences: comparison.keyDifferences,
+                whenToUse: comparison.whenToUse,
+                commonMistakes: comparison.commonMistakes,
+                relatedDocs: comparison.relatedDocs
+            }
+        };
+    }
+
+    /**
+     * Get pattern guidance for a configuration scenario
+     */
+    private getPatternGuidance(
+        scenario?: string,
+        listPatterns: boolean = false
+    ): any {
+        // List all available patterns
+        if (listPatterns) {
+            const patterns = this.blockComparisonManager.getAvailablePatterns();
+            const comparisons = this.blockComparisonManager.getAvailableComparisons();
+            return {
+                availablePatternTopics: patterns,
+                relatedBlockComparisons: comparisons,
+                usage: 'Use scenario parameter to get guidance for a specific topic (e.g., "managing dependencies", "configuration inheritance")'
+            };
+        }
+
+        // Need a scenario to provide guidance
+        if (!scenario) {
+            const patterns = this.blockComparisonManager.getAvailablePatterns();
+            return {
+                error: 'Please specify a scenario to get guidance for',
+                availablePatternTopics: patterns,
+                examples: [
+                    'scenario: "managing dependencies"',
+                    'scenario: "configuration inheritance"',
+                    'scenario: "backend state"'
+                ]
+            };
+        }
+
+        const result = this.blockComparisonManager.getPatternGuidance(scenario);
+
+        if (!result.found) {
+            return {
+                found: false,
+                error: result.error,
+                suggestions: result.suggestions,
+                hint: 'Try using listPatterns: true to see all available pattern topics'
+            };
+        }
+
+        const guidance = result.guidance!;
+
+        return {
+            found: true,
+            guidance: {
+                id: guidance.id,
+                scenario: guidance.scenario,
+                question: guidance.question,
+                decisionCriteria: guidance.decisionCriteria,
+                patterns: guidance.patterns.map(p => ({
+                    name: p.name,
+                    description: p.description,
+                    example: p.example,
+                    pros: p.pros,
+                    cons: p.cons
+                })),
+                relatedComparisons: guidance.relatedComparisons.map(id => {
+                    const comp = this.blockComparisonManager.getComparisonById(id);
+                    return comp ? `${comp.blocks[0]} vs ${comp.blocks[1]}` : id;
+                })
+            }
+        };
     }
 }
