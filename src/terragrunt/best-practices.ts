@@ -1315,11 +1315,8 @@ export class BestPracticesAnalyzer {
 
   /**
    * Returns static best practices filtered by category.
-   * Note: Returns a new array but contains shared object references to the
-   * original StaticBestPractice objects. The practice objects themselves are
-   * not expected to be mutated during normal usage.
    * @param category The category to filter by
-   * @returns Array of static practices for the given category (new array, shared references)
+   * @returns Array of static practices for the given category
    */
   getStaticPracticesByCategory(category: string): StaticBestPractice[] {
     const normalizedCategory = this.normalizeKey(category);
@@ -1393,21 +1390,7 @@ export class BestPracticesAnalyzer {
   private calculateSimilarity(text1: string, text2: string): number {
     const keywords1 = this.extractKeywords(text1);
     const keywords2 = this.extractKeywords(text2);
-
-    if (keywords1.size === 0 || keywords2.size === 0) {
-      return 0;
-    }
-
-    // Calculate intersection
-    const intersection = new Set(
-      [...keywords1].filter(word => keywords2.has(word))
-    );
-
-    // Calculate union
-    const union = new Set([...keywords1, ...keywords2]);
-
-    // Jaccard similarity = intersection / union
-    return intersection.size / union.size;
+    return this.calculateJaccardSimilarity(keywords1, keywords2);
   }
 
   /**
@@ -2261,10 +2244,12 @@ export class BestPracticesAnalyzer {
       const realWorldExamples = [...new Set(allExamples)].slice(0, 5);
 
       // Calculate confidence score - higher when we have static practices
+      // Use total static practices for confidence calculation (not filtered by experience)
+      const totalStaticCount = this.getStaticPracticesByCategory(topic).length;
       let confidence: number;
-      if (staticPractices.length > 0) {
+      if (totalStaticCount > 0) {
         // Base confidence from static practices (minimum 70)
-        const staticConfidence = Math.min(70 + staticPractices.length * 5, 90);
+        const staticConfidence = Math.min(70 + totalStaticCount * 5, 90);
         // Bonus from doc-extracted practices (up to 10 more)
         const docBonus = Math.min(practices.length * 2, 10);
         confidence = Math.min(staticConfidence + docBonus, 100);
