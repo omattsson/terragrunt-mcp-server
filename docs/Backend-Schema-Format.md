@@ -213,7 +213,7 @@ const sensitive = getSensitiveAttributes(s3Schema);
 ```typescript
 interface BackendSchemaLoadOptions {
   validate?: boolean;      // Default: true - validate schemas during loading
-  throwOnError?: boolean;  // Default: false - throw on validation errors
+  throwOnError?: boolean;  // Default: true for loadBackendSchema, false for loadAllBackendSchemas
 }
 
 // Skip validation
