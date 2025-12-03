@@ -27,7 +27,7 @@
     {
       "name": "region",
       "type": "string",
-      "required": true,
+      "required": false,
       "description": "AWS Region of the S3 Bucket and DynamoDB Table (if used). Can also be sourced from the AWS_DEFAULT_REGION and AWS_REGION environment variables.",
       "example": "us-east-1",
       "validValues": [
@@ -201,13 +201,13 @@
       "name": "assume_role_policy",
       "type": "string",
       "required": false,
-      "description": "IAM Policy JSON describing further restricting permissions for the IAM Role being assumed. This is a session policy that limits the effective permissions."
+      "description": "IAM Policy JSON that further restricts permissions for the IAM Role being assumed. This is a session policy that limits the effective permissions."
     },
     {
       "name": "assume_role_policy_arns",
       "type": "list",
       "required": false,
-      "description": "Set of Amazon Resource Names (ARNs) of IAM Policies describing further restricting permissions for the IAM Role being assumed."
+      "description": "Set of Amazon Resource Names (ARNs) of IAM Policies that further restrict permissions for the IAM Role being assumed."
     },
     {
       "name": "assume_role_session_name",
@@ -255,7 +255,7 @@
       "name": "assume_role_with_web_identity_policy",
       "type": "string",
       "required": false,
-      "description": "IAM Policy JSON describing further restricting permissions for the IAM Role being assumed via Web Identity."
+      "description": "IAM Policy JSON that further restricts permissions for the IAM Role being assumed via Web Identity."
     },
     {
       "name": "assume_role_with_web_identity_policy_arns",

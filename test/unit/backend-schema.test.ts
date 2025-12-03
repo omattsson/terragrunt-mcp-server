@@ -890,12 +890,11 @@ describe('Real AWS S3 Complete Schema File', () => {
     const schema = await loadBackendSchema(schemaPath);
     
     const required = getRequiredAttributes(schema);
-    expect(required).toHaveLength(3);
+    expect(required).toHaveLength(2);
     
     const requiredNames = required.map(a => a.name);
     expect(requiredNames).toContain('bucket');
     expect(requiredNames).toContain('key');
-    expect(requiredNames).toContain('region');
   });
 
   it('should have sensitive attributes for secrets', async () => {
