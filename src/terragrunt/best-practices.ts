@@ -2,6 +2,1119 @@ import { TerragruntDocsManager, TerragruntDoc } from './docs.js';
 import { LRUCache } from 'lru-cache';
 
 /**
+ * Category for static best practices
+ */
+export type BestPracticeCategory = 
+  | 'project_structure'
+  | 'environment_config'
+  | 'module_organization'
+  | 'state_management'
+  | 'dependencies'
+  | 'ci_cd'
+  | 'security'
+  | 'performance'
+  | 'testing';
+
+/**
+ * Static best practice definition - curated recommendations always available
+ */
+export interface StaticBestPractice {
+  id: string;                      // Unique identifier
+  practice: string;                // The recommendation
+  rationale: string;               // Why this is important
+  category: BestPracticeCategory;  // Topic category
+  priority: 'critical' | 'recommended' | 'optional';
+  experienceLevel: 'beginner' | 'intermediate' | 'advanced';
+  examples: string[];              // Code examples
+  antipatterns: string[];          // What to avoid
+  tradeoffs: string[];             // Considerations
+  relatedDocs: string[];           // Documentation URLs
+}
+
+/**
+ * Static curated best practices for Terragrunt.
+ * These provide reliable recommendations even when doc extraction fails.
+ */
+export const STATIC_BEST_PRACTICES: StaticBestPractice[] = [
+  // ============ PROJECT STRUCTURE ============
+  {
+    id: 'ps-001',
+    practice: 'Separate live infrastructure from reusable modules using distinct directories',
+    rationale: 'Keeping live environment configurations separate from reusable module definitions provides clear separation of concerns, makes it easier to manage environment-specific settings, and enables module reuse across projects.',
+    category: 'project_structure',
+    priority: 'critical',
+    experienceLevel: 'beginner',
+    examples: [
+      `# Recommended project structure
+├── live/                    # Environment-specific configurations
+│   ├── dev/
+│   │   ├── us-east-1/
+│   │   │   ├── vpc/
+│   │   │   │   └── terragrunt.hcl
+│   │   │   └── eks/
+│   │   │       └── terragrunt.hcl
+│   │   └── terragrunt.hcl   # Dev environment root
+│   ├── staging/
+│   └── prod/
+├── modules/                 # Reusable Terraform modules
+│   ├── vpc/
+│   ├── eks/
+│   └── rds/
+└── terragrunt.hcl          # Root configuration`
+    ],
+    antipatterns: [
+      'Mixing environment configs and module code in the same directory',
+      'Duplicating module code across environments instead of referencing shared modules',
+      'Using a flat structure without environment/region organization'
+    ],
+    tradeoffs: [
+      'More directories to navigate but clearer organization',
+      'Requires understanding of include/dependency patterns'
+    ],
+    relatedDocs: ['https://terragrunt.gruntwork.io/docs/getting-started/quick-start/']
+  },
+  {
+    id: 'ps-002',
+    practice: 'Use a root terragrunt.hcl for common configuration shared across all environments',
+    rationale: 'A root configuration file prevents duplication of common settings like remote state backend configuration, provider generation, and shared variables. Child configurations can include and override as needed.',
+    category: 'project_structure',
+    priority: 'critical',
+    experienceLevel: 'beginner',
+    examples: [
+      `# Root terragrunt.hcl
+remote_state {
+  backend = "s3"
+  generate = {
+    path      = "backend.tf"
+    if_exists = "overwrite_terragrunt"
+  }
+  config = {
+    bucket         = "my-terraform-state"
+    key            = "\${path_relative_to_include()}/terraform.tfstate"
+    region         = "us-east-1"
+    encrypt        = true
+    dynamodb_table = "terraform-locks"
+  }
+}
+
+generate "provider" {
+  path      = "provider.tf"
+  if_exists = "overwrite_terragrunt"
+  contents  = <<EOF
+provider "aws" {
+  region = "us-east-1"
+}
+EOF
+}`,
+      `# Child terragrunt.hcl (live/dev/us-east-1/vpc/terragrunt.hcl)
+include "root" {
+  path = find_in_parent_folders()
+}
+
+terraform {
+  source = "../../../../modules/vpc"
+}
+
+inputs = {
+  vpc_cidr = "10.0.0.0/16"
+  environment = "dev"
+}`
+    ],
+    antipatterns: [
+      'Copying remote_state configuration to every child module',
+      'Not using include to reference parent configurations',
+      'Hardcoding backend keys instead of using path_relative_to_include()'
+    ],
+    tradeoffs: [
+      'All environments share the same backend configuration pattern',
+      'Changes to root config affect all environments'
+    ],
+    relatedDocs: ['https://terragrunt.gruntwork.io/docs/features/keep-your-remote-state-configuration-dry/']
+  },
+  {
+    id: 'ps-003',
+    practice: 'Use _envcommon directory for configurations shared within an environment',
+    rationale: 'The _envcommon pattern allows you to define module configurations that are common across all deployments within an environment, reducing duplication while allowing per-deployment overrides.',
+    category: 'project_structure',
+    priority: 'recommended',
+    experienceLevel: 'intermediate',
+    examples: [
+      `# Directory structure with _envcommon
+├── live/
+│   ├── _envcommon/
+│   │   ├── vpc.hcl          # Common VPC config
+│   │   └── eks.hcl          # Common EKS config
+│   ├── dev/
+│   │   ├── us-east-1/
+│   │   │   └── vpc/
+│   │   │       └── terragrunt.hcl  # Includes _envcommon/vpc.hcl
+│   │   └── eu-west-1/
+│   │       └── vpc/
+│   │           └── terragrunt.hcl  # Includes _envcommon/vpc.hcl`,
+      `# _envcommon/vpc.hcl
+terraform {
+  source = "\${local.base_source_url}//modules/vpc?ref=v1.0.0"
+}
+
+locals {
+  base_source_url = "git::git@github.com:myorg/infrastructure-modules.git"
+}
+
+inputs = {
+  enable_dns_hostnames = true
+  enable_dns_support   = true
+}`,
+      `# live/dev/us-east-1/vpc/terragrunt.hcl
+include "root" {
+  path = find_in_parent_folders()
+}
+
+include "envcommon" {
+  path   = "\${dirname(find_in_parent_folders())}/live/_envcommon/vpc.hcl"
+  merge_strategy = "deep"
+}
+
+inputs = {
+  vpc_cidr = "10.0.0.0/16"  # Override for this specific deployment
+}`
+    ],
+    antipatterns: [
+      'Duplicating module source and common inputs in every terragrunt.hcl',
+      'Not leveraging merge_strategy for flexible overrides'
+    ],
+    tradeoffs: [
+      'Additional indirection can make debugging harder',
+      'Must understand merge_strategy options (deep, shallow, no_merge)'
+    ],
+    relatedDocs: ['https://terragrunt.gruntwork.io/docs/features/keep-your-terragrunt-architecture-dry/']
+  },
+  {
+    id: 'ps-004',
+    practice: 'Organize directories by environment, then region/account, then component',
+    rationale: 'A consistent hierarchy of environment > region > component makes it easy to understand what infrastructure exists where, enables targeted operations on specific environments or regions, and supports multi-region deployments.',
+    category: 'project_structure',
+    priority: 'recommended',
+    experienceLevel: 'beginner',
+    examples: [
+      `# Recommended hierarchy
+live/
+├── dev/
+│   ├── account.hcl          # Dev AWS account ID
+│   ├── us-east-1/
+│   │   ├── region.hcl       # Region-specific settings
+│   │   ├── vpc/
+│   │   ├── eks/
+│   │   └── rds/
+│   └── us-west-2/
+│       ├── region.hcl
+│       └── vpc/
+├── staging/
+│   └── us-east-1/
+└── prod/
+    ├── us-east-1/
+    └── eu-west-1/`,
+      `# Using read_terragrunt_config to load hierarchy configs
+# live/dev/us-east-1/vpc/terragrunt.hcl
+locals {
+  environment_vars = read_terragrunt_config(find_in_parent_folders("env.hcl"))
+  region_vars      = read_terragrunt_config(find_in_parent_folders("region.hcl"))
+  account_vars     = read_terragrunt_config(find_in_parent_folders("account.hcl"))
+  
+  environment = local.environment_vars.locals.environment
+  region      = local.region_vars.locals.aws_region
+  account_id  = local.account_vars.locals.account_id
+}`
+    ],
+    antipatterns: [
+      'Flat structure mixing all environments in one directory',
+      'Organizing by component first (all VPCs together) instead of by environment',
+      'Inconsistent hierarchy across different parts of the codebase'
+    ],
+    tradeoffs: [
+      'Deeper directory nesting',
+      'More files to maintain (env.hcl, region.hcl per level)'
+    ],
+    relatedDocs: ['https://terragrunt.gruntwork.io/docs/getting-started/quick-start/']
+  },
+  {
+    id: 'ps-005',
+    practice: 'Use consistent naming conventions for terragrunt.hcl files and directories',
+    rationale: 'Consistent naming makes automation easier, improves discoverability, and helps team members navigate the codebase. Use lowercase with hyphens or underscores.',
+    category: 'project_structure',
+    priority: 'recommended',
+    experienceLevel: 'beginner',
+    examples: [
+      `# Good naming conventions
+live/
+├── dev/
+│   └── us-east-1/
+│       ├── vpc-main/           # Descriptive, lowercase, hyphens
+│       ├── eks-cluster/
+│       ├── rds-postgres/
+│       └── lambda-api/`,
+      `# Use descriptive names for multiple instances
+live/prod/us-east-1/
+├── vpc-primary/
+├── vpc-secondary/
+├── eks-platform/
+├── eks-data-processing/
+└── rds-users-db/`
+    ],
+    antipatterns: [
+      'Using generic names like "module1", "infra", "stuff"',
+      'Mixing naming conventions (camelCase, PascalCase, snake_case)',
+      'Names that don\'t indicate what the module deploys'
+    ],
+    tradeoffs: [
+      'Longer directory names vs clarity',
+      'May need to update automation scripts when renaming'
+    ],
+    relatedDocs: []
+  },
+
+  // ============ ENVIRONMENT CONFIGURATION ============
+  {
+    id: 'ec-001',
+    practice: 'Use get_env() for sensitive values and credentials from environment variables',
+    rationale: 'Environment variables keep secrets out of version control, integrate well with CI/CD systems and secret managers, and follow the twelve-factor app methodology.',
+    category: 'environment_config',
+    priority: 'critical',
+    experienceLevel: 'beginner',
+    examples: [
+      `# Using get_env for sensitive values
+locals {
+  db_password = get_env("DB_PASSWORD", "")
+  api_key     = get_env("API_KEY")  # Required, no default
+}
+
+inputs = {
+  database_password = local.db_password
+  api_key           = local.api_key
+}`,
+      `# With validation
+locals {
+  db_password = get_env("DB_PASSWORD", "")
+}
+
+# Fail early if required env var is missing
+terraform {
+  before_hook "validate_env" {
+    commands = ["apply", "plan"]
+    execute  = ["bash", "-c", "test -n \\"$DB_PASSWORD\\" || (echo 'DB_PASSWORD not set' && exit 1)"]
+  }
+}`
+    ],
+    antipatterns: [
+      'Hardcoding passwords or API keys in terragrunt.hcl',
+      'Committing .env files with real credentials',
+      'Using default values for sensitive data in production'
+    ],
+    tradeoffs: [
+      'Requires environment variable setup in CI/CD',
+      'Local development needs .env file or exports'
+    ],
+    relatedDocs: ['https://terragrunt.gruntwork.io/docs/reference/built-in-functions/#get_env']
+  },
+  {
+    id: 'ec-002',
+    practice: 'Define environment-specific variables in dedicated configuration files per environment level',
+    rationale: 'Centralizing environment variables in env.hcl, account.hcl, or region.hcl files makes it easy to understand what differs between environments and reduces duplication.',
+    category: 'environment_config',
+    priority: 'critical',
+    experienceLevel: 'beginner',
+    examples: [
+      `# live/dev/env.hcl
+locals {
+  environment = "dev"
+  
+  # Environment-specific settings
+  instance_type    = "t3.small"
+  min_size         = 1
+  max_size         = 3
+  enable_deletion_protection = false
+}`,
+      `# live/prod/env.hcl
+locals {
+  environment = "prod"
+  
+  # Production settings - larger, more resilient
+  instance_type    = "t3.large"
+  min_size         = 3
+  max_size         = 10
+  enable_deletion_protection = true
+}`,
+      `# Using environment config in child modules
+include "root" {
+  path = find_in_parent_folders()
+}
+
+locals {
+  env_vars = read_terragrunt_config(find_in_parent_folders("env.hcl"))
+  env      = local.env_vars.locals
+}
+
+inputs = {
+  environment     = local.env.environment
+  instance_type   = local.env.instance_type
+  min_size        = local.env.min_size
+  max_size        = local.env.max_size
+}`
+    ],
+    antipatterns: [
+      'Scattering environment-specific values across many files',
+      'Using conditionals based on path to determine environment',
+      'Not having a clear source of truth for environment settings'
+    ],
+    tradeoffs: [
+      'Requires consistent file naming across environments',
+      'Changes to structure affect all child modules'
+    ],
+    relatedDocs: ['https://terragrunt.gruntwork.io/docs/reference/built-in-functions/#read_terragrunt_config']
+  },
+  {
+    id: 'ec-003',
+    practice: 'Use include with merge_strategy for flexible configuration inheritance',
+    rationale: 'The merge_strategy option controls how included configurations combine with local settings. Understanding and using this correctly enables DRY configurations while maintaining flexibility.',
+    category: 'environment_config',
+    priority: 'recommended',
+    experienceLevel: 'intermediate',
+    examples: [
+      `# deep merge - recursively merges maps and lists
+include "envcommon" {
+  path           = "\${dirname(find_in_parent_folders())}/live/_envcommon/vpc.hcl"
+  merge_strategy = "deep"
+  expose         = true  # Access included locals via include.envcommon.locals
+}
+
+# Local inputs are deep merged with included inputs
+inputs = {
+  tags = {
+    Team = "platform"  # Merged with tags from _envcommon
+  }
+}`,
+      `# shallow merge - only top-level keys are merged
+include "base" {
+  path           = find_in_parent_folders("base.hcl")
+  merge_strategy = "shallow"
+}
+
+# Local inputs completely replace included inputs at top level
+inputs = {
+  vpc_cidr = "10.1.0.0/16"  # Replaces, not merges
+}`,
+      `# no_merge - included config is available but not merged
+include "reference" {
+  path           = "\${get_terragrunt_dir()}/../../common/reference.hcl"
+  merge_strategy = "no_merge"
+  expose         = true
+}
+
+# Selectively use values from included config
+inputs = {
+  ami_id = include.reference.locals.approved_ami_ids["ubuntu-22.04"]
+}`
+    ],
+    antipatterns: [
+      'Not specifying merge_strategy and relying on defaults',
+      'Using deep merge when you want to replace entire blocks',
+      'Not using expose when you need to reference included locals'
+    ],
+    tradeoffs: [
+      'deep merge can produce unexpected results with complex nested structures',
+      'no_merge requires more explicit configuration'
+    ],
+    relatedDocs: ['https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/#include']
+  },
+  {
+    id: 'ec-004',
+    practice: 'Use locals for computed values and keep inputs simple',
+    rationale: 'The locals block is for computing values, transforming data, and assembling configuration. Inputs should receive final values, not contain complex logic.',
+    category: 'environment_config',
+    priority: 'recommended',
+    experienceLevel: 'beginner',
+    examples: [
+      `locals {
+  # Load configuration files
+  env_vars     = read_terragrunt_config(find_in_parent_folders("env.hcl"))
+  region_vars  = read_terragrunt_config(find_in_parent_folders("region.hcl"))
+  account_vars = read_terragrunt_config(find_in_parent_folders("account.hcl"))
+  
+  # Extract commonly used values
+  environment = local.env_vars.locals.environment
+  region      = local.region_vars.locals.aws_region
+  account_id  = local.account_vars.locals.account_id
+  
+  # Compute derived values
+  name_prefix = "\${local.environment}-\${local.region}"
+  
+  # Standard tags
+  common_tags = {
+    Environment = local.environment
+    Region      = local.region
+    ManagedBy   = "terragrunt"
+    Project     = "infrastructure"
+  }
+}
+
+# Inputs are clean and simple
+inputs = {
+  name_prefix = local.name_prefix
+  tags        = local.common_tags
+  vpc_cidr    = local.env_vars.locals.vpc_cidr
+}`
+    ],
+    antipatterns: [
+      'Putting complex expressions directly in inputs block',
+      'Repeating the same read_terragrunt_config calls in multiple places',
+      'Not extracting repeated values into named locals'
+    ],
+    tradeoffs: [
+      'More lines of code in locals block',
+      'Must scroll to find actual input values'
+    ],
+    relatedDocs: ['https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/#locals']
+  },
+  {
+    id: 'ec-005',
+    practice: 'Use dependency blocks with mock_outputs for cross-module data sharing',
+    rationale: 'Dependencies allow modules to reference outputs from other modules. mock_outputs enable planning and applying modules in isolation during development.',
+    category: 'environment_config',
+    priority: 'critical',
+    experienceLevel: 'intermediate',
+    examples: [
+      `dependency "vpc" {
+  config_path = "../vpc"
+  
+  # Mock outputs for plan/apply when VPC doesn't exist yet
+  mock_outputs = {
+    vpc_id     = "vpc-mock-12345"
+    subnet_ids = ["subnet-mock-1", "subnet-mock-2"]
+  }
+  mock_outputs_allowed_terraform_commands = ["validate", "plan"]
+  mock_outputs_merge_strategy_with_state  = "shallow"
+}
+
+dependency "security_group" {
+  config_path = "../security-group"
+  
+  mock_outputs = {
+    security_group_id = "sg-mock-12345"
+  }
+  mock_outputs_allowed_terraform_commands = ["validate", "plan"]
+}
+
+inputs = {
+  vpc_id            = dependency.vpc.outputs.vpc_id
+  subnet_ids        = dependency.vpc.outputs.subnet_ids
+  security_group_id = dependency.security_group.outputs.security_group_id
+}`
+    ],
+    antipatterns: [
+      'Hardcoding resource IDs instead of using dependencies',
+      'Not providing mock_outputs, breaking isolated plans',
+      'Using data sources when a dependency would be cleaner'
+    ],
+    tradeoffs: [
+      'Creates implicit ordering requirements',
+      'Mock values may not reflect real resource behavior'
+    ],
+    relatedDocs: ['https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/#dependency']
+  },
+  {
+    id: 'ec-006',
+    practice: 'Use feature flags for gradual rollouts and environment-specific features',
+    rationale: 'Feature flags allow enabling/disabling functionality per environment without code changes. Terragrunt feature blocks provide a clean pattern for this.',
+    category: 'environment_config',
+    priority: 'optional',
+    experienceLevel: 'advanced',
+    examples: [
+      `# Define feature flags
+feature "enable_monitoring" {
+  default = false
+}
+
+feature "use_spot_instances" {
+  default = false
+}
+
+locals {
+  # Feature flags from environment
+  monitoring_enabled = feature.enable_monitoring.value
+  use_spot           = feature.use_spot_instances.value
+}
+
+inputs = {
+  enable_cloudwatch_alarms = local.monitoring_enabled
+  enable_datadog           = local.monitoring_enabled
+  use_spot_instances       = local.use_spot
+}`,
+      `# Override in specific environment using env vars
+# TG_FEATURE_enable_monitoring=true terragrunt apply`
+    ],
+    antipatterns: [
+      'Using complex conditionals based on environment name',
+      'Hardcoding feature availability per environment in code',
+      'Not having a centralized way to manage feature flags'
+    ],
+    tradeoffs: [
+      'Additional complexity for simple on/off decisions',
+      'Must track which features are enabled where'
+    ],
+    relatedDocs: ['https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/#feature']
+  },
+
+  // ============ MODULE ORGANIZATION ============
+  {
+    id: 'mo-001',
+    practice: 'Keep Terraform modules small, focused, and single-purpose',
+    rationale: 'Small modules are easier to understand, test, and reuse. They have fewer inputs, clearer interfaces, and can be composed together for complex deployments.',
+    category: 'module_organization',
+    priority: 'critical',
+    experienceLevel: 'beginner',
+    examples: [
+      `# Good: Single-purpose modules
+modules/
+├── vpc/                    # Just VPC, subnets, route tables
+├── eks-cluster/           # Just EKS control plane
+├── eks-node-group/        # Just node groups
+├── rds-instance/          # Just RDS, no networking
+└── security-group/        # Just security group rules`,
+      `# Compose in Terragrunt
+# live/prod/eks/terragrunt.hcl
+dependency "vpc" {
+  config_path = "../vpc"
+}
+
+dependency "node_security_group" {
+  config_path = "../eks-node-sg"
+}
+
+terraform {
+  source = "../../../modules/eks-cluster"
+}
+
+inputs = {
+  vpc_id     = dependency.vpc.outputs.vpc_id
+  subnet_ids = dependency.vpc.outputs.private_subnet_ids
+  # Composed from multiple small modules
+}`
+    ],
+    antipatterns: [
+      'Creating "god modules" that deploy entire environments',
+      'Modules with 50+ input variables',
+      'Combining unrelated resources (e.g., VPC + database + application)'
+    ],
+    tradeoffs: [
+      'More modules to maintain',
+      'More dependency relationships to manage',
+      'May need wrapper modules for common patterns'
+    ],
+    relatedDocs: ['https://terragrunt.gruntwork.io/docs/features/keep-your-terraform-code-dry/']
+  },
+  {
+    id: 'mo-002',
+    practice: 'Version your Terraform modules and pin versions in Terragrunt',
+    rationale: 'Version pinning ensures reproducible deployments, allows controlled upgrades, and prevents breaking changes from affecting production unexpectedly.',
+    category: 'module_organization',
+    priority: 'critical',
+    experienceLevel: 'beginner',
+    examples: [
+      `# Pin to specific version tag
+terraform {
+  source = "git::git@github.com:myorg/modules.git//vpc?ref=v1.2.3"
+}`,
+      `# Pin to commit SHA for exact reproducibility
+terraform {
+  source = "git::git@github.com:myorg/modules.git//vpc?ref=abc123def456"
+}`,
+      `# Use version ranges in _envcommon, exact in prod
+# _envcommon/vpc.hcl (dev/staging can use latest minor)
+terraform {
+  source = "git::git@github.com:myorg/modules.git//vpc?ref=v1.2"
+}
+
+# live/prod/vpc/terragrunt.hcl (exact version)
+terraform {
+  source = "git::git@github.com:myorg/modules.git//vpc?ref=v1.2.3"
+}`
+    ],
+    antipatterns: [
+      'Using ref=main or ref=master for production',
+      'Not versioning modules at all',
+      'Different production instances using different versions unintentionally'
+    ],
+    tradeoffs: [
+      'Requires discipline to upgrade versions',
+      'May miss important bug fixes if not updated regularly'
+    ],
+    relatedDocs: ['https://terragrunt.gruntwork.io/docs/features/keep-your-terraform-code-dry/']
+  },
+  {
+    id: 'mo-003',
+    practice: 'Document module interfaces with clear input/output descriptions',
+    rationale: 'Good documentation in variable and output blocks makes modules self-documenting, helps consumers understand expected values, and enables better IDE/tooling support.',
+    category: 'module_organization',
+    priority: 'recommended',
+    experienceLevel: 'beginner',
+    examples: [
+      `# In Terraform module: variables.tf
+variable "vpc_cidr" {
+  type        = string
+  description = "CIDR block for the VPC. Must be a valid IPv4 CIDR (e.g., 10.0.0.0/16)"
+  
+  validation {
+    condition     = can(cidrnetmask(var.vpc_cidr))
+    error_message = "vpc_cidr must be a valid CIDR block."
+  }
+}
+
+variable "enable_dns_hostnames" {
+  type        = bool
+  default     = true
+  description = "Enable DNS hostnames in the VPC. Required for EKS and many AWS services."
+}`,
+      `# In Terraform module: outputs.tf
+output "vpc_id" {
+  value       = aws_vpc.main.id
+  description = "ID of the created VPC"
+}
+
+output "private_subnet_ids" {
+  value       = aws_subnet.private[*].id
+  description = "List of private subnet IDs for deploying internal resources"
+}`
+    ],
+    antipatterns: [
+      'Variables without descriptions',
+      'Outputs without descriptions',
+      'Generic descriptions like "the value" or "input variable"'
+    ],
+    tradeoffs: [
+      'More time writing documentation',
+      'Descriptions can become outdated if not maintained'
+    ],
+    relatedDocs: []
+  },
+
+  // ============ STATE MANAGEMENT ============
+  {
+    id: 'sm-001',
+    practice: 'Always use remote state with locking for team environments',
+    rationale: 'Remote state enables collaboration, provides state locking to prevent concurrent modifications, and ensures state is safely backed up and versioned.',
+    category: 'state_management',
+    priority: 'critical',
+    experienceLevel: 'beginner',
+    examples: [
+      `# Root terragrunt.hcl with S3 backend
+remote_state {
+  backend = "s3"
+  generate = {
+    path      = "backend.tf"
+    if_exists = "overwrite_terragrunt"
+  }
+  config = {
+    bucket         = "mycompany-terraform-state"
+    key            = "\${path_relative_to_include()}/terraform.tfstate"
+    region         = "us-east-1"
+    encrypt        = true
+    dynamodb_table = "terraform-state-locks"
+    
+    # Prevent accidental bucket deletion
+    skip_bucket_versioning = false
+  }
+}`
+    ],
+    antipatterns: [
+      'Using local state files for shared infrastructure',
+      'Not enabling state locking (DynamoDB for S3)',
+      'Not enabling encryption for state files',
+      'Multiple teams using the same state file'
+    ],
+    tradeoffs: [
+      'Additional infrastructure to manage (S3 bucket, DynamoDB table)',
+      'Costs associated with state storage and locking'
+    ],
+    relatedDocs: ['https://terragrunt.gruntwork.io/docs/features/keep-your-remote-state-configuration-dry/']
+  },
+  {
+    id: 'sm-002',
+    practice: 'Use path_relative_to_include() for unique state keys',
+    rationale: 'This function generates unique state file paths based on directory structure, preventing state file collisions and making it clear which infrastructure corresponds to which state.',
+    category: 'state_management',
+    priority: 'critical',
+    experienceLevel: 'beginner',
+    examples: [
+      `# Root terragrunt.hcl
+remote_state {
+  backend = "s3"
+  config = {
+    bucket = "terraform-state"
+    key    = "\${path_relative_to_include()}/terraform.tfstate"
+    # Results in keys like:
+    # live/dev/us-east-1/vpc/terraform.tfstate
+    # live/prod/us-west-2/eks/terraform.tfstate
+  }
+}`
+    ],
+    antipatterns: [
+      'Hardcoding state keys',
+      'Using the same state key for different modules',
+      'Manual key construction that can lead to collisions'
+    ],
+    tradeoffs: [
+      'State key structure mirrors directory structure',
+      'Renaming directories requires state migration'
+    ],
+    relatedDocs: ['https://terragrunt.gruntwork.io/docs/reference/built-in-functions/#path_relative_to_include']
+  },
+
+  // ============ DEPENDENCIES ============
+  {
+    id: 'dp-001',
+    practice: 'Always provide mock_outputs for dependencies to enable isolated planning',
+    rationale: 'Mock outputs allow terragrunt plan to succeed even when dependent modules haven\'t been applied yet. This is essential for CI/CD pipelines and developing new modules.',
+    category: 'dependencies',
+    priority: 'critical',
+    experienceLevel: 'intermediate',
+    examples: [
+      `dependency "vpc" {
+  config_path = "../vpc"
+  
+  mock_outputs = {
+    vpc_id            = "vpc-00000000000000000"
+    vpc_cidr          = "10.0.0.0/16"
+    private_subnet_ids = ["subnet-00000000000000001", "subnet-00000000000000002"]
+    public_subnet_ids  = ["subnet-00000000000000003", "subnet-00000000000000004"]
+  }
+  
+  # Only use mocks for validate and plan
+  mock_outputs_allowed_terraform_commands = ["validate", "plan"]
+}`
+    ],
+    antipatterns: [
+      'No mock outputs, breaking CI/CD plans',
+      'Mock outputs that don\'t match real output structure',
+      'Allowing mock outputs during apply'
+    ],
+    tradeoffs: [
+      'Must keep mock outputs in sync with module outputs',
+      'Mocks may not catch type/structure mismatches'
+    ],
+    relatedDocs: ['https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/#dependency']
+  },
+  {
+    id: 'dp-002',
+    practice: 'Minimize dependency depth to avoid long apply chains',
+    rationale: 'Deep dependency chains increase apply time, make troubleshooting harder, and create more points of failure. Design for shallow, parallel-friendly dependency graphs.',
+    category: 'dependencies',
+    priority: 'recommended',
+    experienceLevel: 'advanced',
+    examples: [
+      `# Good: Shallow dependencies (max 2-3 levels)
+vpc (no deps)
+├── security-groups (depends on vpc)
+├── eks-cluster (depends on vpc, security-groups)
+└── rds (depends on vpc, security-groups)
+
+# Avoid: Deep chains
+vpc -> subnet -> route-table -> nat-gateway -> security-group -> eks -> nodegroup`
+    ],
+    antipatterns: [
+      'Linear chains of 5+ dependencies',
+      'Every module depending on a "base" module',
+      'Circular dependencies (Terragrunt will error)'
+    ],
+    tradeoffs: [
+      'May need to combine some resources to reduce deps',
+      'Flatter structures may have more parallel applies'
+    ],
+    relatedDocs: ['https://terragrunt.gruntwork.io/docs/features/execute-terraform-commands-on-multiple-modules-at-once/']
+  },
+
+  // ============ CI/CD ============
+  {
+    id: 'cd-001',
+    practice: 'Use run-all with --terragrunt-parallelism for efficient CI/CD pipelines',
+    rationale: 'The run-all command applies changes to multiple modules respecting dependencies. Parallelism speeds up execution while staying within API rate limits.',
+    category: 'ci_cd',
+    priority: 'recommended',
+    experienceLevel: 'intermediate',
+    examples: [
+      `# Apply all modules in dependency order with parallelism
+terragrunt run-all apply --terragrunt-parallelism 5
+
+# Plan all and save output
+terragrunt run-all plan --terragrunt-parallelism 10 -out=tfplan`,
+      `# GitHub Actions example
+- name: Terragrunt Apply
+  run: |
+    cd live/prod
+    terragrunt run-all apply \\
+      --terragrunt-parallelism 5 \\
+      --terragrunt-non-interactive \\
+      -auto-approve`
+    ],
+    antipatterns: [
+      'Applying modules one at a time in scripts',
+      'Unlimited parallelism (API rate limiting)',
+      'Not using --terragrunt-non-interactive in CI'
+    ],
+    tradeoffs: [
+      'Higher parallelism = faster but more API calls',
+      'run-all applies might be harder to debug'
+    ],
+    relatedDocs: ['https://terragrunt.gruntwork.io/docs/features/execute-terraform-commands-on-multiple-modules-at-once/']
+  },
+  {
+    id: 'cd-002',
+    practice: 'Implement plan/apply separation with artifact storage in pipelines',
+    rationale: 'Storing plan files as artifacts ensures the exact planned changes are what gets applied, enables review workflows, and provides audit trails.',
+    category: 'ci_cd',
+    priority: 'recommended',
+    experienceLevel: 'intermediate',
+    examples: [
+      `# GitLab CI example
+plan:
+  stage: plan
+  script:
+    - cd live/\${ENVIRONMENT}
+    - terragrunt run-all plan -out=tfplan
+    - terragrunt run-all show -json tfplan > plan.json
+  artifacts:
+    paths:
+      - live/\${ENVIRONMENT}/**/tfplan
+      - live/\${ENVIRONMENT}/**/plan.json
+    expire_in: 1 day
+
+apply:
+  stage: apply
+  needs: [plan]
+  when: manual
+  script:
+    - cd live/\${ENVIRONMENT}
+    - terragrunt run-all apply tfplan`
+    ],
+    antipatterns: [
+      'Running plan and apply in the same job',
+      'Not storing plan artifacts',
+      'Applying without the saved plan file'
+    ],
+    tradeoffs: [
+      'More complex pipeline configuration',
+      'Plan files can become stale if not applied promptly'
+    ],
+    relatedDocs: []
+  },
+
+  // ============ SECURITY ============
+  {
+    id: 'sc-001',
+    practice: 'Never commit sensitive values to version control',
+    rationale: 'Credentials, passwords, and API keys in version control are a major security risk. They persist in git history even after deletion and can be easily exposed.',
+    category: 'security',
+    priority: 'critical',
+    experienceLevel: 'beginner',
+    examples: [
+      `# Use environment variables
+locals {
+  db_password = get_env("DB_PASSWORD")
+}
+
+# Use secret managers
+data "aws_secretsmanager_secret_version" "db" {
+  secret_id = "prod/database/password"
+}`,
+      `# .gitignore
+*.tfvars
+*secret*
+.env
+.env.*`
+    ],
+    antipatterns: [
+      'Hardcoding passwords in terragrunt.hcl',
+      'Committing .env files with real values',
+      'Using default values for secrets'
+    ],
+    tradeoffs: [
+      'Requires external secret management setup',
+      'Local development needs secret access configured'
+    ],
+    relatedDocs: ['https://terragrunt.gruntwork.io/docs/reference/built-in-functions/#get_env']
+  },
+  {
+    id: 'sc-002',
+    practice: 'Enable encryption for remote state storage',
+    rationale: 'State files can contain sensitive data like passwords and private keys. Server-side encryption protects data at rest.',
+    category: 'security',
+    priority: 'critical',
+    experienceLevel: 'beginner',
+    examples: [
+      `# S3 backend with encryption
+remote_state {
+  backend = "s3"
+  config = {
+    bucket  = "terraform-state"
+    key     = "\${path_relative_to_include()}/terraform.tfstate"
+    encrypt = true  # Server-side encryption
+    
+    # Optional: Use KMS key for additional control
+    kms_key_id = "arn:aws:kms:us-east-1:123456789:key/12345678-1234-1234-1234-123456789"
+  }
+}`
+    ],
+    antipatterns: [
+      'Unencrypted state files',
+      'Public S3 buckets for state',
+      'State buckets without access logging'
+    ],
+    tradeoffs: [
+      'KMS encryption adds cost and complexity',
+      'Must manage KMS key access permissions'
+    ],
+    relatedDocs: ['https://terragrunt.gruntwork.io/docs/features/keep-your-remote-state-configuration-dry/']
+  },
+
+  // ============ PERFORMANCE ============
+  {
+    id: 'pf-001',
+    practice: 'Use the Terragrunt cache to speed up repeated operations',
+    rationale: 'Terragrunt caches downloaded modules and providers. Preserving this cache between CI runs significantly speeds up operations.',
+    category: 'performance',
+    priority: 'recommended',
+    experienceLevel: 'intermediate',
+    examples: [
+      `# GitHub Actions cache example
+- name: Cache Terragrunt
+  uses: actions/cache@v3
+  with:
+    path: |
+      ~/.terragrunt-cache
+      ~/.terraform.d/plugin-cache
+    key: \${{ runner.os }}-terragrunt-\${{ hashFiles('**/*.hcl') }}`,
+      `# Configure provider caching
+# ~/.terraformrc or terraform.rc
+plugin_cache_dir = "$HOME/.terraform.d/plugin-cache"`
+    ],
+    antipatterns: [
+      'Downloading providers on every CI run',
+      'Not caching Terragrunt module downloads',
+      'Clearing caches unnecessarily'
+    ],
+    tradeoffs: [
+      'Cache management complexity',
+      'Stale caches can cause issues'
+    ],
+    relatedDocs: []
+  },
+  {
+    id: 'pf-002',
+    practice: 'Use run-all with appropriate parallelism based on provider rate limits',
+    rationale: 'Too much parallelism can hit API rate limits; too little wastes time. Tune based on your cloud provider and module count.',
+    category: 'performance',
+    priority: 'recommended',
+    experienceLevel: 'advanced',
+    examples: [
+      `# AWS: Generally safe with 5-10 parallel operations
+terragrunt run-all apply --terragrunt-parallelism 5
+
+# For many small modules, can go higher
+terragrunt run-all plan --terragrunt-parallelism 20
+
+# For rate-limited APIs or large state files, go lower
+terragrunt run-all apply --terragrunt-parallelism 2`
+    ],
+    antipatterns: [
+      'Unlimited parallelism causing rate limit errors',
+      'Serial execution (parallelism=1) for independent modules',
+      'Not adjusting parallelism for different operations'
+    ],
+    tradeoffs: [
+      'Higher parallelism = faster but riskier',
+      'May need to tune based on time of day/load'
+    ],
+    relatedDocs: ['https://terragrunt.gruntwork.io/docs/features/execute-terraform-commands-on-multiple-modules-at-once/']
+  },
+
+  // ============ TESTING ============
+  {
+    id: 'ts-001',
+    practice: 'Validate Terragrunt configurations before apply using hooks',
+    rationale: 'Before hooks can run validation scripts, linters, and policy checks before any Terraform operation, catching errors early.',
+    category: 'testing',
+    priority: 'recommended',
+    experienceLevel: 'intermediate',
+    examples: [
+      `# Root terragrunt.hcl
+terraform {
+  before_hook "validate" {
+    commands = ["apply", "plan"]
+    execute  = ["tflint", "--config=.tflint.hcl"]
+  }
+  
+  before_hook "security_scan" {
+    commands = ["apply"]
+    execute  = ["tfsec", "."]
+  }
+}`,
+      `# Validate HCL syntax
+terraform {
+  before_hook "hcl_validate" {
+    commands = ["apply", "plan"]
+    execute  = ["terragrunt", "hclfmt", "--terragrunt-check"]
+  }
+}`
+    ],
+    antipatterns: [
+      'Applying without any validation',
+      'Skipping validation in CI to save time',
+      'Not using policy-as-code tools'
+    ],
+    tradeoffs: [
+      'Adds time to each operation',
+      'Must maintain validation tooling and configs'
+    ],
+    relatedDocs: ['https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/#terraform']
+  },
+  {
+    id: 'ts-002',
+    practice: 'Use terragrunt validate-inputs to catch input errors early',
+    rationale: 'The validate-inputs command checks that all required inputs are provided and types match, catching configuration errors before plan/apply.',
+    category: 'testing',
+    priority: 'recommended',
+    experienceLevel: 'beginner',
+    examples: [
+      `# Validate inputs for a single module
+terragrunt validate-inputs
+
+# Validate all modules
+terragrunt run-all validate-inputs`,
+      `# In CI pipeline
+- name: Validate Inputs
+  run: |
+    cd live/prod
+    terragrunt run-all validate-inputs --terragrunt-parallelism 10`
+    ],
+    antipatterns: [
+      'Discovering missing inputs during apply',
+      'Not validating in CI before merge',
+      'Ignoring validation errors'
+    ],
+    tradeoffs: [
+      'Adds step to workflow',
+      'Requires accurate variable definitions in modules'
+    ],
+    relatedDocs: ['https://terragrunt.gruntwork.io/docs/reference/cli-options/#validate-inputs']
+  }
+];
+
+/**
+ * Pre-computed Set of static practice IDs for O(1) lookup
+ */
+const STATIC_PRACTICE_IDS = new Set(
+  STATIC_BEST_PRACTICES.map(p => p.id)
+);
+
+/**
  * Represents a best practice extracted from Terragrunt documentation
  */
 export interface BestPractice {
@@ -100,6 +1213,8 @@ export class BestPracticesAnalyzer {
    */
   private readonly supportedTopics: string[] = [
     'module_organization',
+    'project_structure',
+    'environment_config',
     'state_management',
     'dependencies',
     'ci_cd',
@@ -187,6 +1302,61 @@ export class BestPracticesAnalyzer {
    */
   private normalizeKey(key: string): string {
     return key.toLowerCase().trim();
+  }
+
+  /**
+   * Returns all static best practice definitions.
+   * These are curated, authoritative recommendations always available.
+   * @returns Array of all static best practice definitions
+   */
+  getStaticPractices(): StaticBestPractice[] {
+    return [...STATIC_BEST_PRACTICES];
+  }
+
+  /**
+   * Returns static best practices filtered by category.
+   * @param category The category to filter by
+   * @returns Array of static practices for the given category
+   */
+  getStaticPracticesByCategory(category: string): StaticBestPractice[] {
+    const normalizedCategory = this.normalizeKey(category);
+    return STATIC_BEST_PRACTICES.filter(
+      p => this.normalizeKey(p.category) === normalizedCategory
+    );
+  }
+
+  /**
+   * Check if a practice ID is defined in the static best practices list.
+   * Uses pre-computed Set for O(1) lookup performance.
+   * @param id The practice ID to check
+   * @returns true if the practice is in the static definitions
+   */
+  isStaticPractice(id: string): boolean {
+    if (!id || !id.trim()) {
+      return false;
+    }
+    return STATIC_PRACTICE_IDS.has(id);
+  }
+
+  /**
+   * Convert a static practice to a PracticeRecommendation.
+   * @param staticPractice The static practice to convert
+   * @returns A PracticeRecommendation
+   */
+  private convertStaticToPracticeRecommendation(
+    staticPractice: StaticBestPractice
+  ): PracticeRecommendation {
+    return {
+      practice: staticPractice.practice,
+      priority: staticPractice.priority,
+      experienceLevel: staticPractice.experienceLevel,
+      category: staticPractice.category,
+      rationale: staticPractice.rationale,
+      examples: staticPractice.examples,
+      antipatterns: staticPractice.antipatterns,
+      tradeoffs: staticPractice.tradeoffs,
+      relatedDocs: staticPractice.relatedDocs
+    };
   }
 
   /**
@@ -562,6 +1732,36 @@ export class BestPracticesAnalyzer {
         'unit test',
         'integration test',
         'verify'
+      ],
+      'project_structure': [
+        'project structure',
+        'directory structure',
+        'folder structure',
+        'live',
+        'modules',
+        'root terragrunt',
+        'include',
+        '_envcommon',
+        'hierarchy',
+        'layout',
+        'organization',
+        'terragrunt.hcl'
+      ],
+      'environment_config': [
+        'environment',
+        'env',
+        'dev',
+        'staging',
+        'prod',
+        'production',
+        'get_env',
+        'locals',
+        'inputs',
+        'override',
+        'inheritance',
+        'merge',
+        'deep_merge',
+        'shallow_merge'
       ]
     };
 
@@ -864,8 +2064,10 @@ export class BestPracticesAnalyzer {
 
       this.practicesLoaded = true;
     } catch (error) {
-      console.error('Failed to extract best practices:', error);
-      this.practicesLoaded = false;
+      console.error('Failed to extract best practices from docs:', error);
+      // Still mark as loaded - we have static practices available
+      // This prevents repeated extraction attempts
+      this.practicesLoaded = true;
     }
   }
 
@@ -945,38 +2147,97 @@ export class BestPracticesAnalyzer {
         return cached;
       }
 
-      // Get practices for this topic
+      // Step 1: Get static practices for this topic (always available, authoritative)
+      const staticPractices = this.getStaticPracticesByCategory(topic);
+      let staticRecommendations: PracticeRecommendation[] = staticPractices.map(
+        sp => this.convertStaticToPracticeRecommendation(sp)
+      );
+
+      // Step 2: Get doc-extracted practices for this topic
       const practices = this.practicesCache.get(this.normalizeKey(topic)) || [];
-      if (practices.length === 0) {
+
+      // If no static practices and no doc practices, return empty result
+      if (staticPractices.length === 0 && practices.length === 0) {
         return this.createEmptyResult(topic);
       }
 
-      // Get relevant docs for conversion
-      const relevantDocs = await this.searchForPatterns(topic);
+      // Get relevant docs for conversion - gracefully handle failures
+      let relevantDocs: TerragruntDoc[] = [];
+      try {
+        relevantDocs = await this.searchForPatterns(topic);
+      } catch (searchError) {
+        console.error(`Failed to search for patterns for ${topic}:`, searchError);
+        // Continue with empty relevantDocs - static practices can still work
+      }
       const docMap = new Map(relevantDocs.map(d => [d.url, d]));
 
-      // Convert to recommendations
-      let recommendations: PracticeRecommendation[] = practices.map(practice => {
-        const doc = docMap.get(practice.relatedDocs[0]) || relevantDocs[0];
-        return this.convertToPracticeRecommendation(practice, doc, topic);
+      // Convert doc-extracted practices to recommendations (only if we have relevantDocs)
+      let docRecommendations: PracticeRecommendation[] = [];
+      if (relevantDocs.length > 0) {
+        docRecommendations = practices.map(practice => {
+          const doc = docMap.get(practice.relatedDocs[0]) || relevantDocs[0];
+          return this.convertToPracticeRecommendation(practice, doc, topic);
+        });
+      }
+
+      // Step 3: Merge static and doc recommendations
+      // Static practices come first (authoritative), then unique doc-extracted ones
+      const staticPracticeTexts = new Set(
+        staticRecommendations.map(r => r.practice.toLowerCase().trim())
+      );
+      
+      // Only add doc recommendations that are sufficiently different from static ones
+      const uniqueDocRecs = docRecommendations.filter(dr => {
+        const drText = dr.practice.toLowerCase().trim();
+        // Check if this is substantially similar to any static practice
+        for (const staticText of staticPracticeTexts) {
+          if (this.calculateSimilarity(drText, staticText) > 0.7) {
+            return false; // Too similar to static, skip
+          }
+        }
+        return true;
       });
+
+      // Combine recommendations: static first, then unique doc-extracted
+      let recommendations = [...staticRecommendations, ...uniqueDocRecs];
 
       // Filter by experience level if provided
       if (level) {
         recommendations = recommendations.filter(r => r.experienceLevel === level);
       }
 
-      // Extract common pitfalls (antipatterns)
-      const commonPitfalls = this.extractCommonPitfalls(practices);
+      // Limit total recommendations to 20 (static practices prioritized)
+      recommendations = recommendations.slice(0, 20);
+
+      // Extract common pitfalls from both sources
+      const allPitfalls = [
+        ...staticPractices.flatMap(sp => sp.antipatterns),
+        ...practices.flatMap(p => p.antipatterns)
+      ];
+      const commonPitfalls = [...new Set(allPitfalls.filter(p => p.length > 15))].slice(0, 10);
 
       // Group experience notes
       const experienceNotes = this.groupExperienceNotes(recommendations);
 
-      // Extract real-world examples
-      const realWorldExamples = this.extractRealWorldExamples(practices);
+      // Extract real-world examples from both sources
+      const allExamples = [
+        ...staticPractices.flatMap(sp => sp.examples),
+        ...practices.map(p => p.example).filter(e => e && e.length > this.MIN_EXAMPLE_LENGTH)
+      ];
+      const realWorldExamples = [...new Set(allExamples)].slice(0, 5);
 
-      // Calculate confidence score based on data quality
-      const confidence = this.calculateConfidence(practices, recommendations);
+      // Calculate confidence score - higher when we have static practices
+      let confidence: number;
+      if (staticPractices.length > 0) {
+        // Base confidence from static practices (minimum 70)
+        const staticConfidence = Math.min(70 + staticPractices.length * 5, 90);
+        // Bonus from doc-extracted practices (up to 10 more)
+        const docBonus = Math.min(practices.length * 2, 10);
+        confidence = Math.min(staticConfidence + docBonus, 100);
+      } else {
+        // Only doc-extracted practices - use original calculation
+        confidence = this.calculateConfidence(practices, recommendations);
+      }
 
       // Generate summary with confidence
       const summary = this.generateSummary(topic, recommendations, confidence);
