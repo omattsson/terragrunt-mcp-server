@@ -5,7 +5,7 @@
   "description": "Stores state as a given key in a given bucket on Amazon S3. This backend also supports state locking via S3 native locking (use_lockfile) or DynamoDB (deprecated). This is the complete schema covering all available configuration options.",
   "provider": "aws",
   "backend": "s3",
-  "terraformDocsUrl": "https://developer.hashicorp.com/terraform/language/backend/s3",
+  "terraformDocsUrl": "https://developer.hashicorp.com/terraform/language/settings/backends/s3",
   "version": "1.0.0",
   "lastUpdated": "2024-12-03",
   "attributes": [
@@ -83,7 +83,6 @@
       "required": false,
       "description": "Amazon Resource Name (ARN) of a Key Management Service (KMS) Key to use for encrypting the state and lock files. Note that if this value is specified, Terraform will need kms:Encrypt, kms:Decrypt and kms:GenerateDataKey permissions on this KMS key.",
       "example": "arn:aws:kms:us-east-1:123456789012:key/12345678-1234-1234-1234-123456789012",
-      "requiredWith": ["encrypt"],
       "conflictsWith": ["sse_customer_key"],
       "pattern": "^arn:aws(-[a-z]+)?:kms:[a-z0-9-]+:[0-9]{12}:key/[a-f0-9-]+$"
     },
