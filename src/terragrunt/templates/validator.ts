@@ -3,7 +3,7 @@
  * Validates custom templates for structure, HCL syntax, security, and versioning
  */
 
-import { ConfigTemplate, ChangelogEntry, DeprecationInfo, CompatibilityInfo } from '../../types/templates.js';
+import { ConfigTemplate } from '../../types/templates.js';
 import { validateHCL } from '../hcl-validator.js';
 
 /**
@@ -327,6 +327,16 @@ export class TemplateValidator {
         );
       }
 
+      // Validate that the date is actually valid (not 2024-02-30, etc.)
+      const parsedDate = new Date(entry.date);
+      if (isNaN(parsedDate.getTime()) || parsedDate.toISOString().slice(0, 10) !== entry.date) {
+        throw new TemplateValidationError(
+          `Changelog entry at index ${i} has invalid date: "${entry.date}". The date does not exist.`,
+          `changelog[${i}].date`,
+          template
+        );
+      }
+
       if (!entry.changes || !Array.isArray(entry.changes)) {
         throw new TemplateValidationError(
           `Changelog entry at index ${i} missing required field "changes" (must be an array)`,
@@ -409,6 +419,15 @@ export class TemplateValidator {
     if (typeof compatibility !== 'object' || compatibility === null) {
       throw new TemplateValidationError(
         'Field "compatibility" must be an object',
+        'compatibility',
+        template
+      );
+    }
+
+    // Require at least one version constraint to be defined
+    if (compatibility.terragruntVersion === undefined && compatibility.terraformVersion === undefined) {
+      throw new TemplateValidationError(
+        'Compatibility info must specify at least one of "terragruntVersion" or "terraformVersion"',
         'compatibility',
         template
       );

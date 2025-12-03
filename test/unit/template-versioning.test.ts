@@ -182,6 +182,24 @@ describe('Template Versioning', () => {
       }
     });
 
+    it('should reject changelog entry with non-existent date', () => {
+      // These dates pass format validation (YYYY-MM-DD) but are not real dates
+      const nonExistentDates = ['2024-02-30', '2024-13-01', '2024-04-31', '2024-00-15', '2024-02-00'];
+      
+      for (const date of nonExistentDates) {
+        const template = createBaseTemplate({
+          changelog: [
+            {
+              version: '1.0.0',
+              date,
+              changes: ['Something changed'],
+            },
+          ],
+        });
+        expect(() => validator.validate(template, 'custom')).toThrow(TemplateValidationError);
+      }
+    });
+
     it('should reject changelog entry without changes array', () => {
       const template = createBaseTemplate({
         changelog: [
@@ -377,6 +395,13 @@ describe('Template Versioning', () => {
 
     it('should reject compatibility that is not an object', () => {
       const template = createBaseTemplate({ compatibility: 'compatible' as any });
+      expect(() => validator.validate(template, 'custom')).toThrow(TemplateValidationError);
+    });
+
+    it('should reject empty compatibility object', () => {
+      const template = createBaseTemplate({
+        compatibility: {},
+      });
       expect(() => validator.validate(template, 'custom')).toThrow(TemplateValidationError);
     });
 
