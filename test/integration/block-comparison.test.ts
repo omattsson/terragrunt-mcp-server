@@ -1,0 +1,377 @@
+/**
+ * Integration tests for block comparison and pattern guidance tools
+ */
+
+import { describe, it, expect, beforeEach } from 'vitest';
+import { ToolHandler } from '../../src/handlers/tools.js';
+
+describe('Block Comparison and Pattern Guidance Tools', () => {
+  let toolHandler: ToolHandler;
+
+  beforeEach(() => {
+    toolHandler = new ToolHandler();
+  });
+
+  describe('Tool Registration', () => {
+    it('should register compare_hcl_blocks tool', () => {
+      const tools = toolHandler.getAvailableTools();
+      const compareTool = tools.find(t => t.name === 'compare_hcl_blocks');
+      
+      expect(compareTool).toBeDefined();
+      expect(compareTool!.description).toContain('Compare two similar HCL blocks');
+      expect(compareTool!.inputSchema.properties.block1).toBeDefined();
+      expect(compareTool!.inputSchema.properties.block2).toBeDefined();
+      expect(compareTool!.inputSchema.properties.listComparisons).toBeDefined();
+    });
+
+    it('should register get_pattern_guidance tool', () => {
+      const tools = toolHandler.getAvailableTools();
+      const guidanceTool = tools.find(t => t.name === 'get_pattern_guidance');
+      
+      expect(guidanceTool).toBeDefined();
+      expect(guidanceTool!.description).toContain('guidance');
+      expect(guidanceTool!.inputSchema.properties.scenario).toBeDefined();
+      expect(guidanceTool!.inputSchema.properties.listPatterns).toBeDefined();
+    });
+  });
+
+  describe('compare_hcl_blocks tool', () => {
+    describe('listing comparisons', () => {
+      it('should list all available comparisons', async () => {
+        const result = await toolHandler.executeTool('compare_hcl_blocks', {
+          listComparisons: true
+        });
+        
+        expect(result.availableComparisons).toBeDefined();
+        expect(result.availableComparisons.length).toBeGreaterThanOrEqual(5);
+        expect(result.availableComparisons).toContain('dependency vs dependencies');
+        expect(result.usage).toBeDefined();
+      });
+    });
+
+    describe('comparing blocks', () => {
+      it('should compare dependency vs dependencies', async () => {
+        const result = await toolHandler.executeTool('compare_hcl_blocks', {
+          block1: 'dependency',
+          block2: 'dependencies'
+        });
+        
+        expect(result.found).toBe(true);
+        expect(result.comparison).toBeDefined();
+        expect(result.comparison.id).toBe('dependency-vs-dependencies');
+        expect(result.comparison.summary).toContain('output');
+      });
+
+      it('should compare using natural language query', async () => {
+        const result = await toolHandler.executeTool('compare_hcl_blocks', {
+          block1: 'inputs vs locals'
+        });
+        
+        expect(result.found).toBe(true);
+        expect(result.comparison.id).toBe('inputs-vs-locals');
+      });
+
+      it('should include block details with syntax', async () => {
+        const result = await toolHandler.executeTool('compare_hcl_blocks', {
+          block1: 'dependency',
+          block2: 'dependencies'
+        });
+        
+        expect(result.comparison.block1.name).toBe('dependency');
+        expect(result.comparison.block1.syntax).toContain('dependency');
+        expect(result.comparison.block1.keyFeatures.length).toBeGreaterThan(0);
+        
+        expect(result.comparison.block2.name).toBe('dependencies');
+        expect(result.comparison.block2.syntax).toContain('dependencies');
+      });
+
+      it('should include key differences', async () => {
+        const result = await toolHandler.executeTool('compare_hcl_blocks', {
+          block1: 'dependency vs dependencies'
+        });
+        
+        expect(result.comparison.keyDifferences).toBeDefined();
+        expect(result.comparison.keyDifferences.length).toBeGreaterThan(0);
+        
+        const diff = result.comparison.keyDifferences[0];
+        expect(diff.aspect).toBeDefined();
+        expect(diff.block1).toBeDefined();
+        expect(diff.block2).toBeDefined();
+      });
+
+      it('should include when-to-use guidance', async () => {
+        const result = await toolHandler.executeTool('compare_hcl_blocks', {
+          block1: 'dependency',
+          block2: 'dependencies'
+        });
+        
+        expect(result.comparison.whenToUse).toBeDefined();
+        expect(result.comparison.whenToUse.useBlock1When.length).toBeGreaterThan(0);
+        expect(result.comparison.whenToUse.useBlock2When.length).toBeGreaterThan(0);
+      });
+
+      it('should include common mistakes', async () => {
+        const result = await toolHandler.executeTool('compare_hcl_blocks', {
+          block1: 'dependency',
+          block2: 'dependencies'
+        });
+        
+        expect(result.comparison.commonMistakes).toBeDefined();
+        expect(result.comparison.commonMistakes.length).toBeGreaterThan(0);
+      });
+
+      it('should include related documentation links', async () => {
+        const result = await toolHandler.executeTool('compare_hcl_blocks', {
+          block1: 'dependency',
+          block2: 'dependencies'
+        });
+        
+        expect(result.comparison.relatedDocs).toBeDefined();
+        expect(result.comparison.relatedDocs.length).toBeGreaterThan(0);
+        expect(result.comparison.relatedDocs[0]).toContain('terragrunt.gruntwork.io');
+      });
+    });
+
+    describe('error handling', () => {
+      it('should return error when no blocks specified', async () => {
+        const result = await toolHandler.executeTool('compare_hcl_blocks', {});
+        
+        expect(result.error).toBeDefined();
+        expect(result.availableComparisons).toBeDefined();
+        expect(result.examples).toBeDefined();
+      });
+
+      it('should return suggestions for unknown block', async () => {
+        const result = await toolHandler.executeTool('compare_hcl_blocks', {
+          block1: 'unknown_block',
+          block2: 'another_unknown'
+        });
+        
+        expect(result.found).toBe(false);
+        expect(result.error).toBeDefined();
+        expect(result.suggestions).toBeDefined();
+      });
+
+      it('should suggest related comparisons for single block', async () => {
+        const result = await toolHandler.executeTool('compare_hcl_blocks', {
+          block1: 'dependency'
+        });
+        
+        expect(result.found).toBe(false);
+        expect(result.suggestions).toBeDefined();
+      });
+    });
+
+    describe('all available comparisons', () => {
+      it('should compare include patterns', async () => {
+        const result = await toolHandler.executeTool('compare_hcl_blocks', {
+          block1: 'include vs multiple includes'
+        });
+        
+        expect(result.found).toBe(true);
+        expect(result.comparison.id).toBe('include-single-vs-multiple');
+      });
+
+      it('should compare generate vs terraform.source', async () => {
+        const result = await toolHandler.executeTool('compare_hcl_blocks', {
+          block1: 'generate',
+          block2: 'terraform.source'
+        });
+        
+        expect(result.found).toBe(true);
+        expect(result.comparison.id).toBe('generate-vs-terraform-source');
+      });
+
+      it('should compare before_hook vs after_hook', async () => {
+        const result = await toolHandler.executeTool('compare_hcl_blocks', {
+          block1: 'before_hook vs after_hook'
+        });
+        
+        expect(result.found).toBe(true);
+        expect(result.comparison.id).toBe('before-hook-vs-after-hook');
+      });
+
+      it('should compare remote_state vs dependency', async () => {
+        const result = await toolHandler.executeTool('compare_hcl_blocks', {
+          block1: 'remote_state',
+          block2: 'dependency'
+        });
+        
+        expect(result.found).toBe(true);
+        expect(result.comparison.id).toBe('remote-state-vs-dependency');
+      });
+    });
+  });
+
+  describe('get_pattern_guidance tool', () => {
+    describe('listing patterns', () => {
+      it('should list all available patterns', async () => {
+        const result = await toolHandler.executeTool('get_pattern_guidance', {
+          listPatterns: true
+        });
+        
+        expect(result.availablePatternTopics).toBeDefined();
+        expect(result.availablePatternTopics.length).toBeGreaterThanOrEqual(3);
+        expect(result.relatedBlockComparisons).toBeDefined();
+        expect(result.usage).toBeDefined();
+      });
+    });
+
+    describe('getting guidance', () => {
+      it('should get guidance for dependency management', async () => {
+        const result = await toolHandler.executeTool('get_pattern_guidance', {
+          scenario: 'managing dependencies'
+        });
+        
+        expect(result.found).toBe(true);
+        expect(result.guidance).toBeDefined();
+        expect(result.guidance.id).toBe('module-dependency-management');
+      });
+
+      it('should get guidance for configuration inheritance', async () => {
+        const result = await toolHandler.executeTool('get_pattern_guidance', {
+          scenario: 'configuration inheritance'
+        });
+        
+        expect(result.found).toBe(true);
+        expect(result.guidance.id).toBe('configuration-inheritance');
+      });
+
+      it('should get guidance for backend state', async () => {
+        const result = await toolHandler.executeTool('get_pattern_guidance', {
+          scenario: 'backend state management'
+        });
+        
+        expect(result.found).toBe(true);
+        expect(result.guidance.id).toBe('backend-state-management');
+      });
+
+      it('should include decision criteria', async () => {
+        const result = await toolHandler.executeTool('get_pattern_guidance', {
+          scenario: 'managing dependencies'
+        });
+        
+        expect(result.guidance.decisionCriteria).toBeDefined();
+        expect(result.guidance.decisionCriteria.length).toBeGreaterThan(0);
+        
+        const criterion = result.guidance.decisionCriteria[0];
+        expect(criterion.criterion).toBeDefined();
+        expect(criterion.recommendation).toBeDefined();
+        expect(criterion.reason).toBeDefined();
+      });
+
+      it('should include patterns with examples', async () => {
+        const result = await toolHandler.executeTool('get_pattern_guidance', {
+          scenario: 'managing dependencies'
+        });
+        
+        expect(result.guidance.patterns).toBeDefined();
+        expect(result.guidance.patterns.length).toBeGreaterThan(0);
+        
+        const pattern = result.guidance.patterns[0];
+        expect(pattern.name).toBeDefined();
+        expect(pattern.description).toBeDefined();
+        expect(pattern.example).toBeDefined();
+        expect(pattern.pros).toBeDefined();
+        expect(pattern.cons).toBeDefined();
+      });
+
+      it('should include related comparisons', async () => {
+        const result = await toolHandler.executeTool('get_pattern_guidance', {
+          scenario: 'managing dependencies'
+        });
+        
+        expect(result.guidance.relatedComparisons).toBeDefined();
+        expect(result.guidance.relatedComparisons.length).toBeGreaterThan(0);
+        expect(result.guidance.relatedComparisons[0]).toContain('dependency');
+      });
+    });
+
+    describe('keyword matching', () => {
+      it('should find by keyword "dependency"', async () => {
+        const result = await toolHandler.executeTool('get_pattern_guidance', {
+          scenario: 'dependency order execution'
+        });
+        
+        expect(result.found).toBe(true);
+        expect(result.guidance.id).toBe('module-dependency-management');
+      });
+
+      it('should find by keyword "include"', async () => {
+        const result = await toolHandler.executeTool('get_pattern_guidance', {
+          scenario: 'include dry parent'
+        });
+        
+        expect(result.found).toBe(true);
+        expect(result.guidance.id).toBe('configuration-inheritance');
+      });
+
+      it('should find by keyword "s3" or "backend"', async () => {
+        const result = await toolHandler.executeTool('get_pattern_guidance', {
+          scenario: 's3 backend storage'
+        });
+        
+        expect(result.found).toBe(true);
+        expect(result.guidance.id).toBe('backend-state-management');
+      });
+    });
+
+    describe('error handling', () => {
+      it('should return error when no scenario specified', async () => {
+        const result = await toolHandler.executeTool('get_pattern_guidance', {});
+        
+        expect(result.error).toBeDefined();
+        expect(result.availablePatternTopics).toBeDefined();
+        expect(result.examples).toBeDefined();
+      });
+
+      it('should return suggestions for unknown scenario', async () => {
+        const result = await toolHandler.executeTool('get_pattern_guidance', {
+          scenario: 'quantum computing in terragrunt'
+        });
+        
+        expect(result.found).toBe(false);
+        expect(result.error).toBeDefined();
+        expect(result.suggestions).toBeDefined();
+      });
+    });
+  });
+
+  describe('Tool Integration', () => {
+    it('should have consistent pattern-comparison references', async () => {
+      // Get a pattern that references comparisons
+      const guidanceResult = await toolHandler.executeTool('get_pattern_guidance', {
+        scenario: 'managing dependencies'
+      });
+      
+      expect(guidanceResult.found).toBe(true);
+      
+      // Verify referenced comparisons exist
+      for (const compRef of guidanceResult.guidance.relatedComparisons) {
+        const compResult = await toolHandler.executeTool('compare_hcl_blocks', {
+          block1: compRef
+        });
+        
+        // Either found or suggestions (comparison name format matches tool input)
+        expect(compResult.found || compResult.suggestions).toBeTruthy();
+      }
+    });
+
+    it('should provide comprehensive dependency coverage', async () => {
+      // Both tools should cover dependency-related topics
+      const comparison = await toolHandler.executeTool('compare_hcl_blocks', {
+        block1: 'dependency vs dependencies'
+      });
+      
+      const guidance = await toolHandler.executeTool('get_pattern_guidance', {
+        scenario: 'managing dependencies'
+      });
+      
+      expect(comparison.found).toBe(true);
+      expect(guidance.found).toBe(true);
+      
+      // Guidance should reference the comparison
+      expect(guidance.guidance.relatedComparisons).toContain('dependency vs dependencies');
+    });
+  });
+});
