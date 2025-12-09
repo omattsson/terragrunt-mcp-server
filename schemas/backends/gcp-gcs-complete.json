@@ -1,0 +1,86 @@
+{
+  "$schema": "../backend-schema.json",
+  "id": "gcp-gcs-complete",
+  "name": "Google Cloud Storage Backend (Complete)",
+  "description": "Stores the state as an object in a configurable prefix in a pre-existing bucket on Google Cloud Storage (GCS). This backend supports state locking and is highly recommended with Object Versioning enabled. This is the complete schema covering all available configuration options.",
+  "provider": "gcp",
+  "backend": "gcs",
+  "terraformDocsUrl": "https://developer.hashicorp.com/terraform/language/settings/backends/gcs",
+  "version": "1.0.0",
+  "lastUpdated": "2024-12-09",
+  "attributes": [
+    {
+      "name": "bucket",
+      "type": "string",
+      "required": true,
+      "description": "The name of the GCS bucket. This name must be globally unique. It is highly recommended to enable Object Versioning on the GCS bucket to allow for state recovery in case of accidental deletions and human error. The bucket must exist prior to configuring the backend.",
+      "example": "my-terraform-state-bucket",
+      "pattern": "^[a-z0-9][a-z0-9._-]{0,61}[a-z0-9]$"
+    },
+    {
+      "name": "prefix",
+      "type": "string",
+      "required": false,
+      "description": "GCS prefix inside the bucket. Named states for workspaces are stored in an object called <prefix>/<name>.tfstate. If not specified, the state file is stored at the root of the bucket.",
+      "example": "terraform/state"
+    },
+    {
+      "name": "credentials",
+      "type": "string",
+      "required": false,
+      "description": "Local path to Google Cloud Platform account credentials in JSON format. If unset, uses Google Application Default Credentials. The provided credentials must have the Storage Object Admin role on the bucket. Can also be sourced from GOOGLE_BACKEND_CREDENTIALS or GOOGLE_CREDENTIALS environment variables. Warning: if using the Google Cloud Platform provider as well, it will also pick up the GOOGLE_CREDENTIALS environment variable.",
+      "example": "~/.config/gcloud/application_default_credentials.json",
+      "sensitive": true
+    },
+    {
+      "name": "access_token",
+      "type": "string",
+      "required": false,
+      "description": "A temporary OAuth 2.0 access token obtained from the Google Authorization server, i.e. the Authorization: Bearer token used to authenticate HTTP requests to GCP APIs. This is an alternative to credentials. If both are specified, access_token will be used over the credentials field. Use for short-lived, temporary access scenarios.",
+      "example": "ya29.a0AfH6SMBx...",
+      "sensitive": true
+    },
+    {
+      "name": "impersonate_service_account",
+      "type": "string",
+      "required": false,
+      "description": "The service account to impersonate for accessing the State Bucket. You must have roles/iam.serviceAccountTokenCreator role on that account for the impersonation to succeed. If you are using a delegation chain, you can specify that using the impersonate_service_account_delegates field. Can also be sourced from GOOGLE_BACKEND_IMPERSONATE_SERVICE_ACCOUNT or GOOGLE_IMPERSONATE_SERVICE_ACCOUNT environment variables.",
+      "example": "terraform@my-project-123456.iam.gserviceaccount.com",
+      "pattern": "^[a-z0-9-]+@[a-z0-9-]+\\.iam\\.gserviceaccount\\.com$"
+    },
+    {
+      "name": "impersonate_service_account_delegates",
+      "type": "list",
+      "required": false,
+      "description": "The delegation chain for impersonating a service account. This is an array of service account emails representing the delegation chain. Each service account in the chain must have the roles/iam.serviceAccountTokenCreator role on the next service account in the chain. This allows for complex impersonation scenarios with multiple intermediary service accounts.",
+      "requiredWith": ["impersonate_service_account"]
+    },
+    {
+      "name": "encryption_key",
+      "type": "string",
+      "required": false,
+      "description": "A 32 byte base64 encoded customer-supplied encryption key (CSEK) used when reading and writing state files in the bucket. Google does not store customer-supplied encryption keys, so any requests to the Cloud Storage API must supply them. If you want to remove customer-supplied keys or change to a different key, you need to perform a gsutil rewrite or gcloud storage cp operation to remove use of the old key before migrating state. Can also be sourced from the GOOGLE_ENCRYPTION_KEY environment variable. Warning: Take care of your encryption keys because state data encrypted with a lost or deleted key is not recoverable.",
+      "example": "SGVsbG8gZnJvbSBHb29nbGUgQ2xvdWQgUGxhdGZvcm0=",
+      "sensitive": true,
+      "conflictsWith": ["kms_encryption_key"],
+      "pattern": "^[A-Za-z0-9+/]{43}=$|^[A-Za-z0-9+/]{42}==$"
+    },
+    {
+      "name": "kms_encryption_key",
+      "type": "string",
+      "required": false,
+      "description": "A Cloud KMS key (customer-managed encryption key) used when reading and writing state files in the bucket. Format should be projects/{{project}}/locations/{{location}}/keyRings/{{keyRing}}/cryptoKeys/{{name}}. To use customer-managed encryption keys, you need to create a key and give your project's GCS service agent permission to use it with the Cloud KMS CryptoKey Encrypter/Decrypter predefined role. Customer-managed keys are stored by GCP and decryption occurs automatically, so the key does not need to be specified when using terraform_remote_state data source. Can also be sourced from the GOOGLE_KMS_ENCRYPTION_KEY environment variable. Warning: Do not delete customer-managed encryption keys in Cloud KMS used to encrypt state. However, if you accidentally delete a key, there is a time window where you can recover it.",
+      "example": "projects/my-project/locations/us-central1/keyRings/my-keyring/cryptoKeys/my-key",
+      "conflictsWith": ["encryption_key"],
+      "pattern": "^projects/[^/]+/locations/[^/]+/keyRings/[^/]+/cryptoKeys/[^/]+$"
+    },
+    {
+      "name": "storage_custom_endpoint",
+      "type": "string",
+      "required": false,
+      "description": "A URL containing three parts: the protocol, the DNS name pointing to a Private Service Connect endpoint, and the path for the Cloud Storage API (/storage/v1/b). You can either use a DNS name automatically made by the Service Directory or a custom DNS name made by you. For example, if you create an endpoint called 'xyz' and want to use the automatically-created DNS name, you should set the field value as https://storage-xyz.p.googleapis.com/storage/v1/b. Can also be sourced from GOOGLE_BACKEND_STORAGE_CUSTOM_ENDPOINT or GOOGLE_STORAGE_CUSTOM_ENDPOINT environment variables. Use this for Private Service Connect configurations to keep traffic within your VPC network.",
+      "example": "https://storage-xyz.p.googleapis.com/storage/v1/b",
+      "pattern": "^https?://[^/]+/storage/v1/b$"
+    }
+  ]
+}

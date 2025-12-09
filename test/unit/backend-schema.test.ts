@@ -1106,3 +1106,157 @@ describe('Real AWS S3 Complete Schema File', () => {
     expect(sseCustomerKey?.conflictsWith).toContain('kms_key_id');
   });
 });
+
+describe('Real GCP GCS Complete Schema File', () => {
+  it('should load and validate the GCP GCS complete schema', async () => {
+    const schemaPath = join(process.cwd(), 'schemas', 'backends', 'gcp-gcs-complete.json');
+    
+    const schema = await loadBackendSchema(schemaPath);
+    
+    expect(schema.id).toBe('gcp-gcs-complete');
+    expect(schema.provider).toBe('gcp');
+    expect(schema.backend).toBe('gcs');
+    expect(schema.attributes.length).toBeGreaterThanOrEqual(9);
+  });
+
+  it('should have correct required attributes', async () => {
+    const schemaPath = join(process.cwd(), 'schemas', 'backends', 'gcp-gcs-complete.json');
+    const schema = await loadBackendSchema(schemaPath);
+    
+    const required = getRequiredAttributes(schema);
+    expect(required).toHaveLength(1);
+    
+    const bucket = getAttributeByName(schema, 'bucket');
+    expect(bucket).toBeDefined();
+    expect(bucket?.required).toBe(true);
+    expect(bucket?.pattern).toBeDefined();
+  });
+
+  it('should have core GCS attributes', async () => {
+    const schemaPath = join(process.cwd(), 'schemas', 'backends', 'gcp-gcs-complete.json');
+    const schema = await loadBackendSchema(schemaPath);
+    
+    const coreAttrs = ['bucket', 'prefix', 'credentials'];
+    for (const attrName of coreAttrs) {
+      const attr = getAttributeByName(schema, attrName);
+      expect(attr).toBeDefined();
+    }
+    
+    const prefix = getAttributeByName(schema, 'prefix');
+    expect(prefix?.required).toBe(false);
+    expect(prefix?.type).toBe('string');
+  });
+
+  it('should have authentication attributes', async () => {
+    const schemaPath = join(process.cwd(), 'schemas', 'backends', 'gcp-gcs-complete.json');
+    const schema = await loadBackendSchema(schemaPath);
+    
+    const authAttrs = ['credentials', 'access_token', 'impersonate_service_account', 'impersonate_service_account_delegates'];
+    for (const attrName of authAttrs) {
+      const attr = getAttributeByName(schema, attrName);
+      expect(attr).toBeDefined();
+    }
+    
+    // Verify sensitive fields
+    const credentials = getAttributeByName(schema, 'credentials');
+    expect(credentials?.sensitive).toBe(true);
+    
+    const accessToken = getAttributeByName(schema, 'access_token');
+    expect(accessToken?.sensitive).toBe(true);
+  });
+
+  it('should have service account impersonation with delegation chain', async () => {
+    const schemaPath = join(process.cwd(), 'schemas', 'backends', 'gcp-gcs-complete.json');
+    const schema = await loadBackendSchema(schemaPath);
+    
+    const impersonate = getAttributeByName(schema, 'impersonate_service_account');
+    expect(impersonate).toBeDefined();
+    expect(impersonate?.pattern).toBeDefined();
+    
+    const delegates = getAttributeByName(schema, 'impersonate_service_account_delegates');
+    expect(delegates).toBeDefined();
+    expect(delegates?.type).toBe('list');
+    expect(delegates?.requiredWith).toContain('impersonate_service_account');
+  });
+
+  it('should have encryption attributes with proper conflicts', async () => {
+    const schemaPath = join(process.cwd(), 'schemas', 'backends', 'gcp-gcs-complete.json');
+    const schema = await loadBackendSchema(schemaPath);
+    
+    const encryptionKey = getAttributeByName(schema, 'encryption_key');
+    expect(encryptionKey).toBeDefined();
+    expect(encryptionKey?.sensitive).toBe(true);
+    expect(encryptionKey?.conflictsWith).toContain('kms_encryption_key');
+    expect(encryptionKey?.pattern).toBeDefined(); // Base64 pattern
+    
+    const kmsKey = getAttributeByName(schema, 'kms_encryption_key');
+    expect(kmsKey).toBeDefined();
+    expect(kmsKey?.conflictsWith).toContain('encryption_key');
+    expect(kmsKey?.pattern).toBeDefined(); // GCP KMS key format
+  });
+
+  it('should have sensitive attributes marked correctly', async () => {
+    const schemaPath = join(process.cwd(), 'schemas', 'backends', 'gcp-gcs-complete.json');
+    const schema = await loadBackendSchema(schemaPath);
+    
+    const sensitive = getSensitiveAttributes(schema);
+    expect(sensitive.length).toBeGreaterThanOrEqual(3);
+    
+    const sensitiveNames = sensitive.map(a => a.name);
+    expect(sensitiveNames).toContain('credentials');
+    expect(sensitiveNames).toContain('access_token');
+    expect(sensitiveNames).toContain('encryption_key');
+  });
+
+  it('should have custom endpoint attribute for Private Service Connect', async () => {
+    const schemaPath = join(process.cwd(), 'schemas', 'backends', 'gcp-gcs-complete.json');
+    const schema = await loadBackendSchema(schemaPath);
+    
+    const customEndpoint = getAttributeByName(schema, 'storage_custom_endpoint');
+    expect(customEndpoint).toBeDefined();
+    expect(customEndpoint?.type).toBe('string');
+    expect(customEndpoint?.pattern).toBeDefined(); // URL pattern with /storage/v1/b
+  });
+
+  it('should validate encryption key patterns', async () => {
+    const schemaPath = join(process.cwd(), 'schemas', 'backends', 'gcp-gcs-complete.json');
+    const schema = await loadBackendSchema(schemaPath);
+    
+    const encryptionKey = getAttributeByName(schema, 'encryption_key');
+    expect(encryptionKey?.pattern).toBeDefined();
+    
+    // Base64 pattern should match 32-byte encoded string (44 chars)
+    const base64Pattern = new RegExp(encryptionKey!.pattern!);
+    expect(base64Pattern.test('SGVsbG8gZnJvbSBHb29nbGUgQ2xvdWQgUGxhdGZvcm0=')).toBe(true);
+  });
+
+  it('should validate KMS key format pattern', async () => {
+    const schemaPath = join(process.cwd(), 'schemas', 'backends', 'gcp-gcs-complete.json');
+    const schema = await loadBackendSchema(schemaPath);
+    
+    const kmsKey = getAttributeByName(schema, 'kms_encryption_key');
+    expect(kmsKey?.pattern).toBeDefined();
+    
+    // KMS key pattern should match GCP resource path format
+    const kmsPattern = new RegExp(kmsKey!.pattern!);
+    expect(kmsPattern.test('projects/my-project/locations/us-central1/keyRings/my-keyring/cryptoKeys/my-key')).toBe(true);
+  });
+
+  it('should validate bucket name pattern', async () => {
+    const schemaPath = join(process.cwd(), 'schemas', 'backends', 'gcp-gcs-complete.json');
+    const schema = await loadBackendSchema(schemaPath);
+    
+    const bucket = getAttributeByName(schema, 'bucket');
+    expect(bucket?.pattern).toBeDefined();
+    
+    const bucketPattern = new RegExp(bucket!.pattern!);
+    // Valid bucket names
+    expect(bucketPattern.test('my-terraform-state-bucket')).toBe(true);
+    expect(bucketPattern.test('state.bucket.prod')).toBe(true);
+    
+    // Invalid bucket names (too short, starts/ends with hyphen)
+    expect(bucketPattern.test('ab')).toBe(false);
+    expect(bucketPattern.test('-invalid')).toBe(false);
+    expect(bucketPattern.test('invalid-')).toBe(false);
+  });
+});
