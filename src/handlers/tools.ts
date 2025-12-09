@@ -298,6 +298,12 @@ export class ToolHandler {
                             type: 'string',
                             description: 'Optional backend type for remote_state (e.g., "s3", "azurerm", "gcs", "azure")'
                         },
+                        tier: {
+                            type: 'string',
+                            enum: ['essential', 'advanced', 'complete'],
+                            description: 'Optional template tier: essential (minimal attributes), advanced (extended attributes), complete (all attributes). Defaults to essential for backward compatibility.',
+                            default: 'essential'
+                        },
                         options: {
                             type: 'object',
                             description: 'Configuration variables for the template (e.g., bucket, region, account_id). Required variables depend on the selected template.',
@@ -589,6 +595,7 @@ export class ToolHandler {
                     return await this.generateTerragruntConfig(
                         args.useCase,
                         args.backend || undefined,
+                        args.tier || undefined,
                         args.options,
                         args.strictValidation ?? false,
                         args.custom_template
@@ -1399,6 +1406,7 @@ export class ToolHandler {
     private async generateTerragruntConfig(
         useCase: string,
         backend?: string,
+        tier?: 'essential' | 'advanced' | 'complete',
         options: Record<string, string | number | boolean | undefined> = {},
         strictValidation: boolean = false,
         customTemplate?: any
@@ -1429,6 +1437,7 @@ export class ToolHandler {
             const result = await generator.generateConfig({
                 useCase: useCase as UseCase,
                 backend,
+                tier,
                 options,
                 strictValidation
             });
@@ -1450,7 +1459,8 @@ export class ToolHandler {
                     errors: result.validation.errors,
                     warnings: result.validation.warnings
                 } : undefined,
-                // Indicate if custom template was used
+                // Indicate tier and if custom template was used
+                tier: tier || 'essential',
                 usedCustomTemplate: !!customTemplate
             };
         } catch (error) {

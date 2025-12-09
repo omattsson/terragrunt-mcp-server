@@ -1,6 +1,7 @@
 import { ConfigTemplate, TemplateMetadata, TemplateSearchOptions } from '../../types/templates.js';
 import { TemplateLoader } from './loaders/base.js';
 import { BuiltinTemplateLoader } from './loaders/builtin.js';
+import { SchemaTemplateLoader } from './loaders/schema.js';
 
 /**
  * Manages Terragrunt configuration templates extracted from documentation
@@ -17,12 +18,15 @@ export class TemplatesManager {
   private loaders: TemplateLoader[];
 
   /**
-   * @param loaders - Template loaders to use (defaults to BuiltinTemplateLoader)
+   * @param loaders - Template loaders to use (defaults to BuiltinTemplateLoader and SchemaTemplateLoader)
    */
   constructor(loaders?: TemplateLoader[]) {
     this.loaders = loaders && loaders.length > 0 
       ? loaders 
-      : [new BuiltinTemplateLoader()];
+      : [
+          new BuiltinTemplateLoader(),
+          new SchemaTemplateLoader(),
+        ];
   }
 
   /**
