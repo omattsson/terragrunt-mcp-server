@@ -15,7 +15,7 @@
       "required": true,
       "description": "The name of the GCS bucket. This name must be globally unique. It is highly recommended to enable Object Versioning on the GCS bucket to allow for state recovery in case of accidental deletions and human error. The bucket must exist prior to configuring the backend.",
       "example": "my-terraform-state-bucket",
-      "pattern": "^[a-z0-9][a-z0-9._-]{1,61}[a-z0-9]$"
+      "pattern": "^[a-z0-9][a-z0-9._-]{1,61}[a-z0-9]$|^[a-z0-9]{3}$"
     },
     {
       "name": "prefix",
