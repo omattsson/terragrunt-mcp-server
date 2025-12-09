@@ -81,16 +81,18 @@ export class ConfigTemplateLibrary {
       if (tier) {
         const tierSuffix = tier === 'essential' ? '' : `-${tier}`;
         
-        // Try multiple patterns for tier matching
+        // Try multiple patterns for tier matching with exact matching
         const tierPatterns = [
           `${backendLower}-backend${tierSuffix}`,  // e.g., "s3-backend-complete"
           `${backendLower}${tierSuffix}`,           // e.g., "s3-complete"
         ];
         
         for (const pattern of tierPatterns) {
-          const tierMatch = templates.find(t => 
-            t.id.toLowerCase().includes(pattern)
-          );
+          const tierMatch = templates.find(t => {
+            const idLower = t.id.toLowerCase();
+            // Exact match or ends with pattern to prevent matching "aws-s3-complete-extra"
+            return idLower === pattern || idLower.endsWith(`-${pattern}`);
+          });
           if (tierMatch) {
             return tierMatch;
           }

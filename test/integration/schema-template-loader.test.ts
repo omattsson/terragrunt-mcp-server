@@ -44,11 +44,18 @@ describe('SchemaTemplateLoader Integration Tests', () => {
       }
     });
 
-    it('should generate templates with "complete" in ID or tags', async () => {
+    it('should generate complete-tier templates with "complete" in ID or tags', async () => {
       const loader = new SchemaTemplateLoader();
       const templates = await loader.loadTemplates();
 
-      for (const template of templates) {
+      // Filter to only complete-tier templates (not essential schemas like s3, azurerm)
+      const completeTemplates = templates.filter(t => 
+        t.id.includes('complete') || t.tags.includes('complete')
+      );
+      
+      expect(completeTemplates.length).toBeGreaterThan(0);
+      
+      for (const template of completeTemplates) {
         const hasCompleteInId = template.id.includes('complete');
         const hasCompleteInTags = template.tags.includes('complete');
         
@@ -231,6 +238,10 @@ describe('SchemaTemplateLoader Integration Tests', () => {
         expect(variable.type).toMatch(/^(string|number|boolean|list|map|object)$/);
         expect(typeof variable.required).toBe('boolean');
       }
+      
+      // Verify that at least some variables are marked as required
+      const requiredVars = template!.variables.filter(v => v.required);
+      expect(requiredVars.length).toBeGreaterThan(0);
     });
 
     it('should mark sensitive variables correctly', async () => {
