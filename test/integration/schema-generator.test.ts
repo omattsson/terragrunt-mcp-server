@@ -11,6 +11,20 @@ import { loadBackendSchema } from '../../src/terragrunt/schema-loader.js';
 import { validateHCL } from '../../src/terragrunt/hcl-validator.js';
 import Mustache from 'mustache';
 
+/**
+ * Helper function to render HCL templates with Mustache without HTML escaping.
+ * Encapsulates the escape override to avoid global mutation side effects.
+ */
+function renderHCL(template: string, values: Record<string, any>): string {
+  const originalEscape = Mustache.escape;
+  try {
+    Mustache.escape = (text: string) => text;
+    return Mustache.render(template, values);
+  } finally {
+    Mustache.escape = originalEscape;
+  }
+}
+
 describe('SchemaToTemplateGenerator Integration Tests', () => {
   const generator = new SchemaToTemplateGenerator();
 
@@ -186,10 +200,7 @@ describe('SchemaToTemplateGenerator Integration Tests', () => {
         bucket: 'my-terraform-state',
       };
 
-      // Disable HTML escaping for HCL
-      Mustache.escape = (text: string) => text;
-
-      const rendered = Mustache.render(template.templateHcl, values);
+      const rendered = renderHCL(template.templateHcl, values);
 
       expect(rendered).toContain('bucket = "my-terraform-state"');
       expect(rendered).not.toContain('{{bucket}}');
@@ -211,9 +222,7 @@ describe('SchemaToTemplateGenerator Integration Tests', () => {
         credentials: '~/.config/gcloud/credentials.json',
       };
 
-      Mustache.escape = (text: string) => text;
-
-      const rendered = Mustache.render(template.templateHcl, values);
+      const rendered = renderHCL(template.templateHcl, values);
 
       expect(rendered).toContain('bucket = "my-terraform-state"');
       expect(rendered).toContain('prefix = "terraform/state"');
@@ -237,9 +246,7 @@ describe('SchemaToTemplateGenerator Integration Tests', () => {
         // Add boolean variable
         values[booleanVars[0].name] = true;
 
-        Mustache.escape = (text: string) => text;
-
-        const rendered = Mustache.render(template.templateHcl, values);
+        const rendered = renderHCL(template.templateHcl, values);
 
         // Boolean should render without quotes
         expect(rendered).toContain(`${booleanVars[0].name} = true`);
@@ -264,9 +271,7 @@ describe('SchemaToTemplateGenerator Integration Tests', () => {
         // Add number variable
         values[numberVars[0].name] = 42;
 
-        Mustache.escape = (text: string) => text;
-
-        const rendered = Mustache.render(template.templateHcl, values);
+        const rendered = renderHCL(template.templateHcl, values);
 
         // Number should render without quotes
         expect(rendered).toContain(`${numberVars[0].name} = 42`);
@@ -288,8 +293,7 @@ describe('SchemaToTemplateGenerator Integration Tests', () => {
         prefix: 'terraform/state',
       };
 
-      Mustache.escape = (text: string) => text;
-      const rendered = Mustache.render(template.templateHcl, values);
+      const rendered = renderHCL(template.templateHcl, values);
 
       // Validate the rendered HCL
       const validation = validateHCL(rendered);
@@ -309,8 +313,7 @@ describe('SchemaToTemplateGenerator Integration Tests', () => {
         bucket: 'test-bucket',
       };
 
-      Mustache.escape = (text: string) => text;
-      const rendered = Mustache.render(template.templateHcl, values);
+      const rendered = renderHCL(template.templateHcl, values);
 
       const validation = validateHCL(rendered);
 
@@ -335,8 +338,7 @@ describe('SchemaToTemplateGenerator Integration Tests', () => {
           values[v.name] = `test-${v.name}`;
         });
 
-      Mustache.escape = (text: string) => text;
-      const rendered = Mustache.render(template.templateHcl, values);
+      const rendered = renderHCL(template.templateHcl, values);
 
       const validation = validateHCL(rendered);
 

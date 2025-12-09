@@ -8,7 +8,6 @@
 import type {
   CLICommand,
   CLIOption,
-  CLIExample,
   CLICommandCategory,
   CLICommandSearchResult,
   CLICommandCategoryInfo,

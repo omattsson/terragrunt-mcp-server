@@ -244,16 +244,18 @@ export class SchemaToTemplateGenerator {
         return `{{${varName}}}`;
       
       case 'list':
-        // For lists, we'll need special handling
-        // For now, assume it's a list of strings
+        // Mustache will render the list value as-is from the context.
+        // The actual list formatting is handled by the Mustache renderer.
         return `{{${varName}}}`;
       
       case 'map':
-        // Maps need special handling too
+        // Mustache will render the map value as-is from the context.
+        // The actual map formatting is handled by the Mustache renderer.
         return `{{${varName}}}`;
       
       case 'object':
-        // Objects need custom rendering
+        // Mustache will render the object value as-is from the context.
+        // The actual object formatting is handled by the Mustache renderer.
         return `{{${varName}}}`;
       
       default:

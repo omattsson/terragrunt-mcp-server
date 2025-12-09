@@ -6,7 +6,6 @@
 import { describe, it, expect } from 'vitest';
 import { SchemaToTemplateGenerator } from '../../src/terragrunt/schema-generator.js';
 import { BackendSchema, BackendAttribute } from '../../src/types/backend-schema.js';
-import { ConfigTemplate } from '../../src/types/templates.js';
 
 // Helper to create a minimal valid schema
 function createTestSchema(overrides: Partial<BackendSchema> = {}): BackendSchema {
