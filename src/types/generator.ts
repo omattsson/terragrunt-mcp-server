@@ -13,6 +13,8 @@ export interface GenerateConfigParams {
   useCase: UseCase;
   /** Optional backend type (e.g., 's3', 'azurerm', 'gcs') */
   backend?: string;
+  /** Optional template tier (essential, advanced, complete). Defaults to essential. */
+  tier?: 'essential' | 'advanced' | 'complete';
   /** Configuration options/variables for template substitution */
   options: Record<string, string | number | boolean | undefined>;
   /** Enable strict HCL syntax validation (defaults to false) */

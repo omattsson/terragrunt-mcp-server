@@ -54,9 +54,10 @@ export class ConfigTemplateLibrary {
    * 
    * @param useCase - The primary use case (remote_state, provider_generation, etc.)
    * @param backend - Optional backend/cloud provider filter (s3, azurerm, aws, etc.) or template ID
+   * @param tier - Optional template tier (essential, advanced, complete). Defaults to essential for backward compatibility.
    * @returns ConfigTemplate if found, undefined otherwise
    */
-  async getTemplate(useCase: UseCase, backend?: string): Promise<ConfigTemplate | undefined> {
+  async getTemplate(useCase: UseCase, backend?: string, tier?: 'essential' | 'advanced' | 'complete'): Promise<ConfigTemplate | undefined> {
     await this.templatesManager.loadTemplates();
     
     const category = ConfigTemplateLibrary.CATEGORY_MAP[useCase];
@@ -74,6 +75,33 @@ export class ConfigTemplateLibrary {
     // If backend specified, filter by template ID, cloud provider, or tags
     if (backend) {
       const backendLower = backend.toLowerCase();
+      
+      // If tier specified, try tier-specific ID first
+      // Pattern: {cloud}-{backend}-backend or {cloud}-{backend}-backend-{tier}
+      if (tier) {
+        const tierSuffix = tier === 'essential' ? '' : `-${tier}`;
+        
+        // Try multiple patterns for tier matching with exact matching
+        const tierPatterns = [
+          `${backendLower}-backend${tierSuffix}`,  // e.g., "s3-backend-complete"
+          `${backendLower}${tierSuffix}`,           // e.g., "s3-complete"
+        ];
+        
+        for (const pattern of tierPatterns) {
+          const tierMatch = templates.find(t => {
+            const idLower = t.id.toLowerCase();
+            // Exact match or ends with pattern to prevent matching "aws-s3-complete-extra"
+            return idLower === pattern || idLower.endsWith(`-${pattern}`);
+          });
+          if (tierMatch) {
+            return tierMatch;
+          }
+        }
+      }
+      
+      // If no tier-specific template is found, intentionally fall back to general matching below.
+      // The tier parameter is treated as a preferred match, not a strict filter.
+      // This fallback is tested in integration tests and is intentional for resilience.
       
       // Try to match by template ID first (for custom templates)
       const idMatch = templates.find(t => t.id.toLowerCase() === backendLower);

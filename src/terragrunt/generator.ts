@@ -22,12 +22,13 @@ export class TerragruntConfigGenerator {
    * Generate a complete Terragrunt configuration from parameters
    */
   async generateConfig(params: GenerateConfigParams): Promise<GeneratedConfig> {
-    const { useCase, backend, options } = params;
+    const { useCase, backend, tier, options } = params;
 
     // Get appropriate template
-    const template = await this.templateLibrary.getTemplate(useCase, backend);
+    const template = await this.templateLibrary.getTemplate(useCase, backend, tier);
     if (!template) {
-      throw new Error(`No template found for use case '${useCase}'${backend ? ` with backend '${backend}'` : ''}`);
+      const tierMsg = tier ? ` (tier: ${tier})` : '';
+      throw new Error(`No template found for use case '${useCase}'${backend ? ` with backend '${backend}'` : ''}${tierMsg}`);
     }
 
     // Validate and resolve variables

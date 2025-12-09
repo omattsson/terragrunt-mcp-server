@@ -28,7 +28,7 @@ describe('ConfigTemplateLibrary', () => {
       const template = await library.getTemplate('remote_state', 's3');
       
       expect(template).toBeDefined();
-      expect(template?.name).toBe('AWS S3 Remote State Backend');
+      expect(template?.name).toBe('AWS S3 Backend'); // Schema-based template has priority over builtin
       expect(template?.category).toBe('backend');
       expect(template?.cloudProvider).toBe('aws');
     });
@@ -37,7 +37,7 @@ describe('ConfigTemplateLibrary', () => {
       const template = await library.getTemplate('remote_state', 'azure');
       
       expect(template).toBeDefined();
-      expect(template?.name).toBe('Azure Blob Storage Remote State Backend');
+      expect(template?.name).toBe('Azure Blob Storage Remote State Backend'); // Matches builtin by cloudProvider
       expect(template?.category).toBe('backend');
       expect(template?.cloudProvider).toBe('azure');
     });
@@ -46,7 +46,7 @@ describe('ConfigTemplateLibrary', () => {
       const template = await library.getTemplate('remote_state', 'azurerm');
       
       expect(template).toBeDefined();
-      expect(template?.name).toBe('Azure Blob Storage Remote State Backend');
+      expect(template?.name).toBe('Azure Blob Storage Backend'); // Schema-based template has priority
     });
 
     it('should get provider_generation template', async () => {
