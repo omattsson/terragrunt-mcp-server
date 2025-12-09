@@ -518,8 +518,8 @@ inputs = {
       expect(result2.success).toBe(true);
 
       // Cleanup
-      await fs.rmdir(dir1, { recursive: true });
-      await fs.rmdir(dir2, { recursive: true });
+      await fs.rm(dir1, { recursive: true, force: true });
+      await fs.rm(dir2, { recursive: true, force: true });
     });
   });
 
