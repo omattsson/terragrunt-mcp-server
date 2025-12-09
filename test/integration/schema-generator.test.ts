@@ -3,8 +3,9 @@
  * Tests Issue #143: Schema-to-Template Generator with actual backend schemas
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeAll } from 'vitest';
 import { join } from 'path';
+import { access } from 'fs/promises';
 import { SchemaToTemplateGenerator } from '../../src/terragrunt/schema-generator.js';
 import { loadBackendSchema } from '../../src/terragrunt/schema-loader.js';
 import { validateHCL } from '../../src/terragrunt/hcl-validator.js';
@@ -117,39 +118,59 @@ describe('SchemaToTemplateGenerator Integration Tests', () => {
     });
   });
 
-  describe('AWS S3 Backend Schema (if exists)', () => {
-    it('should load and generate template from S3 schema if available', async () => {
-      const schemaPath = join(process.cwd(), 'schemas', 'backends', 'aws-s3-complete.json');
-      
-      try {
-        const schema = await loadBackendSchema(schemaPath);
-        const template = generator.generateTemplate(schema);
+  describe('AWS S3 Backend Schema', () => {
+    let s3SchemaExists = false;
 
-        expect(template).toBeDefined();
-        expect(template.id).toBe('aws-s3-complete');
-        expect(template.cloudProvider).toBe('aws');
-        expect(template.tags).toContain('s3');
-      } catch (error) {
-        // Schema file doesn't exist yet, skip test
-        console.log('S3 schema not found, skipping test');
+    beforeAll(async () => {
+      const schemaPath = join(process.cwd(), 'schemas', 'backends', 'aws-s3-complete.json');
+      try {
+        await access(schemaPath);
+        s3SchemaExists = true;
+      } catch {
+        s3SchemaExists = false;
       }
+    });
+
+    it('should load and generate template from S3 schema if available', async () => {
+      if (!s3SchemaExists) {
+        return; // Skip test if schema doesn't exist
+      }
+
+      const schemaPath = join(process.cwd(), 'schemas', 'backends', 'aws-s3-complete.json');
+      const schema = await loadBackendSchema(schemaPath);
+      const template = generator.generateTemplate(schema);
+
+      expect(template).toBeDefined();
+      expect(template.id).toBe('aws-s3-complete');
+      expect(template.cloudProvider).toBe('aws');
+      expect(template.tags).toContain('s3');
     });
   });
 
-  describe('Azure Blob Backend Schema (if exists)', () => {
-    it('should load and generate template from Azure Blob schema if available', async () => {
-      const schemaPath = join(process.cwd(), 'schemas', 'backends', 'azure-blob.json');
-      
-      try {
-        const schema = await loadBackendSchema(schemaPath);
-        const template = generator.generateTemplate(schema);
+  describe('Azure Blob Backend Schema', () => {
+    let azureSchemaExists = false;
 
-        expect(template).toBeDefined();
-        expect(template.cloudProvider).toBe('azure');
-      } catch (error) {
-        // Schema file doesn't exist yet, skip test
-        console.log('Azure Blob schema not found, skipping test');
+    beforeAll(async () => {
+      const schemaPath = join(process.cwd(), 'schemas', 'backends', 'azure-blob.json');
+      try {
+        await access(schemaPath);
+        azureSchemaExists = true;
+      } catch {
+        azureSchemaExists = false;
       }
+    });
+
+    it('should load and generate template from Azure Blob schema if available', async () => {
+      if (!azureSchemaExists) {
+        return; // Skip test if schema doesn't exist
+      }
+
+      const schemaPath = join(process.cwd(), 'schemas', 'backends', 'azure-blob.json');
+      const schema = await loadBackendSchema(schemaPath);
+      const template = generator.generateTemplate(schema);
+
+      expect(template).toBeDefined();
+      expect(template.cloudProvider).toBe('azure');
     });
   });
 
@@ -273,11 +294,6 @@ describe('SchemaToTemplateGenerator Integration Tests', () => {
       // Validate the rendered HCL
       const validation = validateHCL(rendered);
 
-      if (!validation.syntaxValid) {
-        console.error('HCL Validation Errors:', validation.errors);
-        console.error('Rendered HCL:', rendered);
-      }
-
       expect(validation.syntaxValid).toBe(true);
       expect(validation.errors).toHaveLength(0);
     });
@@ -323,11 +339,6 @@ describe('SchemaToTemplateGenerator Integration Tests', () => {
       const rendered = Mustache.render(template.templateHcl, values);
 
       const validation = validateHCL(rendered);
-
-      if (!validation.syntaxValid) {
-        console.error('HCL Validation Errors:', validation.errors);
-        console.error('Rendered HCL:', rendered);
-      }
 
       expect(validation.syntaxValid).toBe(true);
     });
