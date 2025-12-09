@@ -36,6 +36,8 @@ A Model Context Protocol (MCP) server that provides comprehensive Terragrunt doc
 
 - [Development Guide](Development-Guide) - Contributing to the project
 - [Testing](Testing) - Running and writing tests
+- [Testing Complete Templates](Testing-Complete-Templates.md) - Comprehensive test guide for auto-generated templates
+- [Manual Testing Checklist](Manual-Testing-Checklist.md) - Real-world validation procedures
 - [Performance Testing](Performance-Testing) - Performance benchmarks and metrics
 - [Edge Cases Testing](Edge-Cases-Testing) - Edge case and input validation tests
 - [MCP Protocol Compliance](MCP-Protocol-Compliance) - MCP specification compliance tests
