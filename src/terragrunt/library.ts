@@ -99,6 +99,10 @@ export class ConfigTemplateLibrary {
         }
       }
       
+      // If no tier-specific template is found, intentionally fall back to general matching below.
+      // The tier parameter is treated as a preferred match, not a strict filter.
+      // This fallback is tested in integration tests and is intentional for resilience.
+      
       // Try to match by template ID first (for custom templates)
       const idMatch = templates.find(t => t.id.toLowerCase() === backendLower);
       if (idMatch) {

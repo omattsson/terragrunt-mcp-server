@@ -18,7 +18,7 @@ export class TemplatesManager {
   private loaders: TemplateLoader[];
 
   /**
-   * @param loaders - Template loaders to use (defaults to BuiltinTemplateLoader and SchemaTemplateLoader)
+   * @param loaders - Template loaders to use (defaults to BuiltinTemplateLoader [priority 10] and SchemaTemplateLoader [priority 15]; schema templates will override builtin templates when IDs match)
    */
   constructor(loaders?: TemplateLoader[]) {
     this.loaders = loaders && loaders.length > 0 

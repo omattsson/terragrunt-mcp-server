@@ -14,7 +14,7 @@ describe('TemplatesManager', () => {
       const templates = await manager.getAllTemplates();
       
       expect(templates.length).toBeGreaterThanOrEqual(3);
-      expect(templates.length).toBe(16); // 12 builtin + 4 schema-based (s3, aws-s3-complete, azure-blob, gcp-gcs-complete)
+      expect(templates.length).toBe(16); // 12 builtin + 4 schema-based (s3, aws-s3-complete, azurerm, gcp-gcs-complete)
     });
 
     it('should only load templates once', async () => {
@@ -106,7 +106,7 @@ describe('TemplatesManager', () => {
     it('should filter by category', async () => {
       const backendTemplates = await manager.searchTemplates({ category: 'backend' });
       
-      expect(backendTemplates).toHaveLength(10); // 6 builtin backends + 4 schema-based (s3, aws-s3-complete, azure-blob, gcp-gcs-complete)
+      expect(backendTemplates).toHaveLength(10); // 6 builtin backends + 4 schema-based (s3, aws-s3-complete, azurerm, gcp-gcs-complete)
       expect(backendTemplates.every(t => t.category === 'backend')).toBe(true);
     });
 

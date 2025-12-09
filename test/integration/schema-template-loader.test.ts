@@ -253,15 +253,14 @@ describe('SchemaTemplateLoader Integration Tests', () => {
       expect(sensitiveVars).toBeDefined();
       
       // GCS should have sensitive variables like credentials, access_token, encryption_key
-      if (sensitiveVars && sensitiveVars.length > 0) {
-        const sensitiveNames = sensitiveVars.map(v => v.name);
-        const hasSensitiveCredentials = sensitiveNames.some(name => 
-          name.includes('credential') || 
-          name.includes('token') || 
-          name.includes('key')
-        );
-        expect(hasSensitiveCredentials).toBe(true);
-      }
+      expect(sensitiveVars!.length).toBeGreaterThan(0); // GCS should have sensitive vars
+      const sensitiveNames = sensitiveVars!.map(v => v.name);
+      const hasSensitiveCredentials = sensitiveNames.some(name => 
+        name.includes('credential') || 
+        name.includes('token') || 
+        name.includes('key')
+      );
+      expect(hasSensitiveCredentials).toBe(true);
     });
   });
 });

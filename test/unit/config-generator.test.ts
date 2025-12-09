@@ -52,7 +52,7 @@ describe('TerragruntConfigGenerator', () => {
       const result = await generator.generateConfig({
         useCase: 'remote_state',
         backend: 's3',
-        tier: 'essential', // Use builtin template
+        tier: 'essential', // Prefer essential tier (schema-based template has priority over builtin)
         options: {
           bucket: 'my-terraform-state',
           key: '${path_relative_to_include()}/terraform.tfstate',
@@ -114,7 +114,7 @@ describe('TerragruntConfigGenerator', () => {
       const result = await generator.generateConfig({
         useCase: 'remote_state',
         backend: 's3',
-        tier: 'essential', // Use builtin template
+        tier: 'essential', // Prefer essential tier (schema-based template has priority over builtin)
         options: {
           bucket: 'test-bucket',
           key: 'terraform.tfstate',
@@ -131,7 +131,7 @@ describe('TerragruntConfigGenerator', () => {
       const result = await generator.generateConfig({
         useCase: 'remote_state',
         backend: 's3',
-        tier: 'essential', // Use builtin template
+        tier: 'essential', // Prefer essential tier (schema-based template has priority over builtin)
         options: {
           bucket: 'test-bucket',
           key: 'terraform.tfstate',
@@ -206,7 +206,7 @@ describe('TerragruntConfigGenerator', () => {
       const result = await generator.generateConfig({
         useCase: 'remote_state',
         backend: 's3',
-        tier: 'essential', // Use builtin template
+        tier: 'essential', // Prefer essential tier (schema-based template has priority over builtin)
         options: {
           bucket: 'test-bucket',
           key: 'terraform.tfstate',
@@ -224,7 +224,7 @@ describe('TerragruntConfigGenerator', () => {
       const result = await generator.generateConfig({
         useCase: 'remote_state',
         backend: 's3',
-        tier: 'essential', // Use builtin template
+        tier: 'essential', // Prefer essential tier (schema-based template has priority over builtin)
         options: {
           bucket: 'my-bucket',
           key: 'path/to/state.tfstate',
@@ -282,6 +282,7 @@ describe('TerragruntConfigGenerator', () => {
         },
       });
 
+      // Generic assertions work with both schema-based ("AWS S3 Backend") and builtin ("AWS S3 Remote State Backend") templates
       expect(result.explanation).toContain('Backend');
       expect(result.explanation).toContain('S3');
     });
@@ -675,7 +676,7 @@ describe('TerragruntConfigGenerator', () => {
       const result = await generator.generateConfig({
         useCase: 'remote_state',
         backend: 's3',
-        tier: 'essential', // Use builtin template
+        tier: 'essential', // Prefer essential tier (schema-based template has priority over builtin)
         options: {
           bucket: 'my-bucket',
           key: 'terraform.tfstate',
