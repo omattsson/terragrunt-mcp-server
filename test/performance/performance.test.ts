@@ -49,7 +49,7 @@ describe('Performance Benchmarks', () => {
       const duration = endTime - startTime;
       
       expect(resources.length).toBeGreaterThan(0);
-      expect(duration).toBeLessThan(5000); // Should complete in <5 seconds (increased due to comprehensive function metadata extraction)
+      expect(duration).toBeLessThan(5000); // Should complete in <5 seconds
       
       console.log(`✓ Listed ${resources.length} resources in ${duration.toFixed(2)}ms`);
     });
