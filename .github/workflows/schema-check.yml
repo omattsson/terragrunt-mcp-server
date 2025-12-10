@@ -1,0 +1,237 @@
+name: Schema Drift Check
+
+on:
+  schedule:
+    # Run weekly on Sunday at midnight UTC
+    - cron: '0 0 * * 0'
+  workflow_dispatch:
+    # Allow manual trigger
+
+permissions:
+  issues: write
+  contents: read
+
+jobs:
+  check-schema-drift:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24.x'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Build project
+        run: npm run build
+      
+      - name: Check schema drift
+        id: check
+        run: |
+          set +e  # Don't exit on error
+          npm run check-schema-drift > drift-report.json 2> drift-log.txt
+          EXIT_CODE=$?
+          set -e
+          
+          if [ $EXIT_CODE -ne 0 ] && [ ! -f drift-report.json ]; then
+            echo "drift=error" >> $GITHUB_OUTPUT
+            echo "Script failed to execute"
+            cat drift-log.txt
+            exit 1
+          fi
+          
+          # Extract drift status
+          if [ -f drift-report.json ]; then
+            DRIFT=$(jq -r '.hasDrift' drift-report.json)
+            echo "drift=$DRIFT" >> $GITHUB_OUTPUT
+          else
+            echo "drift=error" >> $GITHUB_OUTPUT
+            echo "Error: drift-report.json not generated"
+            cat drift-log.txt
+            exit 1
+          fi
+      
+      - name: Upload drift report as artifact
+        if: steps.check.outputs.drift == 'true' || steps.check.outputs.drift == 'error'
+        uses: actions/upload-artifact@v4
+        with:
+          name: schema-drift-report
+          path: |
+            drift-report.json
+            drift-log.txt
+          retention-days: 30
+      
+      - name: Create or update drift issue
+        if: steps.check.outputs.drift == 'true' || steps.check.outputs.drift == 'error'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            
+            // Check if this is an error state
+            const isError = '${{ steps.check.outputs.drift }}' === 'error';
+            
+            // Load drift report (may not exist if error occurred)
+            let report;
+            if (!isError) {
+              try {
+                report = JSON.parse(fs.readFileSync('drift-report.json', 'utf8'));
+              } catch (error) {
+                core.setFailed('Failed to load drift report: ' + error.message);
+                return;
+              }
+            }
+            
+            // Generate issue body
+            let body;
+            
+            if (isError) {
+              // Error state - script failed to execute
+              body = '## ❌ Schema Drift Check Failed\n\n';
+              body += `**Generated:** ${new Date().toISOString()}\n\n`;
+              body += '⚠️ The schema drift detection script encountered an error and could not complete.\n\n';
+              body += '### Error Details\n\n';
+              body += 'The drift detection script failed to execute successfully. ';
+              body += 'This may be due to:\n\n';
+              body += '- Network connectivity issues when fetching Terraform documentation\n';
+              body += '- Invalid schema file format\n';
+              body += '- Script execution errors\n\n';
+              body += '### Next Steps\n\n';
+              body += '1. Check the [workflow run logs](https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})\n';
+              body += '2. Review drift-log.txt in the artifacts for detailed error messages\n';
+              body += '3. Fix any identified issues\n';
+              body += '4. Re-run the workflow manually or wait for next scheduled run\n\n';
+              body += '> [!WARNING]\n';
+              body += '> This issue was automatically generated due to a schema drift check failure.\n';
+            } else {
+              // Normal drift detected
+              body = '## Schema Drift Detected\n\n';
+              body += `**Generated:** ${report.timestamp}\n\n`;
+              body += '⚠️ One or more backend schemas have drifted from Terraform documentation.\n\n';
+              body += '---\n\n';
+            }
+            
+            if (!isError) {
+              // Process drift results
+              for (const [backendId, results] of Object.entries(report.backends)) {
+                for (const result of results) {
+                  const hasDrift = result.missing.length > 0 || result.extra.length > 0 || result.deprecated.length > 0;
+                
+                if (!hasDrift) continue;
+                
+                body += `### ${result.backend.toUpperCase()} - \`${result.schemaFile}\`\n\n`;
+                
+                if (result.missing.length > 0) {
+                  body += '#### ⚠️ Missing Attributes (in docs, not in schema)\n\n';
+                  body += 'These attributes are documented in Terraform but missing from our schema:\n\n';
+                  for (const attr of result.missing) {
+                    body += `- **\`${attr.name}\`**`;
+                    if (attr.description) {
+                      const desc = attr.description.substring(0, 100);
+                      body += `: ${desc}${attr.description.length > 100 ? '...' : ''}`;
+                    }
+                    body += '\n';
+                  }
+                  body += '\n';
+                }
+                
+                if (result.extra.length > 0) {
+                  body += '#### ℹ️ Extra Attributes (in schema, not in docs)\n\n';
+                  body += '<details>\n<summary>Click to expand (may be deprecated or version-specific)</summary>\n\n';
+                  for (const attr of result.extra) {
+                    body += `- \`${attr}\`\n`;
+                  }
+                  body += '\n</details>\n\n';
+                }
+                
+                if (result.deprecated.length > 0) {
+                  body += '#### 🔄 Deprecated Attributes\n\n';
+                  body += 'These attributes are marked as deprecated in Terraform docs:\n\n';
+                  for (const attr of result.deprecated) {
+                    body += `- \`${attr}\`\n`;
+                  }
+                  body += '\n';
+                }
+                
+                body += '---\n\n';
+                }
+              }
+              
+              body += '## Next Steps\n\n';
+              body += '1. Review the drift details above\n';
+              body += '2. Check [Terraform documentation](' +
+                'https://developer.hashicorp.com/terraform/language/settings/backends) for changes\n';
+              body += '3. Update schema files in `schemas/backends/` as needed\n';
+              body += '4. Test generated templates with new attributes\n';
+              body += '5. Update documentation if backend options changed\n';
+              body += '6. Close this issue once resolved\n\n';
+              body += '> [!NOTE]\n';
+              body += '> This issue was automatically generated by the Schema Drift Check workflow.\n';
+              body += `> Download the [drift report artifact](https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}) for full details.\n`;
+            }
+            
+            // Check for existing open issue with label
+            const existingIssues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'schema-drift',
+              per_page: 100
+            });
+            
+            if (existingIssues.data.length > 1) {
+              core.warning(`Found ${existingIssues.data.length} open schema-drift issues. Using the first one.`);
+            }
+            
+            if (existingIssues.data.length > 0) {
+              // Update existing issue
+              const issue = existingIssues.data[0];
+              core.info(`Updating existing issue #${issue.number}`);
+              
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                body: body
+              });
+              
+              // Add a comment noting the update
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                body: `🔄 Schema drift check updated on ${new Date().toISOString()}`
+              });
+            } else {
+              // Create new issue
+              core.info('Creating new schema drift issue');
+              
+              const title = isError 
+                ? '❌ Schema Drift Check Failed - Investigation Required'
+                : '⚠️ Schema Drift Detected - Backend Schemas Need Update';
+              
+              const labels = isError
+                ? ['schema-drift', 'bug', 'investigation']
+                : ['schema-drift', 'enhancement', 'documentation'];
+              
+              const newIssue = await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: title,
+                body: body,
+                labels: labels
+              });
+              
+              core.info(`Created issue #${newIssue.data.number}`);
+            }
+      
+      - name: Report success
+        if: steps.check.outputs.drift == 'false'
+        run: |
+          echo "✅ No schema drift detected. All schemas are up to date!"
