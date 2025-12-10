@@ -84,7 +84,7 @@ interface DriftReport {
 /**
  * BackendDocsScraper - Fetches and parses Terraform backend documentation
  */
-class BackendDocsScraper {
+export class BackendDocsScraper {
   private readonly retryAttempts = 3;
   private readonly retryDelayMs = 1000;
 
@@ -190,7 +190,9 @@ class BackendDocsScraper {
             const nameCell = cells.first();
             const name = nameCell.find('code').text().trim() || nameCell.text().trim();
             
-            if (/^[a-z_][a-z0-9_]*$/i.test(name)) {
+            // Exclude example attributes (e.g., "foo", "bar") that appear in documentation only for illustration.
+            // Including these would cause false positives in drift detection, as they do not exist in real schemas.
+            if (/^[a-z_][a-z0-9_]*$/i.test(name) && !this.isLikelyExampleAttribute(name)) {
               // Only get description if there's a second column
               const description = cells.length > 1 
                 ? cells.eq(1).text().trim().substring(0, 200) 
@@ -264,7 +266,7 @@ class BackendDocsScraper {
 /**
  * SchemaComparator - Loads and compares schema files with documentation
  */
-class SchemaComparator {
+export class SchemaComparator {
   private readonly schemasDir: string;
 
   constructor(schemasDir: string = 'schemas/backends') {
@@ -281,9 +283,10 @@ class SchemaComparator {
     }
     const filePath = path.join(this.schemasDir, filename);
     // Verify the resolved path is still within schemasDir
-    const resolvedPath = path.resolve(filePath);
-    const resolvedDir = path.resolve(this.schemasDir);
-    if (!resolvedPath.startsWith(resolvedDir + path.sep)) {
+    // Only allow files strictly within schemasDir, not the directory itself
+    const resolvedPath = path.normalize(path.resolve(filePath));
+    const resolvedDir = path.normalize(path.resolve(this.schemasDir));
+    if (resolvedPath !== resolvedDir && !resolvedPath.startsWith(resolvedDir + path.sep)) {
       throw new Error(`Schema file path outside of schemas directory: ${filename}`);
     }
     const content = await fs.readFile(filePath, 'utf-8');
@@ -331,7 +334,7 @@ class SchemaComparator {
 /**
  * Format drift report as markdown
  */
-function formatMarkdown(report: DriftReport): string {
+export function formatMarkdown(report: DriftReport): string {
   let output = '# Schema Drift Report\n\n';
   output += `**Generated:** ${report.timestamp}\n\n`;
   output += `**Status:** ${report.hasDrift ? '⚠️ Drift Detected' : '✅ No Drift'}\n\n`;
@@ -397,6 +400,60 @@ function formatMarkdown(report: DriftReport): string {
 }
 
 /**
+ * Parse command-line arguments
+ * Exported for testing
+ */
+export function parseArguments(args: string[]): {
+  format: 'json' | 'markdown';
+  backendFilter?: string;
+  showHelp: boolean;
+  errors: string[];
+} {
+  const errors: string[] = [];
+  let format: 'json' | 'markdown' = 'json';
+  let backendFilter: string | undefined = undefined;
+  let showHelp = false;
+
+  // Check for help flag
+  if (args.includes('--help') || args.includes('-h')) {
+    showHelp = true;
+    return { format, backendFilter, showHelp, errors };
+  }
+
+  // Parse arguments
+  for (const arg of args) {
+    if (arg.startsWith('--format=')) {
+      const value = arg.split('=')[1];
+      if (!value) {
+        errors.push('Error: --format requires a value');
+      } else if (value !== 'json' && value !== 'markdown') {
+        errors.push(`Error: Invalid format '${value}'. Must be 'json' or 'markdown'.`);
+      } else {
+        format = value;
+      }
+    } else if (arg.startsWith('--backend=')) {
+      const value = arg.split('=')[1];
+      if (!value) {
+        errors.push('Error: --backend requires a value');
+      } else {
+        const backendIds = BACKENDS.map(b => b.id);
+        if (!backendIds.includes(value)) {
+          errors.push(`Error: Backend '${value}' not found. Valid options: ${backendIds.join(', ')}`);
+        } else {
+          backendFilter = value;
+        }
+      }
+    } else if (arg === '--help' || arg === '-h') {
+      // already handled above
+    } else if (arg.startsWith('--')) {
+      errors.push(`Error: Unknown argument '${arg}'`);
+    }
+  }
+
+  return { format, backendFilter, showHelp, errors };
+}
+
+/**
  * Main execution
  */
 async function main() {
@@ -409,47 +466,24 @@ async function main() {
   }
 
   const args = process.argv.slice(2);
+  const parsed = parseArguments(args);
 
   // Show help if requested
-  if (args.includes('--help') || args.includes('-h')) {
+  if (parsed.showHelp) {
     printUsage();
     process.exit(0);
   }
 
-  // Parse arguments
-  let format = 'json';
-  let backendFilter: string | undefined = undefined;
-
-  for (const arg of args) {
-    if (arg.startsWith('--format=')) {
-      format = arg.split('=')[1];
-    } else if (arg.startsWith('--backend=')) {
-      backendFilter = arg.split('=')[1];
-    } else if (arg === '--help' || arg === '-h') {
-      // already handled above
-    } else if (arg.startsWith('--')) {
-      console.error(`Error: Unknown argument '${arg}'`);
-      printUsage();
-      process.exit(1);
+  // Exit on errors
+  if (parsed.errors.length > 0) {
+    for (const error of parsed.errors) {
+      console.error(error);
     }
-  }
-
-  // Validate format
-  if (format !== 'json' && format !== 'markdown') {
-    console.error(`Error: Invalid format '${format}'. Must be 'json' or 'markdown'.`);
     printUsage();
     process.exit(1);
   }
 
-  // Validate backendFilter if provided
-  if (backendFilter) {
-    const backendIds = BACKENDS.map(b => b.id);
-    if (!backendIds.includes(backendFilter)) {
-      console.error(`Error: Backend '${backendFilter}' not found. Valid options: ${backendIds.join(', ')}`);
-      printUsage();
-      process.exit(1);
-    }
-  }
+  const { format, backendFilter } = parsed;
   
   const scraper = new BackendDocsScraper();
   const comparator = new SchemaComparator();
