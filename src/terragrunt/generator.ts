@@ -1,8 +1,9 @@
 import { TerragruntDocsManager } from './docs.js';
 import { validateHCL } from './hcl-validator.js';
+import { validateWithTerragrunt } from './cli-validator.js';
 import { ConfigTemplateLibrary, UseCase } from './library.js';
 import { ConfigTemplate, ConfigVariable } from '../types/templates.js';
-import { GenerateConfigParams, GeneratedConfig, VariableValidationResult } from '../types/generator.js';
+import { GenerateConfigParams, GeneratedConfig, VariableValidationResult, TerragruntValidationResult } from '../types/generator.js';
 import Mustache from 'mustache';
 
 /**
@@ -38,14 +39,33 @@ export class TerragruntConfigGenerator {
     }
 
     // Generate configuration from template
-    const config = await this.buildFromTemplate(template, validation.resolvedValues);
+    let config = await this.buildFromTemplate(template, validation.resolvedValues);
 
-    // Validate HCL syntax
-    const hclValidation = validateHCL(config);
+    // Tier 1: Always run regex-based validation
+    const regexValidation = validateHCL(config);
 
-    // Handle strict validation mode
-    if (params.strictValidation && !hclValidation.syntaxValid) {
-      throw new Error(`HCL validation failed:\n${hclValidation.errors.map(e => `  - ${e}`).join('\n')}`);
+    // Tier 2: Optionally run Terragrunt CLI validation
+    let terragruntValidation: TerragruntValidationResult | undefined;
+    let wasFormatted: boolean | undefined;
+
+    if (params.strictValidation) {
+      terragruntValidation = await validateWithTerragrunt(config);
+
+      // If Terragrunt validation succeeded, use its formatted output
+      if (terragruntValidation.available && terragruntValidation.syntaxValid && terragruntValidation.formattedConfig) {
+        config = terragruntValidation.formattedConfig;
+        wasFormatted = true;
+      } else {
+        wasFormatted = false;
+      }
+
+      // In strict mode, throw error if validation failed
+      if (terragruntValidation.available && !terragruntValidation.syntaxValid) {
+        throw new Error(`Terragrunt validation failed:\n${terragruntValidation.errors.map(e => `  - ${e}`).join('\n')}`);
+      } else if (!terragruntValidation.available && !regexValidation.syntaxValid) {
+        // Fallback to regex validation if Terragrunt not available
+        throw new Error(`HCL validation failed:\n${regexValidation.errors.map(e => `  - ${e}`).join('\n')}`);
+      }
     }
 
     // Generate explanation
@@ -66,7 +86,11 @@ export class TerragruntConfigGenerator {
       relatedDocs,
       nextSteps,
       additionalOptions,
-      validation: hclValidation,
+      validation: {
+        regex: regexValidation,
+        terragrunt: terragruntValidation,
+      },
+      wasFormatted,
     };
   }
 

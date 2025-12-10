@@ -36,11 +36,13 @@ export interface GeneratedConfig {
   /** Additional configuration options that could be added */
   additionalOptions?: string[];
   /** HCL syntax validation results */
-  validation?: HCLValidationResult;
+  validation?: ValidationResults;
+  /** Whether the configuration was formatted by Terragrunt CLI */
+  wasFormatted?: boolean;
 }
 
 /**
- * Result of HCL syntax validation
+ * Result of HCL syntax validation (regex-based)
  */
 export interface HCLValidationResult {
   /** Whether the HCL syntax is valid */
@@ -51,6 +53,34 @@ export interface HCLValidationResult {
   warnings: string[];
   /** Critical syntax errors */
   errors: string[];
+}
+
+/**
+ * Result of Terragrunt CLI validation
+ */
+export interface TerragruntValidationResult {
+  /** Whether Terragrunt CLI is available */
+  available: boolean;
+  /** Whether the HCL syntax is valid according to Terragrunt */
+  syntaxValid: boolean;
+  /** Whether Terragrunt formatted the output */
+  formatted: boolean;
+  /** The formatted configuration (if validation succeeded) */
+  formattedConfig?: string;
+  /** Non-critical issues or suggestions */
+  warnings: string[];
+  /** Critical syntax errors from Terragrunt */
+  errors: string[];
+}
+
+/**
+ * Combined validation results
+ */
+export interface ValidationResults {
+  /** Regex-based validation (always present) */
+  regex: HCLValidationResult;
+  /** Terragrunt CLI validation (only when strictValidation=true) */
+  terragrunt?: TerragruntValidationResult;
 }
 
 /**

@@ -91,7 +91,7 @@ describe('Custom Template API Integration', () => {
     expect(result.config).toContain('arn:aws:kms:us-west-2:123456789012:key/abc123');
     expect(result.config).toContain('terraform-state-lock');
     expect(result.validation).toBeDefined();
-    expect(result.validation.syntaxValid).toBe(true);
+    expect(result.validation.regex.syntaxValid).toBe(true);
   });
 
   it('should reject invalid custom template', async () => {
@@ -192,7 +192,7 @@ describe('Custom Template API Integration', () => {
     expect(result.usedCustomTemplate).toBe(true);
     expect(result.config).toContain('trivy');
     expect(result.config).toContain('before_hook');
-    expect(result.validation.syntaxValid).toBe(true);
+    expect(result.validation.regex.syntaxValid).toBe(true);
   });
 
   it('should handle custom provider template', async () => {

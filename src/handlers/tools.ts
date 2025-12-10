@@ -1454,11 +1454,21 @@ export class ToolHandler {
                 nextSteps: result.nextSteps,
                 additionalOptions: result.additionalOptions || [],
                 validation: result.validation ? {
-                    syntaxValid: result.validation.syntaxValid,
-                    formatted: result.validation.formatted,
-                    errors: result.validation.errors,
-                    warnings: result.validation.warnings
+                    regex: {
+                        syntaxValid: result.validation.regex.syntaxValid,
+                        formatted: result.validation.regex.formatted,
+                        errors: result.validation.regex.errors,
+                        warnings: result.validation.regex.warnings
+                    },
+                    terragrunt: result.validation.terragrunt ? {
+                        available: result.validation.terragrunt.available,
+                        syntaxValid: result.validation.terragrunt.syntaxValid,
+                        formatted: result.validation.terragrunt.formatted,
+                        errors: result.validation.terragrunt.errors,
+                        warnings: result.validation.terragrunt.warnings
+                    } : undefined
                 } : undefined,
+                wasFormatted: result.wasFormatted,
                 // Indicate tier and if custom template was used
                 tier: tier || 'essential',
                 usedCustomTemplate: !!customTemplate

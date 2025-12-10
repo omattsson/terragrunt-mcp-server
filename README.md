@@ -24,7 +24,7 @@ This MCP server enables AI assistants to access and search the complete Terragru
 - **Multi-Cloud Support**: AWS S3, Azure Blob Storage, GCP GCS backends
 - **Advanced Features**: KMS encryption, cross-account access, managed identity, service account impersonation
 - **Mustache Conditionals**: Smart rendering includes only provided options
-- **HCL Validation**: Automatic syntax validation of generated configurations
+- **Two-Tier Validation**: Regex-based (fast) + optional Terragrunt CLI validation (accurate)
 - **Custom Templates**: Extend with organization-specific templates
 
 See [Advanced Backend Templates](docs/Advanced-Backend-Templates.md) for enterprise configuration options.

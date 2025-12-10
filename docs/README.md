@@ -22,7 +22,8 @@ A Model Context Protocol (MCP) server that provides comprehensive Terragrunt doc
 - [Advanced Backend Templates](Advanced-Backend-Templates.md) - Enterprise backend configurations with KMS, cross-account, MSI
 - [Custom Templates](Custom-Templates.md) - Create and use organization-specific templates
 - [File Writing Guide](File-Writing-Guide.md) - Secure file writing with directory whitelisting
-- [HCL Validation](HCL-Validation.md) - Built-in syntax validation for generated configs
+- [HCL Validation](HCL-Validation.md) - Built-in regex-based syntax validation
+- [CLI Validation](CLI-Validation.md) - Optional Terragrunt CLI validation for accurate syntax checking
 - [Architecture Overview](Architecture-Overview.md) - Understanding the caching and MCP implementation
 - [Caching System](Caching-System.md) - Deep dive into the two-tier caching mechanism
 
