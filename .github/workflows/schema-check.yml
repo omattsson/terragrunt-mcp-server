@@ -34,17 +34,22 @@ jobs:
       - name: Check schema drift
         id: check
         run: |
-          npm run check-schema-drift > drift-report.json 2> drift-log.txt || true
+          set +e  # Don't exit on error
+          npm run check-schema-drift > drift-report.json 2> drift-log.txt
+          EXIT_CODE=$?
+          set -e
+          
+          if [ $EXIT_CODE -ne 0 ] && [ ! -f drift-report.json ]; then
+            echo "drift=error" >> $GITHUB_OUTPUT
+            echo "Script failed to execute"
+            cat drift-log.txt
+            exit 1
+          fi
           
           # Extract drift status
           if [ -f drift-report.json ]; then
             DRIFT=$(jq -r '.hasDrift' drift-report.json)
             echo "drift=$DRIFT" >> $GITHUB_OUTPUT
-            
-            # Save report for next step
-            echo "report<<EOF" >> $GITHUB_OUTPUT
-            cat drift-report.json >> $GITHUB_OUTPUT
-            echo "EOF" >> $GITHUB_OUTPUT
           else
             echo "drift=false" >> $GITHUB_OUTPUT
             echo "Error: drift-report.json not generated"
@@ -146,8 +151,13 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               state: 'open',
-              labels: 'schema-drift'
+              labels: 'schema-drift',
+              per_page: 100
             });
+            
+            if (existingIssues.data.length > 1) {
+              core.warning(`Found ${existingIssues.data.length} open schema-drift issues. Using the first one.`);
+            }
             
             if (existingIssues.data.length > 0) {
               // Update existing issue

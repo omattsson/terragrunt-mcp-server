@@ -103,15 +103,15 @@ class BackendDocsScraper {
     const configSection = $('#configuration, #arguments, #argument-reference, [id*="configuration"]').first();
     
     if (configSection.length > 0) {
-      // Find list items that contain attribute definitions
-      const nextElements = configSection.parent().nextAll();
+      // Find list items that contain attribute definitions (optimized to traverse siblings once)
+      let currentElem = configSection.parent().next();
       
-      nextElements.each((_, elem) => {
+      while (currentElem.length > 0) {
         // Stop at next major heading
-        if ($(elem).is('h1, h2')) return false;
+        if (currentElem.is('h1, h2')) break;
         
         // Look for list items (ul/ol li) that define parameters
-        $(elem).find('li').each((_, li) => {
+        currentElem.find('li').each((_, li) => {
           const liText = $(li).text();
           
           // Look for patterns like "attribute_name - description" or "attribute_name: description"
@@ -121,8 +121,9 @@ class BackendDocsScraper {
             const name = match[1].trim();
             const description = match[2].trim().substring(0, 200);
             
-            // Skip example values that might look like attributes
-            if (name.includes('my') || name.includes('example') || name.includes('test')) {
+            // Skip example values that might look like attributes (case-insensitive)
+            const lowerName = name.toLowerCase();
+            if (lowerName.includes('my') || lowerName.includes('example') || lowerName.includes('test')) {
               return;
             }
             
@@ -141,10 +142,11 @@ class BackendDocsScraper {
             if (firstCode.length > 0) {
               const name = firstCode.text().trim();
               
-              // Valid attribute name pattern, not an example
+              // Valid attribute name pattern, not an example (case-insensitive)
+              const lowerName = name.toLowerCase();
               if (/^[a-z_][a-z0-9_]*$/i.test(name) && 
-                  !name.includes('my') && 
-                  !name.includes('example')) {
+                  !lowerName.includes('my') && 
+                  !lowerName.includes('example')) {
                 
                 const description = $(li).text()
                   .replace(name, '')
@@ -162,7 +164,9 @@ class BackendDocsScraper {
             }
           }
         });
-      });
+        
+        currentElem = currentElem.next();
+      }
     }
     
     // Strategy 2: Look for parameter tables (common in HashiCorp docs)
@@ -178,7 +182,10 @@ class BackendDocsScraper {
             const name = nameCell.find('code').text().trim() || nameCell.text().trim();
             
             if (/^[a-z_][a-z0-9_]*$/i.test(name)) {
-              const description = cells.eq(1).text().trim().substring(0, 200);
+              // Only get description if there's a second column
+              const description = cells.length > 1 
+                ? cells.eq(1).text().trim().substring(0, 200) 
+                : '';
               const rowText = $(row).text().toLowerCase();
               const deprecated = rowText.includes('deprecated') || rowText.includes('legacy');
               
@@ -193,11 +200,19 @@ class BackendDocsScraper {
       }
     });
     
-    // Deduplicate by name
+    // Deduplicate by name, merging information from multiple sources
     const uniqueAttrs = new Map<string, AttributeInfo>();
     for (const attr of attributes) {
-      if (!uniqueAttrs.has(attr.name)) {
+      const existing = uniqueAttrs.get(attr.name);
+      if (!existing) {
         uniqueAttrs.set(attr.name, attr);
+      } else {
+        // Merge: prefer richer description, preserve deprecated flag
+        uniqueAttrs.set(attr.name, {
+          name: attr.name,
+          description: existing.description || attr.description,
+          deprecated: existing.deprecated || attr.deprecated
+        });
       }
     }
     
@@ -249,7 +264,17 @@ class SchemaComparator {
    * Load schema file
    */
   async loadSchema(filename: string): Promise<BackendSchema> {
+    // Prevent path traversal
+    if (filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
+      throw new Error(`Invalid schema filename: ${filename}`);
+    }
     const filePath = path.join(this.schemasDir, filename);
+    // Verify the resolved path is still within schemasDir
+    const resolvedPath = path.resolve(filePath);
+    const resolvedDir = path.resolve(this.schemasDir);
+    if (!resolvedPath.startsWith(resolvedDir)) {
+      throw new Error(`Schema file path outside of schemas directory: ${filename}`);
+    }
     const content = await fs.readFile(filePath, 'utf-8');
     return JSON.parse(content);
   }
@@ -301,7 +326,7 @@ function formatMarkdown(report: DriftReport): string {
     return output;
   }
   
-  for (const [backendId, results] of Object.entries(report.backends)) {
+  for (const results of Object.values(report.backends)) {
     for (const result of results) {
       const hasDrift = result.missing.length > 0 || result.extra.length > 0 || result.deprecated.length > 0;
       
@@ -360,9 +385,56 @@ function formatMarkdown(report: DriftReport): string {
  * Main execution
  */
 async function main() {
+  function printUsage() {
+    console.log('Usage: check-schema-drift [options]');
+    console.log('Options:');
+    console.log('  --format=<json|markdown>    Output format (default: json)');
+    console.log('  --backend=<s3|azurerm|gcs>  Check specific backend only');
+    console.log('  --help, -h                  Show this help message');
+  }
+
   const args = process.argv.slice(2);
-  const format = args.find(a => a.startsWith('--format='))?.split('=')[1] || 'json';
-  const backendFilter = args.find(a => a.startsWith('--backend='))?.split('=')[1];
+
+  // Show help if requested
+  if (args.includes('--help') || args.includes('-h')) {
+    printUsage();
+    process.exit(0);
+  }
+
+  // Parse arguments
+  let format = 'json';
+  let backendFilter: string | undefined = undefined;
+
+  for (const arg of args) {
+    if (arg.startsWith('--format=')) {
+      format = arg.split('=')[1];
+    } else if (arg.startsWith('--backend=')) {
+      backendFilter = arg.split('=')[1];
+    } else if (arg === '--help' || arg === '-h') {
+      // already handled above
+    } else if (arg.startsWith('--')) {
+      console.error(`Error: Unknown argument '${arg}'`);
+      printUsage();
+      process.exit(1);
+    }
+  }
+
+  // Validate format
+  if (format !== 'json' && format !== 'markdown') {
+    console.error(`Error: Invalid format '${format}'. Must be 'json' or 'markdown'.`);
+    printUsage();
+    process.exit(1);
+  }
+
+  // Validate backendFilter if provided
+  if (backendFilter) {
+    const backendIds = BACKENDS.map(b => b.id);
+    if (!backendIds.includes(backendFilter)) {
+      console.error(`Error: Backend '${backendFilter}' not found. Valid options: ${backendIds.join(', ')}`);
+      printUsage();
+      process.exit(1);
+    }
+  }
   
   const scraper = new BackendDocsScraper();
   const comparator = new SchemaComparator();
@@ -377,11 +449,6 @@ async function main() {
   const backendsToCheck = backendFilter
     ? BACKENDS.filter(b => b.id === backendFilter)
     : BACKENDS;
-  
-  if (backendsToCheck.length === 0) {
-    console.error(`Error: Backend '${backendFilter}' not found`);
-    process.exit(1);
-  }
   
   for (const backend of backendsToCheck) {
     console.error(`\nChecking ${backend.name} (${backend.id})...`);
@@ -409,7 +476,8 @@ async function main() {
           
           backendResults.push(drift);
         } catch (error) {
-          console.error(`  Error loading ${schemaFile}:`, error);
+          const errMsg = error instanceof Error ? error.message : String(error);
+          console.error(`  ❌ Error loading ${schemaFile}: ${errMsg}`);
         }
       }
       
@@ -420,7 +488,8 @@ async function main() {
         await new Promise(resolve => setTimeout(resolve, 1000));
       }
     } catch (error) {
-      console.error(`Error checking ${backend.name}:`, error);
+      const errMsg = error instanceof Error ? error.message : String(error);
+      console.error(`❌ Error checking ${backend.name}: ${errMsg}`);
     }
   }
   
@@ -438,11 +507,8 @@ async function main() {
 // Run if executed directly
 import { fileURLToPath } from 'url';
 
-const isMainModule = process.argv[1] === fileURLToPath(import.meta.url);
-
-if (isMainModule) {
-  main().catch(error => {
-    console.error('Fatal error:', error);
-    process.exit(1);
-  });
-}
+// Always run main (script is intended to be executed directly)
+main().catch(error => {
+  console.error('Fatal error:', error);
+  process.exit(1);
+});
