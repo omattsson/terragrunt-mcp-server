@@ -423,18 +423,18 @@ export function parseArguments(args: string[]): {
   // Parse arguments
   for (const arg of args) {
     if (arg.startsWith('--format=')) {
-      const value = arg.split('=')[1];
-      if (!value) {
-        errors.push('Error: --format requires a value');
+      const value = arg.split('=', 2)[1]?.trim();
+      if (typeof value === 'undefined' || value === '') {
+        errors.push('Error: --format requires a non-empty value');
       } else if (value !== 'json' && value !== 'markdown') {
         errors.push(`Error: Invalid format '${value}'. Must be 'json' or 'markdown'.`);
       } else {
-        format = value;
+        format = value as 'json' | 'markdown';
       }
     } else if (arg.startsWith('--backend=')) {
-      const value = arg.split('=')[1];
-      if (!value) {
-        errors.push('Error: --backend requires a value');
+      const value = arg.split('=', 2)[1]?.trim();
+      if (typeof value === 'undefined' || value === '') {
+        errors.push('Error: --backend requires a non-empty value');
       } else {
         const backendIds = BACKENDS.map(b => b.id);
         if (!backendIds.includes(value)) {

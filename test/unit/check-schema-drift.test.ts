@@ -61,7 +61,7 @@ describe('Argument Parsing (Real Implementation)', () => {
     it('should reject empty format value (--format=)', () => {
       const result = parseArguments(['--format=']);
       expect(result.errors).toHaveLength(1);
-      expect(result.errors[0]).toContain('--format requires a value');
+      expect(result.errors[0]).toContain('--format requires a non-empty value');
     });
 
     it('should reject invalid format value', () => {
@@ -74,7 +74,7 @@ describe('Argument Parsing (Real Implementation)', () => {
     it('should reject empty backend value (--backend=)', () => {
       const result = parseArguments(['--backend=']);
       expect(result.errors).toHaveLength(1);
-      expect(result.errors[0]).toContain('--backend requires a value');
+      expect(result.errors[0]).toContain('--backend requires a non-empty value');
     });
 
     it('should reject invalid backend value', () => {
@@ -95,7 +95,7 @@ describe('Argument Parsing (Real Implementation)', () => {
     it('should collect multiple errors', () => {
       const result = parseArguments(['--format=', '--backend=invalid', '--unknown']);
       expect(result.errors).toHaveLength(3);
-      expect(result.errors[0]).toContain('--format requires a value');
+      expect(result.errors[0]).toContain('--format requires a non-empty value');
       expect(result.errors[1]).toContain("Backend 'invalid' not found");
       expect(result.errors[2]).toContain("Unknown argument '--unknown'");
     });
@@ -111,7 +111,7 @@ describe('Argument Parsing (Real Implementation)', () => {
       // --format= with empty value should specifically error about missing value
       const result2 = parseArguments(['--format=']);
       expect(result2.errors).toHaveLength(1);
-      expect(result2.errors[0]).toContain('--format requires a value');
+      expect(result2.errors[0]).toContain('--format requires a non-empty value');
     });
 
     it('should distinguish --backend vs --backend=', () => {
@@ -123,7 +123,7 @@ describe('Argument Parsing (Real Implementation)', () => {
       // --backend= with empty value should specifically error about missing value
       const result2 = parseArguments(['--backend=']);
       expect(result2.errors).toHaveLength(1);
-      expect(result2.errors[0]).toContain('--backend requires a value');
+      expect(result2.errors[0]).toContain('--backend requires a non-empty value');
     });
 
     it('should validate all supported backends', () => {
