@@ -38,6 +38,7 @@ A Model Context Protocol (MCP) server that provides comprehensive Terragrunt doc
 - [Testing](Testing) - Running and writing tests
 - [Testing Complete Templates](Testing-Complete-Templates.md) - Comprehensive test guide for auto-generated templates
 - [Manual Testing Checklist](Manual-Testing-Checklist.md) - Real-world validation procedures
+- [Schema Drift Detection](Schema-Drift-Detection.md) - Automated schema update detection
 - [Performance Testing](Performance-Testing) - Performance benchmarks and metrics
 - [Edge Cases Testing](Edge-Cases-Testing) - Edge case and input validation tests
 - [MCP Protocol Compliance](MCP-Protocol-Compliance) - MCP specification compliance tests
