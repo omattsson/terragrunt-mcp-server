@@ -89,6 +89,18 @@ class BackendDocsScraper {
   private readonly retryDelayMs = 1000;
 
   /**
+   * Check if attribute name looks like an example value
+   */
+  private isLikelyExampleAttribute(name: string): boolean {
+    const lowerName = name.toLowerCase();
+    return lowerName === 'my_bucket' ||
+           lowerName === 'example' ||
+           lowerName.startsWith('my_') ||
+           lowerName.startsWith('example_') ||
+           lowerName.startsWith('test_');
+  }
+
+  /**
    * Fetch and parse backend documentation to extract attributes
    */
   async scrapeBackendAttributes(url: string): Promise<AttributeInfo[]> {
@@ -121,9 +133,8 @@ class BackendDocsScraper {
             const name = match[1].trim();
             const description = match[2].trim().substring(0, 200);
             
-            // Skip example values that might look like attributes (case-insensitive)
-            const lowerName = name.toLowerCase();
-            if (lowerName.includes('my') || lowerName.includes('example') || lowerName.includes('test')) {
+            // Skip example values that might look like attributes
+            if (this.isLikelyExampleAttribute(name)) {
               return;
             }
             
@@ -142,11 +153,9 @@ class BackendDocsScraper {
             if (firstCode.length > 0) {
               const name = firstCode.text().trim();
               
-              // Valid attribute name pattern, not an example (case-insensitive)
-              const lowerName = name.toLowerCase();
+              // Valid attribute name pattern, not an example
               if (/^[a-z_][a-z0-9_]*$/i.test(name) && 
-                  !lowerName.includes('my') && 
-                  !lowerName.includes('example')) {
+                  !this.isLikelyExampleAttribute(name)) {
                 
                 const description = $(li).text()
                   .replace(name, '')
@@ -207,10 +216,12 @@ class BackendDocsScraper {
       if (!existing) {
         uniqueAttrs.set(attr.name, attr);
       } else {
-        // Merge: prefer richer description, preserve deprecated flag
+        // Merge: prefer longer/richer description, preserve deprecated flag
         uniqueAttrs.set(attr.name, {
           name: attr.name,
-          description: existing.description || attr.description,
+          description: (existing.description && existing.description.length >= (attr.description?.length || 0))
+            ? existing.description
+            : attr.description,
           deprecated: existing.deprecated || attr.deprecated
         });
       }
@@ -264,19 +275,23 @@ class SchemaComparator {
    * Load schema file
    */
   async loadSchema(filename: string): Promise<BackendSchema> {
-    // Prevent path traversal
-    if (filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
+    // Whitelist validation: only allow valid schema filenames
+    if (!/^[a-z0-9-]+\.json$/i.test(filename)) {
       throw new Error(`Invalid schema filename: ${filename}`);
     }
     const filePath = path.join(this.schemasDir, filename);
     // Verify the resolved path is still within schemasDir
     const resolvedPath = path.resolve(filePath);
     const resolvedDir = path.resolve(this.schemasDir);
-    if (!resolvedPath.startsWith(resolvedDir)) {
+    if (!resolvedPath.startsWith(resolvedDir + path.sep)) {
       throw new Error(`Schema file path outside of schemas directory: ${filename}`);
     }
     const content = await fs.readFile(filePath, 'utf-8');
-    return JSON.parse(content);
+    try {
+      return JSON.parse(content);
+    } catch (error) {
+      throw new Error(`Invalid JSON in schema file ${filename}: ${error instanceof Error ? error.message : String(error)}`);
+    }
   }
 
   /**
@@ -505,8 +520,6 @@ async function main() {
 }
 
 // Run if executed directly
-import { fileURLToPath } from 'url';
-
 // Always run main (script is intended to be executed directly)
 main().catch(error => {
   console.error('Fatal error:', error);
