@@ -18,6 +18,7 @@ import { BlockComparisonManager } from '../terragrunt/comparisons.js';
 import type { HCLBlock } from '../types/hcl-blocks.js';
 import type { AdvancedExampleCategory } from '../types/advanced-examples.js';
 import type { IMetricsManager, MetricsResponse } from '../types/metrics.js';
+import type { PaginationMetadata } from '../types/mcp.js';
 import { NullMetricsManager } from '../terragrunt/metrics.js';
 
 export interface Tool {
@@ -85,6 +86,48 @@ export class ToolHandler {
         return [process.cwd()];
     }
 
+    /**
+     * Calculate pagination metadata and slice results for a given page
+     */
+    private calculatePagination<T>(
+        items: T[],
+        page: number = 1,
+        pageSize: number = 20
+    ): { results: T[]; pagination: PaginationMetadata } {
+        const totalItems = items.length;
+        
+        // Explicitly handle pageSize <= 0 to avoid division by zero and Infinity
+        if (pageSize <= 0) {
+            return {
+                results: [],
+                pagination: {
+                    page,
+                    pageSize,
+                    totalPages: 1,
+                    totalItems,
+                    hasMore: false,
+                    hasPrevious: false
+                }
+            };
+        }
+        
+        const totalPages = Math.ceil(totalItems / pageSize) || 1;
+        const startIndex = (page - 1) * pageSize;
+        const endIndex = startIndex + pageSize;
+
+        return {
+            results: items.slice(startIndex, endIndex),
+            pagination: {
+                page,
+                pageSize,
+                totalPages,
+                totalItems,
+                hasMore: page < totalPages,
+                hasPrevious: page > 1
+            }
+        };
+    }
+
     getAvailableTools(): Tool[] {
         return [
             {
@@ -97,12 +140,18 @@ export class ToolHandler {
                             type: 'string',
                             description: 'Search query for Terragrunt documentation (e.g., "dependencies", "remote state", "generate block")'
                         },
-                        limit: {
+                        page: {
                             type: 'number',
-                            description: 'Maximum number of results to return',
-                            default: 5,
+                            description: 'Page number (1-based)',
+                            default: 1,
+                            minimum: 1
+                        },
+                        pageSize: {
+                            type: 'number',
+                            description: 'Results per page',
+                            default: 10,
                             minimum: 1,
-                            maximum: 20
+                            maximum: 50
                         }
                     },
                     required: ['query']
@@ -141,12 +190,18 @@ export class ToolHandler {
                             type: 'string',
                             description: 'Optional search query to filter functions by name or description'
                         },
-                        limit: {
+                        page: {
                             type: 'number',
-                            description: 'Maximum number of results to return',
-                            default: 50,
+                            description: 'Page number (1-based)',
+                            default: 1,
+                            minimum: 1
+                        },
+                        pageSize: {
+                            type: 'number',
+                            description: 'Results per page',
+                            default: 20,
                             minimum: 1,
-                            maximum: 200
+                            maximum: 100
                         }
                     },
                     required: []
@@ -203,6 +258,18 @@ export class ToolHandler {
                         search: {
                             type: 'string',
                             description: 'Optional search query to filter commands by name or description'
+                        },
+                        page: {
+                            type: 'number',
+                            description: 'Page number (1-based)',
+                            default: 1,
+                            minimum: 1
+                        },
+                        pageSize: {
+                            type: 'number',
+                            description: 'Commands per page',
+                            default: 20,
+                            minimum: 1
                         }
                     },
                     required: []
@@ -584,7 +651,11 @@ export class ToolHandler {
                     if (!args?.query) {
                         return { error: 'query parameter is required' };
                     }
-                    return await this.searchTerragruntDocs(args.query, args?.limit);
+                    return await this.searchTerragruntDocs(
+                        args.query,
+                        args?.page ?? 1,
+                        args?.pageSize ?? 10
+                    );
 
                 case 'get_terragrunt_sections':
                     return await this.getTerragruntSections();
@@ -602,7 +673,12 @@ export class ToolHandler {
                     return await this.getCliCommandHelp(args.command);
                 
                 case 'list_cli_commands':
-                    return await this.listCliCommands(args?.category, args?.search);
+                    return await this.listCliCommands(
+                        args?.category,
+                        args?.search,
+                        args?.page ?? 1,
+                        args?.pageSize ?? 20
+                    );
 
                 case 'get_terragrunt_function':
                     if (!args?.function_name) {
@@ -616,7 +692,8 @@ export class ToolHandler {
                     return await this.listTerragruntFunctions(
                         args?.category,
                         args?.search,
-                        args?.limit
+                        args?.page ?? 1,
+                        args?.pageSize ?? 20
                     );
 
                 case 'get_hcl_config_reference':
@@ -747,12 +824,23 @@ export class ToolHandler {
         }
     }
 
-    private async searchTerragruntDocs(query: string, limit: number = 5): Promise<any> {
+    private async searchTerragruntDocs(
+        query: string,
+        page: number = 1,
+        pageSize: number = 10
+    ): Promise<any> {
         const results = await this.resourceHandler.searchDocumentation(query);
+
+        // Apply pagination
+        const { results: paginatedResults, pagination } = this.calculatePagination(
+            results,
+            page,
+            pageSize
+        );
 
         return {
             query,
-            results: results.slice(0, limit).map(doc => ({
+            results: paginatedResults.map(doc => ({
                 title: doc.title,
                 url: doc.url,
                 section: doc.section,
@@ -761,8 +849,7 @@ export class ToolHandler {
                     : doc.content,
                 lastUpdated: doc.lastUpdated
             })),
-            total: results.length,
-            hasMore: results.length > limit
+            pagination
         };
     }
 
@@ -875,14 +962,22 @@ export class ToolHandler {
      */
     private async listCliCommands(
         category?: 'main' | 'backend' | 'stack' | 'catalog' | 'discovery' | 'configuration' | 'shortcut',
-        search?: string
+        search?: string,
+        page: number = 1,
+        pageSize: number = 20
     ): Promise<any> {
         if (search) {
             // Search for matching commands
             const results = this.cliCommandsManager.searchCommands(search);
+            const { results: paginatedResults, pagination } = this.calculatePagination(
+                results,
+                page,
+                pageSize
+            );
+            
             return {
                 search,
-                results: results.map(r => ({
+                results: paginatedResults.map(r => ({
                     name: r.command.name,
                     aliases: r.command.aliases,
                     category: r.command.category,
@@ -891,36 +986,55 @@ export class ToolHandler {
                     score: r.score,
                     matchType: r.matchType
                 })),
-                totalResults: results.length
+                pagination
             };
         }
 
         if (category) {
             // Filter by category
             const commands = this.cliCommandsManager.getCommandsByCategory(category);
+            const { results: paginatedResults, pagination } = this.calculatePagination(
+                commands,
+                page,
+                pageSize
+            );
+            
             return {
                 category,
-                commands: commands.map(cmd => ({
+                commands: paginatedResults.map(cmd => ({
                     name: cmd.name,
                     aliases: cmd.aliases,
                     description: cmd.description,
                     usage: cmd.usage
                 })),
-                totalCommands: commands.length
+                pagination
             };
         }
 
         // Return all commands organized by category
         const categories = this.cliCommandsManager.getCategories();
+        const allCommands = this.cliCommandsManager.getAllCommands();
+        const { results: paginatedCommands, pagination } = this.calculatePagination(
+            allCommands,
+            page,
+            pageSize
+        );
+        
         return {
+            commands: paginatedCommands.map(cmd => ({
+                name: cmd.name,
+                aliases: cmd.aliases,
+                category: cmd.category,
+                description: cmd.description,
+                usage: cmd.usage
+            })),
             categories: categories.map(cat => ({
                 id: cat.id,
                 name: cat.name,
                 description: cat.description,
-                commands: cat.commands
+                commandCount: cat.commands.length
             })),
-            totalCategories: categories.length,
-            totalCommands: this.cliCommandsManager.getAllCommands().length
+            pagination
         };
     }
 
@@ -1444,7 +1558,12 @@ export class ToolHandler {
             .map(s => s.name);
     }
 
-    private async listTerragruntFunctions(category?: string, search?: string, limit: number = 50): Promise<any> {
+    private async listTerragruntFunctions(
+        category?: string,
+        search?: string,
+        page: number = 1,
+        pageSize: number = 20
+    ): Promise<any> {
         if (!this.functionsLoaded) {
             await this.functionsManager.loadFunctions();
             this.functionsLoaded = true;
@@ -1467,15 +1586,22 @@ export class ToolHandler {
         // Get all available categories (not filtered - shows all options for discovery)
         const categories = this.functionsManager.getAvailableCategories();
 
+        // Apply pagination
+        const { results, pagination } = this.calculatePagination(
+            functions,
+            page,
+            pageSize
+        );
+
         return {
-            functions: functions.slice(0, limit).map(fn => ({
+            functions: results.map(fn => ({
                 name: fn.name,
                 category: fn.category,
                 shortDescription: this.getShortDescription(fn.description),
                 signature: fn.signature
             })),
             categories: categories,  // All categories, not just from filtered results
-            totalCount: functions.length  // Count of filtered results before limit
+            pagination
         };
     }
 

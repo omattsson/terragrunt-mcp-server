@@ -350,7 +350,8 @@ describe('MCP Protocol Compliance', () => {
       expect(listTool?.description).toBeDefined();
       expect(listTool?.inputSchema.properties.category).toBeDefined();
       expect(listTool?.inputSchema.properties.search).toBeDefined();
-      expect(listTool?.inputSchema.properties.limit).toBeDefined();
+      expect(listTool?.inputSchema.properties.page).toBeDefined();
+      expect(listTool?.inputSchema.properties.pageSize).toBeDefined();
     });
 
     it('should have clear, descriptive tool names', () => {
@@ -395,8 +396,9 @@ describe('MCP Protocol Compliance', () => {
       expect(result.query).toBe('terraform');
       expect(result.results).toBeDefined();
       expect(Array.isArray(result.results)).toBe(true);
-      expect(result.total).toBeDefined();
-      expect(typeof result.total).toBe('number');
+      expect(result.pagination).toBeDefined();
+      expect(result.pagination.totalItems).toBeGreaterThanOrEqual(0);
+      expect(typeof result.pagination.totalItems).toBe('number');
     });
 
     it('should return structured response for sections tool', async () => {
@@ -444,8 +446,8 @@ describe('MCP Protocol Compliance', () => {
 
       expect(result.categories).toBeDefined();
       expect(Array.isArray(result.categories)).toBe(true);
-      expect(result.totalCategories).toBeGreaterThan(0);
-      expect(result.totalCommands).toBeGreaterThan(15);
+      expect(result.pagination).toBeDefined();
+      expect(result.pagination.totalItems).toBeGreaterThan(15);
       
       const categoryIds = result.categories.map((c: any) => c.id);
       expect(categoryIds).toContain('main');
@@ -554,8 +556,9 @@ describe('MCP Protocol Compliance', () => {
 
       expect(result.functions).toBeDefined();
       expect(Array.isArray(result.functions)).toBe(true);
-      expect(result.totalCount).toBeDefined();
-      expect(typeof result.totalCount).toBe('number');
+      expect(result.pagination).toBeDefined();
+      expect(result.pagination.totalItems).toBeGreaterThanOrEqual(0);
+      expect(typeof result.pagination.totalItems).toBe('number');
       expect(result.categories).toBeDefined();
       expect(Array.isArray(result.categories)).toBe(true);
     });
@@ -585,9 +588,9 @@ describe('MCP Protocol Compliance', () => {
       expect(result.functions.length).toBeGreaterThan(0);
     });
 
-    it('should respect limit parameter for list_terragrunt_functions tool', async () => {
+    it('should respect pageSize parameter for list_terragrunt_functions tool', async () => {
       const result = await toolHandler.executeTool('list_terragrunt_functions', {
-        limit: 5
+        pageSize: 5
       });
 
       expect(result.functions).toBeDefined();
@@ -644,11 +647,11 @@ describe('MCP Protocol Compliance', () => {
     it('should handle missing optional parameters gracefully', async () => {
       const result = await toolHandler.executeTool('search_terragrunt_docs', {
         query: 'test'
-        // limit is optional, should default to 5
+        // pageSize is optional, should default to 10
       });
 
       expect(result.results).toBeDefined();
-      expect(result.results.length).toBeLessThanOrEqual(5);
+      expect(result.results.length).toBeLessThanOrEqual(10);
     });
 
     it('should not throw exceptions on tool execution errors', async () => {
