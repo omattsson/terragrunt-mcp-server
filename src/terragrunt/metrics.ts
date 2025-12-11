@@ -5,7 +5,10 @@
  * Logs to stderr and maintains in-memory statistics.
  */
 
-import { MetricsSummary, MetricType } from '../types/metrics.js';
+import { MetricsSummary, MetricType, IMetricsManager } from '../types/metrics.js';
+
+// Re-export for convenience
+export type { IMetricsManager };
 
 interface InternalMetricData {
   calls: number;
@@ -15,7 +18,7 @@ interface InternalMetricData {
   lastCallTime: Date;
 }
 
-export class MetricsManager {
+export class MetricsManager implements IMetricsManager {
   private metrics = new Map<string, InternalMetricData>();
 
   /**
@@ -131,5 +134,34 @@ export class MetricsManager {
       total += data.totalBytes;
     }
     return total;
+  }
+}
+
+/**
+ * Null object implementation of IMetricsManager for cases where metrics are disabled
+ */
+export class NullMetricsManager implements IMetricsManager {
+  logResponse(_type: MetricType, _operation: string, _responseSize: number): void {
+    // No-op
+  }
+
+  getStats(_filter?: string): MetricsSummary {
+    return {};
+  }
+
+  getTotalCalls(): number {
+    return 0;
+  }
+
+  getTotalBytes(): number {
+    return 0;
+  }
+
+  getSummaryText(): string {
+    return 'Metrics tracking disabled';
+  }
+
+  reset(): void {
+    // No-op
   }
 }

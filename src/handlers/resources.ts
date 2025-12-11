@@ -1,5 +1,5 @@
 import { TerragruntDocsManager, TerragruntDoc } from '../terragrunt/docs.js';
-import { MetricsManager } from '../terragrunt/metrics.js';
+import { IMetricsManager, NullMetricsManager } from '../terragrunt/metrics.js';
 
 export interface Resource {
     uri: string;
@@ -8,13 +8,18 @@ export interface Resource {
     mimeType?: string;
 }
 
+interface ContentItem {
+    type: string;
+    text: string;
+}
+
 export class ResourceHandler {
     private docsManager: TerragruntDocsManager;
-    private metricsManager: MetricsManager;
+    private metricsManager: IMetricsManager;
 
-    constructor(metricsManager?: MetricsManager) {
+    constructor(metricsManager?: IMetricsManager) {
+        this.metricsManager = metricsManager || new NullMetricsManager();
         this.docsManager = new TerragruntDocsManager();
-        this.metricsManager = metricsManager || new MetricsManager();
     }
 
     async listResources(): Promise<Resource[]> {
@@ -69,8 +74,8 @@ export class ResourceHandler {
         return resources;
     }
 
-    async getResource(uri: string): Promise<{ contents: any; mimeType: string }> {
-        let result: { contents: any; mimeType: string };
+    async getResource(uri: string): Promise<{ contents: ContentItem[]; mimeType: string }> {
+        let result: { contents: ContentItem[]; mimeType: string };
         try {
             if (uri === 'terragrunt://docs/overview') {
                 const docs = await this.docsManager.fetchLatestDocs();
@@ -96,7 +101,8 @@ export class ResourceHandler {
                     contents: [{ type: 'text', text: content }],
                     mimeType: 'text/markdown'
                 };
-                this.metricsManager.logResponse('resource', 'overview', result);
+                const responseSize = JSON.stringify(result).length;
+                this.metricsManager.logResponse('resource', 'overview', responseSize);
                 return result;
             }
 
@@ -115,7 +121,8 @@ export class ResourceHandler {
                     contents: [{ type: 'text', text: content }],
                     mimeType: 'text/markdown'
                 };
-                this.metricsManager.logResponse('resource', `section:${section}`, result);
+                const responseSize = JSON.stringify(result).length;
+                this.metricsManager.logResponse('resource', `section:${section}`, responseSize);
                 return result;
             }
 
@@ -134,7 +141,8 @@ export class ResourceHandler {
                     contents: [{ type: 'text', text: content }],
                     mimeType: 'text/markdown'
                 };
-                this.metricsManager.logResponse('resource', `page:${doc.title}`, result);
+                const responseSize = JSON.stringify(result).length;
+                this.metricsManager.logResponse('resource', `page:${doc.title}`, responseSize);
                 return result;
             }
 
@@ -143,7 +151,8 @@ export class ResourceHandler {
                     contents: [{ type: 'text', text: 'Failed to load Terragrunt documentation. Please check your internet connection and try again.' }],
                     mimeType: 'text/plain'
                 };
-                this.metricsManager.logResponse('resource', 'error', result);
+                const responseSize = JSON.stringify(result).length;
+                this.metricsManager.logResponse('resource', 'error', responseSize);
                 return result;
             }
 
@@ -154,7 +163,8 @@ export class ResourceHandler {
                 contents: [{ type: 'text', text: `Error: ${error instanceof Error ? error.message : 'Unknown error'}` }],
                 mimeType: 'text/plain'
             };
-            this.metricsManager.logResponse('resource', 'error', result);
+            const responseSize = JSON.stringify(result).length;
+            this.metricsManager.logResponse('resource', 'error', responseSize);
             return result;
         }
     }
