@@ -1016,7 +1016,7 @@ export class ToolHandler {
                 id: cat.id,
                 name: cat.name,
                 description: cat.description,
-                commandCount: cat.commands
+                commandCount: cat.commands.length
             })),
             pagination
         };
