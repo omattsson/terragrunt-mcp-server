@@ -1103,7 +1103,16 @@ export class ToolHandler {
         if (!code || code.length <= maxLength) {
             return code;
         }
-        return code.substring(0, maxLength) + '\n\n# ... [Truncated. See full example at ' + docUrl + ']';
+        // Truncate at the last complete line before maxLength for cleaner output
+        const lastNewline = code.lastIndexOf('\n', maxLength);
+        const truncationPoint = lastNewline > 0 ? lastNewline : maxLength;
+        
+        // Handle missing or empty docUrl gracefully
+        const urlMessage = docUrl && docUrl.trim() !== '' 
+            ? `See full example at ${docUrl}`
+            : 'See full example in documentation';
+        
+        return code.substring(0, truncationPoint) + '\n\n# ... [Truncated. ' + urlMessage + ']';
     }
 
     private async getCodeExamples(
@@ -1245,7 +1254,11 @@ export class ToolHandler {
                     description: bestMatch.description,
                     category: bestMatch.category,
                     complexity: bestMatch.complexity,
-                    code: this.truncateCodeSnippet(bestMatch.code, 1000, bestMatch.docsUrl || ''),
+                    code: this.truncateCodeSnippet(
+                        bestMatch.code,
+                        1000,
+                        bestMatch.docsUrl && bestMatch.docsUrl.trim() !== '' ? bestMatch.docsUrl : ''
+                    ),
                     codeTruncated: bestMatch.code.length > 1000,
                     useCases: bestMatch.useCases,
                     bestPractices: bestMatch.bestPractices,
