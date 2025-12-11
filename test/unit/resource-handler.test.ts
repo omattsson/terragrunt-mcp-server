@@ -354,9 +354,10 @@ describe('ResourceHandler', () => {
       const resource = await resourceHandler.getResource('terragrunt://docs/section/test-section');
       const text = resource.contents[0].text;
 
-      // Should be truncated
-      expect(text.length).toBeLessThan(longContent.length + 300); // Original + headers
+      // Should be truncated - verify total length is reasonable
+      // Text should include: section header, doc title, truncated content (250 chars), help message
       expect(text).toContain('...'); // Truncation marker
+      expect(text.length).toBeLessThan(longContent.length); // Must be shorter than original
       expect(text).toContain('This is a truncated summary'); // Help message
       expect(text).toContain('get_terragrunt_documentation'); // Tool suggestion
     });
@@ -440,10 +441,11 @@ describe('ResourceHandler', () => {
 
       // Should truncate at the space, not mid-word
       expect(text).toContain('...'); // Truncation marker
-      // The truncation should happen at a space within the last 20% of the limit
-      // So we should see the 'A's but not all the trailing words
+      // The truncation should happen at a space within the last 20% of the limit (80% threshold)
+      // We have 200 'A's, so should retain at least 75% of them (150+ chars)
       const aCount = (text.match(/A/g) || []).length;
-      expect(aCount).toBeGreaterThan(150); // Should have most A's
+      const originalACount = 200;
+      expect(aCount).toBeGreaterThan(Math.floor(originalACount * 0.75)); // At least 75% of A's retained
       expect(text).not.toContain('exceed the limit'); // Should not have the end
     });
 
