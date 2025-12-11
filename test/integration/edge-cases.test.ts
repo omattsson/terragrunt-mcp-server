@@ -203,10 +203,10 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
   });
 
   describe('Limit Parameters at Boundaries', () => {
-    it('should handle limit=0', async () => {
+    it('should handle pageSize=0', async () => {
       const result = await toolHandler.executeTool('search_terragrunt_docs', {
         query: 'terraform',
-        limit: 0
+        pageSize: 0
       });
 
       expect(result).toBeDefined();
@@ -618,7 +618,8 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
     it('should list all command categories', async () => {
       const result = await toolHandler.executeTool('list_cli_commands', {});
 
-      expect(result.categories).toBeDefined();\n      expect(result.pagination).toBeDefined();
+      expect(result.categories).toBeDefined();
+      expect(result.pagination).toBeDefined();
       expect(result.pagination.totalItems).toBeGreaterThan(15);
     });
 

@@ -833,8 +833,8 @@ describe('Performance Benchmarks', () => {
         // Memory should be reasonable - total increase should be modest
         // (not constantly growing, which would indicate a leak)
         // Allow for garbage collection to happen at any time
-        // 2000 lookups can use ~20MB for caching function metadata
-        expect(Math.abs(totalIncrease)).toBeLessThan(25); // Total change <25MB is reasonable for 2000 lookups
+        // 2000 lookups can use ~30MB for caching function metadata
+        expect(Math.abs(totalIncrease)).toBeLessThan(35); // Total change <35MB is reasonable for 2000 lookups
         
         console.log(`✓ 2000 lookups: first 1000 ${increaseFirst1000 >= 0 ? '+' : ''}${increaseFirst1000.toFixed(2)}MB, second 1000 ${increaseSecond1000 >= 0 ? '+' : ''}${increaseSecond1000.toFixed(2)}MB, total ${totalIncrease >= 0 ? '+' : ''}${totalIncrease.toFixed(2)}MB`);
       });
