@@ -910,7 +910,7 @@ export class ToolHandler {
                 documents: docs.map(doc => ({
                     title: doc.title,
                     url: doc.url,
-                    snippet: doc.content.substring(0, 100) + '...'
+                    snippet: getFirstSentence(doc.content) || doc.content.substring(0, 100) + '...'
                 }))
             };
         }
@@ -1519,7 +1519,7 @@ export class ToolHandler {
         level?: 'beginner' | 'intermediate' | 'advanced'
     ): Promise<any> {
         try {
-            // Always get full data from analyzer, then format based on mode
+            // The mode determines what data is requested from the analyzer (e.g., whether to include examples)
             const includeExamples = mode === 'full';
             const result = await this.bestPracticesAnalyzer.analyzeTopic(topic, level, includeExamples);
             

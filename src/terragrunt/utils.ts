@@ -17,6 +17,7 @@ export const formatOutput = (data: any): string => {
 /**
  * Extract the first sentence from text.
  * A sentence is defined as text ending with . ! or ?
+ * Handles common abbreviations (Dr., Mr., Mrs., etc.)
  * Falls back to truncation if no sentence boundary is found.
  */
 export const getFirstSentence = (text: string): string => {
@@ -25,7 +26,8 @@ export const getFirstSentence = (text: string): string => {
     }
     
     // Match first sentence ending with . ! or ?
-    const sentenceMatch = text.match(/[^.!?]+[.!?]+/);
+    // Uses negative lookbehind to avoid breaking on common abbreviations
+    const sentenceMatch = text.match(/^.*?(?<!Dr|Mr|Mrs|Ms|Sr|Jr|etc|e\.g|i\.e)[.!?](?=\s|$)/s);
     
     if (sentenceMatch) {
         return sentenceMatch[0].trim();

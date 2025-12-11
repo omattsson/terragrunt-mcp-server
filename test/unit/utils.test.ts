@@ -55,7 +55,7 @@ describe('getFirstSentence', () => {
 
     it('should handle abbreviations correctly', () => {
         const text = 'Dr. Smith went to the store. He bought milk.';
-        // Will match "Dr." as first sentence, which is expected behavior
-        expect(getFirstSentence(text)).toBe('Dr.');
+        // Should match the full first sentence, not stop at abbreviation
+        expect(getFirstSentence(text)).toBe('Dr. Smith went to the store.');
     });
 });
