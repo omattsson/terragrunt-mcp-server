@@ -91,7 +91,7 @@ export async function isTerragruntAvailable(): Promise<boolean> {
 
     terragruntAvailableCache = result;
     return result;
-  } catch (error) {
+  } catch {
     terragruntAvailableCache = false;
     return false;
   }
