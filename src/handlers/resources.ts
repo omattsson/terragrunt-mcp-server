@@ -75,7 +75,6 @@ export class ResourceHandler {
     }
 
     async getResource(uri: string): Promise<{ contents: ContentItem[]; mimeType: string }> {
-        let result: { contents: ContentItem[]; mimeType: string };
         try {
             if (uri === 'terragrunt://docs/overview') {
                 const docs = await this.docsManager.fetchLatestDocs();
@@ -97,7 +96,7 @@ export class ResourceHandler {
                     content += '\n';
                 }
 
-                result = {
+                const result = {
                     contents: [{ type: 'text', text: content }],
                     mimeType: 'text/markdown'
                 };
@@ -116,7 +115,7 @@ export class ResourceHandler {
                 let content = `# Terragrunt ${section} Documentation\n\n`;
                 content += docs.map(doc => `## ${doc.title}\n\n${doc.content}\n\n---\n`).join('\n');
 
-                result = {
+                const result = {
                     contents: [{ type: 'text', text: content }],
                     mimeType: 'text/markdown'
                 };
@@ -135,7 +134,7 @@ export class ResourceHandler {
 
                 const content = `# ${doc.title}\n\n**Source:** [${doc.url}](${doc.url})\n**Section:** ${doc.section}\n**Last Updated:** ${doc.lastUpdated}\n\n---\n\n${doc.content}`;
 
-                result = {
+                const result = {
                     contents: [{ type: 'text', text: content }],
                     mimeType: 'text/markdown'
                 };
@@ -144,7 +143,7 @@ export class ResourceHandler {
             }
 
             if (uri === 'terragrunt://error') {
-                result = {
+                const result = {
                     contents: [{ type: 'text', text: 'Failed to load Terragrunt documentation. Please check your internet connection and try again.' }],
                     mimeType: 'text/plain'
                 };
@@ -155,7 +154,7 @@ export class ResourceHandler {
             throw new Error(`Unknown resource URI: ${uri}`);
         } catch (error) {
             console.error('Error getting resource:', error);
-            result = {
+            const result = {
                 contents: [{ type: 'text', text: `Error: ${error instanceof Error ? error.message : 'Unknown error'}` }],
                 mimeType: 'text/plain'
             };

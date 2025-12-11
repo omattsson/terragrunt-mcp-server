@@ -522,11 +522,57 @@ export class ToolHandler {
                     },
                     required: []
                 }
+            },
+            {
+                name: 'get_server_metrics',
+                description: 'Get server metrics for tools and resources with optional filtering and reset functionality',
+                inputSchema: {
+                    type: 'object',
+                    properties: {
+                        filter: {
+                            type: 'string',
+                            description: 'Optional filter to show only metrics matching this string'
+                        },
+                        format: {
+                            type: 'string',
+                            enum: ['json', 'text'],
+                            description: 'Output format (json or text)',
+                            default: 'json'
+                        },
+                        reset: {
+                            type: 'boolean',
+                            description: 'Reset metrics after retrieving them',
+                            default: false
+                        }
+                    },
+                    required: []
+                }
             }
         ];
     }
 
     async executeTool(name: string, args?: any): Promise<any> {
+        const startTime = Date.now();
+        try {
+            const result = await this.executeToolInternal(name, args);
+            
+            // Log metrics (skip for get_server_metrics to avoid recursion)
+            if (name !== 'get_server_metrics') {
+                this.metricsManager.logResponse('tool', name, result);
+            }
+            
+            return result;
+        } catch (error) {
+            console.error(`Error executing tool ${name}:`, error);
+            const errorResult = {
+                error: error instanceof Error ? error.message : 'Unknown error occurred'
+            };
+            this.metricsManager.logResponse('tool', name, errorResult);
+            throw error;
+        }
+    }
+    
+    private async executeToolInternal(name: string, args?: any): Promise<any> {
         try {
             switch (name) {
                 case 'search_terragrunt_docs':
@@ -670,6 +716,13 @@ export class ToolHandler {
                     return this.getPatternGuidance(
                         args?.scenario,
                         args?.listPatterns ?? false
+                    );
+
+                case 'get_server_metrics':
+                    return this.getServerMetrics(
+                        args?.filter,
+                        args?.format ?? 'json',
+                        args?.reset ?? false
                     );
 
                 default:

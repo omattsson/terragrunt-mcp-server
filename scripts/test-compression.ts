@@ -1,4 +1,16 @@
 /**
+ * Exploratory analysis script for MCP protocol response compression.
+ *
+ * Purpose: This script was used to evaluate whether protocol-level compression
+ * (gzip + base64) would provide significant benefits for MCP server responses.
+ * The results (see conclusion at lines 64-71) informed the decision in this PR
+ * to focus on semantic optimization (truncation, pagination, summary mode)
+ * rather than implementing protocol-level compression, due to JSON-RPC/stdio
+ * limitations and the nature of the data.
+ *
+ * Usage: This is a one-time research/analysis script, not intended for ongoing
+ * use or integration into the production codebase.
+ *
  * Test compression effectiveness for MCP responses
  * This helps determine if protocol-level compression would be beneficial
  */
