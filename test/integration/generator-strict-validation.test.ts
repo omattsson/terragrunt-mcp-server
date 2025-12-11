@@ -207,7 +207,7 @@ describe('Generator with Strict Validation', () => {
       // Terragrunt validation presence depends on availability
       if (!terragruntAvailable) {
         expect(result.validation?.terragrunt?.available).toBe(false);
-        expect(result.wasFormatted).toBeUndefined();
+        expect(result.wasFormatted).toBe(false);
       }
     });
   });

@@ -10,11 +10,13 @@ import {
 } from '@modelcontextprotocol/sdk/types.js';
 import { ResourceHandler } from './handlers/resources.js';
 import { ToolHandler } from './handlers/tools.js';
+import { MetricsManager } from './terragrunt/metrics.js';
 
 class TerragruntMCPServer {
     private server: Server;
     private resourceHandler: ResourceHandler;
     private toolHandler: ToolHandler;
+    private metricsManager: MetricsManager;
 
     constructor() {
         this.server = new Server(
@@ -30,8 +32,10 @@ class TerragruntMCPServer {
             }
         );
 
-        this.resourceHandler = new ResourceHandler();
-        this.toolHandler = new ToolHandler();
+        // Create shared metrics manager for both handlers
+        this.metricsManager = new MetricsManager();
+        this.resourceHandler = new ResourceHandler(this.metricsManager);
+        this.toolHandler = new ToolHandler(this.metricsManager);
 
         this.setupHandlers();
     }

@@ -1,4 +1,5 @@
 import { TerragruntDocsManager, TerragruntDoc } from '../terragrunt/docs.js';
+import { IMetricsManager, NullMetricsManager } from '../terragrunt/metrics.js';
 
 export interface Resource {
     uri: string;
@@ -7,10 +8,17 @@ export interface Resource {
     mimeType?: string;
 }
 
+interface ContentItem {
+    type: string;
+    text: string;
+}
+
 export class ResourceHandler {
     private docsManager: TerragruntDocsManager;
+    private metricsManager: IMetricsManager;
 
-    constructor() {
+    constructor(metricsManager?: IMetricsManager) {
+        this.metricsManager = metricsManager || new NullMetricsManager();
         this.docsManager = new TerragruntDocsManager();
     }
 
@@ -66,7 +74,7 @@ export class ResourceHandler {
         return resources;
     }
 
-    async getResource(uri: string): Promise<{ contents: any; mimeType: string }> {
+    async getResource(uri: string): Promise<{ contents: ContentItem[]; mimeType: string }> {
         try {
             if (uri === 'terragrunt://docs/overview') {
                 const docs = await this.docsManager.fetchLatestDocs();
@@ -88,10 +96,12 @@ export class ResourceHandler {
                     content += '\n';
                 }
 
-                return {
+                const result = {
                     contents: [{ type: 'text', text: content }],
                     mimeType: 'text/markdown'
                 };
+                this.metricsManager.logResponse('resource', 'overview', result);
+                return result;
             }
 
             if (uri.startsWith('terragrunt://docs/section/')) {
@@ -105,10 +115,12 @@ export class ResourceHandler {
                 let content = `# Terragrunt ${section} Documentation\n\n`;
                 content += docs.map(doc => `## ${doc.title}\n\n${doc.content}\n\n---\n`).join('\n');
 
-                return {
+                const result = {
                     contents: [{ type: 'text', text: content }],
                     mimeType: 'text/markdown'
                 };
+                this.metricsManager.logResponse('resource', `section:${section}`, result);
+                return result;
             }
 
             if (uri.startsWith('terragrunt://docs/page/')) {
@@ -122,26 +134,32 @@ export class ResourceHandler {
 
                 const content = `# ${doc.title}\n\n**Source:** [${doc.url}](${doc.url})\n**Section:** ${doc.section}\n**Last Updated:** ${doc.lastUpdated}\n\n---\n\n${doc.content}`;
 
-                return {
+                const result = {
                     contents: [{ type: 'text', text: content }],
                     mimeType: 'text/markdown'
                 };
+                this.metricsManager.logResponse('resource', `page:${doc.title}`, result);
+                return result;
             }
 
             if (uri === 'terragrunt://error') {
-                return {
+                const result = {
                     contents: [{ type: 'text', text: 'Failed to load Terragrunt documentation. Please check your internet connection and try again.' }],
                     mimeType: 'text/plain'
                 };
+                this.metricsManager.logResponse('resource', 'error', result);
+                return result;
             }
 
             throw new Error(`Unknown resource URI: ${uri}`);
         } catch (error) {
             console.error('Error getting resource:', error);
-            return {
+            const result = {
                 contents: [{ type: 'text', text: `Error: ${error instanceof Error ? error.message : 'Unknown error'}` }],
                 mimeType: 'text/plain'
             };
+            this.metricsManager.logResponse('resource', 'error', result);
+            return result;
         }
     }
 
