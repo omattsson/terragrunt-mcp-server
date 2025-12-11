@@ -1257,7 +1257,7 @@ export class ToolHandler {
                     code: this.truncateCodeSnippet(
                         bestMatch.code,
                         1000,
-                        bestMatch.docsUrl && bestMatch.docsUrl.trim() !== '' ? bestMatch.docsUrl : ''
+                        bestMatch.docsUrl || ''
                     ),
                     codeTruncated: bestMatch.code.length > 1000,
                     useCases: bestMatch.useCases,

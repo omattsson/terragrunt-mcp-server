@@ -614,10 +614,14 @@ inputs = {
       expect(result.examples[0].codeSnippets[0]).toContain('# ... [Truncated. See full example at https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/]');
       expect(result.examples[0].codeSnippets[0].length).toBeLessThan(longCode.length);
       expect(result.examples[0].truncated).toBe(true);
-      // Verify truncation doesn't break at mid-line
+      // Verify truncation occurred at a line boundary (complete line)
       const truncated = result.examples[0].codeSnippets[0];
-      const lastLineBeforeTruncation = truncated.split('\n').slice(-3, -2)[0];
+      const lines = truncated.split('\n');
+      const lastLineBeforeTruncation = lines[lines.length - 3]; // -1 is empty, -2 is truncation msg, -3 is last code line
       expect(lastLineBeforeTruncation).toBeDefined();
+      expect(lastLineBeforeTruncation.trim()).not.toBe(''); // Should be a complete line
+      // Verify it's not mid-word by checking it doesn't end with incomplete syntax
+      expect(lastLineBeforeTruncation).toMatch(/^\s*[\w\s"'={}\[\]\(\).,:\-\/]*$/); // Valid HCL line pattern
     });
 
     it('should not truncate short code snippets', async () => {
