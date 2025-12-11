@@ -1519,7 +1519,6 @@ export class ToolHandler {
         level?: 'beginner' | 'intermediate' | 'advanced'
     ): Promise<any> {
         try {
-            // The mode determines what data is requested from the analyzer (e.g., whether to include examples)
             const includeExamples = mode === 'full';
             const result = await this.bestPracticesAnalyzer.analyzeTopic(topic, level, includeExamples);
             

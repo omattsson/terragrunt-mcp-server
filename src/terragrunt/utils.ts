@@ -14,6 +14,9 @@ export const formatOutput = (data: any): string => {
     return JSON.stringify(data, null, 2);
 };
 
+// Common abbreviations that should not be treated as sentence terminators
+const COMMON_ABBREVIATIONS = ['Dr', 'Mr', 'Mrs', 'Ms', 'Sr', 'Jr', 'etc', 'e\\.g', 'i\\.e'];
+
 /**
  * Extract the first sentence from text.
  * A sentence is defined as text ending with . ! or ?
@@ -27,7 +30,9 @@ export const getFirstSentence = (text: string): string => {
     
     // Match first sentence ending with . ! or ?
     // Uses negative lookbehind to avoid breaking on common abbreviations
-    const sentenceMatch = text.match(/^.*?(?<!Dr|Mr|Mrs|Ms|Sr|Jr|etc|e\.g|i\.e)[.!?](?=\s|$)/s);
+    const abbreviationPattern = COMMON_ABBREVIATIONS.join('|');
+    const regex = new RegExp(`^.*?(?<!${abbreviationPattern})[.!?](?=\\s|$)`, 's');
+    const sentenceMatch = text.match(regex);
     
     if (sentenceMatch) {
         return sentenceMatch[0].trim();
