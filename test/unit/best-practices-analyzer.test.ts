@@ -856,7 +856,7 @@ describe('BestPracticesAnalyzer', () => {
       expect(resultWithoutExamples2.recommendations[0].examples).toEqual([]);
     });
 
-    it('should work with experience level filter and includeExamples', async () => {
+    it('should work with experience level filter and includeExamples: false', async () => {
       await analyzer.extractBestPractices();
       const result = await analyzer.analyzeTopic('state_management', 'beginner', false);
 
@@ -873,5 +873,25 @@ describe('BestPracticesAnalyzer', () => {
         expect(rec.antipatterns).toEqual([]);
       });
     });
+
+    it('should include examples with experience level filter and includeExamples: true', async () => {
+      await analyzer.extractBestPractices();
+      const result = await analyzer.analyzeTopic('state_management', 'beginner', true);
+
+      expect(result.recommendations.length).toBeGreaterThan(0);
+      
+      // Should only have beginner recommendations
+      result.recommendations.forEach(rec => {
+        expect(rec.experienceLevel).toBe('beginner');
+      });
+      
+      // Examples should be present (at least in some recommendations)
+      const recsWithExamples = result.recommendations.filter(r => r.examples.length > 0);
+      expect(recsWithExamples.length).toBeGreaterThan(0);
+      
+      // Real-world examples should also be present
+      expect(result.realWorldExamples.length).toBeGreaterThan(0);
+    });
   });
 });
+
