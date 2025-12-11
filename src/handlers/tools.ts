@@ -45,7 +45,7 @@ export class ToolHandler {
 
     constructor(metricsManager?: IMetricsManager) {
         this.metricsManager = metricsManager || new NullMetricsManager();
-        this.resourceHandler = new ResourceHandler();
+        this.resourceHandler = new ResourceHandler(this.metricsManager);
         this.docsManager = new TerragruntDocsManager();
         this.functionsManager = new TerragruntFunctionsManager(this.docsManager);
         this.bestPracticesAnalyzer = new BestPracticesAnalyzer(this.docsManager);

@@ -101,8 +101,7 @@ export class ResourceHandler {
                     contents: [{ type: 'text', text: content }],
                     mimeType: 'text/markdown'
                 };
-                const responseSize = JSON.stringify(result).length;
-                this.metricsManager.logResponse('resource', 'overview', responseSize);
+                this.metricsManager.logResponse('resource', 'overview', result);
                 return result;
             }
 
@@ -121,8 +120,7 @@ export class ResourceHandler {
                     contents: [{ type: 'text', text: content }],
                     mimeType: 'text/markdown'
                 };
-                const responseSize = JSON.stringify(result).length;
-                this.metricsManager.logResponse('resource', `section:${section}`, responseSize);
+                this.metricsManager.logResponse('resource', `section:${section}`, result);
                 return result;
             }
 
@@ -141,8 +139,7 @@ export class ResourceHandler {
                     contents: [{ type: 'text', text: content }],
                     mimeType: 'text/markdown'
                 };
-                const responseSize = JSON.stringify(result).length;
-                this.metricsManager.logResponse('resource', `page:${doc.title}`, responseSize);
+                this.metricsManager.logResponse('resource', `page:${doc.title}`, result);
                 return result;
             }
 
@@ -151,8 +148,7 @@ export class ResourceHandler {
                     contents: [{ type: 'text', text: 'Failed to load Terragrunt documentation. Please check your internet connection and try again.' }],
                     mimeType: 'text/plain'
                 };
-                const responseSize = JSON.stringify(result).length;
-                this.metricsManager.logResponse('resource', 'error', responseSize);
+                this.metricsManager.logResponse('resource', 'error', result);
                 return result;
             }
 
@@ -163,8 +159,7 @@ export class ResourceHandler {
                 contents: [{ type: 'text', text: `Error: ${error instanceof Error ? error.message : 'Unknown error'}` }],
                 mimeType: 'text/plain'
             };
-            const responseSize = JSON.stringify(result).length;
-            this.metricsManager.logResponse('resource', 'error', responseSize);
+            this.metricsManager.logResponse('resource', 'error', result);
             return result;
         }
     }

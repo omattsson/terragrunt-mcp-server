@@ -141,7 +141,7 @@ export class MetricsManager implements IMetricsManager {
  * Null object implementation of IMetricsManager for cases where metrics are disabled
  */
 export class NullMetricsManager implements IMetricsManager {
-  logResponse(_type: MetricType, _operation: string, _responseSize: number): void {
+  logResponse(_type: MetricType, _operation: string, _response: any): void {
     // No-op
   }
 

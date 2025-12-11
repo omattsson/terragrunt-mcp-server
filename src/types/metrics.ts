@@ -28,7 +28,7 @@ export interface MetricsResponse {
 }
 
 export interface IMetricsManager {
-  logResponse(type: MetricType, operation: string, responseSize: number): void;
+  logResponse(type: MetricType, operation: string, response: any): void;
   getStats(filter?: string): MetricsSummary;
   getTotalCalls(): number;
   getTotalBytes(): number;
