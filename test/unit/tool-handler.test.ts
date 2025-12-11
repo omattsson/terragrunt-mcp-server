@@ -551,6 +551,160 @@ describe('ToolHandler', () => {
       
       expect(result.examples.length).toBeLessThanOrEqual(3);
     });
+
+    it('should truncate long code snippets at 1000 characters', async () => {
+      const longCode = 'a'.repeat(1500); // 1500 character code snippet
+      const examples = [
+        {
+          doc: { ...mockDocs[0], url: 'https://example.com/docs/test' },
+          examples: [longCode]
+        }
+      ];
+      mockDocsManager.getCodeExamples.mockResolvedValueOnce(examples);
+
+      const result = await toolHandler.executeTool('get_code_examples', {
+        topic: 'test'
+      });
+      
+      expect(result.examples[0].codeSnippets[0]).toContain('# ... [Truncated. See full example at https://example.com/docs/test]');
+      expect(result.examples[0].codeSnippets[0].length).toBeLessThan(longCode.length);
+      expect(result.examples[0].truncated).toBe(true);
+    });
+
+    it('should not truncate short code snippets', async () => {
+      const shortCode = 'terraform { source = "..." }';
+      const examples = [
+        {
+          doc: { ...mockDocs[0], url: 'https://example.com/docs/test' },
+          examples: [shortCode]
+        }
+      ];
+      mockDocsManager.getCodeExamples.mockResolvedValueOnce(examples);
+
+      const result = await toolHandler.executeTool('get_code_examples', {
+        topic: 'test'
+      });
+      
+      expect(result.examples[0].codeSnippets[0]).toBe(shortCode);
+      expect(result.examples[0].codeSnippets[0]).not.toContain('Truncated');
+      expect(result.examples[0].truncated).toBe(false);
+    });
+
+    it('should handle mixed length code snippets', async () => {
+      const shortCode = 'terraform { source = "..." }';
+      const longCode = 'a'.repeat(1200);
+      const examples = [
+        {
+          doc: { ...mockDocs[0], url: 'https://example.com/docs/test' },
+          examples: [shortCode, longCode]
+        }
+      ];
+      mockDocsManager.getCodeExamples.mockResolvedValueOnce(examples);
+
+      const result = await toolHandler.executeTool('get_code_examples', {
+        topic: 'test'
+      });
+      
+      expect(result.examples[0].codeSnippets[0]).toBe(shortCode);
+      expect(result.examples[0].codeSnippets[1]).toContain('Truncated');
+      expect(result.examples[0].truncated).toBe(true);
+    });
+
+    it('should truncate advanced example code', async () => {
+      const longCode = 'b'.repeat(1500);
+      
+      // Mock the advanced examples manager
+      const mockAdvancedExamplesManager = {
+        searchExamples: vi.fn().mockReturnValueOnce([
+          {
+            example: {
+              id: 'test-1',
+              name: 'Test Example',
+              description: 'A test example',
+              category: 'backend' as AdvancedExampleCategory,
+              complexity: 'intermediate' as AdvancedExampleComplexity,
+              code: longCode,
+              useCases: ['testing'],
+              bestPractices: [],
+              pitfalls: [],
+              relatedExamples: [],
+              tags: ['test'],
+              docsUrl: 'https://example.com/docs/advanced'
+            },
+            matchType: 'exact',
+            score: 100
+          }
+        ]),
+        formatExampleAsMarkdown: vi.fn().mockReturnValue('# Markdown')
+      };
+      (toolHandler as any).advancedExamplesManager = mockAdvancedExamplesManager;
+
+      const result = await toolHandler.executeTool('get_code_examples', {
+        topic: 'test',
+        advanced: true
+      });
+      
+      expect(result.example.code).toContain('# ... [Truncated. See full example at https://example.com/docs/advanced]');
+      expect(result.example.code.length).toBeLessThan(longCode.length);
+      expect(result.example.codeTruncated).toBe(true);
+    });
+
+    it('should not truncate short advanced example code', async () => {
+      const shortCode = 'terraform { source = "..." }';
+      
+      // Mock the advanced examples manager
+      const mockAdvancedExamplesManager = {
+        searchExamples: vi.fn().mockReturnValueOnce([
+          {
+            example: {
+              id: 'test-1',
+              name: 'Test Example',
+              description: 'A test example',
+              category: 'backend' as AdvancedExampleCategory,
+              complexity: 'intermediate' as AdvancedExampleComplexity,
+              code: shortCode,
+              useCases: ['testing'],
+              bestPractices: [],
+              pitfalls: [],
+              relatedExamples: [],
+              tags: ['test'],
+              docsUrl: 'https://example.com/docs/advanced'
+            },
+            matchType: 'exact',
+            score: 100
+          }
+        ]),
+        formatExampleAsMarkdown: vi.fn().mockReturnValue('# Markdown')
+      };
+      (toolHandler as any).advancedExamplesManager = mockAdvancedExamplesManager;
+
+      const result = await toolHandler.executeTool('get_code_examples', {
+        topic: 'test',
+        advanced: true
+      });
+      
+      expect(result.example.code).toBe(shortCode);
+      expect(result.example.code).not.toContain('Truncated');
+      expect(result.example.codeTruncated).toBe(false);
+    });
+
+    it('should include valid doc URL in truncation message', async () => {
+      const longCode = 'c'.repeat(1100);
+      const docUrl = 'https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/';
+      const examples = [
+        {
+          doc: { ...mockDocs[0], url: docUrl },
+          examples: [longCode]
+        }
+      ];
+      mockDocsManager.getCodeExamples.mockResolvedValueOnce(examples);
+
+      const result = await toolHandler.executeTool('get_code_examples', {
+        topic: 'test'
+      });
+      
+      expect(result.examples[0].codeSnippets[0]).toContain(`# ... [Truncated. See full example at ${docUrl}]`);
+    });
   });
 
   describe('Tool Execution - get_terragrunt_function', () => {

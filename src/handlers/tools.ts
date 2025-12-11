@@ -1092,6 +1092,20 @@ export class ToolHandler {
         return response;
     }
 
+    /**
+     * Truncates a code snippet to a maximum length with a helpful link to full documentation
+     * @param code The code snippet to potentially truncate
+     * @param maxLength Maximum length in characters (default: 1000)
+     * @param docUrl URL to full documentation for truncation message
+     * @returns Original code if under limit, or truncated code with link
+     */
+    private truncateCodeSnippet(code: string, maxLength: number, docUrl: string): string {
+        if (!code || code.length <= maxLength) {
+            return code;
+        }
+        return code.substring(0, maxLength) + '\n\n# ... [Truncated. See full example at ' + docUrl + ']';
+    }
+
     private async getCodeExamples(
         topic?: string,
         limit: number = 5,
@@ -1158,8 +1172,11 @@ export class ToolHandler {
                 documentTitle: result.doc.title,
                 documentUrl: result.doc.url,
                 section: result.doc.section,
-                codeSnippets: result.examples,
-                snippetCount: result.examples.length
+                codeSnippets: result.examples.map(ex => 
+                    this.truncateCodeSnippet(ex, 1000, result.doc.url)
+                ),
+                snippetCount: result.examples.length,
+                truncated: result.examples.some(ex => ex.length > 1000)
             })),
             totalDocuments: results.length,
             hasMore: results.length > limit
@@ -1228,7 +1245,8 @@ export class ToolHandler {
                     description: bestMatch.description,
                     category: bestMatch.category,
                     complexity: bestMatch.complexity,
-                    code: bestMatch.code,
+                    code: this.truncateCodeSnippet(bestMatch.code, 1000, bestMatch.docsUrl || ''),
+                    codeTruncated: bestMatch.code.length > 1000,
                     useCases: bestMatch.useCases,
                     bestPractices: bestMatch.bestPractices,
                     pitfalls: bestMatch.pitfalls,
