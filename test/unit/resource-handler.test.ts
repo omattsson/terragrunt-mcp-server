@@ -337,4 +337,154 @@ describe('ResourceHandler', () => {
       expect(resource.contents[0].text).toMatch(/Total documentation pages: \d+/);
     });
   });
+
+  describe('Content Truncation', () => {
+    it('should truncate long section content to 250 chars per doc', async () => {
+      const longContent = 'A'.repeat(500); // Content longer than limit
+      const longDoc = {
+        title: 'Long Doc',
+        url: 'https://example.com/long',
+        content: longContent,
+        section: 'test-section',
+        lastUpdated: '2025-01-01'
+      };
+
+      mockDocsManager.getDocBySection.mockResolvedValueOnce([longDoc]);
+
+      const resource = await resourceHandler.getResource('terragrunt://docs/section/test-section');
+      const text = resource.contents[0].text;
+
+      // Should be truncated
+      expect(text.length).toBeLessThan(longContent.length + 300); // Original + headers
+      expect(text).toContain('...'); // Truncation marker
+      expect(text).toContain('This is a truncated summary'); // Help message
+      expect(text).toContain('get_terragrunt_documentation'); // Tool suggestion
+    });
+
+    it('should truncate long page content to 1200 chars', async () => {
+      const longContent = 'B'.repeat(3000); // Content longer than limit
+      const longDoc = {
+        title: 'Long Page',
+        url: 'https://example.com/long-page',
+        content: longContent,
+        section: 'test',
+        lastUpdated: '2025-01-01'
+      };
+
+      mockDocsManager.fetchLatestDocs.mockResolvedValueOnce([longDoc]);
+
+      const resource = await resourceHandler.getResource('terragrunt://docs/page/https%3A%2F%2Fexample.com%2Flong-page');
+      const text = resource.contents[0].text;
+
+      // Should be truncated
+      expect(text).toContain('...'); // Truncation marker
+      expect(text).toContain('This is a truncated preview'); // Help message
+      expect(text).toContain('get_terragrunt_documentation'); // Tool suggestion
+    });
+
+    it('should preserve short section content without truncation', async () => {
+      const shortContent = 'Short content here';
+      const shortDoc = {
+        title: 'Short Doc',
+        url: 'https://example.com/short',
+        content: shortContent,
+        section: 'test-section',
+        lastUpdated: '2025-01-01'
+      };
+
+      mockDocsManager.getDocBySection.mockResolvedValueOnce([shortDoc]);
+
+      const resource = await resourceHandler.getResource('terragrunt://docs/section/test-section');
+      const text = resource.contents[0].text;
+
+      // Should not be truncated
+      expect(text).toContain(shortContent);
+      expect(text).not.toContain('This is a truncated summary');
+    });
+
+    it('should preserve short page content without truncation', async () => {
+      const shortContent = 'Brief page content';
+      const shortDoc = {
+        title: 'Short Page',
+        url: 'https://example.com/short-page',
+        content: shortContent,
+        section: 'test',
+        lastUpdated: '2025-01-01'
+      };
+
+      mockDocsManager.fetchLatestDocs.mockResolvedValueOnce([shortDoc]);
+
+      const resource = await resourceHandler.getResource('terragrunt://docs/page/https%3A%2F%2Fexample.com%2Fshort-page');
+      const text = resource.contents[0].text;
+
+      // Should not be truncated
+      expect(text).toContain(shortContent);
+      expect(text).not.toContain('This is a truncated preview');
+    });
+
+    it('should truncate at word boundaries when possible', async () => {
+      // Create content with a space near the 250 char limit
+      const contentWithSpaces = 'A'.repeat(200) + ' some more words here that should be cut off because they exceed the limit';
+      const docWithSpaces = {
+        title: 'Boundary Doc',
+        url: 'https://example.com/boundary',
+        content: contentWithSpaces,
+        section: 'test-section',
+        lastUpdated: '2025-01-01'
+      };
+
+      mockDocsManager.getDocBySection.mockResolvedValueOnce([docWithSpaces]);
+
+      const resource = await resourceHandler.getResource('terragrunt://docs/section/test-section');
+      const text = resource.contents[0].text;
+
+      // Should truncate at the space, not mid-word
+      expect(text).toContain('...'); // Truncation marker
+      // The truncation should happen at a space within the last 20% of the limit
+      // So we should see the 'A's but not all the trailing words
+      const aCount = (text.match(/A/g) || []).length;
+      expect(aCount).toBeGreaterThan(150); // Should have most A's
+      expect(text).not.toContain('exceed the limit'); // Should not have the end
+    });
+
+    it('should include helpful message with query suggestion for sections', async () => {
+      const longContent = 'C'.repeat(500);
+      const longDoc = {
+        title: 'Long Doc',
+        url: 'https://example.com/long',
+        content: longContent,
+        section: 'my-section',
+        lastUpdated: '2025-01-01'
+      };
+
+      mockDocsManager.getDocBySection.mockResolvedValueOnce([longDoc]);
+
+      const resource = await resourceHandler.getResource('terragrunt://docs/section/my-section');
+      const text = resource.contents[0].text;
+
+      // Help message should reference the section name
+      expect(text).toContain('query="my-section"');
+      expect(text).toContain('@copilot /tools');
+    });
+
+    it('should include helpful message with title suggestion for pages', async () => {
+      const longContent = 'D'.repeat(3000);
+      const longDoc = {
+        title: 'My Long Page',
+        url: 'https://example.com/long-page',
+        content: longContent,
+        section: 'test',
+        lastUpdated: '2025-01-01'
+      };
+
+      mockDocsManager.fetchLatestDocs.mockResolvedValueOnce([longDoc]);
+
+      const resource = await resourceHandler.getResource('terragrunt://docs/page/https%3A%2F%2Fexample.com%2Flong-page');
+      const text = resource.contents[0].text;
+
+      // Help message should reference the page title
+      expect(text).toContain('query="My Long Page"');
+      expect(text).toContain('@copilot /tools');
+    });
+  });
 });
