@@ -215,9 +215,10 @@ describe('Function Lookup Tools Integration Tests', () => {
         expect(result.categories).toBeDefined();
         expect(Array.isArray(result.categories)).toBe(true);
         
-        expect(result.totalCount).toBeDefined();
-        expect(typeof result.totalCount).toBe('number');
-        expect(result.totalCount).toBeGreaterThan(0);
+        expect(result.pagination).toBeDefined();
+        expect(result.pagination.totalItems).toBeDefined();
+        expect(typeof result.pagination.totalItems).toBe('number');
+        expect(result.pagination.totalItems).toBeGreaterThan(0);
         
         // Verify function structure
         const fn = result.functions[0];
@@ -309,11 +310,11 @@ describe('Function Lookup Tools Integration Tests', () => {
         // Top-level structure
         expect(result).toHaveProperty('functions');
         expect(result).toHaveProperty('categories');
-        expect(result).toHaveProperty('totalCount');
+        expect(result).toHaveProperty('pagination');
         
         // Functions array
         expect(Array.isArray(result.functions)).toBe(true);
-        expect(result.functions.length).toBeLessThanOrEqual(10); // Respects limit
+        expect(result.functions.length).toBeLessThanOrEqual(20); // Default pageSize is 20
         
         // Each function has required fields
         result.functions.forEach((fn: any) => {
@@ -350,7 +351,7 @@ describe('Function Lookup Tools Integration Tests', () => {
     it('should discover at least 10 major functions', async () => {
       const result = await toolHandler.executeTool('list_terragrunt_functions', {});
 
-      expect(result.totalCount).toBeGreaterThanOrEqual(10);
+      expect(result.pagination.totalItems).toBeGreaterThanOrEqual(10);
       expect(result.functions.length).toBeGreaterThan(0);
     });
 
@@ -456,12 +457,12 @@ describe('Function Lookup Tools Integration Tests', () => {
       // Required top-level fields
       expect(result).toHaveProperty('functions');
       expect(result).toHaveProperty('categories');
-      expect(result).toHaveProperty('totalCount');
+      expect(result).toHaveProperty('pagination');
       
       // Correct types
       expect(Array.isArray(result.functions)).toBe(true);
       expect(Array.isArray(result.categories)).toBe(true);
-      expect(typeof result.totalCount).toBe('number');
+      expect(typeof result.pagination.totalItems).toBe('number');
       
       // Each function has required fields
       if (result.functions.length > 0) {

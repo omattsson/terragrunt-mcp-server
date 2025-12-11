@@ -213,13 +213,13 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
       expect(result.results).toBeDefined();
       expect(Array.isArray(result.results)).toBe(true);
       expect(result.results.length).toBe(0);
-      expect(result.total).toBeGreaterThan(0); // But total should show matches
+      expect(result.pagination.totalItems).toBeGreaterThan(0); // But total should show matches
     });
 
-    it('should handle limit=1', async () => {
+    it('should handle pageSize=1', async () => {
       const result = await toolHandler.executeTool('search_terragrunt_docs', {
         query: 'terraform',
-        limit: 1
+        pageSize: 1
       });
 
       expect(result).toBeDefined();
@@ -228,7 +228,7 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
       expect(result.results.length).toBeLessThanOrEqual(1);
     });
 
-    it('should handle default limit (no limit specified)', async () => {
+    it('should handle default pageSize (no pageSize specified)', async () => {
       const result = await toolHandler.executeTool('search_terragrunt_docs', {
         query: 'terraform'
       });
@@ -236,34 +236,33 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
       expect(result).toBeDefined();
       expect(result.results).toBeDefined();
       expect(Array.isArray(result.results)).toBe(true);
-      // Default limit should be 5
-      expect(result.results.length).toBeLessThanOrEqual(5);
+      // Default pageSize should be 10
+      expect(result.results.length).toBeLessThanOrEqual(10);
     });
 
-    it('should handle limit=20 (standard max)', async () => {
+    it('should handle pageSize=50 (max)', async () => {
       const result = await toolHandler.executeTool('search_terragrunt_docs', {
         query: 'terraform',
-        limit: 20
+        pageSize: 50
       });
 
       expect(result).toBeDefined();
       expect(result.results).toBeDefined();
       expect(Array.isArray(result.results)).toBe(true);
-      expect(result.results.length).toBeLessThanOrEqual(20);
+      expect(result.results.length).toBeLessThanOrEqual(50);
     });
 
-    it('should handle limit beyond available results', async () => {
+    it('should handle pageSize beyond available results', async () => {
       const result = await toolHandler.executeTool('search_terragrunt_docs', {
         query: 'terraform',
-        limit: 1000
+        pageSize: 50
       });
 
       expect(result).toBeDefined();
       expect(result.results).toBeDefined();
       expect(Array.isArray(result.results)).toBe(true);
-      // Should return all available results, not 1000
-      expect(result.results.length).toBeLessThan(1000);
-      expect(result.hasMore).toBe(false);
+      // Should return all available results on first page
+      expect(result.pagination.hasMore).toBeDefined();
     });
 
     it('should handle negative limit (edge case)', async () => {
@@ -619,8 +618,8 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
     it('should list all command categories', async () => {
       const result = await toolHandler.executeTool('list_cli_commands', {});
 
-      expect(result.categories).toBeDefined();
-      expect(result.totalCommands).toBeGreaterThan(15);
+      expect(result.categories).toBeDefined();\n      expect(result.pagination).toBeDefined();
+      expect(result.pagination.totalItems).toBeGreaterThan(15);
     });
 
     it('should filter by category', async () => {

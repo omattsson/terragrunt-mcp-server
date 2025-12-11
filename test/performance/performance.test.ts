@@ -681,22 +681,22 @@ describe('Performance Benchmarks', () => {
         console.log(`✓ Search 'path' (${result.functions.length} results): ${duration.toFixed(2)}ms`);
       });
 
-      it('should respect limit parameter in <30ms', async () => {
-        const limit = 10;
+      it('should respect pageSize parameter in <30ms', async () => {
+        const pageSize = 10;
         const startTime = performance.now();
         
         const result = await toolHandler.executeTool('list_terragrunt_functions', {
-          limit: limit
+          pageSize: pageSize
         });
         
         const duration = performance.now() - startTime;
         
         expect(result.functions).toBeDefined();
         expect(Array.isArray(result.functions)).toBe(true);
-        expect(result.functions.length).toBeLessThanOrEqual(limit);
+        expect(result.functions.length).toBeLessThanOrEqual(pageSize);
         expect(duration).toBeLessThan(30);
         
-        console.log(`✓ List with limit=${limit} (${result.functions.length} results): ${duration.toFixed(2)}ms`);
+        console.log(`✓ List with pageSize=${pageSize} (${result.functions.length} results): ${duration.toFixed(2)}ms`);
       });
 
       it('should handle combined filters in <100ms', async () => {

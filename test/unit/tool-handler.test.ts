@@ -157,20 +157,22 @@ describe('ToolHandler', () => {
       expect(searchTool?.inputSchema.required).toContain('query');
     });
 
-    it('should have optional limit parameter for search tool', () => {
+    it('should have optional page and pageSize parameters for search tool', () => {
       const tools = toolHandler.getAvailableTools();
       const searchTool = tools.find(t => t.name === 'search_terragrunt_docs');
       
-      expect(searchTool?.inputSchema.properties.limit).toBeDefined();
-      expect(searchTool?.inputSchema.properties.limit.default).toBe(5);
+      expect(searchTool?.inputSchema.properties.page).toBeDefined();
+      expect(searchTool?.inputSchema.properties.page.default).toBe(1);
+      expect(searchTool?.inputSchema.properties.pageSize).toBeDefined();
+      expect(searchTool?.inputSchema.properties.pageSize.default).toBe(10);
     });
 
-    it('should enforce limit boundaries for search tool', () => {
+    it('should enforce pageSize boundaries for search tool', () => {
       const tools = toolHandler.getAvailableTools();
       const searchTool = tools.find(t => t.name === 'search_terragrunt_docs');
       
-      expect(searchTool?.inputSchema.properties.limit.minimum).toBe(1);
-      expect(searchTool?.inputSchema.properties.limit.maximum).toBe(20);
+      expect(searchTool?.inputSchema.properties.pageSize.minimum).toBe(1);
+      expect(searchTool?.inputSchema.properties.pageSize.maximum).toBe(50);
     });
 
     it('should require section parameter for get_section_docs', () => {
@@ -263,21 +265,23 @@ describe('ToolHandler', () => {
       expect(Array.isArray(result.results)).toBe(true);
     });
 
-    it('should apply default limit of 5', async () => {
+    it('should apply default pageSize of 10', async () => {
       const result = await toolHandler.executeTool('search_terragrunt_docs', {
         query: 'test'
       });
       
-      expect(result.results.length).toBeLessThanOrEqual(5);
+      expect(result.results.length).toBeLessThanOrEqual(10);
+      expect(result.pagination.pageSize).toBe(10);
     });
 
-    it('should respect custom limit', async () => {
+    it('should respect custom pageSize', async () => {
       const result = await toolHandler.executeTool('search_terragrunt_docs', {
         query: 'test',
-        limit: 2
+        pageSize: 2
       });
       
       expect(result.results.length).toBeLessThanOrEqual(2);
+      expect(result.pagination.pageSize).toBe(2);
     });
 
     it('should truncate long content snippets', async () => {
@@ -296,13 +300,15 @@ describe('ToolHandler', () => {
       }
     });
 
-    it('should include metadata in results', async () => {
+    it('should include pagination metadata in results', async () => {
       const result = await toolHandler.executeTool('search_terragrunt_docs', {
         query: 'test'
       });
       
-      expect(result.total).toBeDefined();
-      expect(result.hasMore).toBeDefined();
+      expect(result.pagination).toBeDefined();
+      expect(result.pagination.totalItems).toBeDefined();
+      expect(result.pagination.hasMore).toBeDefined();
+      expect(result.pagination.hasPrevious).toBeDefined();
     });
   });
 
@@ -987,7 +993,10 @@ inputs = {
       expect(result.functions.length).toBe(2);
       expect(result.categories).toBeDefined();
       expect(Array.isArray(result.categories)).toBe(true);
-      expect(result.totalCount).toBe(2);
+      expect(result.pagination).toBeDefined();
+      expect(result.pagination.totalItems).toBe(2);
+      expect(result.pagination.page).toBe(1);
+      expect(result.pagination.pageSize).toBe(20);
     });
 
     it('should filter by category', async () => {
@@ -1061,7 +1070,7 @@ inputs = {
       expect(mockFunctionsManager.searchFunctions).toHaveBeenCalledWith('get');
     });
 
-    it('should respect limit parameter', async () => {
+    it('should respect pageSize parameter', async () => {
       const mockFunctions = Array.from({ length: 100 }, (_, i) => ({
         name: `func_${i}`,
         signature: `func_${i}() -> string`,
@@ -1082,11 +1091,14 @@ inputs = {
       (toolHandler as any).functionsManager = mockFunctionsManager;
 
       const result = await toolHandler.executeTool('list_terragrunt_functions', {
-        limit: 10
+        pageSize: 10
       });
       
       expect(result.functions.length).toBe(10);
-      expect(result.totalCount).toBe(100);
+      expect(result.pagination.totalItems).toBe(100);
+      expect(result.pagination.pageSize).toBe(10);
+      expect(result.pagination.totalPages).toBe(10);
+      expect(result.pagination.hasMore).toBe(true);
     });
 
     it('should include shortDescription in response', async () => {
@@ -1129,7 +1141,7 @@ inputs = {
       
       expect(result).toHaveProperty('functions');
       expect(result).toHaveProperty('categories');
-      expect(result).toHaveProperty('totalCount');
+      expect(result).toHaveProperty('pagination');
       
       const func = result.functions[0];
       expect(func).toHaveProperty('name');
@@ -1153,8 +1165,102 @@ inputs = {
       
       expect(result.functions).toBeDefined();
       expect(result.functions.length).toBe(0);
-      expect(result.totalCount).toBe(0);
+      expect(result.pagination.totalItems).toBe(0);
       expect(result.categories).toBeDefined();
+    });
+
+    it('should support pagination - page 2', async () => {
+      const mockFunctions = Array.from({ length: 50 }, (_, i) => ({
+        name: `func_${i}`,
+        signature: `func_${i}() -> string`,
+        description: `Function ${i}`,
+        parameters: [],
+        returnType: 'string',
+        category: 'test',
+        examples: [],
+        relatedFunctions: []
+      }));
+
+      const mockFunctionsManager = {
+        loadFunctions: vi.fn().mockResolvedValue(undefined),
+        listFunctions: vi.fn().mockReturnValue(mockFunctions),
+        getAvailableCategories: vi.fn().mockReturnValue(['test'])
+      };
+
+      (toolHandler as any).functionsManager = mockFunctionsManager;
+
+      const result = await toolHandler.executeTool('list_terragrunt_functions', {
+        page: 2,
+        pageSize: 20
+      });
+      
+      expect(result.functions.length).toBe(20);
+      expect(result.functions[0].name).toBe('func_20'); // Second page starts at index 20
+      expect(result.pagination.page).toBe(2);
+      expect(result.pagination.hasMore).toBe(true);
+      expect(result.pagination.hasPrevious).toBe(true);
+    });
+
+    it('should handle last page correctly', async () => {
+      const mockFunctions = Array.from({ length: 25 }, (_, i) => ({
+        name: `func_${i}`,
+        signature: `func_${i}() -> string`,
+        description: `Function ${i}`,
+        parameters: [],
+        returnType: 'string',
+        category: 'test',
+        examples: [],
+        relatedFunctions: []
+      }));
+
+      const mockFunctionsManager = {
+        loadFunctions: vi.fn().mockResolvedValue(undefined),
+        listFunctions: vi.fn().mockReturnValue(mockFunctions),
+        getAvailableCategories: vi.fn().mockReturnValue(['test'])
+      };
+
+      (toolHandler as any).functionsManager = mockFunctionsManager;
+
+      const result = await toolHandler.executeTool('list_terragrunt_functions', {
+        page: 2,
+        pageSize: 20
+      });
+      
+      expect(result.functions.length).toBe(5); // Only 5 items on last page
+      expect(result.pagination.page).toBe(2);
+      expect(result.pagination.hasMore).toBe(false);
+      expect(result.pagination.hasPrevious).toBe(true);
+    });
+
+    it('should handle out-of-range page gracefully', async () => {
+      const mockFunctions = Array.from({ length: 10 }, (_, i) => ({
+        name: `func_${i}`,
+        signature: `func_${i}() -> string`,
+        description: `Function ${i}`,
+        parameters: [],
+        returnType: 'string',
+        category: 'test',
+        examples: [],
+        relatedFunctions: []
+      }));
+
+      const mockFunctionsManager = {
+        loadFunctions: vi.fn().mockResolvedValue(undefined),
+        listFunctions: vi.fn().mockReturnValue(mockFunctions),
+        getAvailableCategories: vi.fn().mockReturnValue(['test'])
+      };
+
+      (toolHandler as any).functionsManager = mockFunctionsManager;
+
+      const result = await toolHandler.executeTool('list_terragrunt_functions', {
+        page: 10,
+        pageSize: 20
+      });
+      
+      expect(result.functions.length).toBe(0); // Out of range
+      expect(result.pagination.totalItems).toBe(10);
+      expect(result.pagination.page).toBe(10);
+      expect(result.pagination.hasMore).toBe(false);
     });
   });
 
@@ -1196,8 +1302,9 @@ inputs = {
       });
       
       expect(result.query).toBe('test');
-      expect(typeof result.total).toBe('number');
-      expect(typeof result.hasMore).toBe('boolean');
+      expect(result.pagination).toBeDefined();
+      expect(typeof result.pagination.totalItems).toBe('number');
+      expect(typeof result.pagination.hasMore).toBe('boolean');
     });
 
     it('should format results consistently', async () => {
