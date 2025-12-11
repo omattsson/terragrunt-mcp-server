@@ -17,6 +17,7 @@ import { AdvancedExamplesManager } from '../terragrunt/advanced-examples.js';
 import { BlockComparisonManager } from '../terragrunt/comparisons.js';
 import type { HCLBlock } from '../types/hcl-blocks.js';
 import type { AdvancedExampleCategory } from '../types/advanced-examples.js';
+import type { MetricsManager } from '../terragrunt/metrics.js';
 
 export interface Tool {
     name: string;
@@ -39,8 +40,10 @@ export class ToolHandler {
     private templateLibrary: ConfigTemplateLibrary;
     private configGenerator: TerragruntConfigGenerator;
     private fileWriter: FileWriter;
+    private metricsManager: MetricsManager;
 
-    constructor() {
+    constructor(metricsManager?: MetricsManager) {
+        this.metricsManager = metricsManager || { logResponse: () => {}, getStats: () => ({}), getTotalCalls: () => 0, getTotalBytes: () => 0, getSummaryText: () => '', reset: () => {} } as any;
         this.resourceHandler = new ResourceHandler();
         this.docsManager = new TerragruntDocsManager();
         this.functionsManager = new TerragruntFunctionsManager(this.docsManager);
@@ -1741,5 +1744,50 @@ export class ToolHandler {
                 })
             }
         };
+    }
+
+    /**
+     * Get server metrics for tools and resources
+     */
+    private getServerMetrics(
+        filter?: string,
+        format: string = 'json',
+        reset: boolean = false
+    ): any {
+        const stats = this.metricsManager.getStats(filter);
+        
+        if (format === 'text') {
+            const text = this.metricsManager.getSummaryText();
+            if (reset) {
+                this.metricsManager.reset();
+            }
+            return {
+                format: 'text',
+                summary: text,
+                reset: reset
+            };
+        }
+        
+        // JSON format
+        const summary = {
+            totalCalls: this.metricsManager.getTotalCalls(),
+            totalBytes: this.metricsManager.getTotalBytes(),
+            operationCount: Object.keys(stats).length
+        };
+        
+        const result: any = {
+            format: 'json',
+            metrics: stats,
+            summary: summary,
+            filter: filter || 'none',
+            timestamp: new Date().toISOString()
+        };
+        
+        if (reset) {
+            this.metricsManager.reset();
+            result.reset = true;
+        }
+        
+        return result;
     }
 }
