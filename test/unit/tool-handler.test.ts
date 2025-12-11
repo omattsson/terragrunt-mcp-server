@@ -551,6 +551,251 @@ describe('ToolHandler', () => {
       
       expect(result.examples.length).toBeLessThanOrEqual(3);
     });
+
+    it('should truncate long code snippets at 1000 characters', async () => {
+      // Realistic HCL code that exceeds 1000 characters
+      const longCode = `terraform {
+  source = "git::https://github.com/terraform-aws-modules/terraform-aws-vpc.git?ref=v5.0.0"
+}
+
+include "root" {
+  path = find_in_parent_folders()
+}
+
+include "env" {
+  path = find_in_parent_folders("env.hcl")
+  expose = true
+  merge_strategy = "deep"
+}
+
+locals {
+  env_vars = read_terragrunt_config(find_in_parent_folders("env.hcl"))
+  account_vars = read_terragrunt_config(find_in_parent_folders("account.hcl"))
+  region_vars = read_terragrunt_config(find_in_parent_folders("region.hcl"))
+  environment = local.env_vars.locals.environment
+  aws_region = local.region_vars.locals.aws_region
+  project_name = "example-project"
+}
+
+inputs = {
+  name = "\${local.project_name}-\${local.environment}-vpc"
+  cidr = "10.0.0.0/16"
+  
+  azs = ["\${local.aws_region}a", "\${local.aws_region}b", "\${local.aws_region}c"]
+  private_subnets = ["10.0.1.0/24", "10.0.2.0/24", "10.0.3.0/24"]
+  public_subnets = ["10.0.101.0/24", "10.0.102.0/24", "10.0.103.0/24"]
+  database_subnets = ["10.0.201.0/24", "10.0.202.0/24", "10.0.203.0/24"]
+  
+  enable_nat_gateway = true
+  single_nat_gateway = false
+  one_nat_gateway_per_az = true
+  
+  enable_dns_hostnames = true
+  enable_dns_support = true
+  
+  tags = {
+    Environment = local.environment
+    ManagedBy = "Terragrunt"
+    Project = local.project_name
+  }
+}`;
+      const examples = [
+        {
+          doc: { ...mockDocs[0], url: 'https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/' },
+          examples: [longCode]
+        }
+      ];
+      mockDocsManager.getCodeExamples.mockResolvedValueOnce(examples);
+
+      const result = await toolHandler.executeTool('get_code_examples', {
+        topic: 'test'
+      });
+      
+      expect(result.examples[0].codeSnippets[0]).toContain('# ... [Truncated. See full example at https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/]');
+      expect(result.examples[0].codeSnippets[0].length).toBeLessThan(longCode.length);
+      expect(result.examples[0].truncated).toBe(true);
+      // Verify truncation occurred at a line boundary (complete line)
+      const truncated = result.examples[0].codeSnippets[0];
+      const lines = truncated.split('\n');
+      const lastLineBeforeTruncation = lines[lines.length - 3]; // -1 is empty, -2 is truncation msg, -3 is last code line
+      expect(lastLineBeforeTruncation).toBeDefined();
+      expect(lastLineBeforeTruncation.trim()).not.toBe(''); // Should be a complete line
+      // Verify it's not mid-word by checking it doesn't end with incomplete syntax
+      expect(lastLineBeforeTruncation).toMatch(/^\s*[\w\s"'={}\[\]\(\).,:\-\/]*$/); // Valid HCL line pattern
+    });
+
+    it('should not truncate short code snippets', async () => {
+      const shortCode = 'terraform { source = "..." }';
+      const examples = [
+        {
+          doc: { ...mockDocs[0], url: 'https://example.com/docs/test' },
+          examples: [shortCode]
+        }
+      ];
+      mockDocsManager.getCodeExamples.mockResolvedValueOnce(examples);
+
+      const result = await toolHandler.executeTool('get_code_examples', {
+        topic: 'test'
+      });
+      
+      expect(result.examples[0].codeSnippets[0]).toBe(shortCode);
+      expect(result.examples[0].codeSnippets[0]).not.toContain('Truncated');
+      expect(result.examples[0].truncated).toBe(false);
+    });
+
+    it('should handle mixed length code snippets', async () => {
+      const shortCode = 'terraform { source = "..." }';
+      const longCode = 'a'.repeat(1200);
+      const examples = [
+        {
+          doc: { ...mockDocs[0], url: 'https://example.com/docs/test' },
+          examples: [shortCode, longCode]
+        }
+      ];
+      mockDocsManager.getCodeExamples.mockResolvedValueOnce(examples);
+
+      const result = await toolHandler.executeTool('get_code_examples', {
+        topic: 'test'
+      });
+      
+      expect(result.examples[0].codeSnippets[0]).toBe(shortCode);
+      expect(result.examples[0].codeSnippets[1]).toContain('Truncated');
+      expect(result.examples[0].truncated).toBe(true);
+    });
+
+    it('should truncate advanced example code', async () => {
+      const longCode = 'b'.repeat(1500);
+      
+      // Mock the advanced examples manager
+      const mockAdvancedExamplesManager = {
+        searchExamples: vi.fn().mockReturnValueOnce([
+          {
+            example: {
+              id: 'test-1',
+              name: 'Test Example',
+              description: 'A test example',
+              category: 'backend' as AdvancedExampleCategory,
+              complexity: 'intermediate' as AdvancedExampleComplexity,
+              code: longCode,
+              useCases: ['testing'],
+              bestPractices: [],
+              pitfalls: [],
+              relatedExamples: [],
+              tags: ['test'],
+              docsUrl: 'https://terragrunt.gruntwork.io/docs/examples/backend-configuration/'
+            },
+            matchType: 'exact',
+            score: 100
+          }
+        ]),
+        formatExampleAsMarkdown: vi.fn().mockReturnValue('# Markdown')
+      };
+      (toolHandler as any).advancedExamplesManager = mockAdvancedExamplesManager;
+
+      const result = await toolHandler.executeTool('get_code_examples', {
+        topic: 'test',
+        advanced: true
+      });
+      
+      expect(result.example.code).toContain('# ... [Truncated. See full example at https://terragrunt.gruntwork.io/docs/examples/backend-configuration/]');
+      expect(result.example.code.length).toBeLessThan(longCode.length);
+      expect(result.example.codeTruncated).toBe(true);
+    });
+
+    it('should not truncate short advanced example code', async () => {
+      const shortCode = 'terraform { source = "..." }';
+      
+      // Mock the advanced examples manager
+      const mockAdvancedExamplesManager = {
+        searchExamples: vi.fn().mockReturnValueOnce([
+          {
+            example: {
+              id: 'test-1',
+              name: 'Test Example',
+              description: 'A test example',
+              category: 'backend' as AdvancedExampleCategory,
+              complexity: 'intermediate' as AdvancedExampleComplexity,
+              code: shortCode,
+              useCases: ['testing'],
+              bestPractices: [],
+              pitfalls: [],
+              relatedExamples: [],
+              tags: ['test'],
+              docsUrl: 'https://terragrunt.gruntwork.io/docs/examples/dependencies/'
+            },
+            matchType: 'exact',
+            score: 100
+          }
+        ]),
+        formatExampleAsMarkdown: vi.fn().mockReturnValue('# Markdown')
+      };
+      (toolHandler as any).advancedExamplesManager = mockAdvancedExamplesManager;
+
+      const result = await toolHandler.executeTool('get_code_examples', {
+        topic: 'test',
+        advanced: true
+      });
+      
+      expect(result.example.code).toBe(shortCode);
+      expect(result.example.code).not.toContain('Truncated');
+      expect(result.example.codeTruncated).toBe(false);
+    });
+
+    it('should include valid doc URL in truncation message', async () => {
+      const longCode = 'c'.repeat(1100);
+      const docUrl = 'https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/';
+      const examples = [
+        {
+          doc: { ...mockDocs[0], url: docUrl },
+          examples: [longCode]
+        }
+      ];
+      mockDocsManager.getCodeExamples.mockResolvedValueOnce(examples);
+
+      const result = await toolHandler.executeTool('get_code_examples', {
+        topic: 'test'
+      });
+      
+      expect(result.examples[0].codeSnippets[0]).toContain(`# ... [Truncated. See full example at ${docUrl}]`);
+    });
+
+    it('should handle missing docsUrl with fallback message', async () => {
+      const longCode = 'd'.repeat(1100);
+      
+      // Mock the advanced examples manager with no docsUrl
+      const mockAdvancedExamplesManager = {
+        searchExamples: vi.fn().mockReturnValueOnce([
+          {
+            example: {
+              id: 'test-1',
+              name: 'Test Example',
+              description: 'A test example',
+              category: 'backend' as AdvancedExampleCategory,
+              complexity: 'intermediate' as AdvancedExampleComplexity,
+              code: longCode,
+              useCases: ['testing'],
+              bestPractices: [],
+              pitfalls: [],
+              relatedExamples: [],
+              tags: ['test'],
+              docsUrl: '' // Empty URL
+            },
+            matchType: 'exact',
+            score: 100
+          }
+        ]),
+        formatExampleAsMarkdown: vi.fn().mockReturnValue('# Markdown')
+      };
+      (toolHandler as any).advancedExamplesManager = mockAdvancedExamplesManager;
+
+      const result = await toolHandler.executeTool('get_code_examples', {
+        topic: 'test',
+        advanced: true
+      });
+      
+      expect(result.example.code).toContain('# ... [Truncated. See full example in documentation]');
+      expect(result.example.codeTruncated).toBe(true);
+    });
   });
 
   describe('Tool Execution - get_terragrunt_function', () => {
