@@ -15,6 +15,7 @@ import { CLICommandsManager } from '../terragrunt/cli-commands.js';
 import { HCLBlocksManager } from '../terragrunt/hcl-blocks.js';
 import { AdvancedExamplesManager } from '../terragrunt/advanced-examples.js';
 import { BlockComparisonManager } from '../terragrunt/comparisons.js';
+import { getFirstSentence } from '../terragrunt/utils.js';
 import type { HCLBlock } from '../types/hcl-blocks.js';
 import type { AdvancedExampleCategory } from '../types/advanced-examples.js';
 import type { IMetricsManager, MetricsResponse } from '../types/metrics.js';
@@ -159,7 +160,7 @@ export class ToolHandler {
             },
             {
                 name: 'get_terragrunt_function',
-                description: 'Get detailed documentation for a specific Terragrunt built-in function',
+                description: 'Get documentation for a specific Terragrunt built-in function. Use mode=summary for overview (60-70% smaller), mode=full for complete details.',
                 inputSchema: {
                     type: 'object',
                     properties: {
@@ -167,9 +168,15 @@ export class ToolHandler {
                             type: 'string',
                             description: 'The Terragrunt function name (e.g., "get_env", "find_in_parent_folders")'
                         },
+                        mode: {
+                            type: 'string',
+                            enum: ['summary', 'full'],
+                            description: 'Response detail level: summary (name, signature, short description, counts) or full (complete details with examples)',
+                            default: 'summary'
+                        },
                         include_examples: {
                             type: 'boolean',
-                            description: 'Include code examples in the response (default: true)',
+                            description: 'Include code examples in full mode (ignored in summary mode)',
                             default: true
                         }
                     },
@@ -218,13 +225,19 @@ export class ToolHandler {
             },
             {
                 name: 'get_section_docs',
-                description: 'Get all documentation for a specific Terragrunt section',
+                description: 'Get documentation for a specific Terragrunt section. Use mode=summary for overview (85-90% smaller), mode=full for complete content.',
                 inputSchema: {
                     type: 'object',
                     properties: {
                         section: {
                             type: 'string',
                             description: 'The section name (e.g., "getting-started", "reference", "features")'
+                        },
+                        mode: {
+                            type: 'string',
+                            enum: ['summary', 'full'],
+                            description: 'Response detail level: summary (titles, URLs, snippets) or full (complete content)',
+                            default: 'summary'
                         }
                     },
                     required: ['section']
@@ -301,13 +314,19 @@ export class ToolHandler {
             },
             {
                 name: 'get_code_examples',
-                description: 'Find code examples and snippets related to a specific Terragrunt topic or pattern. Use advanced=true for curated, well-documented examples with best practices.',
+                description: 'Find code examples and snippets related to a specific Terragrunt topic. Use mode=summary for overview (80-85% smaller), mode=full for complete code. Use advanced=true for curated examples.',
                 inputSchema: {
                     type: 'object',
                     properties: {
                         topic: {
                             type: 'string',
                             description: 'Topic or pattern to find examples for (e.g., "remote state", "dependencies", "before hooks")'
+                        },
+                        mode: {
+                            type: 'string',
+                            enum: ['summary', 'full'],
+                            description: 'Response detail level: summary (titles, URLs, counts) or full (complete code examples)',
+                            default: 'summary'
                         },
                         limit: {
                             type: 'number',
@@ -337,7 +356,7 @@ export class ToolHandler {
             },
             {
                 name: 'analyze_best_practices',
-                description: 'Analyze best practices for a specific Terragrunt topic with confidence scoring and intelligent suggestions. Returns recommendations, antipatterns, confidence score (0-100), and fuzzy-matched topic suggestions for typos. Use includeExamples to control response size (30-50% reduction when false).',
+                description: 'Analyze best practices for a specific Terragrunt topic with confidence scoring. Use mode=summary for overview (70-80% smaller), mode=full for complete details with code examples.',
                 inputSchema: {
                     type: 'object',
                     properties: {
@@ -345,15 +364,16 @@ export class ToolHandler {
                             type: 'string',
                             description: 'Topic to analyze. Supported topics: project_structure, environment_config, module_organization, state_management, dependencies, ci_cd, security, performance, testing. Typos will trigger intelligent suggestions.'
                         },
+                        mode: {
+                            type: 'string',
+                            enum: ['summary', 'full'],
+                            description: 'Response detail level: summary (titles, short rationale, counts) or full (complete recommendations with code examples)',
+                            default: 'summary'
+                        },
                         level: {
                             type: 'string',
                             description: 'Optional experience level filter (beginner, intermediate, advanced)',
                             enum: ['beginner', 'intermediate', 'advanced']
-                        },
-                        includeExamples: {
-                            type: 'boolean',
-                            description: 'Include code examples and antipatterns in recommendations. Set to false for overview (30-50% smaller response), true for detailed implementation guidance.',
-                            default: true
                         }
                     },
                     required: ['topic']
@@ -624,7 +644,6 @@ export class ToolHandler {
     }
 
     async executeTool(name: string, args?: any): Promise<any> {
-        const startTime = Date.now();
         try {
             const result = await this.executeToolInternal(name, args);
             
@@ -664,7 +683,10 @@ export class ToolHandler {
                     if (!args?.section) {
                         return { error: 'section parameter is required' };
                     }
-                    return await this.getSectionDocs(args.section);
+                    return await this.getSectionDocs(
+                        args.section,
+                        args?.mode ?? 'summary'
+                    );
 
                 case 'get_cli_command_help':
                     if (!args?.command) {
@@ -686,6 +708,7 @@ export class ToolHandler {
                     }
                     return await this.getTerragruntFunction(
                         args.function_name,
+                        args?.mode ?? 'summary',
                         args?.include_examples ?? true
                     );
                 case 'list_terragrunt_functions':
@@ -705,6 +728,7 @@ export class ToolHandler {
                 case 'get_code_examples':
                     return await this.getCodeExamples(
                         args?.topic,
+                        args?.mode ?? 'summary',
                         args?.limit,
                         args?.advanced ?? false,
                         args?.category,
@@ -717,8 +741,8 @@ export class ToolHandler {
                     }
                     return await this.analyzeBestPractices(
                         args.topic,
-                        args?.level,
-                        args?.includeExamples ?? true
+                        args?.mode ?? 'summary',
+                        args?.level
                     );
 
                 case 'generate_terragrunt_config':
@@ -867,7 +891,7 @@ export class ToolHandler {
         };
     }
 
-    private async getSectionDocs(section: string): Promise<any> {
+    private async getSectionDocs(section: string, mode: 'summary' | 'full' = 'summary'): Promise<any> {
         const docs = await this.docsManager.getDocBySection(section);
 
         if (docs.length === 0) {
@@ -878,6 +902,20 @@ export class ToolHandler {
             };
         }
 
+        // Summary mode: titles, URLs, and short snippets only
+        if (mode === 'summary') {
+            return {
+                section,
+                documentCount: docs.length,
+                documents: docs.map(doc => ({
+                    title: doc.title,
+                    url: doc.url,
+                    snippet: doc.content.substring(0, 100) + '...'
+                }))
+            };
+        }
+
+        // Full mode: complete content (original behavior)
         return {
             section,
             docs: docs.map(doc => ({
@@ -1231,6 +1269,7 @@ export class ToolHandler {
 
     private async getCodeExamples(
         topic?: string,
+        mode: 'summary' | 'full' = 'summary',
         limit: number = 5,
         advanced: boolean = false,
         category?: AdvancedExampleCategory,
@@ -1253,7 +1292,7 @@ export class ToolHandler {
 
         // Advanced examples mode
         if (advanced) {
-            return this.getAdvancedCodeExamples(topic, limit, category);
+            return this.getAdvancedCodeExamples(topic, mode, limit, category);
         }
 
         // Original doc-scraped examples mode (requires topic)
@@ -1288,6 +1327,23 @@ export class ToolHandler {
             };
         }
 
+        // Summary mode: just titles, URLs, and counts
+        if (mode === 'summary') {
+            return {
+                topic,
+                source: 'documentation',
+                documentCount: results.length,
+                documents: results.slice(0, limit).map(result => ({
+                    title: result.doc.title,
+                    url: result.doc.url,
+                    section: result.doc.section,
+                    snippetCount: result.examples.length
+                })),
+                hasMore: results.length > limit
+            };
+        }
+
+        // Full mode: complete code examples (original behavior)
         return {
             topic,
             source: 'documentation',
@@ -1308,12 +1364,32 @@ export class ToolHandler {
 
     private getAdvancedCodeExamples(
         topic?: string,
+        mode: 'summary' | 'full' = 'summary',
         limit: number = 5,
         category?: AdvancedExampleCategory
     ): any {
         // List examples by category
         if (category && !topic) {
             const examples = this.advancedExamplesManager.listExamples(category);
+            
+            // Summary mode for category listing
+            if (mode === 'summary') {
+                return {
+                    category,
+                    source: 'advanced-examples',
+                    exampleCount: examples.length,
+                    examples: examples.slice(0, limit).map(ex => ({
+                        id: ex.id,
+                        name: ex.name,
+                        shortDescription: getFirstSentence(ex.description),
+                        complexity: ex.complexity,
+                        tags: ex.tags
+                    })),
+                    hasMore: examples.length > limit
+                };
+            }
+            
+            // Full mode for category listing
             return {
                 category,
                 source: 'advanced-examples',
@@ -1353,8 +1429,32 @@ export class ToolHandler {
                 };
             }
 
-            // Return best match with full details
             const bestMatch = filteredResults[0].example;
+            
+            // Summary mode: minimal details without code
+            if (mode === 'summary') {
+                return {
+                    topic,
+                    source: 'advanced-examples',
+                    matchCount: filteredResults.length,
+                    bestMatch: {
+                        id: bestMatch.id,
+                        name: bestMatch.name,
+                        shortDescription: getFirstSentence(bestMatch.description),
+                        category: bestMatch.category,
+                        complexity: bestMatch.complexity,
+                        tags: bestMatch.tags,
+                        docsUrl: bestMatch.docsUrl
+                    },
+                    otherMatches: filteredResults.slice(1, limit).map(r => ({
+                        id: r.example.id,
+                        name: r.example.name,
+                        category: r.example.category
+                    }))
+                };
+            }
+
+            // Full mode: complete details with code (original behavior)
             return {
                 topic,
                 source: 'advanced-examples',
@@ -1415,10 +1515,12 @@ export class ToolHandler {
 
     private async analyzeBestPractices(
         topic: string,
-        level?: 'beginner' | 'intermediate' | 'advanced',
-        includeExamples: boolean = true
+        mode: 'summary' | 'full' = 'summary',
+        level?: 'beginner' | 'intermediate' | 'advanced'
     ): Promise<any> {
         try {
+            // Always get full data from analyzer, then format based on mode
+            const includeExamples = mode === 'full';
             const result = await this.bestPracticesAnalyzer.analyzeTopic(topic, level, includeExamples);
             
             // Handle unknown topics with intelligent suggestions
@@ -1434,15 +1536,27 @@ export class ToolHandler {
                     suggestion,
                     recommendations: [],
                     summary: result.summary || '',
-                    commonPitfalls: [],
-                    experienceNotes: { beginner: [], intermediate: [], advanced: [] },
-                    realWorldExamples: [],
                     confidence: result.confidence || 0,
                     suggestedTopics: result.suggestedTopics
                 };
             }
 
-            // Return complete result including confidence score (from issue #33)
+            // Summary mode: lean response with short descriptions
+            if (mode === 'summary') {
+                return {
+                    topic: result.topic,
+                    practiceCount: result.recommendations.length,
+                    practices: result.recommendations.map(rec => ({
+                        practice: rec.practice,
+                        shortRationale: getFirstSentence(rec.rationale)
+                    })),
+                    summary: result.summary,
+                    confidence: result.confidence,
+                    ...(result.suggestedTopics && { suggestedTopics: result.suggestedTopics })
+                };
+            }
+
+            // Full mode: complete result including all details (original behavior)
             return {
                 topic: result.topic,
                 recommendations: result.recommendations,
@@ -1460,15 +1574,16 @@ export class ToolHandler {
                 error: error instanceof Error ? error.message : 'Failed to analyze best practices',
                 recommendations: [],
                 summary: '',
-                commonPitfalls: [],
-                experienceNotes: { beginner: [], intermediate: [], advanced: [] },
-                realWorldExamples: [],
                 confidence: 0
             };
         }
     }
 
-    private async getTerragruntFunction(functionName: string, includeExamples: boolean = true): Promise<any> {
+    private async getTerragruntFunction(
+        functionName: string,
+        mode: 'summary' | 'full' = 'summary',
+        includeExamples: boolean = true
+    ): Promise<any> {
         // Ensure functions are loaded at least once per process
         if (!this.functionsLoaded) {
             await this.functionsManager.loadFunctions();
@@ -1489,6 +1604,20 @@ export class ToolHandler {
             };
         }
 
+        // Summary mode: lean response with metadata
+        if (mode === 'summary') {
+            return {
+                name: fn.name,
+                signature: fn.signature,
+                shortDescription: getFirstSentence(fn.description),
+                category: fn.category,
+                parameterCount: fn.parameters.length,
+                exampleCount: fn.examples.length,
+                relatedFunctions: fn.relatedFunctions
+            };
+        }
+
+        // Full mode: complete details (original behavior)
         return {
             name: fn.name,
             signature: fn.signature,
