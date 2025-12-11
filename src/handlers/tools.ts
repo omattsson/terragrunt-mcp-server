@@ -95,6 +95,22 @@ export class ToolHandler {
         pageSize: number = 20
     ): { results: T[]; pagination: PaginationMetadata } {
         const totalItems = items.length;
+        
+        // Explicitly handle pageSize <= 0 to avoid division by zero and Infinity
+        if (pageSize <= 0) {
+            return {
+                results: [],
+                pagination: {
+                    page,
+                    pageSize,
+                    totalPages: 1,
+                    totalItems,
+                    hasMore: false,
+                    hasPrevious: false
+                }
+            };
+        }
+        
         const totalPages = Math.ceil(totalItems / pageSize) || 1;
         const startIndex = (page - 1) * pageSize;
         const endIndex = startIndex + pageSize;

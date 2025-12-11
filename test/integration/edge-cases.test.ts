@@ -268,7 +268,7 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
     it('should handle negative pageSize (edge case)', async () => {
       const result = await toolHandler.executeTool('search_terragrunt_docs', {
         query: 'terraform',
-        limit: -5
+        pageSize: -5
       });
 
       expect(result).toBeDefined();
