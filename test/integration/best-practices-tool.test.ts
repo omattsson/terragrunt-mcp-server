@@ -16,7 +16,7 @@ describe('analyze_best_practices Tool Integration', () => {
       expect(tool).toBeDefined();
       expect(tool?.name).toBe('analyze_best_practices');
       expect(tool?.description).toContain('confidence');
-      expect(tool?.description).toContain('suggestions');
+      expect(tool?.description).toContain('mode');
     });
 
     it('has proper input schema', () => {
@@ -46,7 +46,8 @@ describe('analyze_best_practices Tool Integration', () => {
 
     it('returns recommendations for module_organization topic', async () => {
       const result = await toolHandler.executeTool('analyze_best_practices', {
-        topic: 'module_organization'
+        topic: 'module_organization',
+        mode: 'full'
       });
 
       expect(result).toBeDefined();
@@ -68,7 +69,8 @@ describe('analyze_best_practices Tool Integration', () => {
 
     it('returns all required fields', async () => {
       const result = await toolHandler.executeTool('analyze_best_practices', {
-        topic: 'dependencies'
+        topic: 'dependencies',
+        mode: 'full'
       });
 
       expect(result.topic).toBeDefined();
@@ -186,7 +188,8 @@ describe('analyze_best_practices Tool Integration', () => {
     supportedTopics.forEach(topic => {
       it(`returns valid results for ${topic}`, async () => {
         const result = await toolHandler.executeTool('analyze_best_practices', {
-          topic
+          topic,
+          mode: 'full'
         });
 
         expect(result).toBeDefined();
