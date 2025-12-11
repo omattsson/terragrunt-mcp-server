@@ -270,7 +270,7 @@ export class ToolHandler {
             },
             {
                 name: 'analyze_best_practices',
-                description: 'Analyze best practices for a specific Terragrunt topic with confidence scoring and intelligent suggestions. Returns recommendations, antipatterns, confidence score (0-100), and fuzzy-matched topic suggestions for typos.',
+                description: 'Analyze best practices for a specific Terragrunt topic with confidence scoring and intelligent suggestions. Returns recommendations, antipatterns, confidence score (0-100), and fuzzy-matched topic suggestions for typos. Use includeExamples to control response size (30-50% reduction when false).',
                 inputSchema: {
                     type: 'object',
                     properties: {
@@ -282,6 +282,11 @@ export class ToolHandler {
                             type: 'string',
                             description: 'Optional experience level filter (beginner, intermediate, advanced)',
                             enum: ['beginner', 'intermediate', 'advanced']
+                        },
+                        includeExamples: {
+                            type: 'boolean',
+                            description: 'Include code examples and antipatterns in recommendations. Set to false for overview (30-50% smaller response), true for detailed implementation guidance.',
+                            default: true
                         }
                     },
                     required: ['topic']
@@ -633,7 +638,11 @@ export class ToolHandler {
                     if (!args?.topic) {
                         return { error: 'topic parameter is required' };
                     }
-                    return await this.analyzeBestPractices(args.topic, args?.level);
+                    return await this.analyzeBestPractices(
+                        args.topic,
+                        args?.level,
+                        args?.includeExamples ?? true
+                    );
 
                 case 'generate_terragrunt_config':
                     if (!args?.useCase) {
@@ -1261,10 +1270,11 @@ export class ToolHandler {
 
     private async analyzeBestPractices(
         topic: string,
-        level?: 'beginner' | 'intermediate' | 'advanced'
+        level?: 'beginner' | 'intermediate' | 'advanced',
+        includeExamples: boolean = true
     ): Promise<any> {
         try {
-            const result = await this.bestPracticesAnalyzer.analyzeTopic(topic, level);
+            const result = await this.bestPracticesAnalyzer.analyzeTopic(topic, level, includeExamples);
             
             // Handle unknown topics with intelligent suggestions
             if (result.recommendations.length === 0) {

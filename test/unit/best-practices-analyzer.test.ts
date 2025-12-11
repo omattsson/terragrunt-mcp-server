@@ -780,4 +780,118 @@ describe('BestPracticesAnalyzer', () => {
       expect(result.summary).toMatch(/confidence/);
     });
   });
+
+  describe('includeExamples Parameter', () => {
+    it('should include examples and antipatterns by default (includeExamples: true)', async () => {
+      await analyzer.extractBestPractices();
+      const result = await analyzer.analyzeTopic('state_management', undefined, true);
+
+      expect(result.recommendations.length).toBeGreaterThan(0);
+      
+      // At least some recommendations should have examples
+      const recsWithExamples = result.recommendations.filter(r => r.examples.length > 0);
+      expect(recsWithExamples.length).toBeGreaterThan(0);
+      
+      // Real-world examples should be present
+      expect(result.realWorldExamples.length).toBeGreaterThan(0);
+    });
+
+    it('should exclude examples and antipatterns when includeExamples is false', async () => {
+      await analyzer.extractBestPractices();
+      const result = await analyzer.analyzeTopic('state_management', undefined, false);
+
+      expect(result.recommendations.length).toBeGreaterThan(0);
+      
+      // All recommendations should have empty examples and antipatterns
+      result.recommendations.forEach(rec => {
+        expect(rec.examples).toEqual([]);
+        expect(rec.antipatterns).toEqual([]);
+      });
+      
+      // Real-world examples should be empty
+      expect(result.realWorldExamples).toEqual([]);
+    });
+
+    it('should preserve other fields when includeExamples is false', async () => {
+      await analyzer.extractBestPractices();
+      const resultWithExamples = await analyzer.analyzeTopic('state_management', undefined, true);
+      const resultWithoutExamples = await analyzer.analyzeTopic('state_management', undefined, false);
+
+      // Same number of recommendations
+      expect(resultWithoutExamples.recommendations.length).toBe(resultWithExamples.recommendations.length);
+      
+      // Other fields should be identical
+      expect(resultWithoutExamples.topic).toBe(resultWithExamples.topic);
+      expect(resultWithoutExamples.summary).toBe(resultWithExamples.summary);
+      expect(resultWithoutExamples.confidence).toBe(resultWithExamples.confidence);
+      expect(resultWithoutExamples.commonPitfalls).toEqual(resultWithExamples.commonPitfalls);
+      expect(resultWithoutExamples.experienceNotes).toEqual(resultWithExamples.experienceNotes);
+      
+      // Check that practice, rationale, tradeoffs, relatedDocs are preserved
+      resultWithoutExamples.recommendations.forEach((rec, i) => {
+        const withExamples = resultWithExamples.recommendations[i];
+        expect(rec.practice).toBe(withExamples.practice);
+        expect(rec.rationale).toBe(withExamples.rationale);
+        expect(rec.tradeoffs).toEqual(withExamples.tradeoffs);
+        expect(rec.relatedDocs).toEqual(withExamples.relatedDocs);
+        expect(rec.priority).toBe(withExamples.priority);
+        expect(rec.experienceLevel).toBe(withExamples.experienceLevel);
+      });
+    });
+
+    it('should cache results separately for different includeExamples values', async () => {
+      await analyzer.extractBestPractices();
+      
+      // First call with includeExamples: false
+      const resultWithoutExamples = await analyzer.analyzeTopic('state_management', undefined, false);
+      expect(resultWithoutExamples.realWorldExamples).toEqual([]);
+      
+      // Second call with includeExamples: true should get different cached result
+      const resultWithExamples = await analyzer.analyzeTopic('state_management', undefined, true);
+      expect(resultWithExamples.realWorldExamples.length).toBeGreaterThan(0);
+      
+      // Third call with includeExamples: false should return cached filtered result
+      const resultWithoutExamples2 = await analyzer.analyzeTopic('state_management', undefined, false);
+      expect(resultWithoutExamples2.realWorldExamples).toEqual([]);
+      expect(resultWithoutExamples2.recommendations[0].examples).toEqual([]);
+    });
+
+    it('should work with experience level filter and includeExamples: false', async () => {
+      await analyzer.extractBestPractices();
+      const result = await analyzer.analyzeTopic('state_management', 'beginner', false);
+
+      expect(result.recommendations.length).toBeGreaterThan(0);
+      
+      // Should only have beginner recommendations
+      result.recommendations.forEach(rec => {
+        expect(rec.experienceLevel).toBe('beginner');
+      });
+      
+      // Examples should be filtered out
+      result.recommendations.forEach(rec => {
+        expect(rec.examples).toEqual([]);
+        expect(rec.antipatterns).toEqual([]);
+      });
+    });
+
+    it('should include examples with experience level filter and includeExamples: true', async () => {
+      await analyzer.extractBestPractices();
+      const result = await analyzer.analyzeTopic('state_management', 'beginner', true);
+
+      expect(result.recommendations.length).toBeGreaterThan(0);
+      
+      // Should only have beginner recommendations
+      result.recommendations.forEach(rec => {
+        expect(rec.experienceLevel).toBe('beginner');
+      });
+      
+      // Examples should be present (at least in some recommendations)
+      const recsWithExamples = result.recommendations.filter(r => r.examples.length > 0);
+      expect(recsWithExamples.length).toBeGreaterThan(0);
+      
+      // Real-world examples should also be present
+      expect(result.realWorldExamples.length).toBeGreaterThan(0);
+    });
+  });
 });
+
