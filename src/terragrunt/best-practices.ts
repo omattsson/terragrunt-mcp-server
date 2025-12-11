@@ -2142,7 +2142,8 @@ export class BestPracticesAnalyzer {
    */
   async analyzeTopic(
     topic: string,
-    level?: 'beginner' | 'intermediate' | 'advanced'
+    level?: 'beginner' | 'intermediate' | 'advanced',
+    includeExamples: boolean = true
   ): Promise<BestPracticeResult> {
     try {
       // Ensure practices are loaded
@@ -2150,8 +2151,8 @@ export class BestPracticesAnalyzer {
         await this.extractBestPractices();
       }
 
-      // Check cache
-      const cacheKey = `${this.normalizeKey(topic)}:${level || 'all'}`;
+      // Check cache - include includeExamples in cache key
+      const cacheKey = `${this.normalizeKey(topic)}:${level || 'all'}:${includeExamples ? 'ex' : 'no-ex'}`;
       const cached = this.resultsCache.get(cacheKey);
       if (cached) {
         return cached;
@@ -2261,13 +2262,25 @@ export class BestPracticesAnalyzer {
       // Generate summary with confidence
       const summary = this.generateSummary(topic, recommendations, confidence);
 
+      // Filter examples if not requested
+      let filteredRecommendations = recommendations;
+      let filteredExamples = realWorldExamples;
+      if (!includeExamples) {
+        filteredRecommendations = recommendations.map(rec => ({
+          ...rec,
+          examples: [],
+          antipatterns: []
+        }));
+        filteredExamples = [];
+      }
+
       const result: BestPracticeResult = {
         topic,
-        recommendations,
+        recommendations: filteredRecommendations,
         summary,
         commonPitfalls,
         experienceNotes,
-        realWorldExamples,
+        realWorldExamples: filteredExamples,
         confidence
       };
 
