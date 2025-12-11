@@ -1,6 +1,32 @@
 import { TerragruntDocsManager, TerragruntDoc } from '../terragrunt/docs.js';
 import { IMetricsManager, NullMetricsManager } from '../terragrunt/metrics.js';
 
+// Truncation limits for resource content optimization
+// Resources are for discovery (like 'ls'), tools are for content delivery (like 'cat')
+const RESOURCE_TRUNCATION_LIMITS = {
+    section: 250,  // chars per doc in section listings (summary only)
+    page: 1200     // chars for individual page views (overview + intro)
+} as const;
+
+/**
+ * Truncates content to specified length while respecting word boundaries
+ * @param content The content to truncate
+ * @param maxLength Maximum length in characters
+ * @param helpMessage Message to append after truncation
+ * @returns Truncated content with help message, or original if shorter than limit
+ */
+function truncateContent(content: string, maxLength: number, helpMessage: string): string {
+    if (!content || content.length <= maxLength) {
+        return content;
+    }
+
+    // Try to find a natural word boundary in the last 20% of the limit
+    const truncateAt = content.lastIndexOf(' ', maxLength);
+    const cutPoint = truncateAt > maxLength * 0.8 ? truncateAt : maxLength;
+    
+    return content.substring(0, cutPoint) + '...\n\n' + helpMessage;
+}
+
 export interface Resource {
     uri: string;
     name: string;
@@ -112,8 +138,13 @@ export class ResourceHandler {
                     throw new Error(`No documentation found for section: ${section}`);
                 }
 
+                const sectionHelpMsg = `📝 This is a truncated summary for discovery. For complete content, use:\n  @copilot /tools get_terragrunt_documentation with query="${section}"`;
+
                 let content = `# Terragrunt ${section} Documentation\n\n`;
-                content += docs.map(doc => `## ${doc.title}\n\n${doc.content}\n\n---\n`).join('\n');
+                content += docs.map(doc => {
+                    const truncatedContent = truncateContent(doc.content, RESOURCE_TRUNCATION_LIMITS.section, sectionHelpMsg);
+                    return `## ${doc.title}\n\n${truncatedContent}\n\n---\n`;
+                }).join('\n');
 
                 const result = {
                     contents: [{ type: 'text', text: content }],
@@ -132,7 +163,10 @@ export class ResourceHandler {
                     throw new Error(`Documentation page not found: ${pageUrl}`);
                 }
 
-                const content = `# ${doc.title}\n\n**Source:** [${doc.url}](${doc.url})\n**Section:** ${doc.section}\n**Last Updated:** ${doc.lastUpdated}\n\n---\n\n${doc.content}`;
+                const pageHelpMsg = `📄 This is a truncated preview for discovery. For complete content, use:\n  @copilot /tools get_terragrunt_documentation with query="${doc.title}"`;
+                const truncatedContent = truncateContent(doc.content, RESOURCE_TRUNCATION_LIMITS.page, pageHelpMsg);
+                
+                const content = `# ${doc.title}\n\n**Source:** [${doc.url}](${doc.url})\n**Section:** ${doc.section}\n**Last Updated:** ${doc.lastUpdated}\n\n---\n\n${truncatedContent}`;
 
                 const result = {
                     contents: [{ type: 'text', text: content }],
