@@ -424,8 +424,11 @@ describe('ResourceHandler', () => {
     });
 
     it('should truncate at word boundaries when possible', async () => {
-      // Create content with a space near the 250 char limit
-      const contentWithSpaces = 'A'.repeat(200) + ' some more words here that should be cut off because they exceed the limit';
+      // Create content that tests word boundary detection
+      // 220 A's + space (position 220) + 40 more chars = 261 total (exceeds 250 limit)
+      // Limit is 250. lastIndexOf(' ', 250) will find the space at position 220
+      // Since 220 > 250*0.8 (200), it should use position 220 for truncation
+      const contentWithSpaces = 'A'.repeat(220) + ' ThisShouldBeCutOffBecauseItExceedsLimit';
       const docWithSpaces = {
         title: 'Boundary Doc',
         url: 'https://example.com/boundary',
@@ -439,14 +442,19 @@ describe('ResourceHandler', () => {
       const resource = await resourceHandler.getResource('terragrunt://docs/section/test-section');
       const text = resource.contents[0].text;
 
-      // Should truncate at the space, not mid-word
-      expect(text).toContain('...'); // Truncation marker
-      // The truncation should happen at a space within the last 20% of the limit (80% threshold)
-      // We have 200 'A's, so should retain at least 75% of them (150+ chars)
+      // Verify word boundary truncation behavior
+      expect(text).toContain('...'); // Truncation marker should be present
+      
+      // All 220 A's should be preserved (truncation at the space at position 220)
       const aCount = (text.match(/A/g) || []).length;
-      const originalACount = 200;
-      expect(aCount).toBeGreaterThan(Math.floor(originalACount * 0.75)); // At least 75% of A's retained
-      expect(text).not.toContain('exceed the limit'); // Should not have the end
+      expect(aCount).toBe(220); // All A's should be retained, truncated at space after them
+      
+      // Verify truncation happened at the space, not mid-word
+      expect(text).not.toContain('ThisShouldBeCutOff'); // Text after space should be cut
+      
+      // Verify the content before truncation marker ends cleanly at word boundary
+      const beforeTruncation = text.split('...')[0].trim();
+      expect(beforeTruncation).toMatch(/A+$/); // Should end with A's (clean word boundary)
     });
 
     it('should include helpful message with query suggestion for sections', async () => {
