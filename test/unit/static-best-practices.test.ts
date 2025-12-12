@@ -247,7 +247,7 @@ describe('BestPracticesAnalyzer - Static Practice Integration', () => {
       
       expect(result.recommendations.length).toBeGreaterThan(0);
       expect(result.confidence).toBeGreaterThanOrEqual(70);
-      expect(result.query).toBe('project_structure');
+      expect(result.topic).toBe('project_structure');
     });
 
     it('should return static practices for environment_config', async () => {
@@ -255,7 +255,7 @@ describe('BestPracticesAnalyzer - Static Practice Integration', () => {
       
       expect(result.recommendations.length).toBeGreaterThan(0);
       expect(result.confidence).toBeGreaterThanOrEqual(70);
-      expect(result.query).toBe('environment_config');
+      expect(result.topic).toBe('environment_config');
     });
 
     it('should filter by experience level', async () => {

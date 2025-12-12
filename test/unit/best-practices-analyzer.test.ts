@@ -181,7 +181,7 @@ describe('BestPracticesAnalyzer', () => {
 
       for (const topic of topics) {
         const result = await analyzer.analyzeTopic(topic);
-        expect(result.query).toBe(topic);
+        expect(result.topic).toBe(topic);
         // Should return a valid result even if empty
         expect(result).toHaveProperty('recommendations');
         expect(result).toHaveProperty('summary');
@@ -301,7 +301,7 @@ describe('BestPracticesAnalyzer', () => {
       expect(result).toBeDefined();
       // Now returns static practices even when docs fail
       expect(result.recommendations.length).toBeGreaterThan(0);
-      expect(result.query).toBe('state_management');
+      expect(result.topic).toBe('state_management');
       expect(result.confidence).toBeGreaterThanOrEqual(70); // High confidence from static practices
     });
 

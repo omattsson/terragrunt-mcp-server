@@ -1,6 +1,11 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { TerragruntDocsManager } from '../../src/terragrunt/docs.js';
 
+// Set fast retry timeouts for tests to avoid long waits
+process.env.TERRAGRUNT_RETRY_INITIAL_DELAY = '10';
+process.env.TERRAGRUNT_RETRY_MAX_DELAY = '50';
+process.env.TERRAGRUNT_RETRY_BACKOFF_MULTIPLIER = '1.5';
+
 // Mock node-fetch
 vi.mock('node-fetch', () => ({
   default: vi.fn()
