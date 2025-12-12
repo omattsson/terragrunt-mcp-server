@@ -306,10 +306,10 @@ describe('cli_reference Unified Tool - Comprehensive Integration', () => {
       });
 
       expect(result).toBeDefined();
-      // Empty command should either return error or fall back to list mode
-      const hasError = result.error !== undefined;
-      const hasCommands = result.commands !== undefined && Array.isArray(result.commands);
-      expect(hasError || hasCommands).toBe(true);
+      // Empty string is falsy, so router treats it as list mode (no command provided)
+      expect(result.commands).toBeDefined();
+      expect(Array.isArray(result.commands)).toBe(true);
+      expect(result.pagination).toBeDefined();
     });
 
     it('should handle invalid category gracefully', async () => {
@@ -330,11 +330,11 @@ describe('cli_reference Unified Tool - Comprehensive Integration', () => {
       });
 
       expect(result).toBeDefined();
-      // Should return results with pagination (may not normalize negative values)
-      // System handles it gracefully even if page value is passed through
-      const hasError = result.error !== undefined;
-      const hasPagination = result.pagination !== undefined;
-      expect(hasError || hasPagination).toBe(true);
+      // Implementation passes negative page through without validation/normalization
+      // System returns results with pagination object containing the negative value
+      expect(result.commands).toBeDefined();
+      expect(result.pagination).toBeDefined();
+      expect(result.pagination.page).toBe(-1);
     });
 
     it('should handle very large pageSize', async () => {
