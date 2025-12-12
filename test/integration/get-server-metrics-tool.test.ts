@@ -94,7 +94,7 @@ describe('get_server_metrics MCP tool integration', () => {
 
     it('should track metrics from multiple tool calls', async () => {
       await toolHandler.executeTool('cli_reference', {});
-      await toolHandler.executeTool('list_terragrunt_functions', {});
+      await toolHandler.executeTool('function_reference', {});
       
       const result = await toolHandler.executeTool('get_server_metrics', {});
       
@@ -106,7 +106,7 @@ describe('get_server_metrics MCP tool integration', () => {
   describe('Combined tool and resource metrics', () => {
     it('should track metrics across multiple operations', async () => {
       await toolHandler.executeTool('cli_reference', {});
-      await toolHandler.executeTool('list_terragrunt_functions', {});
+      await toolHandler.executeTool('function_reference', {});
       
       const result = await toolHandler.executeTool('get_server_metrics', {});
       

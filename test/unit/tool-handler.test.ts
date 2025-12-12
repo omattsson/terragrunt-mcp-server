@@ -876,12 +876,13 @@ inputs = {
     });
   });
 
-  describe('Tool Execution - get_terragrunt_function', () => {
-    it('should return error when function_name is missing', async () => {
-      const result = await toolHandler.executeTool('get_terragrunt_function', {});
+  describe('Tool Execution - function_reference', () => {
+    it('should default to list mode when function_name is missing', async () => {
+      const result = await toolHandler.executeTool('function_reference', {});
       
-      expect(result.error).toBeDefined();
-      expect(result.error).toContain('function_name parameter is required');
+      // Should return list mode response, not an error
+      expect(result.functions).toBeDefined();
+      expect(Array.isArray(result.functions)).toBe(true);
     });
 
     it('should return function details with examples by default', async () => {
@@ -912,7 +913,7 @@ inputs = {
       // Replace the functions manager
       (toolHandler as any).functionsManager = mockFunctionsManager;
 
-      const result = await toolHandler.executeTool('get_terragrunt_function', {
+      const result = await toolHandler.executeTool('function_reference', {
         function_name: 'get_env',
         mode: 'full'
       });
@@ -953,7 +954,7 @@ inputs = {
 
       (toolHandler as any).functionsManager = mockFunctionsManager;
 
-      const result = await toolHandler.executeTool('get_terragrunt_function', {
+      const result = await toolHandler.executeTool('function_reference', {
         function_name: 'get_env',
         include_examples: false,
         mode: 'full'
@@ -980,7 +981,7 @@ inputs = {
 
       (toolHandler as any).functionsManager = mockFunctionsManager;
 
-      const result = await toolHandler.executeTool('get_terragrunt_function', {
+      const result = await toolHandler.executeTool('function_reference', {
         function_name: 'get_envi'
       });
       
@@ -1000,13 +1001,13 @@ inputs = {
 
       (toolHandler as any).functionsManager = mockFunctionsManager;
 
-      const result = await toolHandler.executeTool('get_terragrunt_function', {
+      const result = await toolHandler.executeTool('function_reference', {
         function_name: 'nonexistent_function'
       });
       
       expect(result.error).toBeDefined();
       expect(result.suggestion).toBeDefined();
-      expect(result.suggestion).toContain('list_terragrunt_functions');
+      expect(result.suggestion).toContain('function_reference');
     });
 
     it('should include all required MCP response fields', async () => {
@@ -1029,7 +1030,7 @@ inputs = {
 
       (toolHandler as any).functionsManager = mockFunctionsManager;
 
-      const result = await toolHandler.executeTool('get_terragrunt_function', {
+      const result = await toolHandler.executeTool('function_reference', {
         function_name: 'test_func',
         mode: 'full'
       });
@@ -1046,7 +1047,7 @@ inputs = {
     });
   });
 
-  describe('Tool Execution - list_terragrunt_functions', () => {
+  describe('Tool Execution - function_reference', () => {
     it('should list all functions when no parameters provided', async () => {
       const mockFunctions = [
         { name: 'get_env', signature: 'get_env(name, default) -> string', description: 'Get environment variable', parameters: [], returnType: 'string', category: 'env', examples: [], relatedFunctions: [] },
@@ -1061,7 +1062,7 @@ inputs = {
 
       (toolHandler as any).functionsManager = mockFunctionsManager;
 
-      const result = await toolHandler.executeTool('list_terragrunt_functions', {});
+      const result = await toolHandler.executeTool('function_reference', {});
       
       expect(result.functions).toBeDefined();
       expect(Array.isArray(result.functions)).toBe(true);
@@ -1087,7 +1088,7 @@ inputs = {
 
       (toolHandler as any).functionsManager = mockFunctionsManager;
 
-      const result = await toolHandler.executeTool('list_terragrunt_functions', {
+      const result = await toolHandler.executeTool('function_reference', {
         category: 'env'
       });
       
@@ -1111,7 +1112,7 @@ inputs = {
 
       (toolHandler as any).functionsManager = mockFunctionsManager;
 
-      const result = await toolHandler.executeTool('list_terragrunt_functions', {
+      const result = await toolHandler.executeTool('function_reference', {
         search: 'get'
       });
       
@@ -1134,7 +1135,7 @@ inputs = {
 
       (toolHandler as any).functionsManager = mockFunctionsManager;
 
-      const result = await toolHandler.executeTool('list_terragrunt_functions', {
+      const result = await toolHandler.executeTool('function_reference', {
         search: 'get',
         category: 'env'
       });
@@ -1165,7 +1166,7 @@ inputs = {
 
       (toolHandler as any).functionsManager = mockFunctionsManager;
 
-      const result = await toolHandler.executeTool('list_terragrunt_functions', {
+      const result = await toolHandler.executeTool('function_reference', {
         pageSize: 10
       });
       
@@ -1189,7 +1190,7 @@ inputs = {
 
       (toolHandler as any).functionsManager = mockFunctionsManager;
 
-      const result = await toolHandler.executeTool('list_terragrunt_functions', {});
+      const result = await toolHandler.executeTool('function_reference', {});
       
       expect(result.functions[0]).toHaveProperty('shortDescription');
       expect(result.functions[0].shortDescription).toBe('Get environment variable value.');
@@ -1212,7 +1213,7 @@ inputs = {
 
       (toolHandler as any).functionsManager = mockFunctionsManager;
 
-      const result = await toolHandler.executeTool('list_terragrunt_functions', {});
+      const result = await toolHandler.executeTool('function_reference', {});
       
       expect(result).toHaveProperty('functions');
       expect(result).toHaveProperty('categories');
@@ -1234,7 +1235,7 @@ inputs = {
 
       (toolHandler as any).functionsManager = mockFunctionsManager;
 
-      const result = await toolHandler.executeTool('list_terragrunt_functions', {
+      const result = await toolHandler.executeTool('function_reference', {
         search: 'nonexistent'
       });
       
@@ -1264,7 +1265,7 @@ inputs = {
 
       (toolHandler as any).functionsManager = mockFunctionsManager;
 
-      const result = await toolHandler.executeTool('list_terragrunt_functions', {
+      const result = await toolHandler.executeTool('function_reference', {
         page: 2,
         pageSize: 20
       });
@@ -1296,7 +1297,7 @@ inputs = {
 
       (toolHandler as any).functionsManager = mockFunctionsManager;
 
-      const result = await toolHandler.executeTool('list_terragrunt_functions', {
+      const result = await toolHandler.executeTool('function_reference', {
         page: 2,
         pageSize: 20
       });
@@ -1327,7 +1328,7 @@ inputs = {
 
       (toolHandler as any).functionsManager = mockFunctionsManager;
 
-      const result = await toolHandler.executeTool('list_terragrunt_functions', {
+      const result = await toolHandler.executeTool('function_reference', {
         page: 10,
         pageSize: 20
       });

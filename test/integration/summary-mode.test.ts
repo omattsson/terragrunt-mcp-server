@@ -8,9 +8,9 @@ describe('Summary Mode - Tool Integration Tests', () => {
         toolHandler = new ToolHandler();
     });
 
-    describe('get_terragrunt_function', () => {
+    describe('function_reference', () => {
         it('should return summary mode by default', async () => {
-            const result = await toolHandler.executeTool('get_terragrunt_function', {
+            const result = await toolHandler.executeTool('function_reference', {
                 function_name: 'get_env'
             });
 
@@ -29,7 +29,7 @@ describe('Summary Mode - Tool Integration Tests', () => {
         });
 
         it('should return full mode when specified', async () => {
-            const result = await toolHandler.executeTool('get_terragrunt_function', {
+            const result = await toolHandler.executeTool('function_reference', {
                 function_name: 'get_env',
                 mode: 'full'
             });
@@ -50,12 +50,12 @@ describe('Summary Mode - Tool Integration Tests', () => {
         });
 
         it('should have shorter response in summary mode', async () => {
-            const summaryResult = await toolHandler.executeTool('get_terragrunt_function', {
+            const summaryResult = await toolHandler.executeTool('function_reference', {
                 function_name: 'get_env',
                 mode: 'summary'
             });
             
-            const fullResult = await toolHandler.executeTool('get_terragrunt_function', {
+            const fullResult = await toolHandler.executeTool('function_reference', {
                 function_name: 'get_env',
                 mode: 'full'
             });
@@ -318,7 +318,7 @@ describe('Summary Mode - Tool Integration Tests', () => {
 
     describe('Mode parameter validation', () => {
         it('should default to summary mode when mode not specified', async () => {
-            const result = await toolHandler.executeTool('get_terragrunt_function', {
+            const result = await toolHandler.executeTool('function_reference', {
                 function_name: 'get_env'
             });
 
@@ -327,7 +327,7 @@ describe('Summary Mode - Tool Integration Tests', () => {
         });
 
         it('should handle explicit summary mode', async () => {
-            const result = await toolHandler.executeTool('get_terragrunt_function', {
+            const result = await toolHandler.executeTool('function_reference', {
                 function_name: 'get_env',
                 mode: 'summary'
             });
@@ -336,7 +336,7 @@ describe('Summary Mode - Tool Integration Tests', () => {
         });
 
         it('should handle explicit full mode', async () => {
-            const result = await toolHandler.executeTool('get_terragrunt_function', {
+            const result = await toolHandler.executeTool('function_reference', {
                 function_name: 'get_env',
                 mode: 'full'
             });

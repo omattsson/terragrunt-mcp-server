@@ -296,27 +296,26 @@ describe('MCP Protocol Compliance', () => {
       expect(searchTool?.inputSchema.required).toEqual([]);
     });
 
-    it('should include get_terragrunt_function tool', () => {
+    it('should include function_reference tool with dual-mode parameters', () => {
       const tools = toolHandler.getAvailableTools();
-      const functionTool = tools.find(t => t.name === 'get_terragrunt_function');
+      const functionTool = tools.find(t => t.name === 'function_reference');
       
       expect(functionTool).toBeDefined();
       expect(functionTool?.description).toBeDefined();
-      expect(functionTool?.inputSchema.properties.function_name).toBeDefined();
-      expect(functionTool?.inputSchema.properties.include_examples).toBeDefined();
-      expect(functionTool?.inputSchema.required).toContain('function_name');
-    });
-
-    it('should include list_terragrunt_functions tool', () => {
-      const tools = toolHandler.getAvailableTools();
-      const listTool = tools.find(t => t.name === 'list_terragrunt_functions');
       
-      expect(listTool).toBeDefined();
-      expect(listTool?.description).toBeDefined();
-      expect(listTool?.inputSchema.properties.category).toBeDefined();
-      expect(listTool?.inputSchema.properties.search).toBeDefined();
-      expect(listTool?.inputSchema.properties.page).toBeDefined();
-      expect(listTool?.inputSchema.properties.pageSize).toBeDefined();
+      // GET mode parameters
+      expect(functionTool?.inputSchema.properties.function_name).toBeDefined();
+      expect(functionTool?.inputSchema.properties.mode).toBeDefined();
+      expect(functionTool?.inputSchema.properties.include_examples).toBeDefined();
+      
+      // LIST mode parameters
+      expect(functionTool?.inputSchema.properties.category).toBeDefined();
+      expect(functionTool?.inputSchema.properties.search).toBeDefined();
+      expect(functionTool?.inputSchema.properties.page).toBeDefined();
+      expect(functionTool?.inputSchema.properties.pageSize).toBeDefined();
+      
+      // All params are optional for dual-mode routing
+      expect(functionTool?.inputSchema.required).toEqual([]);
     });
 
     it('should have clear, descriptive tool names', () => {
@@ -488,8 +487,8 @@ describe('MCP Protocol Compliance', () => {
       expect(Array.isArray(result.examples)).toBe(true);
     });
 
-    it('should return structured response for get_terragrunt_function tool', async () => {
-      const result = await toolHandler.executeTool('get_terragrunt_function', {
+    it('should return structured response for function_reference tool', async () => {
+      const result = await toolHandler.executeTool('function_reference', {
         function_name: 'path_relative_to_include'
       , mode: 'full'
       });
@@ -502,14 +501,14 @@ describe('MCP Protocol Compliance', () => {
       expect(result.category).toBeDefined();
     });
 
-    it('should handle include_examples parameter for get_terragrunt_function', async () => {
-      const withExamples = await toolHandler.executeTool('get_terragrunt_function', {
+    it('should handle include_examples parameter for function_reference', async () => {
+      const withExamples = await toolHandler.executeTool('function_reference', {
         function_name: 'path_relative_to_include',
         include_examples: true
       , mode: 'full'
       });
 
-      const withoutExamples = await toolHandler.executeTool('get_terragrunt_function', {
+      const withoutExamples = await toolHandler.executeTool('function_reference', {
         function_name: 'path_relative_to_include',
         include_examples: false
       , mode: 'full'
@@ -521,8 +520,8 @@ describe('MCP Protocol Compliance', () => {
       expect(withoutExamples.examples.length).toBe(0);
     });
 
-    it('should return structured response for list_terragrunt_functions tool with no params', async () => {
-      const result = await toolHandler.executeTool('list_terragrunt_functions', {});
+    it('should return structured response for function_reference tool with no params', async () => {
+      const result = await toolHandler.executeTool('function_reference', {});
 
       expect(result.functions).toBeDefined();
       expect(Array.isArray(result.functions)).toBe(true);
@@ -533,8 +532,8 @@ describe('MCP Protocol Compliance', () => {
       expect(Array.isArray(result.categories)).toBe(true);
     });
 
-    it('should filter by category for list_terragrunt_functions tool', async () => {
-      const result = await toolHandler.executeTool('list_terragrunt_functions', {
+    it('should filter by category for function_reference tool', async () => {
+      const result = await toolHandler.executeTool('function_reference', {
         category: 'path'
       });
 
@@ -547,8 +546,8 @@ describe('MCP Protocol Compliance', () => {
       });
     });
 
-    it('should search by keyword for list_terragrunt_functions tool', async () => {
-      const result = await toolHandler.executeTool('list_terragrunt_functions', {
+    it('should search by keyword for function_reference tool', async () => {
+      const result = await toolHandler.executeTool('function_reference', {
         search: 'path'
       });
 
@@ -558,8 +557,8 @@ describe('MCP Protocol Compliance', () => {
       expect(result.functions.length).toBeGreaterThan(0);
     });
 
-    it('should respect pageSize parameter for list_terragrunt_functions tool', async () => {
-      const result = await toolHandler.executeTool('list_terragrunt_functions', {
+    it('should respect pageSize parameter for function_reference tool', async () => {
+      const result = await toolHandler.executeTool('function_reference', {
         pageSize: 5
       });
 
@@ -575,15 +574,17 @@ describe('MCP Protocol Compliance', () => {
       expect(result.error).toContain('required');
     });
 
-    it('should validate required function_name parameter for get_terragrunt_function', async () => {
-      const result = await toolHandler.executeTool('get_terragrunt_function', { mode: 'full' });
+    it('should default to list mode when function_name is omitted', async () => {
+      const result = await toolHandler.executeTool('function_reference', { mode: 'full' });
 
-      expect(result.error).toBeDefined();
-      expect(result.error).toContain('function_name');
+      // Should return list mode response, not an error
+      expect(result.functions).toBeDefined();
+      expect(Array.isArray(result.functions)).toBe(true);
+      expect(result.pagination).toBeDefined();
     });
 
-    it('should return error for unknown function in get_terragrunt_function', async () => {
-      const result = await toolHandler.executeTool('get_terragrunt_function', {
+    it('should return error for unknown function in function_reference', async () => {
+      const result = await toolHandler.executeTool('function_reference', {
         function_name: 'nonexistent_function_12345'
       , mode: 'full'
       });
@@ -594,8 +595,8 @@ describe('MCP Protocol Compliance', () => {
       expect(result.suggestion).toBeDefined();
     });
 
-    it('should handle invalid category gracefully for list_terragrunt_functions', async () => {
-      const result = await toolHandler.executeTool('list_terragrunt_functions', {
+    it('should handle invalid category gracefully for function_reference', async () => {
+      const result = await toolHandler.executeTool('function_reference', {
         category: 'invalid_category_xyz'
       });
 
