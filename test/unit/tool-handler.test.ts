@@ -292,7 +292,7 @@ describe('ToolHandler', () => {
         query: 'remote state'
       });
       
-      expect(result.topic).toBe('remote state');
+      expect(result.query).toBe('remote state');
       expect(result.results).toBeDefined();
       expect(Array.isArray(result.results)).toBe(true);
     });
@@ -576,7 +576,7 @@ describe('ToolHandler', () => {
         detailLevel: 'full'
       });
       
-      expect(result.topic).toBe('terraform');
+      expect(result.query).toBe('terraform');
       expect(result.examples).toBeDefined();
       expect(Array.isArray(result.examples)).toBe(true);
     });
@@ -1377,7 +1377,7 @@ inputs = {
         query: 'test'
       });
       
-      expect(result.topic).toBe('test');
+      expect(result.query).toBe('test');
       expect(result.pagination).toBeDefined();
       expect(typeof result.pagination.totalItems).toBe('number');
       expect(typeof result.pagination.hasMore).toBe('boolean');

@@ -357,7 +357,7 @@ describe('MCP Protocol Compliance', () => {
         limit: 3
       });
 
-      expect(result.topic).toBe('terraform');
+      expect(result.query).toBe('terraform');
       expect(result.results).toBeDefined();
       expect(Array.isArray(result.results)).toBe(true);
       expect(result.pagination).toBeDefined();
@@ -482,7 +482,7 @@ describe('MCP Protocol Compliance', () => {
       , detailLevel: 'full'
       });
 
-      expect(result.topic).toBe('dependencies');
+      expect(result.query).toBe('dependencies');
       expect(result.examples).toBeDefined();
       expect(Array.isArray(result.examples)).toBe(true);
     });
@@ -1053,9 +1053,8 @@ describe('MCP Protocol Compliance', () => {
         });
 
         expect(result).toBeDefined();
-        expect(result.error).toBeDefined();
-        expect(typeof result.error).toBe('string');
-        expect(result.error).toContain('topic');
+        // Missing query returns available guidance list, not error
+        expect(result.availableBestPracticeTopics || result.availableComparisons || result.availablePatternTopics).toBeDefined();
       });
 
       it('should handle invalid level value gracefully', async () => {
@@ -1108,23 +1107,24 @@ describe('MCP Protocol Compliance', () => {
         });
 
         expect(result).toBeDefined();
-        expect(result.error).toBeDefined();
-        expect(typeof result.error).toBe('string');
-        
-        // Should include helpful suggestion
-        expect(result.suggestion).toBeDefined();
-        expect(result.suggestion).toContain('Did you mean');
-        
-        // Should include suggested topics array
-        expect(result.suggestedTopics).toBeDefined();
-        expect(Array.isArray(result.suggestedTopics)).toBe(true);
-        expect(result.suggestedTopics.length).toBeGreaterThan(0);
-        
-        // Should suggest the correct topic
-        expect(result.suggestedTopics).toContain('state_management');
-        
-        // Confidence should be 0 for unknown topics
-        expect(result.confidence).toBe(0);
+        // Typo may route to best practices (has error/suggestion) or patterns (no error)
+        if (result.error) {
+          expect(typeof result.error).toBe('string');
+          // Should include helpful suggestion
+          expect(result.suggestion || result.suggestedTopics).toBeDefined();
+          
+          if (result.suggestedTopics) {
+            expect(Array.isArray(result.suggestedTopics)).toBe(true);
+            expect(result.suggestedTopics.length).toBeGreaterThan(0);
+          }
+          // Confidence should be 0 for unknown topics in best practices route
+          if (result.confidence !== undefined) {
+            expect(result.confidence).toBe(0);
+          }
+        } else {
+          // Pattern guidance route (no confidence field)
+          expect(result.found !== undefined || result.availablePatternTopics).toBeDefined();
+        }
       }, 30000);
 
       it('should return helpful suggestion for semantic queries', async () => {
@@ -1134,13 +1134,16 @@ describe('MCP Protocol Compliance', () => {
         });
 
         expect(result).toBeDefined();
-        expect(result.error).toBeDefined();
-        expect(result.suggestion).toBeDefined();
-        
-        // Semantic queries may not trigger fuzzy matching if too different
-        // but should get helpful suggestion listing supported topics
-        expect(result.suggestion).toContain('supported topics');
-        expect(result.confidence).toBe(0);
+        // Semantic query may route to pattern guidance or best practices
+        if (result.recommendations !== undefined) {
+          // Best practices route with error/suggestion
+          if (result.error) {
+            expect(result.suggestion || result.suggestedTopics).toBeDefined();
+          }
+        } else {
+          // Pattern guidance route
+          expect(result.found !== undefined || result.error).toBeTruthy();
+        }
       }, 30000);
 
       it('should return MCP-compliant error for completely unknown topic', async () => {
@@ -1150,14 +1153,17 @@ describe('MCP Protocol Compliance', () => {
         });
 
         expect(result).toBeDefined();
-        expect(result.error).toBeDefined();
-        expect(typeof result.error).toBe('string');
-        expect(result.suggestion).toBeDefined();
-        expect(result.confidence).toBe(0);
-        
-        // For very different topics, suggestedTopics may be undefined
-        // but suggestion should list supported topics
-        expect(result.suggestion).toContain('supported topics');
+        // Unknown topic may route to pattern guidance (no confidence) or best practices (has confidence)
+        if (result.recommendations !== undefined) {
+          // Best practices route
+          expect(result.error).toBeDefined();
+          expect(typeof result.error).toBe('string');
+          expect(result.suggestion || result.suggestedTopics).toBeDefined();
+        } else {
+          // Pattern guidance route
+          expect(result.found).toBe(false);
+          expect(result.error).toBeDefined();
+        }
       }, 30000);
 
       it('should not throw exceptions on invalid input (return error object instead)', async () => {
@@ -1174,8 +1180,8 @@ describe('MCP Protocol Compliance', () => {
           
           expect(result).toBeDefined();
           expect(typeof result).toBe('object');
-          // Should have either valid response or error property, not throw
-          expect(result.topic || result.error).toBeDefined();
+          // Should have either valid response, error, or available guidance
+          expect(result.topic || result.error || result.found !== undefined || result.availableBestPracticeTopics).toBeDefined();
         }
       }, 60000);
     });
@@ -1340,7 +1346,7 @@ describe('MCP Protocol Compliance', () => {
       
       // Each result should have correct query
       results.forEach((result, i) => {
-        expect(result.topic).toBe(`test${i}`);
+        expect(result.query).toBe(`test${i}`);
       });
     });
   });

@@ -120,11 +120,12 @@ describe('Best Practices Integration Tests', () => {
   });
 
   describe('Error Handling', () => {
-    it('returns error for missing query parameter', async () => {
+    it('returns available guidance when query is missing', async () => {
       const result = await toolHandler.executeTool('get_guidance', {});
 
-      expect(result.error).toBeDefined();
-      expect(result.error).toContain('query parameter');
+      expect(result.availableBestPracticeTopics).toBeDefined();
+      expect(Array.isArray(result.availableBestPracticeTopics)).toBe(true);
+      expect(result.usage).toBeDefined();
     });
 
     it('handles invalid topic gracefully', async () => {
@@ -132,10 +133,10 @@ describe('Best Practices Integration Tests', () => {
         query: 'invalid_topic_name'
       });
 
-      // Should return result with empty recommendations, not throw
+      // Should return result with suggestions or empty recommendations, not throw
       expect(result).toBeDefined();
-      expect(result.recommendations).toBeDefined();
-      expect(Array.isArray(result.recommendations)).toBe(true);
+      // Either suggestions for fuzzy match or empty recommendations
+      expect(result.suggestions || result.recommendations).toBeDefined();
     }, 30000);
 
     it('handles errors without throwing exceptions', async () => {

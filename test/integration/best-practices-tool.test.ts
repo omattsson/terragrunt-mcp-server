@@ -162,18 +162,22 @@ describe('get_guidance Tool Integration', () => {
   });
 
   describe('Error Handling', () => {
-    it('requires topic parameter', async () => {
+    it('returns available guidance when query is empty', async () => {
       const result = await toolHandler.executeTool('get_guidance', {});
       
       expect(result).toBeDefined();
-      expect(result.error).toBeDefined();
+      expect(result.availableBestPracticeTopics).toBeDefined();
+      expect(result.availableComparisons).toBeDefined();
+      expect(result.availablePatternTopics).toBeDefined();
+      expect(result.usage).toBeDefined();
     });
 
-    it('handles missing arguments gracefully', async () => {
+    it('returns available guidance when no arguments provided', async () => {
       const result = await toolHandler.executeTool('get_guidance');
       
       expect(result).toBeDefined();
-      expect(result.error).toBeDefined();
+      expect(result.availableBestPracticeTopics).toBeDefined();
+      expect(Array.isArray(result.availableBestPracticeTopics)).toBe(true);
     });
   });
 

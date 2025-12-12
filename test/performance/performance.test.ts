@@ -1159,7 +1159,7 @@ describe('Performance Benchmarks', () => {
         
         const results = await Promise.all(
           topics.map(topic => 
-            toolHandler.executeTool('get_guidance', { topic , mode: 'full' })
+            toolHandler.executeTool('get_guidance', { query: topic , mode: 'full' })
           )
         );
         
@@ -1200,7 +1200,7 @@ describe('Performance Benchmarks', () => {
         expect(results).toHaveLength(6);
         results.forEach((result, index) => {
           expect(result).toBeDefined();
-          expect(result.topic).toBe(operations[index].topic);
+          expect(result.topic).toBe(operations[index].query);
           expect(result.recommendations).toBeDefined();
         });
         
