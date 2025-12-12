@@ -910,7 +910,7 @@ export class ToolHandler {
                 documents: docs.map(doc => ({
                     title: doc.title,
                     url: doc.url,
-                    snippet: getFirstSentence(doc.content) || doc.content.substring(0, 100) + '...'
+                    snippet: getFirstSentence(doc.content)
                 }))
             };
         }
@@ -1536,7 +1536,7 @@ export class ToolHandler {
                     recommendations: [],
                     summary: result.summary || '',
                     confidence: result.confidence || 0,
-                    suggestedTopics: result.suggestedTopics
+                    ...(result.suggestedTopics && { suggestedTopics: result.suggestedTopics })
                 };
             }
 

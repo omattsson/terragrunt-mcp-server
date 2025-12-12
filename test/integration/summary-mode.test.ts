@@ -63,8 +63,8 @@ describe('Summary Mode - Tool Integration Tests', () => {
             const summarySize = JSON.stringify(summaryResult).length;
             const fullSize = JSON.stringify(fullResult).length;
             
-            // Summary should be significantly smaller (at least 50% reduction)
-            expect(summarySize).toBeLessThan(fullSize * 0.5);
+            // Summary should be significantly smaller (at least 60% reduction as advertised)
+            expect(summarySize).toBeLessThan(fullSize * 0.4);
         });
     });
 
@@ -158,7 +158,8 @@ describe('Summary Mode - Tool Integration Tests', () => {
                 expect(doc).not.toHaveProperty('content');
                 expect(doc).not.toHaveProperty('lastUpdated');
                 
-                // See getFirstSentence() abbreviation logic: first sentences may be longer, but should be < 300 chars
+                // getFirstSentence() returns first sentence (can vary in length) or truncates at 100 chars
+                // Most documentation sentences should be reasonably short
                 expect(doc.snippet.length).toBeLessThan(300);
                 expect(doc.snippet).toBeTruthy();
             }

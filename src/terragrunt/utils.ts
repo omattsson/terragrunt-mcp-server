@@ -15,6 +15,7 @@ export const formatOutput = (data: any): string => {
 };
 
 // Common abbreviations that should not be treated as sentence terminators
+// These are checked via negative lookbehind BEFORE the period, so they should NOT include the dot
 const COMMON_ABBREVIATIONS = ['Dr', 'Mr', 'Mrs', 'Ms', 'Sr', 'Jr', 'etc', 'e\\.g', 'i\\.e'];
 
 /**
