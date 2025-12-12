@@ -45,7 +45,7 @@ describe('get_server_metrics MCP tool integration', () => {
   describe('Tool execution through MCP protocol', () => {
     it('should execute and return JSON format by default', async () => {
       // Execute a tool first to generate metrics
-      await toolHandler.executeTool('list_cli_commands', {});
+      await toolHandler.executeTool('cli_reference', {});
       
       const result = await toolHandler.executeTool('get_server_metrics', {});
       
@@ -57,7 +57,7 @@ describe('get_server_metrics MCP tool integration', () => {
     });
 
     it('should execute and return text format when requested', async () => {
-      await toolHandler.executeTool('list_cli_commands', {});
+      await toolHandler.executeTool('cli_reference', {});
       
       const result = await toolHandler.executeTool('get_server_metrics', { format: 'text' });
       
