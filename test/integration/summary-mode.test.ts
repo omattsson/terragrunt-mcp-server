@@ -68,10 +68,10 @@ describe('Summary Mode - Tool Integration Tests', () => {
         });
     });
 
-    describe('analyze_best_practices', () => {
+    describe('get_guidance', () => {
         it('should return summary mode by default', async () => {
-            const result = await toolHandler.executeTool('analyze_best_practices', {
-                topic: 'state_management'
+            const result = await toolHandler.executeTool('get_guidance', {
+                query: 'state_management'
             });
 
             expect(result).toHaveProperty('topic', 'state_management');
@@ -96,8 +96,8 @@ describe('Summary Mode - Tool Integration Tests', () => {
         });
 
         it('should return full mode when specified', async () => {
-            const result = await toolHandler.executeTool('analyze_best_practices', {
-                topic: 'state_management',
+            const result = await toolHandler.executeTool('get_guidance', {
+                query: 'state_management',
                 mode: 'full'
             });
 
@@ -115,13 +115,13 @@ describe('Summary Mode - Tool Integration Tests', () => {
         });
 
         it('should have shorter response in summary mode', async () => {
-            const summaryResult = await toolHandler.executeTool('analyze_best_practices', {
-                topic: 'state_management',
+            const summaryResult = await toolHandler.executeTool('get_guidance', {
+                query: 'state_management',
                 mode: 'summary'
             });
             
-            const fullResult = await toolHandler.executeTool('analyze_best_practices', {
-                topic: 'state_management',
+            const fullResult = await toolHandler.executeTool('get_guidance', {
+                query: 'state_management',
                 mode: 'full'
             });
 

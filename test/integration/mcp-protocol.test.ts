@@ -357,7 +357,7 @@ describe('MCP Protocol Compliance', () => {
         limit: 3
       });
 
-      expect(result.query).toBe('terraform');
+      expect(result.topic).toBe('terraform');
       expect(result.results).toBeDefined();
       expect(Array.isArray(result.results)).toBe(true);
       expect(result.pagination).toBeDefined();
@@ -482,7 +482,7 @@ describe('MCP Protocol Compliance', () => {
       , detailLevel: 'full'
       });
 
-      expect(result.query).toBe('dependencies');
+      expect(result.topic).toBe('dependencies');
       expect(result.examples).toBeDefined();
       expect(Array.isArray(result.examples)).toBe(true);
     });
@@ -893,20 +893,20 @@ describe('MCP Protocol Compliance', () => {
 
   describe('Best Practices Analyzer Tool Compliance', () => {
     describe('Tool Definition in ListTools', () => {
-      it('should include analyze_best_practices in available tools', () => {
+      it('should include get_guidance in available tools', () => {
         const tools = toolHandler.getAvailableTools();
-        const bestPracticesTool = tools.find(t => t.name === 'analyze_best_practices');
+        const guidanceTool = tools.find(t => t.name === 'get_guidance');
         
-        expect(bestPracticesTool).toBeDefined();
-        expect(bestPracticesTool?.name).toBe('analyze_best_practices');
-        expect(bestPracticesTool?.description).toBeDefined();
-        expect(typeof bestPracticesTool?.description).toBe('string');
-        expect(bestPracticesTool?.description).toContain('confidence');
+        expect(guidanceTool).toBeDefined();
+        expect(guidanceTool?.name).toBe('get_guidance');
+        expect(guidanceTool?.description).toBeDefined();
+        expect(typeof guidanceTool?.description).toBe('string');
+        expect(guidanceTool?.description).toContain('guidance');
       });
 
-      it('should have valid JSON Schema for analyze_best_practices', () => {
+      it('should have valid JSON Schema for get_guidance', () => {
         const tools = toolHandler.getAvailableTools();
-        const bestPracticesTool = tools.find(t => t.name === 'analyze_best_practices');
+        const bestPracticesTool = tools.find(t => t.name === 'get_guidance');
         
         expect(bestPracticesTool?.inputSchema).toBeDefined();
         expect(bestPracticesTool?.inputSchema.type).toBe('object');
@@ -914,24 +914,22 @@ describe('MCP Protocol Compliance', () => {
         expect(typeof bestPracticesTool?.inputSchema.properties).toBe('object');
       });
 
-      it('should define topic parameter as required string WITHOUT enum (enables fuzzy matching)', () => {
+      it('should define query parameter as optional string WITHOUT enum (enables flexible querying)', () => {
         const tools = toolHandler.getAvailableTools();
-        const bestPracticesTool = tools.find(t => t.name === 'analyze_best_practices');
+        const guidanceTool = tools.find(t => t.name === 'get_guidance');
         
-        const topicProperty = bestPracticesTool?.inputSchema.properties.topic;
-        expect(topicProperty).toBeDefined();
-        expect(topicProperty.type).toBe('string');
+        const queryProperty = guidanceTool?.inputSchema.properties.query;
+        expect(queryProperty).toBeDefined();
+        expect(queryProperty.type).toBe('string');
         
-        // CRITICAL: Topic should NOT have enum to enable fuzzy matching
-        // This was a key decision in PR #114 (issue #34)
-        expect(topicProperty.enum).toBeUndefined();
-        expect(topicProperty.description).toBeDefined();
-        expect(topicProperty.description).toContain('Supported topics');
+        // Query should NOT have enum to enable flexible querying
+        expect(queryProperty.enum).toBeUndefined();
+        expect(queryProperty.description).toBeDefined();
       });
 
       it('should define level parameter as optional string WITH enum', () => {
         const tools = toolHandler.getAvailableTools();
-        const bestPracticesTool = tools.find(t => t.name === 'analyze_best_practices');
+        const bestPracticesTool = tools.find(t => t.name === 'get_guidance');
         
         const levelProperty = bestPracticesTool?.inputSchema.properties.level;
         expect(levelProperty).toBeDefined();
@@ -951,27 +949,27 @@ describe('MCP Protocol Compliance', () => {
 
       it('should require only topic parameter', () => {
         const tools = toolHandler.getAvailableTools();
-        const bestPracticesTool = tools.find(t => t.name === 'analyze_best_practices');
+        const bestPracticesTool = tools.find(t => t.name === 'get_guidance');
         
         expect(bestPracticesTool?.inputSchema.required).toBeDefined();
         expect(Array.isArray(bestPracticesTool?.inputSchema.required)).toBe(true);
         expect(bestPracticesTool?.inputSchema.required).toEqual(['topic']);
       });
 
-      it('should describe confidence scoring in tool description', () => {
+      it('should describe guidance routing in tool description', () => {
         const tools = toolHandler.getAvailableTools();
-        const bestPracticesTool = tools.find(t => t.name === 'analyze_best_practices');
+        const guidanceTool = tools.find(t => t.name === 'get_guidance');
         
-        expect(bestPracticesTool?.description).toBeDefined();
-        expect(bestPracticesTool?.description.toLowerCase()).toContain('confidence');
-        expect(bestPracticesTool?.description.toLowerCase()).toMatch(/suggest|fuzzy|did you mean/);
+        expect(guidanceTool?.description).toBeDefined();
+        expect(guidanceTool?.description.toLowerCase()).toContain('guidance');
+        expect(guidanceTool?.description.toLowerCase()).toMatch(/best practices|comparison|pattern/);
       });
     });
 
     describe('CallTool Request/Response Format', () => {
       it('should execute successfully with valid topic', async () => {
-        const result = await toolHandler.executeTool('analyze_best_practices', {
-          topic: 'state_management'
+        const result = await toolHandler.executeTool('get_guidance', {
+          query: 'state_management'
         , mode: 'full'
         });
 
@@ -981,8 +979,8 @@ describe('MCP Protocol Compliance', () => {
       }, 30000);
 
       it('should return MCP-compliant success response structure', async () => {
-        const result = await toolHandler.executeTool('analyze_best_practices', {
-          topic: 'module_organization'
+        const result = await toolHandler.executeTool('get_guidance', {
+          query: 'module_organization'
         , mode: 'full'
         });
 
@@ -1000,8 +998,8 @@ describe('MCP Protocol Compliance', () => {
       }, 30000);
 
       it('should include all required BestPracticeResult fields', async () => {
-        const result = await toolHandler.executeTool('analyze_best_practices', {
-          topic: 'dependencies',
+        const result = await toolHandler.executeTool('get_guidance', {
+          query: 'dependencies',
           level: 'intermediate'
         , mode: 'full'
         });
@@ -1025,8 +1023,8 @@ describe('MCP Protocol Compliance', () => {
       }, 30000);
 
       it('should include confidence score in valid range (0-100)', async () => {
-        const result = await toolHandler.executeTool('analyze_best_practices', {
-          topic: 'security'
+        const result = await toolHandler.executeTool('get_guidance', {
+          query: 'security'
         , mode: 'full'
         });
 
@@ -1042,7 +1040,7 @@ describe('MCP Protocol Compliance', () => {
 
     describe('Parameter Validation', () => {
       it('should return error when topic parameter is missing', async () => {
-        const result = await toolHandler.executeTool('analyze_best_practices', {
+        const result = await toolHandler.executeTool('get_guidance', {
           // Missing topic
           mode: 'full'
         });
@@ -1054,8 +1052,8 @@ describe('MCP Protocol Compliance', () => {
       });
 
       it('should handle invalid level value gracefully', async () => {
-        const result = await toolHandler.executeTool('analyze_best_practices', {
-          topic: 'state_management',
+        const result = await toolHandler.executeTool('get_guidance', {
+          query: 'state_management',
           level: 'invalid_level' as any
         , mode: 'full'
         });
@@ -1069,8 +1067,8 @@ describe('MCP Protocol Compliance', () => {
       }, 30000);
 
       it('should handle optional level parameter correctly', async () => {
-        const result = await toolHandler.executeTool('analyze_best_practices', {
-          topic: 'performance'
+        const result = await toolHandler.executeTool('get_guidance', {
+          query: 'performance'
           // No level specified - should still work
         , mode: 'full'
         });
@@ -1082,8 +1080,8 @@ describe('MCP Protocol Compliance', () => {
       }, 30000);
 
       it('should handle unknown parameters gracefully', async () => {
-        const result = await toolHandler.executeTool('analyze_best_practices', {
-          topic: 'testing',
+        const result = await toolHandler.executeTool('get_guidance', {
+          query: 'testing',
           unknownParam: 'should be ignored' as any
         , mode: 'full'
         });
@@ -1097,8 +1095,8 @@ describe('MCP Protocol Compliance', () => {
 
     describe('Error Handling Compliance', () => {
       it('should return MCP-compliant error for typo with fuzzy matching suggestions', async () => {
-        const result = await toolHandler.executeTool('analyze_best_practices', {
-          topic: 'state_managment' // Typo: missing 'e'
+        const result = await toolHandler.executeTool('get_guidance', {
+          query: 'state_managment' // Typo: missing 'e'
         , mode: 'full'
         });
 
@@ -1123,8 +1121,8 @@ describe('MCP Protocol Compliance', () => {
       }, 30000);
 
       it('should return helpful suggestion for semantic queries', async () => {
-        const result = await toolHandler.executeTool('analyze_best_practices', {
-          topic: 'remote state' // Semantic query
+        const result = await toolHandler.executeTool('get_guidance', {
+          query: 'remote state' // Semantic query
         , mode: 'full'
         });
 
@@ -1139,8 +1137,8 @@ describe('MCP Protocol Compliance', () => {
       }, 30000);
 
       it('should return MCP-compliant error for completely unknown topic', async () => {
-        const result = await toolHandler.executeTool('analyze_best_practices', {
-          topic: 'xyz_completely_invalid_topic_12345'
+        const result = await toolHandler.executeTool('get_guidance', {
+          query: 'xyz_completely_invalid_topic_12345'
         , mode: 'full'
         });
 
@@ -1158,14 +1156,14 @@ describe('MCP Protocol Compliance', () => {
       it('should not throw exceptions on invalid input (return error object instead)', async () => {
         // Test multiple invalid inputs - should all return error objects, not throw
         const testCases = [
-          { topic: 'invalid_topic_xyz' },
-          { topic: 'state_managment' }, // typo
+          { query: 'invalid_topic_xyz' },
+          { query: 'state_managment' }, // typo
           {}, // missing topic
-          { topic: 'state_management', level: 'invalid' as any },
+          { query: 'state_management', level: 'invalid' as any },
         ];
 
         for (const testCase of testCases) {
-          const result = await toolHandler.executeTool('analyze_best_practices', testCase);
+          const result = await toolHandler.executeTool('get_guidance', testCase);
           
           expect(result).toBeDefined();
           expect(typeof result).toBe('object');
@@ -1335,7 +1333,7 @@ describe('MCP Protocol Compliance', () => {
       
       // Each result should have correct query
       results.forEach((result, i) => {
-        expect(result.query).toBe(`test${i}`);
+        expect(result.topic).toBe(`test${i}`);
       });
     });
   });

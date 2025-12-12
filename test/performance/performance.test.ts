@@ -866,8 +866,8 @@ describe('Performance Benchmarks', () => {
       it('should analyze first topic (cold start)', async () => {
         const start = performance.now();
         
-        const result = await toolHandler.executeTool('analyze_best_practices', {
-          topic: 'module_organization'
+        const result = await toolHandler.executeTool('get_guidance', {
+          query: 'module_organization'
         , mode: 'full'
         });
         
@@ -884,8 +884,8 @@ describe('Performance Benchmarks', () => {
       it('should analyze second topic (warm cache) in <500ms', async () => {
         const start = performance.now();
         
-        const result = await toolHandler.executeTool('analyze_best_practices', {
-          topic: 'state_management'
+        const result = await toolHandler.executeTool('get_guidance', {
+          query: 'state_management'
         , mode: 'full'
         });
         
@@ -901,16 +901,16 @@ describe('Performance Benchmarks', () => {
 
       it('should retrieve cached analysis in <50ms', async () => {
         // First call to populate cache
-        await toolHandler.executeTool('analyze_best_practices', {
-          topic: 'dependencies'
+        await toolHandler.executeTool('get_guidance', {
+          query: 'dependencies'
         , mode: 'full'
         });
         
         // Second call should hit cache
         const start = performance.now();
         
-        const result = await toolHandler.executeTool('analyze_best_practices', {
-          topic: 'dependencies'
+        const result = await toolHandler.executeTool('get_guidance', {
+          query: 'dependencies'
         , mode: 'full'
         });
         
@@ -927,8 +927,8 @@ describe('Performance Benchmarks', () => {
       it('should analyze with experience level filter in <400ms', async () => {
         const start = performance.now();
         
-        const result = await toolHandler.executeTool('analyze_best_practices', {
-          topic: 'ci_cd',
+        const result = await toolHandler.executeTool('get_guidance', {
+          query: 'ci_cd',
           level: 'intermediate'
         , mode: 'full'
         });
@@ -949,8 +949,8 @@ describe('Performance Benchmarks', () => {
         for (const topic of allTopics) {
           const start = performance.now();
           
-          const result = await toolHandler.executeTool('analyze_best_practices', {
-            topic
+          const result = await toolHandler.executeTool('get_guidance', {
+            query: topic
           , mode: 'full'
           });
           
@@ -973,15 +973,15 @@ describe('Performance Benchmarks', () => {
 
       it('should analyze complex topic (dependencies) in <300ms after cache warm-up', async () => {
         // Warm up cache
-        await toolHandler.executeTool('analyze_best_practices', {
-          topic: 'dependencies'
+        await toolHandler.executeTool('get_guidance', {
+          query: 'dependencies'
         , mode: 'full'
         });
         
         const start = performance.now();
         
-        const result = await toolHandler.executeTool('analyze_best_practices', {
-          topic: 'dependencies',
+        const result = await toolHandler.executeTool('get_guidance', {
+          query: 'dependencies',
           level: 'advanced'
         , mode: 'full'
         });
@@ -1001,13 +1001,13 @@ describe('Performance Benchmarks', () => {
         
         // Warm up all caches first
         for (const topic of allTopics) {
-          await toolHandler.executeTool('analyze_best_practices', { topic , mode: 'full' });
+          await toolHandler.executeTool('get_guidance', { topic , mode: 'full' });
         }
         
         // Measure cached performance for each topic
         for (const topic of allTopics) {
           const start = performance.now();
-          await toolHandler.executeTool('analyze_best_practices', { topic , mode: 'full' });
+          await toolHandler.executeTool('get_guidance', { topic , mode: 'full' });
           timings[topic] = performance.now() - start;
         }
         
@@ -1029,16 +1029,16 @@ describe('Performance Benchmarks', () => {
       it('should measure pattern extraction overhead', async () => {
         // First call performs pattern extraction
         const start1 = performance.now();
-        const result1 = await toolHandler.executeTool('analyze_best_practices', {
-          topic: 'security'
+        const result1 = await toolHandler.executeTool('get_guidance', {
+          query: 'security'
         , mode: 'full'
         });
         const duration1 = performance.now() - start1;
         
         // Second call uses cached patterns
         const start2 = performance.now();
-        const result2 = await toolHandler.executeTool('analyze_best_practices', {
-          topic: 'security'
+        const result2 = await toolHandler.executeTool('get_guidance', {
+          query: 'security'
         , mode: 'full'
         });
         const duration2 = performance.now() - start2;
@@ -1060,8 +1060,8 @@ describe('Performance Benchmarks', () => {
         for (const topic of searchTopics) {
           const start = performance.now();
           
-          const result = await toolHandler.executeTool('analyze_best_practices', {
-            topic
+          const result = await toolHandler.executeTool('get_guidance', {
+            query: topic
           , mode: 'full'
           });
           
@@ -1083,8 +1083,8 @@ describe('Performance Benchmarks', () => {
       it('should detect antipatterns efficiently', async () => {
         const start = performance.now();
         
-        const result = await toolHandler.executeTool('analyze_best_practices', {
-          topic: 'state_management'
+        const result = await toolHandler.executeTool('get_guidance', {
+          query: 'state_management'
         , mode: 'full'
         });
         
@@ -1102,8 +1102,8 @@ describe('Performance Benchmarks', () => {
       it('should rank recommendations efficiently', async () => {
         const start = performance.now();
         
-        const result = await toolHandler.executeTool('analyze_best_practices', {
-          topic: 'module_organization',
+        const result = await toolHandler.executeTool('get_guidance', {
+          query: 'module_organization',
           level: 'beginner'
         , mode: 'full'
         });
@@ -1123,19 +1123,19 @@ describe('Performance Benchmarks', () => {
     describe('Concurrent Operations', () => {
       it('should handle parallel requests for same topic efficiently (<100ms with caching)', async () => {
         // Warm up cache
-        await toolHandler.executeTool('analyze_best_practices', {
-          topic: 'ci_cd'
+        await toolHandler.executeTool('get_guidance', {
+          query: 'ci_cd'
         , mode: 'full'
         });
         
         const start = performance.now();
         
         const results = await Promise.all([
-          toolHandler.executeTool('analyze_best_practices', { topic: 'ci_cd' , mode: 'full' }),
-          toolHandler.executeTool('analyze_best_practices', { topic: 'ci_cd' , mode: 'full' }),
-          toolHandler.executeTool('analyze_best_practices', { topic: 'ci_cd' , mode: 'full' }),
-          toolHandler.executeTool('analyze_best_practices', { topic: 'ci_cd' , mode: 'full' }),
-          toolHandler.executeTool('analyze_best_practices', { topic: 'ci_cd' , mode: 'full' })
+          toolHandler.executeTool('get_guidance', { query: 'ci_cd' , mode: 'full' }),
+          toolHandler.executeTool('get_guidance', { query: 'ci_cd' , mode: 'full' }),
+          toolHandler.executeTool('get_guidance', { query: 'ci_cd' , mode: 'full' }),
+          toolHandler.executeTool('get_guidance', { query: 'ci_cd' , mode: 'full' }),
+          toolHandler.executeTool('get_guidance', { query: 'ci_cd' , mode: 'full' })
         ]);
         
         const duration = performance.now() - start;
@@ -1159,7 +1159,7 @@ describe('Performance Benchmarks', () => {
         
         const results = await Promise.all(
           topics.map(topic => 
-            toolHandler.executeTool('analyze_best_practices', { topic , mode: 'full' })
+            toolHandler.executeTool('get_guidance', { topic , mode: 'full' })
           )
         );
         
@@ -1178,19 +1178,19 @@ describe('Performance Benchmarks', () => {
 
       it('should handle mixed concurrent operations (with and without filters)', async () => {
         const operations = [
-          { topic: 'performance', mode: 'full' as const },
-          { topic: 'performance', level: 'beginner' as const, mode: 'full' as const },
-          { topic: 'testing', mode: 'full' as const },
-          { topic: 'testing', level: 'advanced' as const, mode: 'full' as const },
-          { topic: 'security', mode: 'full' as const },
-          { topic: 'security', level: 'intermediate' as const, mode: 'full' as const }
+          { query: 'performance', mode: 'full' as const },
+          { query: 'performance', level: 'beginner' as const, mode: 'full' as const },
+          { query: 'testing', mode: 'full' as const },
+          { query: 'testing', level: 'advanced' as const, mode: 'full' as const },
+          { query: 'security', mode: 'full' as const },
+          { query: 'security', level: 'intermediate' as const, mode: 'full' as const }
         ];
         
         const start = performance.now();
         
         const results = await Promise.all(
           operations.map(params => 
-            toolHandler.executeTool('analyze_best_practices', params)
+            toolHandler.executeTool('get_guidance', params)
           )
         );
         
@@ -1218,7 +1218,7 @@ describe('Performance Benchmarks', () => {
         
         // Analyze all topics to populate caches
         for (const topic of allTopics) {
-          await toolHandler.executeTool('analyze_best_practices', { topic , mode: 'full' });
+          await toolHandler.executeTool('get_guidance', { query: topic, mode: 'full' });
         }
         
         const memEnd = process.memoryUsage().heapUsed;
@@ -1241,7 +1241,7 @@ describe('Performance Benchmarks', () => {
         
         for (const topic of allTopics) {
           for (const level of experienceLevels) {
-            await toolHandler.executeTool('analyze_best_practices', {
+            await toolHandler.executeTool('get_guidance', {
               topic,
               experience_level: level
             , mode: 'full'
@@ -1270,7 +1270,7 @@ describe('Performance Benchmarks', () => {
         // Perform 1000 cached lookups
         for (let i = 0; i < 1000; i++) {
           const topic = allTopics[i % allTopics.length];
-          await toolHandler.executeTool('analyze_best_practices', { topic , mode: 'full' });
+          await toolHandler.executeTool('get_guidance', { topic , mode: 'full' });
         }
         
         const memMiddle = process.memoryUsage().heapUsed;
@@ -1280,7 +1280,7 @@ describe('Performance Benchmarks', () => {
         for (let i = 0; i < 1000; i++) {
           const topic = allTopics[i % allTopics.length];
           const level: Array<'beginner' | 'intermediate' | 'advanced'> = ['beginner', 'intermediate', 'advanced'];
-          await toolHandler.executeTool('analyze_best_practices', {
+          await toolHandler.executeTool('get_guidance', {
             topic,
             level: level[i % 3]
           , mode: 'full'

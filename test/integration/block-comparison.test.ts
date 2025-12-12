@@ -13,33 +13,23 @@ describe('Block Comparison and Pattern Guidance Tools', () => {
   });
 
   describe('Tool Registration', () => {
-    it('should register compare_hcl_blocks tool', () => {
+    it('should register get_guidance tool', () => {
       const tools = toolHandler.getAvailableTools();
-      const compareTool = tools.find(t => t.name === 'compare_hcl_blocks');
-      
-      expect(compareTool).toBeDefined();
-      expect(compareTool!.description).toContain('Compare two similar HCL blocks');
-      expect(compareTool!.inputSchema.properties.block1).toBeDefined();
-      expect(compareTool!.inputSchema.properties.block2).toBeDefined();
-      expect(compareTool!.inputSchema.properties.listComparisons).toBeDefined();
-    });
-
-    it('should register get_pattern_guidance tool', () => {
-      const tools = toolHandler.getAvailableTools();
-      const guidanceTool = tools.find(t => t.name === 'get_pattern_guidance');
+      const guidanceTool = tools.find(t => t.name === 'get_guidance');
       
       expect(guidanceTool).toBeDefined();
       expect(guidanceTool!.description).toContain('guidance');
-      expect(guidanceTool!.inputSchema.properties.scenario).toBeDefined();
-      expect(guidanceTool!.inputSchema.properties.listPatterns).toBeDefined();
+      expect(guidanceTool!.inputSchema.properties.query).toBeDefined();
+      expect(guidanceTool!.inputSchema.properties.type).toBeDefined();
+      expect(guidanceTool!.inputSchema.properties.listAll).toBeDefined();
     });
   });
 
-  describe('compare_hcl_blocks tool', () => {
+  describe('get_guidance tool', () => {
     describe('listing comparisons', () => {
       it('should list all available comparisons', async () => {
-        const result = await toolHandler.executeTool('compare_hcl_blocks', {
-          listComparisons: true
+        const result = await toolHandler.executeTool('get_guidance', {
+          listAll: true
         });
         
         expect(result.availableComparisons).toBeDefined();
@@ -51,9 +41,8 @@ describe('Block Comparison and Pattern Guidance Tools', () => {
 
     describe('comparing blocks', () => {
       it('should compare dependency vs dependencies', async () => {
-        const result = await toolHandler.executeTool('compare_hcl_blocks', {
-          block1: 'dependency',
-          block2: 'dependencies'
+        const result = await toolHandler.executeTool('get_guidance', {
+          query: 'dependency vs dependencies', type: 'comparison'
         });
         
         expect(result.found).toBe(true);
@@ -63,8 +52,8 @@ describe('Block Comparison and Pattern Guidance Tools', () => {
       });
 
       it('should compare using natural language query', async () => {
-        const result = await toolHandler.executeTool('compare_hcl_blocks', {
-          block1: 'inputs vs locals'
+        const result = await toolHandler.executeTool('get_guidance', {
+          query: 'inputs vs locals'
         });
         
         expect(result.found).toBe(true);
@@ -72,9 +61,8 @@ describe('Block Comparison and Pattern Guidance Tools', () => {
       });
 
       it('should include block details with syntax', async () => {
-        const result = await toolHandler.executeTool('compare_hcl_blocks', {
-          block1: 'dependency',
-          block2: 'dependencies'
+        const result = await toolHandler.executeTool('get_guidance', {
+          query: 'dependency vs dependencies', type: 'comparison'
         });
         
         expect(result.comparison.block1.name).toBe('dependency');
@@ -86,8 +74,8 @@ describe('Block Comparison and Pattern Guidance Tools', () => {
       });
 
       it('should include key differences', async () => {
-        const result = await toolHandler.executeTool('compare_hcl_blocks', {
-          block1: 'dependency vs dependencies'
+        const result = await toolHandler.executeTool('get_guidance', {
+          query: 'dependency vs dependencies'
         });
         
         expect(result.comparison.keyDifferences).toBeDefined();
@@ -100,9 +88,8 @@ describe('Block Comparison and Pattern Guidance Tools', () => {
       });
 
       it('should include when-to-use guidance', async () => {
-        const result = await toolHandler.executeTool('compare_hcl_blocks', {
-          block1: 'dependency',
-          block2: 'dependencies'
+        const result = await toolHandler.executeTool('get_guidance', {
+          query: 'dependency vs dependencies', type: 'comparison'
         });
         
         expect(result.comparison.whenToUse).toBeDefined();
@@ -111,9 +98,8 @@ describe('Block Comparison and Pattern Guidance Tools', () => {
       });
 
       it('should include common mistakes', async () => {
-        const result = await toolHandler.executeTool('compare_hcl_blocks', {
-          block1: 'dependency',
-          block2: 'dependencies'
+        const result = await toolHandler.executeTool('get_guidance', {
+          query: 'dependency vs dependencies', type: 'comparison'
         });
         
         expect(result.comparison.commonMistakes).toBeDefined();
@@ -121,9 +107,8 @@ describe('Block Comparison and Pattern Guidance Tools', () => {
       });
 
       it('should include related documentation links', async () => {
-        const result = await toolHandler.executeTool('compare_hcl_blocks', {
-          block1: 'dependency',
-          block2: 'dependencies'
+        const result = await toolHandler.executeTool('get_guidance', {
+          query: 'dependency vs dependencies', type: 'comparison'
         });
         
         expect(result.comparison.relatedDocs).toBeDefined();
@@ -134,7 +119,7 @@ describe('Block Comparison and Pattern Guidance Tools', () => {
 
     describe('error handling', () => {
       it('should return error when no blocks specified', async () => {
-        const result = await toolHandler.executeTool('compare_hcl_blocks', {});
+        const result = await toolHandler.executeTool('get_guidance', {});
         
         expect(result.error).toBeDefined();
         expect(result.availableComparisons).toBeDefined();
@@ -142,9 +127,8 @@ describe('Block Comparison and Pattern Guidance Tools', () => {
       });
 
       it('should return suggestions for unknown block', async () => {
-        const result = await toolHandler.executeTool('compare_hcl_blocks', {
-          block1: 'unknown_block',
-          block2: 'another_unknown'
+        const result = await toolHandler.executeTool('get_guidance', {
+          query: 'unknown_block',
         });
         
         expect(result.found).toBe(false);
@@ -153,8 +137,8 @@ describe('Block Comparison and Pattern Guidance Tools', () => {
       });
 
       it('should suggest related comparisons for single block', async () => {
-        const result = await toolHandler.executeTool('compare_hcl_blocks', {
-          block1: 'dependency'
+        const result = await toolHandler.executeTool('get_guidance', {
+          query: 'dependency', type: 'pattern'
         });
         
         expect(result.found).toBe(false);
@@ -164,8 +148,8 @@ describe('Block Comparison and Pattern Guidance Tools', () => {
 
     describe('all available comparisons', () => {
       it('should compare include patterns', async () => {
-        const result = await toolHandler.executeTool('compare_hcl_blocks', {
-          block1: 'include vs multiple includes'
+        const result = await toolHandler.executeTool('get_guidance', {
+          query: 'include vs multiple includes'
         });
         
         expect(result.found).toBe(true);
@@ -173,9 +157,9 @@ describe('Block Comparison and Pattern Guidance Tools', () => {
       });
 
       it('should compare generate vs terraform.source', async () => {
-        const result = await toolHandler.executeTool('compare_hcl_blocks', {
-          block1: 'generate',
-          block2: 'terraform.source'
+        const result = await toolHandler.executeTool('get_guidance', {
+          query: 'generate vs terraform.source',
+          type: 'comparison'
         });
         
         expect(result.found).toBe(true);
@@ -183,8 +167,8 @@ describe('Block Comparison and Pattern Guidance Tools', () => {
       });
 
       it('should compare before_hook vs after_hook', async () => {
-        const result = await toolHandler.executeTool('compare_hcl_blocks', {
-          block1: 'before_hook vs after_hook'
+        const result = await toolHandler.executeTool('get_guidance', {
+          query: 'before_hook vs after_hook'
         });
         
         expect(result.found).toBe(true);
@@ -192,9 +176,9 @@ describe('Block Comparison and Pattern Guidance Tools', () => {
       });
 
       it('should compare remote_state vs dependency', async () => {
-        const result = await toolHandler.executeTool('compare_hcl_blocks', {
-          block1: 'remote_state',
-          block2: 'dependency'
+        const result = await toolHandler.executeTool('get_guidance', {
+          query: 'remote_state vs dependency',
+          type: 'comparison'
         });
         
         expect(result.found).toBe(true);
@@ -203,24 +187,25 @@ describe('Block Comparison and Pattern Guidance Tools', () => {
     });
   });
 
-  describe('get_pattern_guidance tool', () => {
+  describe('get_guidance tool', () => {
     describe('listing patterns', () => {
       it('should list all available patterns', async () => {
-        const result = await toolHandler.executeTool('get_pattern_guidance', {
-          listPatterns: true
+        const result = await toolHandler.executeTool('get_guidance', {
+          listAll: true
         });
         
+        expect(result.availableBestPracticeTopics).toBeDefined();
         expect(result.availablePatternTopics).toBeDefined();
         expect(result.availablePatternTopics.length).toBeGreaterThanOrEqual(3);
-        expect(result.relatedBlockComparisons).toBeDefined();
+        expect(result.availableComparisons).toBeDefined();
         expect(result.usage).toBeDefined();
       });
     });
 
     describe('getting guidance', () => {
       it('should get guidance for dependency management', async () => {
-        const result = await toolHandler.executeTool('get_pattern_guidance', {
-          scenario: 'managing dependencies'
+        const result = await toolHandler.executeTool('get_guidance', {
+          query: 'managing dependencies', type: 'pattern'
         });
         
         expect(result.found).toBe(true);
@@ -229,8 +214,8 @@ describe('Block Comparison and Pattern Guidance Tools', () => {
       });
 
       it('should get guidance for configuration inheritance', async () => {
-        const result = await toolHandler.executeTool('get_pattern_guidance', {
-          scenario: 'configuration inheritance'
+        const result = await toolHandler.executeTool('get_guidance', {
+          query: 'configuration inheritance'
         });
         
         expect(result.found).toBe(true);
@@ -238,8 +223,8 @@ describe('Block Comparison and Pattern Guidance Tools', () => {
       });
 
       it('should get guidance for backend state', async () => {
-        const result = await toolHandler.executeTool('get_pattern_guidance', {
-          scenario: 'backend state management'
+        const result = await toolHandler.executeTool('get_guidance', {
+          query: 'backend state management'
         });
         
         expect(result.found).toBe(true);
@@ -247,8 +232,8 @@ describe('Block Comparison and Pattern Guidance Tools', () => {
       });
 
       it('should include decision criteria', async () => {
-        const result = await toolHandler.executeTool('get_pattern_guidance', {
-          scenario: 'managing dependencies'
+        const result = await toolHandler.executeTool('get_guidance', {
+          query: 'managing dependencies', type: 'pattern'
         });
         
         expect(result.guidance.decisionCriteria).toBeDefined();
@@ -261,8 +246,8 @@ describe('Block Comparison and Pattern Guidance Tools', () => {
       });
 
       it('should include patterns with examples', async () => {
-        const result = await toolHandler.executeTool('get_pattern_guidance', {
-          scenario: 'managing dependencies'
+        const result = await toolHandler.executeTool('get_guidance', {
+          query: 'managing dependencies', type: 'pattern'
         });
         
         expect(result.guidance.patterns).toBeDefined();
@@ -277,8 +262,8 @@ describe('Block Comparison and Pattern Guidance Tools', () => {
       });
 
       it('should include related comparisons', async () => {
-        const result = await toolHandler.executeTool('get_pattern_guidance', {
-          scenario: 'managing dependencies'
+        const result = await toolHandler.executeTool('get_guidance', {
+          query: 'managing dependencies', type: 'pattern'
         });
         
         expect(result.guidance.relatedComparisons).toBeDefined();
@@ -289,8 +274,8 @@ describe('Block Comparison and Pattern Guidance Tools', () => {
 
     describe('keyword matching', () => {
       it('should find by keyword "dependency"', async () => {
-        const result = await toolHandler.executeTool('get_pattern_guidance', {
-          scenario: 'dependency order execution'
+        const result = await toolHandler.executeTool('get_guidance', {
+          query: 'dependency order execution'
         });
         
         expect(result.found).toBe(true);
@@ -298,8 +283,8 @@ describe('Block Comparison and Pattern Guidance Tools', () => {
       });
 
       it('should find by keyword "include"', async () => {
-        const result = await toolHandler.executeTool('get_pattern_guidance', {
-          scenario: 'include dry parent'
+        const result = await toolHandler.executeTool('get_guidance', {
+          query: 'include dry parent'
         });
         
         expect(result.found).toBe(true);
@@ -307,8 +292,8 @@ describe('Block Comparison and Pattern Guidance Tools', () => {
       });
 
       it('should find by keyword "s3" or "backend"', async () => {
-        const result = await toolHandler.executeTool('get_pattern_guidance', {
-          scenario: 's3 backend storage'
+        const result = await toolHandler.executeTool('get_guidance', {
+          query: 's3 backend storage'
         });
         
         expect(result.found).toBe(true);
@@ -318,7 +303,7 @@ describe('Block Comparison and Pattern Guidance Tools', () => {
 
     describe('error handling', () => {
       it('should return error when no scenario specified', async () => {
-        const result = await toolHandler.executeTool('get_pattern_guidance', {});
+        const result = await toolHandler.executeTool('get_guidance', {});
         
         expect(result.error).toBeDefined();
         expect(result.availablePatternTopics).toBeDefined();
@@ -326,8 +311,8 @@ describe('Block Comparison and Pattern Guidance Tools', () => {
       });
 
       it('should return suggestions for unknown scenario', async () => {
-        const result = await toolHandler.executeTool('get_pattern_guidance', {
-          scenario: 'quantum computing in terragrunt'
+        const result = await toolHandler.executeTool('get_guidance', {
+          query: 'quantum computing in terragrunt'
         });
         
         expect(result.found).toBe(false);
@@ -340,16 +325,16 @@ describe('Block Comparison and Pattern Guidance Tools', () => {
   describe('Tool Integration', () => {
     it('should have consistent pattern-comparison references', async () => {
       // Get a pattern that references comparisons
-      const guidanceResult = await toolHandler.executeTool('get_pattern_guidance', {
-        scenario: 'managing dependencies'
+      const guidanceResult = await toolHandler.executeTool('get_guidance', {
+        query: 'managing dependencies', type: 'pattern'
       });
       
       expect(guidanceResult.found).toBe(true);
       
       // Verify referenced comparisons exist
       for (const compRef of guidanceResult.guidance.relatedComparisons) {
-        const compResult = await toolHandler.executeTool('compare_hcl_blocks', {
-          block1: compRef
+        const compResult = await toolHandler.executeTool('get_guidance', {
+          query: compRef
         });
         
         // Either found or suggestions (comparison name format matches tool input)
@@ -359,12 +344,12 @@ describe('Block Comparison and Pattern Guidance Tools', () => {
 
     it('should provide comprehensive dependency coverage', async () => {
       // Both tools should cover dependency-related topics
-      const comparison = await toolHandler.executeTool('compare_hcl_blocks', {
-        block1: 'dependency vs dependencies'
+      const comparison = await toolHandler.executeTool('get_guidance', {
+        query: 'dependency vs dependencies'
       });
       
-      const guidance = await toolHandler.executeTool('get_pattern_guidance', {
-        scenario: 'managing dependencies'
+      const guidance = await toolHandler.executeTool('get_guidance', {
+        query: 'managing dependencies', type: 'pattern'
       });
       
       expect(comparison.found).toBe(true);

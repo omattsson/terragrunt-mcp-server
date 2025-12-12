@@ -22,7 +22,7 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
       });
 
       expect(result).toBeDefined();
-      expect(result.query).toBe('terraform { source = "..." }');
+      expect(result.topic).toBe('terraform { source = "..." }');
       expect(result.results).toBeDefined();
       expect(Array.isArray(result.results)).toBe(true);
     });
@@ -115,7 +115,7 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
       });
 
       expect(result).toBeDefined();
-      expect(result.query).toBe(longQuery);
+      expect(result.topic).toBe(longQuery);
       expect(result.results).toBeDefined();
       expect(Array.isArray(result.results)).toBe(true);
     });
@@ -129,7 +129,7 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
       });
 
       expect(result).toBeDefined();
-      expect(result.query).toBe(veryLongQuery);
+      expect(result.topic).toBe(veryLongQuery);
       expect(result.results).toBeDefined();
       expect(Array.isArray(result.results)).toBe(true);
       // Very long queries might return 0 results - that's OK
@@ -696,8 +696,8 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
         const longTopic = 'state_management'.repeat(100); // ~1500 chars
         const startTime = Date.now();
         
-        const result = await toolHandler.executeTool('analyze_best_practices', {
-          topic: longTopic
+        const result = await toolHandler.executeTool('get_guidance', {
+          query: longTopic
         , mode: 'full'
         });
 
@@ -715,8 +715,8 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
       }, 10000);
 
       it('should handle special characters in topic', async () => {
-        const result = await toolHandler.executeTool('analyze_best_practices', {
-          topic: 'state-management@#$%'
+        const result = await toolHandler.executeTool('get_guidance', {
+          query: 'state-management@#$%'
         , mode: 'full'
         });
 
@@ -732,8 +732,8 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
       });
 
       it('should handle unicode and emoji in topic', async () => {
-        const result = await toolHandler.executeTool('analyze_best_practices', {
-          topic: 'state_management 🚀 配置'
+        const result = await toolHandler.executeTool('get_guidance', {
+          query: 'state_management 🚀 配置'
         , mode: 'full'
         });
 
@@ -745,8 +745,8 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
       });
 
       it('should handle empty string topic with helpful error', async () => {
-        const result = await toolHandler.executeTool('analyze_best_practices', {
-          topic: ''
+        const result = await toolHandler.executeTool('get_guidance', {
+          query: ''
         , mode: 'full'
         });
 
@@ -757,8 +757,8 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
       });
 
       it('should handle whitespace-only topic', async () => {
-        const result = await toolHandler.executeTool('analyze_best_practices', {
-          topic: '   \t\n   '
+        const result = await toolHandler.executeTool('get_guidance', {
+          query: '   \t\n   '
         , mode: 'full'
         });
 
@@ -773,8 +773,8 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
       });
 
       it('should handle topic with only numbers and symbols', async () => {
-        const result = await toolHandler.executeTool('analyze_best_practices', {
-          topic: '12345!@#$%'
+        const result = await toolHandler.executeTool('get_guidance', {
+          query: '12345!@#$%'
         , mode: 'full'
         });
 
@@ -789,8 +789,8 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
 
     describe('Experience Level Edge Cases', () => {
       it('should handle invalid experience level gracefully', async () => {
-        const result = await toolHandler.executeTool('analyze_best_practices', {
-          topic: 'state_management',
+        const result = await toolHandler.executeTool('get_guidance', {
+          query: 'state_management',
           level: 'expert' as any // Invalid level
         , mode: 'full'
         });
@@ -804,8 +804,8 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
       });
 
       it('should handle case variations in experience level', async () => {
-        const result = await toolHandler.executeTool('analyze_best_practices', {
-          topic: 'state_management',
+        const result = await toolHandler.executeTool('get_guidance', {
+          query: 'state_management',
           level: 'Beginner' as any // Uppercase
         , mode: 'full'
         });
@@ -818,8 +818,8 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
       });
 
       it('should handle null/undefined experience level', async () => {
-        const result = await toolHandler.executeTool('analyze_best_practices', {
-          topic: 'state_management',
+        const result = await toolHandler.executeTool('get_guidance', {
+          query: 'state_management',
           level: undefined
         , mode: 'full'
         });
@@ -836,8 +836,8 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
       });
 
       it('should handle empty string experience level', async () => {
-        const result = await toolHandler.executeTool('analyze_best_practices', {
-          topic: 'state_management',
+        const result = await toolHandler.executeTool('get_guidance', {
+          query: 'state_management',
           level: '' as any
         , mode: 'full'
         });
@@ -852,8 +852,8 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
 
     describe('Sparse Documentation Scenarios', () => {
       it('should return fuzzy suggestions for unknown topic', async () => {
-        const result = await toolHandler.executeTool('analyze_best_practices', {
-          topic: 'state_managment' // Typo: missing 'e'
+        const result = await toolHandler.executeTool('get_guidance', {
+          query: 'state_managment' // Typo: missing 'e'
         , mode: 'full'
         });
 
@@ -877,8 +877,8 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
 
       it('should handle topic with minimal documentation', async () => {
         // Using a very specific/niche topic that likely has sparse data
-        const result = await toolHandler.executeTool('analyze_best_practices', {
-          topic: 'testing'
+        const result = await toolHandler.executeTool('get_guidance', {
+          query: 'testing'
         , mode: 'full'
         });
 
@@ -897,8 +897,8 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
       });
 
       it('should verify examples array structure for valid topic', async () => {
-        const result = await toolHandler.executeTool('analyze_best_practices', {
-          topic: 'state_management'
+        const result = await toolHandler.executeTool('get_guidance', {
+          query: 'state_management'
         , mode: 'full'
         });
 
@@ -913,8 +913,8 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
       });
 
       it('should verify antipatterns array structure for valid topic', async () => {
-        const result = await toolHandler.executeTool('analyze_best_practices', {
-          topic: 'state_management'
+        const result = await toolHandler.executeTool('get_guidance', {
+          query: 'state_management'
         , mode: 'full'
         });
 
@@ -932,8 +932,8 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
 
     describe('Pattern Extraction and Recommendation Quality', () => {
       it('should handle recommendations with all required fields', async () => {
-        const result = await toolHandler.executeTool('analyze_best_practices', {
-          topic: 'state_management'
+        const result = await toolHandler.executeTool('get_guidance', {
+          query: 'state_management'
         , mode: 'full'
         });
 
@@ -965,8 +965,8 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
       });
 
       it('should handle topic with very specific keywords', async () => {
-        const result = await toolHandler.executeTool('analyze_best_practices', {
-          topic: 'module_organization'
+        const result = await toolHandler.executeTool('get_guidance', {
+          query: 'module_organization'
         , mode: 'full'
         });
 
@@ -984,8 +984,8 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
       });
 
       it('should verify experience notes structure', async () => {
-        const result = await toolHandler.executeTool('analyze_best_practices', {
-          topic: 'dependencies'
+        const result = await toolHandler.executeTool('get_guidance', {
+          query: 'dependencies'
         , mode: 'full'
         });
 
@@ -1003,8 +1003,8 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
 
     describe('Recommendation Generation Limits and Performance', () => {
       it('should return empty recommendations for completely unknown topic', async () => {
-        const result = await toolHandler.executeTool('analyze_best_practices', {
-          topic: 'completely_unknown_topic_xyz'
+        const result = await toolHandler.executeTool('get_guidance', {
+          query: 'completely_unknown_topic_xyz'
         , mode: 'full'
         });
 
@@ -1021,8 +1021,8 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
       });
 
       it('should limit recommendations to reasonable number (max 20)', async () => {
-        const result = await toolHandler.executeTool('analyze_best_practices', {
-          topic: 'state_management'
+        const result = await toolHandler.executeTool('get_guidance', {
+          query: 'state_management'
         , mode: 'full'
         });
 
@@ -1035,8 +1035,8 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
       });
 
       it('should handle duplicate detection via frequency scoring', async () => {
-        const result = await toolHandler.executeTool('analyze_best_practices', {
-          topic: 'state_management'
+        const result = await toolHandler.executeTool('get_guidance', {
+          query: 'state_management'
         , mode: 'full'
         });
 
@@ -1056,8 +1056,8 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
       it('should complete unknown topic fuzzy matching in reasonable time', async () => {
         const startTime = Date.now();
         
-        const result = await toolHandler.executeTool('analyze_best_practices', {
-          topic: 'stat_managemnt' // Multiple typos
+        const result = await toolHandler.executeTool('get_guidance', {
+          query: 'stat_managemnt' // Multiple typos
         , mode: 'full'
         });
 
@@ -1072,16 +1072,16 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
 
       it('should have fast performance for cached valid topic analysis', async () => {
         // First call to warm up cache
-        await toolHandler.executeTool('analyze_best_practices', {
-          topic: 'state_management'
+        await toolHandler.executeTool('get_guidance', {
+          query: 'state_management'
         , mode: 'full'
         });
 
         // Second call should be cached and fast
         const startTime = Date.now();
         
-        const result = await toolHandler.executeTool('analyze_best_practices', {
-          topic: 'state_management'
+        const result = await toolHandler.executeTool('get_guidance', {
+          query: 'state_management'
         , mode: 'full'
         });
 

@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { ToolHandler } from '../../src/handlers/tools.js';
 
-describe('analyze_best_practices Tool Integration', () => {
+describe('get_guidance Tool Integration', () => {
   let toolHandler: ToolHandler;
 
   beforeAll(() => {
@@ -9,31 +9,31 @@ describe('analyze_best_practices Tool Integration', () => {
   });
 
   describe('Tool Definition', () => {
-    it('includes analyze_best_practices in available tools', () => {
+    it('includes get_guidance in available tools', () => {
       const tools = toolHandler.getAvailableTools();
-      const tool = tools.find(t => t.name === 'analyze_best_practices');
+      const tool = tools.find(t => t.name === 'get_guidance');
       
       expect(tool).toBeDefined();
-      expect(tool?.name).toBe('analyze_best_practices');
-      expect(tool?.description).toContain('confidence');
-      expect(tool?.description).toContain('mode');
+      expect(tool?.name).toBe('get_guidance');
+      expect(tool?.description).toContain('guidance');
+      expect(tool?.description).toContain('query');
     });
 
     it('has proper input schema', () => {
       const tools = toolHandler.getAvailableTools();
-      const tool = tools.find(t => t.name === 'analyze_best_practices');
+      const tool = tools.find(t => t.name === 'get_guidance');
       
       expect(tool?.inputSchema.type).toBe('object');
-      expect(tool?.inputSchema.properties.topic).toBeDefined();
+      expect(tool?.inputSchema.properties.query).toBeDefined();
       expect(tool?.inputSchema.properties.level).toBeDefined();
-      expect(tool?.inputSchema.required).toContain('topic');
+      expect(tool?.inputSchema.required).toEqual([]);
     });
   });
 
   describe('Valid Topics', () => {
     it('returns confidence score for state_management topic', async () => {
-      const result = await toolHandler.executeTool('analyze_best_practices', {
-        topic: 'state_management'
+      const result = await toolHandler.executeTool('get_guidance', {
+        query: 'state_management'
       });
 
       expect(result).toBeDefined();
@@ -45,8 +45,8 @@ describe('analyze_best_practices Tool Integration', () => {
     });
 
     it('returns recommendations for module_organization topic', async () => {
-      const result = await toolHandler.executeTool('analyze_best_practices', {
-        topic: 'module_organization',
+      const result = await toolHandler.executeTool('get_guidance', {
+        query: 'module_organization',
         mode: 'full'
       });
 
@@ -57,8 +57,8 @@ describe('analyze_best_practices Tool Integration', () => {
     });
 
     it('includes summary with confidence level', async () => {
-      const result = await toolHandler.executeTool('analyze_best_practices', {
-        topic: 'state_management'
+      const result = await toolHandler.executeTool('get_guidance', {
+        query: 'state_management'
       });
 
       expect(result.summary).toBeDefined();
@@ -68,8 +68,8 @@ describe('analyze_best_practices Tool Integration', () => {
     });
 
     it('returns all required fields', async () => {
-      const result = await toolHandler.executeTool('analyze_best_practices', {
-        topic: 'dependencies',
+      const result = await toolHandler.executeTool('get_guidance', {
+        query: 'dependencies',
         mode: 'full'
       });
 
@@ -85,8 +85,8 @@ describe('analyze_best_practices Tool Integration', () => {
 
   describe('Experience Level Filtering', () => {
     it('filters by beginner level', async () => {
-      const result = await toolHandler.executeTool('analyze_best_practices', {
-        topic: 'state_management',
+      const result = await toolHandler.executeTool('get_guidance', {
+        query: 'state_management',
         level: 'beginner'
       });
 
@@ -96,8 +96,8 @@ describe('analyze_best_practices Tool Integration', () => {
     });
 
     it('filters by intermediate level', async () => {
-      const result = await toolHandler.executeTool('analyze_best_practices', {
-        topic: 'state_management',
+      const result = await toolHandler.executeTool('get_guidance', {
+        query: 'state_management',
         level: 'intermediate'
       });
 
@@ -106,8 +106,8 @@ describe('analyze_best_practices Tool Integration', () => {
     });
 
     it('filters by advanced level', async () => {
-      const result = await toolHandler.executeTool('analyze_best_practices', {
-        topic: 'state_management',
+      const result = await toolHandler.executeTool('get_guidance', {
+        query: 'state_management',
         level: 'advanced'
       });
 
@@ -118,8 +118,9 @@ describe('analyze_best_practices Tool Integration', () => {
 
   describe('Fuzzy Matching and Suggestions', () => {
     it('provides intelligent suggestions for typos', async () => {
-      const result = await toolHandler.executeTool('analyze_best_practices', {
-        topic: 'state_managment' // typo: missing 'e'
+      const result = await toolHandler.executeTool('get_guidance', {
+        query: 'state_managment', // typo: missing 'e'
+        type: 'best-practices'
       });
 
       expect(result).toBeDefined();
@@ -133,8 +134,9 @@ describe('analyze_best_practices Tool Integration', () => {
     });
 
     it('suggests topics for semantic queries', async () => {
-      const result = await toolHandler.executeTool('analyze_best_practices', {
-        topic: 'remote state' // semantic query
+      const result = await toolHandler.executeTool('get_guidance', {
+        query: 'remote state', // semantic query
+        type: 'best-practices'
       });
 
       expect(result).toBeDefined();
@@ -147,8 +149,9 @@ describe('analyze_best_practices Tool Integration', () => {
     });
 
     it('handles completely unknown topics', async () => {
-      const result = await toolHandler.executeTool('analyze_best_practices', {
-        topic: 'xyz_unknown_gibberish'
+      const result = await toolHandler.executeTool('get_guidance', {
+        query: 'xyz_unknown_gibberish',
+        type: 'best-practices'
       });
 
       expect(result).toBeDefined();
@@ -160,14 +163,14 @@ describe('analyze_best_practices Tool Integration', () => {
 
   describe('Error Handling', () => {
     it('requires topic parameter', async () => {
-      const result = await toolHandler.executeTool('analyze_best_practices', {});
+      const result = await toolHandler.executeTool('get_guidance', {});
       
       expect(result).toBeDefined();
       expect(result.error).toBeDefined();
     });
 
     it('handles missing arguments gracefully', async () => {
-      const result = await toolHandler.executeTool('analyze_best_practices');
+      const result = await toolHandler.executeTool('get_guidance');
       
       expect(result).toBeDefined();
       expect(result.error).toBeDefined();
@@ -187,8 +190,8 @@ describe('analyze_best_practices Tool Integration', () => {
 
     supportedTopics.forEach(topic => {
       it(`returns valid results for ${topic}`, async () => {
-        const result = await toolHandler.executeTool('analyze_best_practices', {
-          topic,
+        const result = await toolHandler.executeTool('get_guidance', {
+          query: topic,
           mode: 'full'
         });
 

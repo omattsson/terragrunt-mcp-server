@@ -78,6 +78,18 @@ interface FunctionReferenceArgs {
     pageSize?: number;
 }
 
+/**
+ * Type-safe arguments for unified get_guidance tool
+ * Intelligent routing based on query content and optional type hint
+ */
+interface GuidanceArgs {
+    query?: string;
+    type?: 'best-practices' | 'comparison' | 'pattern';
+    mode?: 'summary' | 'full';  // For best practices
+    level?: 'beginner' | 'intermediate' | 'advanced';  // For best practices
+    listAll?: boolean;  // List all available guidance
+}
+
 export class ToolHandler {
     private resourceHandler: ResourceHandler;
     private docsManager: TerragruntDocsManager;
@@ -354,28 +366,38 @@ export class ToolHandler {
                 }
             },
             {
-                name: 'analyze_best_practices',
-                description: 'Analyze best practices for a specific Terragrunt topic with confidence scoring and fuzzy matching (suggests corrections for typos). Use mode=summary for overview (70-80% smaller), mode=full for complete details with code examples.',
+                name: 'get_guidance',
+                description: 'Get best practices, comparisons, or pattern guidance for Terragrunt configurations. Intelligently routes based on query: comparison keywords ("vs", "versus") → comparisons; known topics (security, performance, etc.) → best practices; scenarios → patterns. Supports explicit type hints and listing all available guidance.',
                 inputSchema: {
                     type: 'object',
                     properties: {
-                        topic: {
+                        query: {
                             type: 'string',
-                            description: 'Topic to analyze. Supported topics: project_structure, environment_config, module_organization, state_management, dependencies, ci_cd, security, performance, testing. Typos will trigger intelligent suggestions.'
+                            description: 'What to get guidance on: a topic (e.g., "security"), comparison query (e.g., "dependency vs dependencies"), or scenario (e.g., "managing dependencies")'
+                        },
+                        type: {
+                            type: 'string',
+                            enum: ['best-practices', 'comparison', 'pattern'],
+                            description: 'Optional routing hint to force specific guidance type'
                         },
                         mode: {
                             type: 'string',
                             enum: ['summary', 'full'],
-                            description: 'Response detail level: summary (titles, short rationale, counts) or full (complete recommendations with code examples)',
+                            description: 'Response detail level for best practices: summary (concise) or full (complete with examples)',
                             default: 'summary'
                         },
                         level: {
                             type: 'string',
-                            description: 'Optional experience level filter (beginner, intermediate, advanced)',
-                            enum: ['beginner', 'intermediate', 'advanced']
+                            enum: ['beginner', 'intermediate', 'advanced'],
+                            description: 'Experience level filter for best practices'
+                        },
+                        listAll: {
+                            type: 'boolean',
+                            description: 'If true, list all available topics, comparisons, and patterns',
+                            default: false
                         }
                     },
-                    required: ['topic']
+                    required: []
                 }
             },
             {
@@ -573,48 +595,6 @@ export class ToolHandler {
                 }
             },
             {
-                name: 'compare_hcl_blocks',
-                description: 'Compare two similar HCL blocks and explain their differences, use cases, and when to use each. Supports natural language queries like "dependency vs dependencies" or separate block names. Uses fuzzy matching for typo tolerance.',
-                inputSchema: {
-                    type: 'object',
-                    properties: {
-                        block1: {
-                            type: 'string',
-                            description: 'First block name to compare (e.g., "dependency") or a comparison query (e.g., "dependency vs dependencies")'
-                        },
-                        block2: {
-                            type: 'string',
-                            description: 'Second block name to compare (optional if block1 contains both, e.g., "dependency vs dependencies")'
-                        },
-                        listComparisons: {
-                            type: 'boolean',
-                            description: 'If true, list all available block comparisons',
-                            default: false
-                        }
-                    },
-                    required: []
-                }
-            },
-            {
-                name: 'get_pattern_guidance',
-                description: 'Get guidance on choosing between Terragrunt configuration patterns for common scenarios like dependency management, configuration inheritance, and state management. Returns decision criteria, pattern options with pros/cons, and code examples.',
-                inputSchema: {
-                    type: 'object',
-                    properties: {
-                        scenario: {
-                            type: 'string',
-                            description: 'The scenario or pattern to get guidance for (e.g., "managing dependencies", "configuration inheritance", "backend state")'
-                        },
-                        listPatterns: {
-                            type: 'boolean',
-                            description: 'If true, list all available pattern guidance topics',
-                            default: false
-                        }
-                    },
-                    required: []
-                }
-            },
-            {
                 name: 'get_server_metrics',
                 description: 'Get server metrics for tools and resources with optional filtering and reset functionality',
                 inputSchema: {
@@ -681,14 +661,13 @@ export class ToolHandler {
                         args?.listBlocks ?? false
                     );
 
-                case 'analyze_best_practices':
-                    if (!args?.topic) {
-                        return { error: 'topic parameter is required' };
-                    }
-                    return await this.analyzeBestPractices(
-                        args.topic,
+                case 'get_guidance':
+                    return await this.getGuidance(
+                        args?.query,
+                        args?.type,
                         args?.mode ?? 'summary',
-                        args?.level
+                        args?.level,
+                        args?.listAll ?? false
                     );
 
                 case 'generate_terragrunt_config':
@@ -759,19 +738,6 @@ export class ToolHandler {
                         args.error_message,
                         args.context,
                         args.options
-                    );
-
-                case 'compare_hcl_blocks':
-                    return this.compareHclBlocks(
-                        args?.block1,
-                        args?.block2,
-                        args?.listComparisons ?? false
-                    );
-
-                case 'get_pattern_guidance':
-                    return this.getPatternGuidance(
-                        args?.scenario,
-                        args?.listPatterns ?? false
                     );
 
                 case 'get_server_metrics':
@@ -2009,6 +1975,100 @@ export class ToolHandler {
                 error: error instanceof Error ? error.message : 'Failed to diagnose error'
             };
         }
+    }
+
+    /**
+     * Unified guidance router - intelligently routes to best practices, comparisons, or patterns
+     */
+    private async getGuidance(
+        query?: string,
+        type?: 'best-practices' | 'comparison' | 'pattern',
+        mode: 'summary' | 'full' = 'summary',
+        level?: 'beginner' | 'intermediate' | 'advanced',
+        listAll: boolean = false
+    ): Promise<any> {
+        // List all available guidance
+        if (listAll) {
+            const bestPracticeTopics = [
+                'project_structure', 'environment_config', 'module_organization',
+                'state_management', 'dependencies', 'ci_cd', 'security',
+                'performance', 'testing'
+            ];
+            const comparisons = this.blockComparisonManager.getAvailableComparisons();
+            const patterns = this.blockComparisonManager.getAvailablePatterns();
+            
+            return {
+                availableBestPracticeTopics: bestPracticeTopics,
+                availableComparisons: comparisons,
+                availablePatternTopics: patterns,
+                usage: 'Use query parameter with optional type hint. Queries with "vs"/"versus" auto-route to comparisons. Known topics route to best practices. Other queries route to patterns.'
+            };
+        }
+
+        // If query is missing/empty, show all available guidance (help/listing)
+        if (!query || query.trim() === '') {
+            const bestPracticeTopics = [
+                'project_structure', 'environment_config', 'module_organization',
+                'state_management', 'dependencies', 'ci_cd', 'security',
+                'performance', 'testing'
+            ];
+            const comparisons = this.blockComparisonManager.getAvailableComparisons();
+            const patterns = this.blockComparisonManager.getAvailablePatterns();
+            
+            return {
+                availableBestPracticeTopics: bestPracticeTopics,
+                availableComparisons: comparisons,
+                availablePatternTopics: patterns,
+                usage: 'Use query parameter with optional type hint. Queries with "vs"/"versus" auto-route to comparisons. Known topics route to best practices. Other queries route to patterns.'
+            };
+        }
+
+        const normalizedQuery = query.toLowerCase().trim();
+
+        // Explicit type hint takes precedence
+        if (type === 'best-practices') {
+            return await this.analyzeBestPractices(query, mode, level);
+        }
+        if (type === 'comparison') {
+            return this.compareHclBlocks(query, undefined, false);
+        }
+        if (type === 'pattern') {
+            return this.getPatternGuidance(query, false);
+        }
+
+        // Intelligent detection based on query content
+        
+        // 1. Check for comparison keywords
+        const comparisonKeywords = [' vs ', ' versus ', ' compared to '];
+        const hasComparisonKeyword = comparisonKeywords.some(kw => normalizedQuery.includes(kw));
+        
+        if (hasComparisonKeyword) {
+            return this.compareHclBlocks(query, undefined, false);
+        }
+
+        // 2. Check for known best practice topics
+        const bestPracticeTopics = [
+            'project_structure', 'project structure',
+            'environment_config', 'environment config',
+            'module_organization', 'module organization',
+            'state_management', 'state management',
+            'dependencies', 'dependency',
+            'ci_cd', 'ci/cd', 'ci cd',
+            'security',
+            'performance',
+            'testing'
+        ];
+        
+        const matchesBestPracticeTopic = bestPracticeTopics.some(topic => 
+            normalizedQuery.includes(topic) || topic.includes(normalizedQuery)
+        );
+        
+        if (matchesBestPracticeTopic) {
+            return await this.analyzeBestPractices(query, mode, level);
+        }
+
+        // 3. Default to pattern guidance (most flexible matcher)
+        return this.getPatternGuidance(query, false);
     }
 
     /**

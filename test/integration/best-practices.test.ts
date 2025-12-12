@@ -9,28 +9,36 @@ describe('Best Practices Integration Tests', () => {
   });
 
   describe('Tool Registration', () => {
-    it('includes analyze_best_practices in available tools', () => {
+    it('includes get_guidance in available tools', () => {
       const tools = toolHandler.getAvailableTools();
-      const bestPracticesTool = tools.find(t => t.name === 'analyze_best_practices');
+      const bestPracticesTool = tools.find(t => t.name === 'get_guidance');
 
       expect(bestPracticesTool).toBeDefined();
       expect(bestPracticesTool?.description).toContain('best practices');
-      expect(bestPracticesTool?.inputSchema.properties.topic).toBeDefined();
+      expect(bestPracticesTool?.inputSchema.properties.query).toBeDefined();
       expect(bestPracticesTool?.inputSchema.properties.level).toBeDefined();
+      expect(bestPracticesTool?.inputSchema.properties.type).toBeDefined();
     });
 
-    it('has correct schema for analyze_best_practices', () => {
+    it('has correct schema for get_guidance', () => {
       const tools = toolHandler.getAvailableTools();
-      const tool = tools.find(t => t.name === 'analyze_best_practices');
+      const tool = tools.find(t => t.name === 'get_guidance');
 
-      expect(tool?.inputSchema.required).toContain('topic');
+      // No required parameters - all optional
+      expect(tool?.inputSchema.required).toEqual([]);
       
-      // Topic should NOT have enum constraint to enable fuzzy matching
-      expect(tool?.inputSchema.properties.topic.type).toBe('string');
-      expect(tool?.inputSchema.properties.topic.enum).toBeUndefined();
-      expect(tool?.inputSchema.properties.topic.description).toContain('Supported topics');
+      // Query should be string without enum constraint
+      expect(tool?.inputSchema.properties.query.type).toBe('string');
+      expect(tool?.inputSchema.properties.query.enum).toBeUndefined();
       
-      // Level should still have enum constraint
+      // Type should have enum for guidance types
+      expect(tool?.inputSchema.properties.type.enum).toEqual([
+        'best-practices',
+        'comparison',
+        'pattern'
+      ]);
+      
+      // Level should have enum constraint
       expect(tool?.inputSchema.properties.level.enum).toEqual([
         'beginner',
         'intermediate',
@@ -52,7 +60,7 @@ describe('Best Practices Integration Tests', () => {
 
     for (const topic of topics) {
       it(`analyzes ${topic} topic successfully`, async () => {
-        const result = await toolHandler.executeTool('analyze_best_practices', { topic, mode: 'full' });
+        const result = await toolHandler.executeTool('get_guidance', { query: topic, mode: 'full' });
 
         expect(result).toBeDefined();
         expect(result.topic).toBe(topic);
@@ -68,8 +76,8 @@ describe('Best Practices Integration Tests', () => {
 
   describe('Experience Level Filtering', () => {
     it('filters results by beginner level', async () => {
-      const result = await toolHandler.executeTool('analyze_best_practices', {
-        topic: 'state_management',
+      const result = await toolHandler.executeTool('get_guidance', {
+        query: 'state_management',
         level: 'beginner',
         mode: 'full'
       });
@@ -83,8 +91,8 @@ describe('Best Practices Integration Tests', () => {
     }, 30000);
 
     it('filters results by intermediate level', async () => {
-      const result = await toolHandler.executeTool('analyze_best_practices', {
-        topic: 'dependencies',
+      const result = await toolHandler.executeTool('get_guidance', {
+        query: 'dependencies',
         level: 'intermediate',
         mode: 'full'
       });
@@ -97,8 +105,8 @@ describe('Best Practices Integration Tests', () => {
     }, 30000);
 
     it('filters results by advanced level', async () => {
-      const result = await toolHandler.executeTool('analyze_best_practices', {
-        topic: 'performance',
+      const result = await toolHandler.executeTool('get_guidance', {
+        query: 'performance',
         level: 'advanced',
         mode: 'full'
       });
@@ -112,16 +120,16 @@ describe('Best Practices Integration Tests', () => {
   });
 
   describe('Error Handling', () => {
-    it('returns error for missing topic parameter', async () => {
-      const result = await toolHandler.executeTool('analyze_best_practices', {});
+    it('returns error for missing query parameter', async () => {
+      const result = await toolHandler.executeTool('get_guidance', {});
 
       expect(result.error).toBeDefined();
-      expect(result.error).toContain('topic parameter is required');
+      expect(result.error).toContain('query parameter');
     });
 
     it('handles invalid topic gracefully', async () => {
-      const result = await toolHandler.executeTool('analyze_best_practices', {
-        topic: 'invalid_topic_name'
+      const result = await toolHandler.executeTool('get_guidance', {
+        query: 'invalid_topic_name'
       });
 
       // Should return result with empty recommendations, not throw
@@ -132,8 +140,8 @@ describe('Best Practices Integration Tests', () => {
 
     it('handles errors without throwing exceptions', async () => {
       // This should not throw even with unexpected input
-      const result = await toolHandler.executeTool('analyze_best_practices', {
-        topic: 'state_management',
+      const result = await toolHandler.executeTool('get_guidance', {
+        query: 'state_management',
         level: 'invalid_level' as any
       });
       
@@ -145,8 +153,8 @@ describe('Best Practices Integration Tests', () => {
 
   describe('MCP Protocol Compliance', () => {
     it('returns valid response structure', async () => {
-      const result = await toolHandler.executeTool('analyze_best_practices', {
-        topic: 'state_management',
+      const result = await toolHandler.executeTool('get_guidance', {
+        query: 'state_management',
         mode: 'full'
       });
 
@@ -163,9 +171,9 @@ describe('Best Practices Integration Tests', () => {
     it('never throws errors to MCP layer', async () => {
       // Multiple rapid calls should not cause issues
       const promises = [
-        toolHandler.executeTool('analyze_best_practices', { topic: 'state_management', mode: 'full' }),
-        toolHandler.executeTool('analyze_best_practices', { topic: 'dependencies', mode: 'full' }),
-        toolHandler.executeTool('analyze_best_practices', { topic: 'security', mode: 'full' })
+        toolHandler.executeTool('get_guidance', { query: 'state_management', mode: 'full' }),
+        toolHandler.executeTool('get_guidance', { query: 'dependencies', mode: 'full' }),
+        toolHandler.executeTool('get_guidance', { query: 'security', mode: 'full' })
       ];
 
       await expect(Promise.all(promises)).resolves.toBeDefined();
@@ -175,7 +183,7 @@ describe('Best Practices Integration Tests', () => {
       const topics = ['module_organization', 'state_management', 'testing'];
       
       for (const topic of topics) {
-        const result = await toolHandler.executeTool('analyze_best_practices', { topic, mode: 'full' });
+        const result = await toolHandler.executeTool('get_guidance', { query: topic, mode: 'full' });
 
         // All results should have same structure
         expect(result).toHaveProperty('topic');
@@ -195,8 +203,8 @@ describe('Best Practices Integration Tests', () => {
 
   describe('Recommendation Structure', () => {
     it('returns properly structured recommendations', async () => {
-      const result = await toolHandler.executeTool('analyze_best_practices', {
-        topic: 'state_management',
+      const result = await toolHandler.executeTool('get_guidance', {
+        query: 'state_management',
         mode: 'full'
       });
 
@@ -221,8 +229,8 @@ describe('Best Practices Integration Tests', () => {
     }, 30000);
 
     it('includes related documentation URLs', async () => {
-      const result = await toolHandler.executeTool('analyze_best_practices', {
-        topic: 'dependencies',
+      const result = await toolHandler.executeTool('get_guidance', {
+        query: 'dependencies',
         mode: 'full'
       });
 
@@ -244,16 +252,16 @@ describe('Best Practices Integration Tests', () => {
     it('returns results faster on second call (cached)', async () => {
       // First call - no cache
       const start1 = Date.now();
-      await toolHandler.executeTool('analyze_best_practices', {
-        topic: 'state_management',
+      await toolHandler.executeTool('get_guidance', {
+        query: 'state_management',
         mode: 'full'
       });
       const duration1 = Date.now() - start1;
 
       // Second call - should be cached
       const start2 = Date.now();
-      await toolHandler.executeTool('analyze_best_practices', {
-        topic: 'state_management',
+      await toolHandler.executeTool('get_guidance', {
+        query: 'state_management',
         mode: 'full'
       });
       const duration2 = Date.now() - start2;
@@ -268,15 +276,15 @@ describe('Best Practices Integration Tests', () => {
 
     it('completes cached analysis in <300ms', async () => {
       // First call to populate cache
-      await toolHandler.executeTool('analyze_best_practices', {
-        topic: 'module_organization',
+      await toolHandler.executeTool('get_guidance', {
+        query: 'module_organization',
         mode: 'full'
       });
 
       // Measure cached performance
       const start = Date.now();
-      const result = await toolHandler.executeTool('analyze_best_practices', {
-        topic: 'module_organization',
+      const result = await toolHandler.executeTool('get_guidance', {
+        query: 'module_organization',
         mode: 'full'
       });
       const duration = Date.now() - start;
@@ -294,8 +302,8 @@ describe('Best Practices Integration Tests', () => {
       // This test simulates MCP server restart with docs already cached on disk
       // Using a topic not used in previous tests to avoid in-memory cache
       const start = Date.now();
-      const result = await toolHandler.executeTool('analyze_best_practices', {
-        topic: 'ci_cd',
+      const result = await toolHandler.executeTool('get_guidance', {
+        query: 'ci_cd',
         mode: 'full'
       });
       const duration = Date.now() - start;
@@ -310,13 +318,13 @@ describe('Best Practices Integration Tests', () => {
     }, 60000);
 
     it('caches results separately by experience level', async () => {
-      const result1 = await toolHandler.executeTool('analyze_best_practices', {
-        topic: 'security',
+      const result1 = await toolHandler.executeTool('get_guidance', {
+        query: 'security',
         mode: 'full'
       });
 
-      const result2 = await toolHandler.executeTool('analyze_best_practices', {
-        topic: 'security',
+      const result2 = await toolHandler.executeTool('get_guidance', {
+        query: 'security',
         level: 'beginner',
         mode: 'full'
       });
@@ -330,8 +338,8 @@ describe('Best Practices Integration Tests', () => {
 
   describe('Content Validation', () => {
     it('generates meaningful summaries', async () => {
-      const result = await toolHandler.executeTool('analyze_best_practices', {
-        topic: 'state_management'
+      const result = await toolHandler.executeTool('get_guidance', {
+        query: 'state_management'
       });
 
       expect(result.summary).toBeTruthy();
@@ -340,8 +348,8 @@ describe('Best Practices Integration Tests', () => {
     }, 30000);
 
     it('extracts common pitfalls', async () => {
-      const result = await toolHandler.executeTool('analyze_best_practices', {
-        topic: 'security',
+      const result = await toolHandler.executeTool('get_guidance', {
+        query: 'security',
         mode: 'full'
       });
 
@@ -351,8 +359,8 @@ describe('Best Practices Integration Tests', () => {
     }, 30000);
 
     it('provides experience-specific notes', async () => {
-      const result = await toolHandler.executeTool('analyze_best_practices', {
-        topic: 'testing',
+      const result = await toolHandler.executeTool('get_guidance', {
+        query: 'testing',
         mode: 'full'
       });
 
