@@ -90,7 +90,7 @@ async function testServer() {
     // Test tool execution: get_section_docs
     const firstSection = sectionsTool.sections[0]?.name;
     if (firstSection) {
-      const sectionDocsTool = await toolHandler.executeTool('get_section_docs', { section: firstSection });
+      const sectionDocsTool = await toolHandler.executeTool('get_section_docs', { section: firstSection, mode: 'full' });
       if (!sectionDocsTool.docs || sectionDocsTool.docs.length === 0) throw new Error('No docs from get_section_docs tool');
       console.log(`✅ get_section_docs tool returned ${sectionDocsTool.docs.length} docs for section ${firstSection}`);
     }

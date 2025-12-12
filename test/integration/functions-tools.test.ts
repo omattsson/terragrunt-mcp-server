@@ -27,6 +27,7 @@ describe('Function Lookup Tools Integration Tests', () => {
       it('should retrieve path_relative_to_include with complete metadata', async () => {
         const result = await toolHandler.executeTool('get_terragrunt_function', {
           function_name: 'path_relative_to_include'
+        , mode: 'full'
         });
 
         // Should not have error
@@ -58,6 +59,7 @@ describe('Function Lookup Tools Integration Tests', () => {
       it('should retrieve get_env with complete metadata', async () => {
         const result = await toolHandler.executeTool('get_terragrunt_function', {
           function_name: 'get_env'
+        , mode: 'full'
         });
 
         expect(result.error).toBeUndefined();
@@ -84,6 +86,7 @@ describe('Function Lookup Tools Integration Tests', () => {
         
         const result = await toolHandler.executeTool('get_terragrunt_function', {
           function_name: functionName
+        , mode: 'full'
         });
 
         expect(result.error).toBeUndefined();
@@ -101,6 +104,7 @@ describe('Function Lookup Tools Integration Tests', () => {
       it('should include properly formatted examples when available', async () => {
         const result = await toolHandler.executeTool('get_terragrunt_function', {
           function_name: 'get_env'
+        , mode: 'full'
         });
 
         expect(result.error).toBeUndefined();
@@ -121,6 +125,7 @@ describe('Function Lookup Tools Integration Tests', () => {
       it('should populate related functions array when available', async () => {
         const result = await toolHandler.executeTool('get_terragrunt_function', {
           function_name: 'path_relative_to_include'
+        , mode: 'full'
         });
 
         expect(result.error).toBeUndefined();
@@ -139,6 +144,7 @@ describe('Function Lookup Tools Integration Tests', () => {
       it('should handle unknown function with error and suggestions', async () => {
         const result = await toolHandler.executeTool('get_terragrunt_function', {
           function_name: 'nonexistent_function_xyz_12345'
+        , mode: 'full'
         });
 
         // Should have error response
@@ -160,6 +166,7 @@ describe('Function Lookup Tools Integration Tests', () => {
         const result = await toolHandler.executeTool('get_terragrunt_function', {
           function_name: 'get_env',
           include_examples: true
+        , mode: 'full'
         });
 
         expect(result.error).toBeUndefined();
@@ -171,6 +178,7 @@ describe('Function Lookup Tools Integration Tests', () => {
         const result = await toolHandler.executeTool('get_terragrunt_function', {
           function_name: 'get_env',
           include_examples: false
+        , mode: 'full'
         });
 
         expect(result.error).toBeUndefined();
@@ -193,6 +201,7 @@ describe('Function Lookup Tools Integration Tests', () => {
 
         await toolHandler.executeTool('get_terragrunt_function', {
           function_name: functionName
+        , mode: 'full'
         });
 
         const duration = performance.now() - start;
@@ -376,6 +385,7 @@ describe('Function Lookup Tools Integration Tests', () => {
       const result = await toolHandler.executeTool('get_terragrunt_function', {
         function_name: 'get_env',
         include_examples: true
+      , mode: 'full'
       });
 
       expect(result.error).toBeUndefined();
@@ -417,6 +427,7 @@ describe('Function Lookup Tools Integration Tests', () => {
     it('should return responses with correct schema for success', async () => {
       const result = await toolHandler.executeTool('get_terragrunt_function', {
         function_name: 'get_env'
+      , mode: 'full'
       });
 
       // Success response should have all expected fields
@@ -437,6 +448,7 @@ describe('Function Lookup Tools Integration Tests', () => {
     it('should format error responses properly', async () => {
       const result = await toolHandler.executeTool('get_terragrunt_function', {
         function_name: 'invalid_function_name'
+      , mode: 'full'
       });
 
       // Error response should have specific fields

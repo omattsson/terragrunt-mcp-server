@@ -52,7 +52,7 @@ describe('Best Practices Integration Tests', () => {
 
     for (const topic of topics) {
       it(`analyzes ${topic} topic successfully`, async () => {
-        const result = await toolHandler.executeTool('analyze_best_practices', { topic });
+        const result = await toolHandler.executeTool('analyze_best_practices', { topic, mode: 'full' });
 
         expect(result).toBeDefined();
         expect(result.topic).toBe(topic);
@@ -70,7 +70,8 @@ describe('Best Practices Integration Tests', () => {
     it('filters results by beginner level', async () => {
       const result = await toolHandler.executeTool('analyze_best_practices', {
         topic: 'state_management',
-        level: 'beginner'
+        level: 'beginner',
+        mode: 'full'
       });
 
       expect(result.topic).toBe('state_management');
@@ -84,7 +85,8 @@ describe('Best Practices Integration Tests', () => {
     it('filters results by intermediate level', async () => {
       const result = await toolHandler.executeTool('analyze_best_practices', {
         topic: 'dependencies',
-        level: 'intermediate'
+        level: 'intermediate',
+        mode: 'full'
       });
 
       expect(result.topic).toBe('dependencies');
@@ -97,7 +99,8 @@ describe('Best Practices Integration Tests', () => {
     it('filters results by advanced level', async () => {
       const result = await toolHandler.executeTool('analyze_best_practices', {
         topic: 'performance',
-        level: 'advanced'
+        level: 'advanced',
+        mode: 'full'
       });
 
       expect(result.topic).toBe('performance');
@@ -143,7 +146,8 @@ describe('Best Practices Integration Tests', () => {
   describe('MCP Protocol Compliance', () => {
     it('returns valid response structure', async () => {
       const result = await toolHandler.executeTool('analyze_best_practices', {
-        topic: 'state_management'
+        topic: 'state_management',
+        mode: 'full'
       });
 
       // MCP requires structured responses, not exceptions
@@ -159,9 +163,9 @@ describe('Best Practices Integration Tests', () => {
     it('never throws errors to MCP layer', async () => {
       // Multiple rapid calls should not cause issues
       const promises = [
-        toolHandler.executeTool('analyze_best_practices', { topic: 'state_management' }),
-        toolHandler.executeTool('analyze_best_practices', { topic: 'dependencies' }),
-        toolHandler.executeTool('analyze_best_practices', { topic: 'security' })
+        toolHandler.executeTool('analyze_best_practices', { topic: 'state_management', mode: 'full' }),
+        toolHandler.executeTool('analyze_best_practices', { topic: 'dependencies', mode: 'full' }),
+        toolHandler.executeTool('analyze_best_practices', { topic: 'security', mode: 'full' })
       ];
 
       await expect(Promise.all(promises)).resolves.toBeDefined();
@@ -171,7 +175,7 @@ describe('Best Practices Integration Tests', () => {
       const topics = ['module_organization', 'state_management', 'testing'];
       
       for (const topic of topics) {
-        const result = await toolHandler.executeTool('analyze_best_practices', { topic });
+        const result = await toolHandler.executeTool('analyze_best_practices', { topic, mode: 'full' });
 
         // All results should have same structure
         expect(result).toHaveProperty('topic');
@@ -192,7 +196,8 @@ describe('Best Practices Integration Tests', () => {
   describe('Recommendation Structure', () => {
     it('returns properly structured recommendations', async () => {
       const result = await toolHandler.executeTool('analyze_best_practices', {
-        topic: 'state_management'
+        topic: 'state_management',
+        mode: 'full'
       });
 
       if (result.recommendations && result.recommendations.length > 0) {
@@ -217,7 +222,8 @@ describe('Best Practices Integration Tests', () => {
 
     it('includes related documentation URLs', async () => {
       const result = await toolHandler.executeTool('analyze_best_practices', {
-        topic: 'dependencies'
+        topic: 'dependencies',
+        mode: 'full'
       });
 
       if (result.recommendations && result.recommendations.length > 0) {
@@ -239,14 +245,16 @@ describe('Best Practices Integration Tests', () => {
       // First call - no cache
       const start1 = Date.now();
       await toolHandler.executeTool('analyze_best_practices', {
-        topic: 'state_management'
+        topic: 'state_management',
+        mode: 'full'
       });
       const duration1 = Date.now() - start1;
 
       // Second call - should be cached
       const start2 = Date.now();
       await toolHandler.executeTool('analyze_best_practices', {
-        topic: 'state_management'
+        topic: 'state_management',
+        mode: 'full'
       });
       const duration2 = Date.now() - start2;
 
@@ -261,13 +269,15 @@ describe('Best Practices Integration Tests', () => {
     it('completes cached analysis in <300ms', async () => {
       // First call to populate cache
       await toolHandler.executeTool('analyze_best_practices', {
-        topic: 'module_organization'
+        topic: 'module_organization',
+        mode: 'full'
       });
 
       // Measure cached performance
       const start = Date.now();
       const result = await toolHandler.executeTool('analyze_best_practices', {
-        topic: 'module_organization'
+        topic: 'module_organization',
+        mode: 'full'
       });
       const duration = Date.now() - start;
 
@@ -285,7 +295,8 @@ describe('Best Practices Integration Tests', () => {
       // Using a topic not used in previous tests to avoid in-memory cache
       const start = Date.now();
       const result = await toolHandler.executeTool('analyze_best_practices', {
-        topic: 'ci_cd'
+        topic: 'ci_cd',
+        mode: 'full'
       });
       const duration = Date.now() - start;
 
@@ -300,12 +311,14 @@ describe('Best Practices Integration Tests', () => {
 
     it('caches results separately by experience level', async () => {
       const result1 = await toolHandler.executeTool('analyze_best_practices', {
-        topic: 'security'
+        topic: 'security',
+        mode: 'full'
       });
 
       const result2 = await toolHandler.executeTool('analyze_best_practices', {
         topic: 'security',
-        level: 'beginner'
+        level: 'beginner',
+        mode: 'full'
       });
 
       // Results should be different
@@ -328,7 +341,8 @@ describe('Best Practices Integration Tests', () => {
 
     it('extracts common pitfalls', async () => {
       const result = await toolHandler.executeTool('analyze_best_practices', {
-        topic: 'security'
+        topic: 'security',
+        mode: 'full'
       });
 
       expect(Array.isArray(result.commonPitfalls)).toBe(true);
@@ -338,7 +352,8 @@ describe('Best Practices Integration Tests', () => {
 
     it('provides experience-specific notes', async () => {
       const result = await toolHandler.executeTool('analyze_best_practices', {
-        topic: 'testing'
+        topic: 'testing',
+        mode: 'full'
       });
 
       expect(Array.isArray(result.experienceNotes.beginner)).toBe(true);

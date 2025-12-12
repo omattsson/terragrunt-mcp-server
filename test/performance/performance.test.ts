@@ -235,6 +235,7 @@ describe('Performance Benchmarks', () => {
       
       const result = await toolHandler.executeTool('get_section_docs', {
         section: 'getting-started'
+      , mode: 'full'
       });
       
       const duration = performance.now() - startTime;
@@ -284,6 +285,7 @@ describe('Performance Benchmarks', () => {
       const result = await toolHandler.executeTool('get_code_examples', {
         topic: 'dependencies',
         limit: 5
+      , mode: 'full'
       });
       
       const duration = performance.now() - startTime;
@@ -522,6 +524,7 @@ describe('Performance Benchmarks', () => {
         
         const result = await freshToolHandler.executeTool('get_terragrunt_function', {
           function_name: 'path_relative_to_include'
+        , mode: 'full'
         });
         
         const duration = performance.now() - startTime;
@@ -538,6 +541,7 @@ describe('Performance Benchmarks', () => {
         
         const result = await toolHandler.executeTool('get_terragrunt_function', {
           function_name: 'path_relative_to_include'
+        , mode: 'full'
         });
         
         const duration = performance.now() - startTime;
@@ -555,6 +559,7 @@ describe('Performance Benchmarks', () => {
         for (let i = 0; i < iterations; i++) {
           const result = await toolHandler.executeTool('get_terragrunt_function', {
             function_name: 'path_relative_to_include'
+          , mode: 'full'
           });
           expect(result.name).toBe('path_relative_to_include');
         }
@@ -573,6 +578,7 @@ describe('Performance Benchmarks', () => {
         const result = await toolHandler.executeTool('get_terragrunt_function', {
           function_name: 'path_relative_to_include',
           include_examples: true
+        , mode: 'full'
         });
         
         const duration = performance.now() - startTime;
@@ -590,6 +596,7 @@ describe('Performance Benchmarks', () => {
         const result = await toolHandler.executeTool('get_terragrunt_function', {
           function_name: 'path_relative_to_include',
           include_examples: false
+        , mode: 'full'
         });
         
         const duration = performance.now() - startTime;
@@ -611,6 +618,7 @@ describe('Performance Benchmarks', () => {
           
           const result = await toolHandler.executeTool('get_terragrunt_function', {
             function_name: funcName
+          , mode: 'full'
           });
           
           const duration = performance.now() - startTime;
@@ -737,7 +745,7 @@ describe('Performance Benchmarks', () => {
         
         const results = await Promise.all(
           functionNames.map(name => 
-            toolHandler.executeTool('get_terragrunt_function', { function_name: name })
+            toolHandler.executeTool('get_terragrunt_function', { function_name: name , mode: 'full' })
           )
         );
         
@@ -757,11 +765,11 @@ describe('Performance Benchmarks', () => {
         const startTime = performance.now();
         
         const operations = [
-          toolHandler.executeTool('get_terragrunt_function', { function_name: 'path_relative_to_include' }),
+          toolHandler.executeTool('get_terragrunt_function', { function_name: 'path_relative_to_include' , mode: 'full' }),
           toolHandler.executeTool('list_terragrunt_functions', { category: 'path' }),
-          toolHandler.executeTool('get_terragrunt_function', { function_name: 'get_env' }),
+          toolHandler.executeTool('get_terragrunt_function', { function_name: 'get_env' , mode: 'full' }),
           toolHandler.executeTool('list_terragrunt_functions', { search: 'terraform' }),
-          toolHandler.executeTool('get_terragrunt_function', { function_name: 'find_in_parent_folders' }),
+          toolHandler.executeTool('get_terragrunt_function', { function_name: 'find_in_parent_folders' , mode: 'full' }),
         ];
         
         const results = await Promise.all(operations);
@@ -813,6 +821,7 @@ describe('Performance Benchmarks', () => {
         for (let i = 0; i < 1000; i++) {
           await toolHandler.executeTool('get_terragrunt_function', {
             function_name: 'path_relative_to_include'
+          , mode: 'full'
           });
         }
         
@@ -823,6 +832,7 @@ describe('Performance Benchmarks', () => {
         for (let i = 0; i < 1000; i++) {
           await toolHandler.executeTool('get_terragrunt_function', {
             function_name: 'get_env'
+          , mode: 'full'
           });
         }
         
@@ -858,6 +868,7 @@ describe('Performance Benchmarks', () => {
         
         const result = await toolHandler.executeTool('analyze_best_practices', {
           topic: 'module_organization'
+        , mode: 'full'
         });
         
         const duration = performance.now() - start;
@@ -875,6 +886,7 @@ describe('Performance Benchmarks', () => {
         
         const result = await toolHandler.executeTool('analyze_best_practices', {
           topic: 'state_management'
+        , mode: 'full'
         });
         
         const duration = performance.now() - start;
@@ -891,6 +903,7 @@ describe('Performance Benchmarks', () => {
         // First call to populate cache
         await toolHandler.executeTool('analyze_best_practices', {
           topic: 'dependencies'
+        , mode: 'full'
         });
         
         // Second call should hit cache
@@ -898,6 +911,7 @@ describe('Performance Benchmarks', () => {
         
         const result = await toolHandler.executeTool('analyze_best_practices', {
           topic: 'dependencies'
+        , mode: 'full'
         });
         
         const duration = performance.now() - start;
@@ -916,6 +930,7 @@ describe('Performance Benchmarks', () => {
         const result = await toolHandler.executeTool('analyze_best_practices', {
           topic: 'ci_cd',
           level: 'intermediate'
+        , mode: 'full'
         });
         
         const duration = performance.now() - start;
@@ -936,6 +951,7 @@ describe('Performance Benchmarks', () => {
           
           const result = await toolHandler.executeTool('analyze_best_practices', {
             topic
+          , mode: 'full'
           });
           
           const duration = performance.now() - start;
@@ -959,6 +975,7 @@ describe('Performance Benchmarks', () => {
         // Warm up cache
         await toolHandler.executeTool('analyze_best_practices', {
           topic: 'dependencies'
+        , mode: 'full'
         });
         
         const start = performance.now();
@@ -966,6 +983,7 @@ describe('Performance Benchmarks', () => {
         const result = await toolHandler.executeTool('analyze_best_practices', {
           topic: 'dependencies',
           level: 'advanced'
+        , mode: 'full'
         });
         
         const duration = performance.now() - start;
@@ -983,13 +1001,13 @@ describe('Performance Benchmarks', () => {
         
         // Warm up all caches first
         for (const topic of allTopics) {
-          await toolHandler.executeTool('analyze_best_practices', { topic });
+          await toolHandler.executeTool('analyze_best_practices', { topic , mode: 'full' });
         }
         
         // Measure cached performance for each topic
         for (const topic of allTopics) {
           const start = performance.now();
-          await toolHandler.executeTool('analyze_best_practices', { topic });
+          await toolHandler.executeTool('analyze_best_practices', { topic , mode: 'full' });
           timings[topic] = performance.now() - start;
         }
         
@@ -1013,6 +1031,7 @@ describe('Performance Benchmarks', () => {
         const start1 = performance.now();
         const result1 = await toolHandler.executeTool('analyze_best_practices', {
           topic: 'security'
+        , mode: 'full'
         });
         const duration1 = performance.now() - start1;
         
@@ -1020,6 +1039,7 @@ describe('Performance Benchmarks', () => {
         const start2 = performance.now();
         const result2 = await toolHandler.executeTool('analyze_best_practices', {
           topic: 'security'
+        , mode: 'full'
         });
         const duration2 = performance.now() - start2;
         
@@ -1042,6 +1062,7 @@ describe('Performance Benchmarks', () => {
           
           const result = await toolHandler.executeTool('analyze_best_practices', {
             topic
+          , mode: 'full'
           });
           
           const duration = performance.now() - start;
@@ -1064,6 +1085,7 @@ describe('Performance Benchmarks', () => {
         
         const result = await toolHandler.executeTool('analyze_best_practices', {
           topic: 'state_management'
+        , mode: 'full'
         });
         
         const duration = performance.now() - start;
@@ -1083,6 +1105,7 @@ describe('Performance Benchmarks', () => {
         const result = await toolHandler.executeTool('analyze_best_practices', {
           topic: 'module_organization',
           level: 'beginner'
+        , mode: 'full'
         });
         
         const duration = performance.now() - start;
@@ -1102,16 +1125,17 @@ describe('Performance Benchmarks', () => {
         // Warm up cache
         await toolHandler.executeTool('analyze_best_practices', {
           topic: 'ci_cd'
+        , mode: 'full'
         });
         
         const start = performance.now();
         
         const results = await Promise.all([
-          toolHandler.executeTool('analyze_best_practices', { topic: 'ci_cd' }),
-          toolHandler.executeTool('analyze_best_practices', { topic: 'ci_cd' }),
-          toolHandler.executeTool('analyze_best_practices', { topic: 'ci_cd' }),
-          toolHandler.executeTool('analyze_best_practices', { topic: 'ci_cd' }),
-          toolHandler.executeTool('analyze_best_practices', { topic: 'ci_cd' })
+          toolHandler.executeTool('analyze_best_practices', { topic: 'ci_cd' , mode: 'full' }),
+          toolHandler.executeTool('analyze_best_practices', { topic: 'ci_cd' , mode: 'full' }),
+          toolHandler.executeTool('analyze_best_practices', { topic: 'ci_cd' , mode: 'full' }),
+          toolHandler.executeTool('analyze_best_practices', { topic: 'ci_cd' , mode: 'full' }),
+          toolHandler.executeTool('analyze_best_practices', { topic: 'ci_cd' , mode: 'full' })
         ]);
         
         const duration = performance.now() - start;
@@ -1135,7 +1159,7 @@ describe('Performance Benchmarks', () => {
         
         const results = await Promise.all(
           topics.map(topic => 
-            toolHandler.executeTool('analyze_best_practices', { topic })
+            toolHandler.executeTool('analyze_best_practices', { topic , mode: 'full' })
           )
         );
         
@@ -1154,12 +1178,12 @@ describe('Performance Benchmarks', () => {
 
       it('should handle mixed concurrent operations (with and without filters)', async () => {
         const operations = [
-          { topic: 'performance' },
-          { topic: 'performance', level: 'beginner' as const },
-          { topic: 'testing' },
-          { topic: 'testing', level: 'advanced' as const },
-          { topic: 'security' },
-          { topic: 'security', level: 'intermediate' as const }
+          { topic: 'performance', mode: 'full' as const },
+          { topic: 'performance', level: 'beginner' as const, mode: 'full' as const },
+          { topic: 'testing', mode: 'full' as const },
+          { topic: 'testing', level: 'advanced' as const, mode: 'full' as const },
+          { topic: 'security', mode: 'full' as const },
+          { topic: 'security', level: 'intermediate' as const, mode: 'full' as const }
         ];
         
         const start = performance.now();
@@ -1194,7 +1218,7 @@ describe('Performance Benchmarks', () => {
         
         // Analyze all topics to populate caches
         for (const topic of allTopics) {
-          await toolHandler.executeTool('analyze_best_practices', { topic });
+          await toolHandler.executeTool('analyze_best_practices', { topic , mode: 'full' });
         }
         
         const memEnd = process.memoryUsage().heapUsed;
@@ -1220,6 +1244,7 @@ describe('Performance Benchmarks', () => {
             await toolHandler.executeTool('analyze_best_practices', {
               topic,
               experience_level: level
+            , mode: 'full'
             });
           }
         }
@@ -1245,7 +1270,7 @@ describe('Performance Benchmarks', () => {
         // Perform 1000 cached lookups
         for (let i = 0; i < 1000; i++) {
           const topic = allTopics[i % allTopics.length];
-          await toolHandler.executeTool('analyze_best_practices', { topic });
+          await toolHandler.executeTool('analyze_best_practices', { topic , mode: 'full' });
         }
         
         const memMiddle = process.memoryUsage().heapUsed;
@@ -1258,6 +1283,7 @@ describe('Performance Benchmarks', () => {
           await toolHandler.executeTool('analyze_best_practices', {
             topic,
             level: level[i % 3]
+          , mode: 'full'
           });
         }
         

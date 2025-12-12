@@ -338,7 +338,8 @@ describe('ToolHandler', () => {
   describe('Tool Execution - get_section_docs', () => {
     it('should return docs for valid section', async () => {
       const result = await toolHandler.executeTool('get_section_docs', {
-        section: 'getting-started'
+        section: 'getting-started',
+        mode: 'full'
       });
       
       expect(result.section).toBe('getting-started');
@@ -510,7 +511,8 @@ describe('ToolHandler', () => {
       mockDocsManager.getCodeExamples.mockResolvedValueOnce(examples);
 
       const result = await toolHandler.executeTool('get_code_examples', {
-        topic: 'terraform'
+        topic: 'terraform',
+        mode: 'full'
       });
       
       expect(result.topic).toBe('terraform');
@@ -537,7 +539,8 @@ describe('ToolHandler', () => {
       mockDocsManager.getCodeExamples.mockResolvedValueOnce(examples);
 
       const result = await toolHandler.executeTool('get_code_examples', {
-        topic: 'test'
+        topic: 'test',
+        mode: 'full'
       });
       
       expect(result.examples.length).toBeLessThanOrEqual(5);
@@ -552,7 +555,8 @@ describe('ToolHandler', () => {
 
       const result = await toolHandler.executeTool('get_code_examples', {
         topic: 'test',
-        limit: 3
+        limit: 3,
+        mode: 'full'
       });
       
       expect(result.examples.length).toBeLessThanOrEqual(3);
@@ -614,7 +618,8 @@ inputs = {
       mockDocsManager.getCodeExamples.mockResolvedValueOnce(examples);
 
       const result = await toolHandler.executeTool('get_code_examples', {
-        topic: 'test'
+        topic: 'test',
+        mode: 'full'
       });
       
       expect(result.examples[0].codeSnippets[0]).toContain('# ... [Truncated. See full example at https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/]');
@@ -641,7 +646,8 @@ inputs = {
       mockDocsManager.getCodeExamples.mockResolvedValueOnce(examples);
 
       const result = await toolHandler.executeTool('get_code_examples', {
-        topic: 'test'
+        topic: 'test',
+        mode: 'full'
       });
       
       expect(result.examples[0].codeSnippets[0]).toBe(shortCode);
@@ -661,7 +667,8 @@ inputs = {
       mockDocsManager.getCodeExamples.mockResolvedValueOnce(examples);
 
       const result = await toolHandler.executeTool('get_code_examples', {
-        topic: 'test'
+        topic: 'test',
+        mode: 'full'
       });
       
       expect(result.examples[0].codeSnippets[0]).toBe(shortCode);
@@ -700,7 +707,8 @@ inputs = {
 
       const result = await toolHandler.executeTool('get_code_examples', {
         topic: 'test',
-        advanced: true
+        advanced: true,
+        mode: 'full'
       });
       
       expect(result.example.code).toContain('# ... [Truncated. See full example at https://terragrunt.gruntwork.io/docs/examples/backend-configuration/]');
@@ -739,7 +747,8 @@ inputs = {
 
       const result = await toolHandler.executeTool('get_code_examples', {
         topic: 'test',
-        advanced: true
+        advanced: true,
+        mode: 'full'
       });
       
       expect(result.example.code).toBe(shortCode);
@@ -759,7 +768,8 @@ inputs = {
       mockDocsManager.getCodeExamples.mockResolvedValueOnce(examples);
 
       const result = await toolHandler.executeTool('get_code_examples', {
-        topic: 'test'
+        topic: 'test',
+        mode: 'full'
       });
       
       expect(result.examples[0].codeSnippets[0]).toContain(`# ... [Truncated. See full example at ${docUrl}]`);
@@ -796,7 +806,8 @@ inputs = {
 
       const result = await toolHandler.executeTool('get_code_examples', {
         topic: 'test',
-        advanced: true
+        advanced: true,
+        mode: 'full'
       });
       
       expect(result.example.code).toContain('# ... [Truncated. See full example in documentation]');
@@ -841,7 +852,8 @@ inputs = {
       (toolHandler as any).functionsManager = mockFunctionsManager;
 
       const result = await toolHandler.executeTool('get_terragrunt_function', {
-        function_name: 'get_env'
+        function_name: 'get_env',
+        mode: 'full'
       });
       
       expect(result.error).toBeUndefined();
@@ -882,7 +894,8 @@ inputs = {
 
       const result = await toolHandler.executeTool('get_terragrunt_function', {
         function_name: 'get_env',
-        include_examples: false
+        include_examples: false,
+        mode: 'full'
       });
       
       expect(result.error).toBeUndefined();
@@ -956,7 +969,8 @@ inputs = {
       (toolHandler as any).functionsManager = mockFunctionsManager;
 
       const result = await toolHandler.executeTool('get_terragrunt_function', {
-        function_name: 'test_func'
+        function_name: 'test_func',
+        mode: 'full'
       });
       
       // Verify all required fields from issue #14

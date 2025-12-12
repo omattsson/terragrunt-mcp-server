@@ -319,6 +319,7 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
     it('should handle invalid section name', async () => {
       const result = await toolHandler.executeTool('get_section_docs', {
         section: 'nonexistent-section-12345'
+      , mode: 'full'
       });
 
       expect(result).toBeDefined();
@@ -370,6 +371,7 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
       const result = await toolHandler.executeTool('get_code_examples', {
         topic: '',
         limit: 5
+      , mode: 'full'
       });
 
       expect(result).toBeDefined();
@@ -403,7 +405,7 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
     });
 
     it('should validate get_code_examples requires topic parameter', async () => {
-      const result = await toolHandler.executeTool('get_code_examples', {});
+      const result = await toolHandler.executeTool('get_code_examples', { mode: 'full' });
 
       expect(result).toBeDefined();
       expect(result.error).toBeDefined();
@@ -411,7 +413,7 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
     });
 
     it('should validate get_section_docs requires section parameter', async () => {
-      const result = await toolHandler.executeTool('get_section_docs', {});
+      const result = await toolHandler.executeTool('get_section_docs', { mode: 'full' });
 
       expect(result).toBeDefined();
       expect(result.error).toBeDefined();
@@ -458,6 +460,7 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
       const result = await toolHandler.executeTool('get_code_examples', {
         topic: 'dependencies',
         limit: 0
+      , mode: 'full'
       });
 
       expect(result).toBeDefined();
@@ -470,6 +473,7 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
       const result = await toolHandler.executeTool('get_code_examples', {
         topic: 'terraform',
         limit: 100
+      , mode: 'full'
       });
 
       expect(result).toBeDefined();
@@ -482,6 +486,7 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
       const result = await toolHandler.executeTool('get_code_examples', {
         topic: 'hooks',
         limit: 5
+      , mode: 'full'
       });
 
       expect(result).toBeDefined();
@@ -495,6 +500,7 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
     it('should handle section with special characters', async () => {
       const result = await toolHandler.executeTool('get_section_docs', {
         section: 'getting-started'
+      , mode: 'full'
       });
 
       expect(result).toBeDefined();
@@ -506,6 +512,7 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
     it('should handle section with uppercase', async () => {
       const result = await toolHandler.executeTool('get_section_docs', {
         section: 'GETTING-STARTED'
+      , mode: 'full'
       });
 
       expect(result).toBeDefined();
@@ -522,6 +529,7 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
     it('should handle section with trailing/leading spaces', async () => {
       const result = await toolHandler.executeTool('get_section_docs', {
         section: '  getting-started  '
+      , mode: 'full'
       });
 
       expect(result).toBeDefined();
@@ -688,6 +696,7 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
         
         const result = await toolHandler.executeTool('analyze_best_practices', {
           topic: longTopic
+        , mode: 'full'
         });
 
         const duration = Date.now() - startTime;
@@ -706,6 +715,7 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
       it('should handle special characters in topic', async () => {
         const result = await toolHandler.executeTool('analyze_best_practices', {
           topic: 'state-management@#$%'
+        , mode: 'full'
         });
 
         expect(result).toBeDefined();
@@ -722,6 +732,7 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
       it('should handle unicode and emoji in topic', async () => {
         const result = await toolHandler.executeTool('analyze_best_practices', {
           topic: 'state_management 🚀 配置'
+        , mode: 'full'
         });
 
         expect(result).toBeDefined();
@@ -734,6 +745,7 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
       it('should handle empty string topic with helpful error', async () => {
         const result = await toolHandler.executeTool('analyze_best_practices', {
           topic: ''
+        , mode: 'full'
         });
 
         expect(result).toBeDefined();
@@ -745,6 +757,7 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
       it('should handle whitespace-only topic', async () => {
         const result = await toolHandler.executeTool('analyze_best_practices', {
           topic: '   \t\n   '
+        , mode: 'full'
         });
 
         expect(result).toBeDefined();
@@ -760,6 +773,7 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
       it('should handle topic with only numbers and symbols', async () => {
         const result = await toolHandler.executeTool('analyze_best_practices', {
           topic: '12345!@#$%'
+        , mode: 'full'
         });
 
         expect(result).toBeDefined();
@@ -776,6 +790,7 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
         const result = await toolHandler.executeTool('analyze_best_practices', {
           topic: 'state_management',
           level: 'expert' as any // Invalid level
+        , mode: 'full'
         });
 
         expect(result).toBeDefined();
@@ -790,6 +805,7 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
         const result = await toolHandler.executeTool('analyze_best_practices', {
           topic: 'state_management',
           level: 'Beginner' as any // Uppercase
+        , mode: 'full'
         });
 
         expect(result).toBeDefined();
@@ -803,6 +819,7 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
         const result = await toolHandler.executeTool('analyze_best_practices', {
           topic: 'state_management',
           level: undefined
+        , mode: 'full'
         });
 
         expect(result).toBeDefined();
@@ -820,6 +837,7 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
         const result = await toolHandler.executeTool('analyze_best_practices', {
           topic: 'state_management',
           level: '' as any
+        , mode: 'full'
         });
 
         expect(result).toBeDefined();
@@ -834,6 +852,7 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
       it('should return fuzzy suggestions for unknown topic', async () => {
         const result = await toolHandler.executeTool('analyze_best_practices', {
           topic: 'state_managment' // Typo: missing 'e'
+        , mode: 'full'
         });
 
         expect(result).toBeDefined();
@@ -858,6 +877,7 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
         // Using a very specific/niche topic that likely has sparse data
         const result = await toolHandler.executeTool('analyze_best_practices', {
           topic: 'testing'
+        , mode: 'full'
         });
 
         expect(result).toBeDefined();
@@ -877,6 +897,7 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
       it('should verify examples array structure for valid topic', async () => {
         const result = await toolHandler.executeTool('analyze_best_practices', {
           topic: 'state_management'
+        , mode: 'full'
         });
 
         expect(result).toBeDefined();
@@ -892,6 +913,7 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
       it('should verify antipatterns array structure for valid topic', async () => {
         const result = await toolHandler.executeTool('analyze_best_practices', {
           topic: 'state_management'
+        , mode: 'full'
         });
 
         expect(result).toBeDefined();
@@ -910,6 +932,7 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
       it('should handle recommendations with all required fields', async () => {
         const result = await toolHandler.executeTool('analyze_best_practices', {
           topic: 'state_management'
+        , mode: 'full'
         });
 
         expect(result).toBeDefined();
@@ -942,6 +965,7 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
       it('should handle topic with very specific keywords', async () => {
         const result = await toolHandler.executeTool('analyze_best_practices', {
           topic: 'module_organization'
+        , mode: 'full'
         });
 
         expect(result).toBeDefined();
@@ -960,6 +984,7 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
       it('should verify experience notes structure', async () => {
         const result = await toolHandler.executeTool('analyze_best_practices', {
           topic: 'dependencies'
+        , mode: 'full'
         });
 
         expect(result).toBeDefined();
@@ -978,6 +1003,7 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
       it('should return empty recommendations for completely unknown topic', async () => {
         const result = await toolHandler.executeTool('analyze_best_practices', {
           topic: 'completely_unknown_topic_xyz'
+        , mode: 'full'
         });
 
         expect(result).toBeDefined();
@@ -995,6 +1021,7 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
       it('should limit recommendations to reasonable number (max 20)', async () => {
         const result = await toolHandler.executeTool('analyze_best_practices', {
           topic: 'state_management'
+        , mode: 'full'
         });
 
         expect(result).toBeDefined();
@@ -1008,6 +1035,7 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
       it('should handle duplicate detection via frequency scoring', async () => {
         const result = await toolHandler.executeTool('analyze_best_practices', {
           topic: 'state_management'
+        , mode: 'full'
         });
 
         expect(result).toBeDefined();
@@ -1028,6 +1056,7 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
         
         const result = await toolHandler.executeTool('analyze_best_practices', {
           topic: 'stat_managemnt' // Multiple typos
+        , mode: 'full'
         });
 
         const duration = Date.now() - startTime;
@@ -1043,6 +1072,7 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
         // First call to warm up cache
         await toolHandler.executeTool('analyze_best_practices', {
           topic: 'state_management'
+        , mode: 'full'
         });
 
         // Second call should be cached and fast
@@ -1050,6 +1080,7 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
         
         const result = await toolHandler.executeTool('analyze_best_practices', {
           topic: 'state_management'
+        , mode: 'full'
         });
 
         const duration = Date.now() - startTime;
