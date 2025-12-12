@@ -275,7 +275,7 @@ describe('MCP Protocol Compliance', () => {
 
     it('should include search_terragrunt_docs tool', () => {
       const tools = toolHandler.getAvailableTools();
-      const searchTool = tools.find(t => t.name === 'search_terragrunt_docs');
+      const searchTool = tools.find(t => t.name === 'search_docs');
       
       expect(searchTool).toBeDefined();
       expect(searchTool?.description).toBeDefined();
@@ -284,14 +284,14 @@ describe('MCP Protocol Compliance', () => {
 
     it('should include get_terragrunt_sections tool', () => {
       const tools = toolHandler.getAvailableTools();
-      const sectionsTool = tools.find(t => t.name === 'get_terragrunt_sections');
+      const sectionsTool = tools.find(t => t.name === 'search_docs');
       
       expect(sectionsTool).toBeDefined();
     });
 
     it('should include get_section_docs tool', () => {
       const tools = toolHandler.getAvailableTools();
-      const sectionDocsTool = tools.find(t => t.name === 'get_section_docs');
+      const sectionDocsTool = tools.find(t => t.name === 'search_docs');
       
       expect(sectionDocsTool).toBeDefined();
       expect(sectionDocsTool?.inputSchema.properties.section).toBeDefined();
@@ -325,7 +325,7 @@ describe('MCP Protocol Compliance', () => {
 
     it('should include get_code_examples tool', () => {
       const tools = toolHandler.getAvailableTools();
-      const examplesTool = tools.find(t => t.name === 'get_code_examples');
+      const examplesTool = tools.find(t => t.name === 'search_docs');
       
       expect(examplesTool).toBeDefined();
       expect(examplesTool?.inputSchema.properties.topic).toBeDefined();
@@ -378,7 +378,7 @@ describe('MCP Protocol Compliance', () => {
 
   describe('CallToolRequest Compliance', () => {
     it('should handle CallToolRequest with valid tool and arguments', async () => {
-      const result = await toolHandler.executeTool('search_terragrunt_docs', {
+      const result = await toolHandler.executeTool('search_docs', {mode: 'search', 
         query: 'dependencies',
         limit: 5
       });
@@ -388,7 +388,7 @@ describe('MCP Protocol Compliance', () => {
     });
 
     it('should return structured response for search tool', async () => {
-      const result = await toolHandler.executeTool('search_terragrunt_docs', {
+      const result = await toolHandler.executeTool('search_docs', {mode: 'search', 
         query: 'terraform',
         limit: 3
       });
@@ -402,7 +402,7 @@ describe('MCP Protocol Compliance', () => {
     });
 
     it('should return structured response for sections tool', async () => {
-      const result = await toolHandler.executeTool('get_terragrunt_sections', {});
+      const result = await toolHandler.executeTool('search_docs', {mode: 'list'});
 
       expect(result.sections).toBeDefined();
       expect(Array.isArray(result.sections)).toBe(true);
@@ -411,9 +411,9 @@ describe('MCP Protocol Compliance', () => {
     });
 
     it('should return structured response for section docs tool', async () => {
-      const result = await toolHandler.executeTool('get_section_docs', {
+      const result = await toolHandler.executeTool('search_docs', {mode: 'section', 
         section: 'getting-started'
-      , mode: 'full'
+      , detailLevel: 'full'
       });
 
       expect(result.section).toBe('getting-started');
@@ -512,10 +512,10 @@ describe('MCP Protocol Compliance', () => {
     });
 
     it('should return structured response for code examples tool', async () => {
-      const result = await toolHandler.executeTool('get_code_examples', {
-        topic: 'dependencies',
+      const result = await toolHandler.executeTool('search_docs', {mode: 'examples', 
+        query: 'dependencies',
         limit: 3
-      , mode: 'full'
+      , detailLevel: 'full'
       });
 
       expect(result.topic).toBe('dependencies');
@@ -604,7 +604,7 @@ describe('MCP Protocol Compliance', () => {
     });
 
     it('should validate required parameters', async () => {
-      const result = await toolHandler.executeTool('search_terragrunt_docs', {});
+      const result = await toolHandler.executeTool('search_docs', {mode: 'search', });
 
       expect(result.error).toBeDefined();
       expect(result.error).toContain('required');
@@ -651,7 +651,7 @@ describe('MCP Protocol Compliance', () => {
     });
 
     it('should handle missing optional parameters gracefully', async () => {
-      const result = await toolHandler.executeTool('search_terragrunt_docs', {
+      const result = await toolHandler.executeTool('search_docs', {mode: 'search', 
         query: 'test'
         // pageSize is optional, should default to 10
       });
@@ -662,9 +662,9 @@ describe('MCP Protocol Compliance', () => {
 
     it('should not throw exceptions on tool execution errors', async () => {
       // Should return error object, not throw
-      const result = await toolHandler.executeTool('get_section_docs', {
+      const result = await toolHandler.executeTool('search_docs', {mode: 'section', 
         section: 'nonexistent-section'
-      , mode: 'full'
+      , detailLevel: 'full'
       });
 
       expect(result).toBeDefined();
@@ -1222,16 +1222,16 @@ describe('MCP Protocol Compliance', () => {
     });
 
     it('should return error object (not throw) for invalid tool parameters', async () => {
-      const result = await toolHandler.executeTool('search_terragrunt_docs', {});
+      const result = await toolHandler.executeTool('search_docs', {mode: 'search', });
 
       expect(result.error).toBeDefined();
       expect(typeof result.error).toBe('string');
     });
 
     it('should provide helpful error messages', async () => {
-      const result = await toolHandler.executeTool('get_section_docs', {
+      const result = await toolHandler.executeTool('search_docs', {mode: 'section', 
         section: 'nonexistent'
-      , mode: 'full'
+      , detailLevel: 'full'
       });
 
       if (result.error) {
@@ -1241,7 +1241,7 @@ describe('MCP Protocol Compliance', () => {
     });
 
     it('should not expose internal errors to clients', async () => {
-      const result = await toolHandler.executeTool('search_terragrunt_docs', {
+      const result = await toolHandler.executeTool('search_docs', {mode: 'search', 
         query: null as any // Invalid input
       });
 
@@ -1254,7 +1254,7 @@ describe('MCP Protocol Compliance', () => {
 
   describe('Response Format Compliance', () => {
     it('should return JSON-serializable responses', async () => {
-      const result = await toolHandler.executeTool('search_terragrunt_docs', {
+      const result = await toolHandler.executeTool('search_docs', {mode: 'search', 
         query: 'test',
         limit: 1
       });
@@ -1268,18 +1268,18 @@ describe('MCP Protocol Compliance', () => {
     });
 
     it('should not return circular references', async () => {
-      const result = await toolHandler.executeTool('get_terragrunt_sections', {});
+      const result = await toolHandler.executeTool('search_docs', {mode: 'list'});
 
       expect(() => JSON.stringify(result)).not.toThrow();
     });
 
     it('should return consistent field types across calls', async () => {
-      const result1 = await toolHandler.executeTool('search_terragrunt_docs', {
+      const result1 = await toolHandler.executeTool('search_docs', {mode: 'search', 
         query: 'terraform',
         limit: 1
       });
       
-      const result2 = await toolHandler.executeTool('search_terragrunt_docs', {
+      const result2 = await toolHandler.executeTool('search_docs', {mode: 'search', 
         query: 'different query',
         limit: 1
       });
@@ -1344,9 +1344,9 @@ describe('MCP Protocol Compliance', () => {
 
     it('should handle concurrent tool executions', async () => {
       const promises = [
-        toolHandler.executeTool('search_terragrunt_docs', { query: 'test1', limit: 1 }),
-        toolHandler.executeTool('search_terragrunt_docs', { query: 'test2', limit: 1 }),
-        toolHandler.executeTool('get_terragrunt_sections', {}),
+        toolHandler.executeTool('search_docs', {mode: 'search',  query: 'test1', limit: 1 }),
+        toolHandler.executeTool('search_docs', {mode: 'search',  query: 'test2', limit: 1 }),
+        toolHandler.executeTool('search_docs', {mode: 'list'}),
       ];
       
       const results = await Promise.all(promises);
@@ -1359,7 +1359,7 @@ describe('MCP Protocol Compliance', () => {
 
     it('should not corrupt state during concurrent operations', async () => {
       const promises = Array(10).fill(null).map((_, i) =>
-        toolHandler.executeTool('search_terragrunt_docs', {
+        toolHandler.executeTool('search_docs', {mode: 'search', 
           query: `test${i}`,
           limit: 1
         })

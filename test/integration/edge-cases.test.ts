@@ -16,7 +16,7 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
 
   describe('Search with Special Characters', () => {
     it('should handle special characters in search query', async () => {
-      const result = await toolHandler.executeTool('search_terragrunt_docs', {
+      const result = await toolHandler.executeTool('search_docs', {mode: 'search', 
         query: 'terraform { source = "..." }',
         limit: 5
       });
@@ -28,7 +28,7 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
     });
 
     it('should handle quotes in search query', async () => {
-      const result = await toolHandler.executeTool('search_terragrunt_docs', {
+      const result = await toolHandler.executeTool('search_docs', {mode: 'search', 
         query: 'dependency "vpc"',
         limit: 5
       });
@@ -39,7 +39,7 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
     });
 
     it('should handle forward slashes in search query', async () => {
-      const result = await toolHandler.executeTool('search_terragrunt_docs', {
+      const result = await toolHandler.executeTool('search_docs', {mode: 'search', 
         query: 'path/to/module',
         limit: 5
       });
@@ -50,7 +50,7 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
     });
 
     it('should handle backslashes in search query', async () => {
-      const result = await toolHandler.executeTool('search_terragrunt_docs', {
+      const result = await toolHandler.executeTool('search_docs', {mode: 'search', 
         query: 'C:\\Users\\path',
         limit: 5
       });
@@ -61,7 +61,7 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
     });
 
     it('should handle ampersands and other HTML entities', async () => {
-      const result = await toolHandler.executeTool('search_terragrunt_docs', {
+      const result = await toolHandler.executeTool('search_docs', {mode: 'search', 
         query: 'flag1 && flag2',
         limit: 5
       });
@@ -72,7 +72,7 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
     });
 
     it('should handle parentheses and brackets', async () => {
-      const result = await toolHandler.executeTool('search_terragrunt_docs', {
+      const result = await toolHandler.executeTool('search_docs', {mode: 'search', 
         query: 'func(param1, param2)',
         limit: 5
       });
@@ -83,7 +83,7 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
     });
 
     it('should handle dollar signs (variable syntax)', async () => {
-      const result = await toolHandler.executeTool('search_terragrunt_docs', {
+      const result = await toolHandler.executeTool('search_docs', {mode: 'search', 
         query: '${var.name}',
         limit: 5
       });
@@ -94,7 +94,7 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
     });
 
     it('should handle asterisks and wildcards', async () => {
-      const result = await toolHandler.executeTool('search_terragrunt_docs', {
+      const result = await toolHandler.executeTool('search_docs', {mode: 'search', 
         query: '*.tf',
         limit: 5
       });
@@ -109,7 +109,7 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
     it('should handle queries up to 1000 characters', async () => {
       const longQuery = 'terragrunt '.repeat(90); // ~990 chars
       
-      const result = await toolHandler.executeTool('search_terragrunt_docs', {
+      const result = await toolHandler.executeTool('search_docs', {mode: 'search', 
         query: longQuery,
         limit: 5
       });
@@ -123,7 +123,7 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
     it('should handle queries over 1000 characters', async () => {
       const veryLongQuery = 'How to configure terragrunt dependencies with remote state backend using S3 and DynamoDB for state locking with multiple environments and modules '.repeat(10); // ~1400 chars
       
-      const result = await toolHandler.executeTool('search_terragrunt_docs', {
+      const result = await toolHandler.executeTool('search_docs', {mode: 'search', 
         query: veryLongQuery,
         limit: 5
       });
@@ -145,7 +145,7 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
         }
       `;
       
-      const result = await toolHandler.executeTool('search_terragrunt_docs', {
+      const result = await toolHandler.executeTool('search_docs', {mode: 'search', 
         query: multiLineQuery,
         limit: 5
       });
@@ -158,7 +158,7 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
 
   describe('Unicode in Titles and Content', () => {
     it('should handle emoji in search query', async () => {
-      const result = await toolHandler.executeTool('search_terragrunt_docs', {
+      const result = await toolHandler.executeTool('search_docs', {mode: 'search', 
         query: 'terraform 🚀',
         limit: 5
       });
@@ -169,7 +169,7 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
     });
 
     it('should handle non-ASCII characters in search', async () => {
-      const result = await toolHandler.executeTool('search_terragrunt_docs', {
+      const result = await toolHandler.executeTool('search_docs', {mode: 'search', 
         query: 'configuración terraform',
         limit: 5
       });
@@ -180,7 +180,7 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
     });
 
     it('should handle Chinese characters', async () => {
-      const result = await toolHandler.executeTool('search_terragrunt_docs', {
+      const result = await toolHandler.executeTool('search_docs', {mode: 'search', 
         query: '配置 terraform',
         limit: 5
       });
@@ -191,7 +191,7 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
     });
 
     it('should handle mixed unicode and ASCII', async () => {
-      const result = await toolHandler.executeTool('search_terragrunt_docs', {
+      const result = await toolHandler.executeTool('search_docs', {mode: 'search', 
         query: 'terraform-модуль',
         limit: 5
       });
@@ -204,7 +204,7 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
 
   describe('Limit Parameters at Boundaries', () => {
     it('should handle pageSize=0', async () => {
-      const result = await toolHandler.executeTool('search_terragrunt_docs', {
+      const result = await toolHandler.executeTool('search_docs', {mode: 'search', 
         query: 'terraform',
         pageSize: 0
       });
@@ -217,7 +217,7 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
     });
 
     it('should handle pageSize=1', async () => {
-      const result = await toolHandler.executeTool('search_terragrunt_docs', {
+      const result = await toolHandler.executeTool('search_docs', {mode: 'search', 
         query: 'terraform',
         pageSize: 1
       });
@@ -229,7 +229,7 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
     });
 
     it('should handle default pageSize (no pageSize specified)', async () => {
-      const result = await toolHandler.executeTool('search_terragrunt_docs', {
+      const result = await toolHandler.executeTool('search_docs', {mode: 'search', 
         query: 'terraform'
       });
 
@@ -241,7 +241,7 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
     });
 
     it('should handle pageSize=50 (max)', async () => {
-      const result = await toolHandler.executeTool('search_terragrunt_docs', {
+      const result = await toolHandler.executeTool('search_docs', {mode: 'search', 
         query: 'terraform',
         pageSize: 50
       });
@@ -253,7 +253,7 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
     });
 
     it('should handle pageSize beyond available results', async () => {
-      const result = await toolHandler.executeTool('search_terragrunt_docs', {
+      const result = await toolHandler.executeTool('search_docs', {mode: 'search', 
         query: 'terraform',
         pageSize: 50
       });
@@ -266,7 +266,7 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
     });
 
     it('should handle negative pageSize (edge case)', async () => {
-      const result = await toolHandler.executeTool('search_terragrunt_docs', {
+      const result = await toolHandler.executeTool('search_docs', {mode: 'search', 
         query: 'terraform',
         pageSize: -5
       });
@@ -280,7 +280,7 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
 
   describe('Empty and Invalid Inputs', () => {
     it('should handle empty search query', async () => {
-      const result = await toolHandler.executeTool('search_terragrunt_docs', {
+      const result = await toolHandler.executeTool('search_docs', {mode: 'search', 
         query: '',
         limit: 5
       });
@@ -296,7 +296,7 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
     });
 
     it('should handle whitespace-only query', async () => {
-      const result = await toolHandler.executeTool('search_terragrunt_docs', {
+      const result = await toolHandler.executeTool('search_docs', {mode: 'search', 
         query: '   ',
         limit: 5
       });
@@ -307,7 +307,7 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
     });
 
     it('should handle missing required parameter (query)', async () => {
-      const result = await toolHandler.executeTool('search_terragrunt_docs', {
+      const result = await toolHandler.executeTool('search_docs', {mode: 'search', 
         limit: 5
       });
 
@@ -317,9 +317,9 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
     });
 
     it('should handle invalid section name', async () => {
-      const result = await toolHandler.executeTool('get_section_docs', {
+      const result = await toolHandler.executeTool('search_docs', {mode: 'section', 
         section: 'nonexistent-section-12345'
-      , mode: 'full'
+      , detailLevel: 'full'
       });
 
       expect(result).toBeDefined();
@@ -368,10 +368,10 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
     });
 
     it('should handle empty topic for code examples', async () => {
-      const result = await toolHandler.executeTool('get_code_examples', {
-        topic: '',
+      const result = await toolHandler.executeTool('search_docs', {mode: 'examples', 
+        query: '',
         limit: 5
-      , mode: 'full'
+      , detailLevel: 'full'
       });
 
       expect(result).toBeDefined();
@@ -405,7 +405,7 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
     });
 
     it('should validate get_code_examples requires topic parameter', async () => {
-      const result = await toolHandler.executeTool('get_code_examples', { mode: 'full' });
+      const result = await toolHandler.executeTool('search_docs', {mode: 'examples',  detailLevel: 'full' });
 
       expect(result).toBeDefined();
       expect(result.error).toBeDefined();
@@ -413,7 +413,7 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
     });
 
     it('should validate get_section_docs requires section parameter', async () => {
-      const result = await toolHandler.executeTool('get_section_docs', { mode: 'full' });
+      const result = await toolHandler.executeTool('search_docs', {mode: 'section',  detailLevel: 'full' });
 
       expect(result).toBeDefined();
       expect(result.error).toBeDefined();
@@ -421,7 +421,7 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
     });
 
     it('should validate search_terragrunt_docs requires query parameter', async () => {
-      const result = await toolHandler.executeTool('search_terragrunt_docs', {});
+      const result = await toolHandler.executeTool('search_docs', {mode: 'search', });
 
       expect(result).toBeDefined();
       expect(result.error).toBeDefined();
@@ -457,10 +457,10 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
 
   describe('Code Examples Edge Cases', () => {
     it('should handle code examples with limit=0', async () => {
-      const result = await toolHandler.executeTool('get_code_examples', {
-        topic: 'dependencies',
+      const result = await toolHandler.executeTool('search_docs', {mode: 'examples', 
+        query: 'dependencies',
         limit: 0
-      , mode: 'full'
+      , detailLevel: 'full'
       });
 
       expect(result).toBeDefined();
@@ -470,10 +470,10 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
     });
 
     it('should handle code examples with very high limit', async () => {
-      const result = await toolHandler.executeTool('get_code_examples', {
-        topic: 'terraform',
+      const result = await toolHandler.executeTool('search_docs', {mode: 'examples', 
+        query: 'terraform',
         limit: 100
-      , mode: 'full'
+      , detailLevel: 'full'
       });
 
       expect(result).toBeDefined();
@@ -483,10 +483,10 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
     });
 
     it('should handle code examples for rare/specific topics', async () => {
-      const result = await toolHandler.executeTool('get_code_examples', {
-        topic: 'hooks',
+      const result = await toolHandler.executeTool('search_docs', {mode: 'examples', 
+        query: 'hooks',
         limit: 5
-      , mode: 'full'
+      , detailLevel: 'full'
       });
 
       expect(result).toBeDefined();
@@ -498,9 +498,9 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
 
   describe('Section Docs Edge Cases', () => {
     it('should handle section with special characters', async () => {
-      const result = await toolHandler.executeTool('get_section_docs', {
+      const result = await toolHandler.executeTool('search_docs', {mode: 'section', 
         section: 'getting-started'
-      , mode: 'full'
+      , detailLevel: 'full'
       });
 
       expect(result).toBeDefined();
@@ -510,9 +510,9 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
     });
 
     it('should handle section with uppercase', async () => {
-      const result = await toolHandler.executeTool('get_section_docs', {
+      const result = await toolHandler.executeTool('search_docs', {mode: 'section', 
         section: 'GETTING-STARTED'
-      , mode: 'full'
+      , detailLevel: 'full'
       });
 
       expect(result).toBeDefined();
@@ -527,9 +527,9 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
     });
 
     it('should handle section with trailing/leading spaces', async () => {
-      const result = await toolHandler.executeTool('get_section_docs', {
+      const result = await toolHandler.executeTool('search_docs', {mode: 'section', 
         section: '  getting-started  '
-      , mode: 'full'
+      , detailLevel: 'full'
       });
 
       expect(result).toBeDefined();

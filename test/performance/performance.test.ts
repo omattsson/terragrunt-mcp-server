@@ -195,14 +195,14 @@ describe('Performance Benchmarks', () => {
     beforeAll(async () => {
       // Warm up the cache by executing a simple query first
       console.log('Warming up tool handler cache...');
-      await toolHandler.executeTool('get_terragrunt_sections', {});
+      await toolHandler.executeTool('search_docs', {mode: 'list'});
       console.log('Cache warmed up');
     }, 30000); // 30 second timeout for warm-up
 
     it('should execute search_terragrunt_docs in <1 second', async () => {
       const startTime = performance.now();
       
-      const result = await toolHandler.executeTool('search_terragrunt_docs', {
+      const result = await toolHandler.executeTool('search_docs', {mode: 'search', 
         query: 'dependencies',
         limit: 5
       });
@@ -219,7 +219,7 @@ describe('Performance Benchmarks', () => {
     it('should execute get_terragrunt_sections in <500ms', async () => {
       const startTime = performance.now();
       
-      const result = await toolHandler.executeTool('get_terragrunt_sections', {});
+      const result = await toolHandler.executeTool('search_docs', {mode: 'list'});
       
       const duration = performance.now() - startTime;
       
@@ -233,9 +233,9 @@ describe('Performance Benchmarks', () => {
     it('should execute get_section_docs in <1 second', async () => {
       const startTime = performance.now();
       
-      const result = await toolHandler.executeTool('get_section_docs', {
+      const result = await toolHandler.executeTool('search_docs', {mode: 'section', 
         section: 'getting-started'
-      , mode: 'full'
+      , detailLevel: 'full'
       });
       
       const duration = performance.now() - startTime;
@@ -282,10 +282,10 @@ describe('Performance Benchmarks', () => {
     it('should execute get_code_examples in <1.5 seconds', async () => {
       const startTime = performance.now();
       
-      const result = await toolHandler.executeTool('get_code_examples', {
-        topic: 'dependencies',
+      const result = await toolHandler.executeTool('search_docs', {mode: 'examples', 
+        query: 'dependencies',
         limit: 5
-      , mode: 'full'
+      , detailLevel: 'full'
       });
       
       const duration = performance.now() - startTime;
@@ -299,12 +299,12 @@ describe('Performance Benchmarks', () => {
 
     it('should benchmark all tools sequentially', async () => {
       const tools = [
-        { name: 'search_terragrunt_docs', args: { query: 'test', limit: 5 } },
-        { name: 'get_terragrunt_sections', args: {} },
-        { name: 'get_section_docs', args: { section: 'reference' } },
+        { name: 'search_docs', args: { query: 'test', limit: 5 } },
+        { name: 'search_docs', args: {} },
+        { name: 'search_docs', args: { section: 'reference' } },
         { name: 'get_cli_command_help', args: { command: 'apply' } },
         { name: 'get_hcl_config_reference', args: { config: 'terraform' } },
-        { name: 'get_code_examples', args: { topic: 'remote state', limit: 3 } }
+        { name: 'search_docs', args: { topic: 'remote state', limit: 3 } }
       ];
 
       console.log('\n  Sequential tool execution benchmark:');
@@ -353,15 +353,15 @@ describe('Performance Benchmarks', () => {
 
     it('should handle 10 concurrent tool executions', async () => {
       const tools = [
-        { name: 'search_terragrunt_docs', args: { query: 'test1', limit: 3 } },
-        { name: 'search_terragrunt_docs', args: { query: 'test2', limit: 3 } },
-        { name: 'get_terragrunt_sections', args: {} },
-        { name: 'get_section_docs', args: { section: 'getting-started' } },
+        { name: 'search_docs', args: { query: 'test1', limit: 3 } },
+        { name: 'search_docs', args: { query: 'test2', limit: 3 } },
+        { name: 'search_docs', args: {} },
+        { name: 'search_docs', args: { section: 'getting-started' } },
         { name: 'get_cli_command_help', args: { command: 'plan' } },
         { name: 'get_hcl_config_reference', args: { config: 'dependency' } },
-        { name: 'get_code_examples', args: { topic: 'dependencies', limit: 3 } },
-        { name: 'search_terragrunt_docs', args: { query: 'test3', limit: 3 } },
-        { name: 'get_section_docs', args: { section: 'reference' } },
+        { name: 'search_docs', args: { topic: 'dependencies', limit: 3 } },
+        { name: 'search_docs', args: { query: 'test3', limit: 3 } },
+        { name: 'search_docs', args: { section: 'reference' } },
         { name: 'get_cli_command_help', args: { command: 'apply' } }
       ];
 
@@ -418,7 +418,7 @@ describe('Performance Benchmarks', () => {
         ),
         // Tool executions
         ...Array.from({ length: 5 }, () => 
-          () => toolHandler.executeTool('get_terragrunt_sections', {})
+          () => toolHandler.executeTool('search_docs', {mode: 'list'})
         ),
         // Doc fetches
         ...Array.from({ length: 5 }, () => 
