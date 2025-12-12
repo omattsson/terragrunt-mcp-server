@@ -113,11 +113,13 @@ describe('ToolHandler', () => {
       expect(unifiedSearchTool).toBeDefined();
     });
 
-    it('should include get_cli_command_help tool', () => {
+    it('should include cli_reference tool (replaces get_cli_command_help and list_cli_commands)', () => {
       const tools = toolHandler.getAvailableTools();
       
-      const cliTool = tools.find(t => t.name === 'get_cli_command_help');
+      const cliTool = tools.find(t => t.name === 'cli_reference');
       expect(cliTool).toBeDefined();
+      expect(cliTool?.inputSchema.properties.command).toBeDefined();
+      expect(cliTool?.inputSchema.properties.category).toBeDefined();
     });
 
     it('should include get_hcl_config_reference tool', () => {
@@ -207,11 +209,16 @@ describe('ToolHandler', () => {
       expect(examplesResult.error).toContain('query parameter is required for examples mode');
     });
 
-    it('should require command parameter for get_cli_command_help', () => {
+    it('should not require command parameter for cli_reference (supports list mode)', () => {
       const tools = toolHandler.getAvailableTools();
-      const tool = tools.find(t => t.name === 'get_cli_command_help');
+      const tool = tools.find(t => t.name === 'cli_reference');
       
-      expect(tool?.inputSchema.required).toContain('command');
+      // No required params - command is optional (list mode if omitted)
+      // WHY: CLI reference tool supports two modes:
+      // 1. Get mode: when command parameter is provided
+      // 2. List mode: when command is omitted (with optional category/search filters)
+      // Making command required would prevent list mode usage.
+      expect(tool?.inputSchema.required).toEqual([]);
     });
 
     it('should not require any parameters for get_hcl_config_reference (supports listBlocks mode)', () => {
@@ -400,9 +407,9 @@ describe('ToolHandler', () => {
     });
   });
 
-  describe('Tool Execution - get_cli_command_help', () => {
-    it('should return help for valid command', async () => {
-      const result = await toolHandler.executeTool('get_cli_command_help', {
+  describe('Tool Execution - cli_reference', () => {
+    it('should return help for valid command (get mode)', async () => {
+      const result = await toolHandler.executeTool('cli_reference', {
         command: 'plan'
       });
       
@@ -415,7 +422,7 @@ describe('ToolHandler', () => {
     it('should return error for invalid command', async () => {
       mockDocsManager.getCliCommandHelp.mockResolvedValueOnce(null);
 
-      const result = await toolHandler.executeTool('get_cli_command_help', {
+      const result = await toolHandler.executeTool('cli_reference', {
         command: 'nonexistent'
       });
       
@@ -425,7 +432,7 @@ describe('ToolHandler', () => {
     });
 
     it('should include documentation URL in response', async () => {
-      const result = await toolHandler.executeTool('get_cli_command_help', {
+      const result = await toolHandler.executeTool('cli_reference', {
         command: 'plan'
       });
       
@@ -433,7 +440,7 @@ describe('ToolHandler', () => {
     });
 
     it('should resolve command aliases', async () => {
-      const result = await toolHandler.executeTool('get_cli_command_help', {
+      const result = await toolHandler.executeTool('cli_reference', {
         command: 'run-all'
       });
       
@@ -442,7 +449,7 @@ describe('ToolHandler', () => {
     });
 
     it('should include examples in response', async () => {
-      const result = await toolHandler.executeTool('get_cli_command_help', {
+      const result = await toolHandler.executeTool('cli_reference', {
         command: 'plan'
       });
       
@@ -451,13 +458,42 @@ describe('ToolHandler', () => {
     });
 
     it('should include options in response', async () => {
-      const result = await toolHandler.executeTool('get_cli_command_help', {
+      const result = await toolHandler.executeTool('cli_reference', {
         command: 'run'
       });
       
       expect(result.options).toBeDefined();
       expect(result.options.length).toBeGreaterThan(0);
       expect(result.options.some((o: any) => o.flag === '--all')).toBe(true);
+    });
+
+    it('should list all commands when no command provided (list mode)', async () => {
+      const result = await toolHandler.executeTool('cli_reference', {});
+      
+      expect(result.commands).toBeDefined();
+      expect(Array.isArray(result.commands)).toBe(true);
+      expect(result.categories).toBeDefined();
+      expect(result.pagination).toBeDefined();
+    });
+
+    it('should filter by category in list mode', async () => {
+      const result = await toolHandler.executeTool('cli_reference', {
+        category: 'main'
+      });
+      
+      expect(result.category).toBe('main');
+      expect(result.commands).toBeDefined();
+      expect(Array.isArray(result.commands)).toBe(true);
+    });
+
+    it('should support search in list mode', async () => {
+      const result = await toolHandler.executeTool('cli_reference', {
+        search: 'plan'
+      });
+      
+      expect(result.search).toBe('plan');
+      expect(result.results).toBeDefined();
+      expect(Array.isArray(result.results)).toBe(true);
     });
   });
 
