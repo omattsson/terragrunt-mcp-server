@@ -131,13 +131,13 @@ describe('Advanced Code Examples Integration', () => {
       expect(result.examples).toBeDefined();
     });
 
-    it('should require topic when advanced=false', async () => {
+    it('should require query when advanced=false', async () => {
       const result = await toolHandler.executeTool('search_docs', {mode: 'examples', 
         advanced: false
       });
 
       expect(result.error).toBeDefined();
-      expect(result.error).toContain('topic parameter is required');
+      expect(result.error).toContain('query parameter is required');
     });
 
     it('should suggest advanced examples when doc search fails', async () => {
