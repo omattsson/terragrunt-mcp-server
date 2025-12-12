@@ -302,7 +302,7 @@ describe('Performance Benchmarks', () => {
         { name: 'search_docs', args: { mode: 'search', query: 'test', limit: 5 } },
         { name: 'search_docs', args: { mode: 'list' } },
         { name: 'search_docs', args: { mode: 'section', section: 'reference' } },
-        { name: 'get_cli_command_help', args: { command: 'apply' } },
+        { name: 'cli_reference', args: { command: 'apply' } },
         { name: 'get_hcl_config_reference', args: { config: 'terraform' } },
         { name: 'search_docs', args: { mode: 'examples', query: 'remote state', limit: 3 } }
       ];
@@ -357,12 +357,12 @@ describe('Performance Benchmarks', () => {
         { name: 'search_docs', args: { mode: 'search', query: 'test2', limit: 3 } },
         { name: 'search_docs', args: { mode: 'list' } },
         { name: 'search_docs', args: { mode: 'section', section: 'getting-started' } },
-        { name: 'get_cli_command_help', args: { command: 'plan' } },
+        { name: 'cli_reference', args: { command: 'plan' } },
         { name: 'get_hcl_config_reference', args: { config: 'dependency' } },
         { name: 'search_docs', args: { mode: 'examples', query: 'dependencies', limit: 3 } },
         { name: 'search_docs', args: { mode: 'search', query: 'test3', limit: 3 } },
         { name: 'search_docs', args: { mode: 'section', section: 'reference' } },
-        { name: 'get_cli_command_help', args: { command: 'apply' } }
+        { name: 'cli_reference', args: { command: 'apply' } }
       ];
 
       const startTime = performance.now();

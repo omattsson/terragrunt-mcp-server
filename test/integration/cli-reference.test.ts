@@ -318,10 +318,12 @@ describe('cli_reference Unified Tool - Comprehensive Integration', () => {
       });
 
       expect(result).toBeDefined();
-      // Should either return error or empty results
-      const hasError = result.error !== undefined;
-      const hasEmptyResults = result.commands !== undefined && result.commands.length === 0;
-      expect(hasError || hasEmptyResults).toBe(true);
+      // Invalid category is treated as an empty filter (no matches)
+      expect(result.error).toBeUndefined();
+      expect(result.category).toBe('invalid-category');
+      expect(result.commands).toBeDefined();
+      expect(Array.isArray(result.commands)).toBe(true);
+      expect(result.commands.length).toBe(0);
     });
 
     it('should handle negative page numbers', async () => {
@@ -330,11 +332,10 @@ describe('cli_reference Unified Tool - Comprehensive Integration', () => {
       });
 
       expect(result).toBeDefined();
-      // Implementation passes negative page through without validation/normalization
-      // System returns results with pagination object containing the negative value
       expect(result.commands).toBeDefined();
       expect(result.pagination).toBeDefined();
-      expect(result.pagination.page).toBe(-1);
+      // Negative page numbers are normalized to 1
+      expect(result.pagination.page).toBe(1);
     });
 
     it('should handle very large pageSize', async () => {

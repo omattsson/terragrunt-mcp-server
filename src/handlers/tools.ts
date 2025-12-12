@@ -933,21 +933,36 @@ export class ToolHandler {
 
     /**
      * Unified CLI reference router
-     * Routes to appropriate method based on command parameter presence
+     * Routes to appropriate method based on command parameter presence.
+     *
+     * Behavior details (important for clients):
+     * - Get mode: when `command` is a non-empty string.
+     * - List mode: when `command` is omitted OR an empty/whitespace-only string.
+     * - Pagination: `page` and `pageSize` are normalized to positive integers to avoid
+     *   surprising slice behavior (e.g., negative pages).
      */
     private async cliReference(args: CLIReferenceArgs): Promise<any> {
+        // Normalize empty/whitespace command strings to list mode.
+        const command = typeof args?.command === 'string' ? args.command.trim() : undefined;
+
         // Get mode: specific command help
-        if (args?.command) {
-            return await this.getCliCommandHelp(args.command);
+        if (command) {
+            return await this.getCliCommandHelp(command);
         }
 
         // List mode: all commands with optional filtering
-        return await this.listCliCommands(
-            args?.category,
-            args?.search,
-            args?.page ?? 1,
-            args?.pageSize ?? 20
-        );
+        const page = this.normalizePositiveInt(args?.page, 1);
+        const pageSize = this.normalizePositiveInt(args?.pageSize, 20);
+        return await this.listCliCommands(args?.category, args?.search, page, pageSize);
+    }
+
+    private normalizePositiveInt(value: unknown, defaultValue: number): number {
+        if (typeof value !== 'number' || !Number.isFinite(value)) {
+            return defaultValue;
+        }
+
+        const intValue = Math.floor(value);
+        return intValue >= 1 ? intValue : defaultValue;
     }
 
     private async getCliCommandHelp(command: string): Promise<any> {
