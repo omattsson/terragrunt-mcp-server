@@ -66,7 +66,7 @@ describe('Config Generation Integration Tests', () => {
 
   describe('Remote State Configuration', () => {
     it('should generate complete S3 remote state config', async () => {
-      const result = await toolHandler.executeTool('generate_terragrunt_config', {
+      const result = await toolHandler.executeTool('build_config', {
         useCase: 'remote_state',
         backend: 's3',
         options: {
@@ -118,7 +118,7 @@ describe('Config Generation Integration Tests', () => {
     }, 10000);
 
     it('should generate complete Azure Blob remote state config', async () => {
-      const result = await toolHandler.executeTool('generate_terragrunt_config', {
+      const result = await toolHandler.executeTool('build_config', {
         useCase: 'remote_state',
         backend: 'azurerm',
         options: {
@@ -157,7 +157,7 @@ describe('Config Generation Integration Tests', () => {
     }, 10000);
 
     it('should handle backend parameter gracefully when not provided', async () => {
-      const result = await toolHandler.executeTool('generate_terragrunt_config', {
+      const result = await toolHandler.executeTool('build_config', {
         useCase: 'remote_state',
         // No backend specified - should use first available template
         options: {
@@ -177,7 +177,7 @@ describe('Config Generation Integration Tests', () => {
 
   describe('Provider Generation', () => {
     it('should generate AWS provider configuration', async () => {
-      const result = await toolHandler.executeTool('generate_terragrunt_config', {
+      const result = await toolHandler.executeTool('build_config', {
         useCase: 'provider_generation',
         backend: 'aws',
         options: {
@@ -215,7 +215,7 @@ describe('Config Generation Integration Tests', () => {
 
   describe('Error Handling', () => {
     it('should return error for unknown use case', async () => {
-      const result = await toolHandler.executeTool('generate_terragrunt_config', {
+      const result = await toolHandler.executeTool('build_config', {
         useCase: 'unknown_use_case',
         options: {}
       });
@@ -227,7 +227,7 @@ describe('Config Generation Integration Tests', () => {
     }, 10000);
 
     it('should return error for missing required useCase parameter', async () => {
-      const result = await toolHandler.executeTool('generate_terragrunt_config', {
+      const result = await toolHandler.executeTool('build_config', {
         // Missing useCase
         options: { bucket: 'test' }
       });
@@ -237,7 +237,7 @@ describe('Config Generation Integration Tests', () => {
     }, 10000);
 
     it('should return error for missing required options parameter', async () => {
-      const result = await toolHandler.executeTool('generate_terragrunt_config', {
+      const result = await toolHandler.executeTool('build_config', {
         useCase: 'remote_state'
         // Missing options
       });
@@ -247,7 +247,7 @@ describe('Config Generation Integration Tests', () => {
     }, 10000);
 
     it('should return error for invalid backend with helpful message', async () => {
-      const result = await toolHandler.executeTool('generate_terragrunt_config', {
+      const result = await toolHandler.executeTool('build_config', {
         useCase: 'remote_state',
         backend: 'invalid_backend_xyz',
         options: {
@@ -262,7 +262,7 @@ describe('Config Generation Integration Tests', () => {
     }, 10000);
 
     it('should return error when required template variables are missing', async () => {
-      const result = await toolHandler.executeTool('generate_terragrunt_config', {
+      const result = await toolHandler.executeTool('build_config', {
         useCase: 'remote_state',
         backend: 's3',
         options: {
@@ -279,7 +279,7 @@ describe('Config Generation Integration Tests', () => {
 
     it('should handle use cases with missing required variables gracefully', async () => {
       // Test with dependency template but missing required variables
-      const result = await toolHandler.executeTool('generate_terragrunt_config', {
+      const result = await toolHandler.executeTool('build_config', {
         useCase: 'dependencies',
         options: {} // Missing required: name, config_path
       });
@@ -294,7 +294,7 @@ describe('Config Generation Integration Tests', () => {
 
   describe('Documentation Extraction', () => {
     it('should include relevant documentation links', async () => {
-      const result = await toolHandler.executeTool('generate_terragrunt_config', {
+      const result = await toolHandler.executeTool('build_config', {
         useCase: 'remote_state',
         backend: 's3',
         options: {
@@ -326,7 +326,7 @@ describe('Config Generation Integration Tests', () => {
     }, 10000);
 
     it('should provide actionable next steps', async () => {
-      const result = await toolHandler.executeTool('generate_terragrunt_config', {
+      const result = await toolHandler.executeTool('build_config', {
         useCase: 'provider_generation',
         backend: 'aws',
         options: {
@@ -357,7 +357,7 @@ describe('Config Generation Integration Tests', () => {
     it('should generate configuration in under 200ms', async () => {
       const startTime = Date.now();
 
-      const result = await toolHandler.executeTool('generate_terragrunt_config', {
+      const result = await toolHandler.executeTool('build_config', {
         useCase: 'remote_state',
         backend: 's3',
         options: {
@@ -381,7 +381,7 @@ describe('Config Generation Integration Tests', () => {
 
   describe('MCP Protocol Compliance', () => {
     it('should follow MCP response schema for successful generation', async () => {
-      const result = await toolHandler.executeTool('generate_terragrunt_config', {
+      const result = await toolHandler.executeTool('build_config', {
         useCase: 'remote_state',
         backend: 's3',
         options: {
@@ -412,7 +412,7 @@ describe('Config Generation Integration Tests', () => {
     }, 10000);
 
     it('should follow MCP response schema for error responses', async () => {
-      const result = await toolHandler.executeTool('generate_terragrunt_config', {
+      const result = await toolHandler.executeTool('build_config', {
         useCase: 'invalid_use_case',
         options: {}
       });
@@ -428,7 +428,7 @@ describe('Config Generation Integration Tests', () => {
 
   describe('Variable Substitution', () => {
     it('should substitute all template variables correctly', async () => {
-      const result = await toolHandler.executeTool('generate_terragrunt_config', {
+      const result = await toolHandler.executeTool('build_config', {
         useCase: 'remote_state',
         backend: 's3',
         options: {
@@ -456,7 +456,7 @@ describe('Config Generation Integration Tests', () => {
     }, 10000);
 
     it('should handle optional variables and report unused ones', async () => {
-      const result = await toolHandler.executeTool('generate_terragrunt_config', {
+      const result = await toolHandler.executeTool('build_config', {
         useCase: 'remote_state',
         backend: 's3',
         options: {

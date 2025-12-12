@@ -638,21 +638,21 @@ describe('MCP Protocol Compliance', () => {
     });
   });
 
-  describe('Configuration Generator Tool Compliance', () => {
+  describe('Configuration Builder Tool Compliance (build_config)', () => {
     describe('Tool Definition in ListTools', () => {
-      it('should include generate_terragrunt_config in available tools', () => {
+      it('should include build_config in available tools', () => {
         const tools = toolHandler.getAvailableTools();
-        const genTool = tools.find(t => t.name === 'generate_terragrunt_config');
+        const genTool = tools.find(t => t.name === 'build_config');
         
         expect(genTool).toBeDefined();
-        expect(genTool?.name).toBe('generate_terragrunt_config');
+        expect(genTool?.name).toBe('build_config');
         expect(genTool?.description).toBeDefined();
         expect(typeof genTool?.description).toBe('string');
       });
 
-      it('should have valid JSON Schema for generate_terragrunt_config', () => {
+      it('should have valid JSON Schema for build_config', () => {
         const tools = toolHandler.getAvailableTools();
-        const genTool = tools.find(t => t.name === 'generate_terragrunt_config');
+        const genTool = tools.find(t => t.name === 'build_config');
         
         expect(genTool?.inputSchema).toBeDefined();
         expect(genTool?.inputSchema.type).toBe('object');
@@ -662,7 +662,7 @@ describe('MCP Protocol Compliance', () => {
 
       it('should define useCase parameter as enum with 5 valid values', () => {
         const tools = toolHandler.getAvailableTools();
-        const genTool = tools.find(t => t.name === 'generate_terragrunt_config');
+        const genTool = tools.find(t => t.name === 'build_config');
         
         const useCaseProperty = genTool?.inputSchema.properties.useCase;
         expect(useCaseProperty).toBeDefined();
@@ -680,7 +680,7 @@ describe('MCP Protocol Compliance', () => {
 
       it('should define backend as optional string parameter', () => {
         const tools = toolHandler.getAvailableTools();
-        const genTool = tools.find(t => t.name === 'generate_terragrunt_config');
+        const genTool = tools.find(t => t.name === 'build_config');
         
         const backendProperty = genTool?.inputSchema.properties.backend;
         expect(backendProperty).toBeDefined();
@@ -691,34 +691,39 @@ describe('MCP Protocol Compliance', () => {
         expect(required.includes('backend')).toBe(false);
       });
 
-      it('should define options as required object parameter', () => {
+      it('should define options as object parameter with proper schema', () => {
         const tools = toolHandler.getAvailableTools();
-        const genTool = tools.find(t => t.name === 'generate_terragrunt_config');
+        const genTool = tools.find(t => t.name === 'build_config');
         
         const optionsProperty = genTool?.inputSchema.properties.options;
         expect(optionsProperty).toBeDefined();
         expect(optionsProperty.type).toBe('object');
         expect(optionsProperty.additionalProperties).toBe(true);
         
-        // options should be in required array
+        // No fixed required params since tool supports multiple modes
         const required = genTool?.inputSchema.required || [];
-        expect(required.includes('options')).toBe(true);
+        expect(Array.isArray(required)).toBe(true);
       });
 
-      it('should require useCase and options parameters', () => {
+      it('should have flexible parameters for multiple modes', () => {
         const tools = toolHandler.getAvailableTools();
-        const genTool = tools.find(t => t.name === 'generate_terragrunt_config');
+        const genTool = tools.find(t => t.name === 'build_config');
         
-        expect(genTool?.inputSchema.required).toBeDefined();
-        expect(Array.isArray(genTool?.inputSchema.required)).toBe(true);
-        expect(genTool?.inputSchema.required).toContain('useCase');
-        expect(genTool?.inputSchema.required).toContain('options');
+        // Tool supports 3 modes:
+        // 1. Generate only: useCase + options
+        // 2. Write only: content + path
+        // 3. Generate + write: useCase + options + write + path
+        expect(genTool?.inputSchema.properties.useCase).toBeDefined();
+        expect(genTool?.inputSchema.properties.options).toBeDefined();
+        expect(genTool?.inputSchema.properties.content).toBeDefined();
+        expect(genTool?.inputSchema.properties.path).toBeDefined();
+        expect(genTool?.inputSchema.properties.write).toBeDefined();
       });
     });
 
     describe('CallTool Request/Response Format', () => {
       it('should execute successfully with valid parameters', async () => {
-        const result = await toolHandler.executeTool('generate_terragrunt_config', {
+        const result = await toolHandler.executeTool('build_config', {
           useCase: 'remote_state',
           backend: 's3',
           options: {
@@ -736,7 +741,7 @@ describe('MCP Protocol Compliance', () => {
       });
 
       it('should return MCP-compliant success response structure', async () => {
-        const result = await toolHandler.executeTool('generate_terragrunt_config', {
+        const result = await toolHandler.executeTool('build_config', {
           useCase: 'remote_state',
           backend: 's3',
           options: {
@@ -761,7 +766,7 @@ describe('MCP Protocol Compliance', () => {
       });
 
       it('should handle complex options object with multiple value types', async () => {
-        const result = await toolHandler.executeTool('generate_terragrunt_config', {
+        const result = await toolHandler.executeTool('build_config', {
           useCase: 'remote_state',
           backend: 's3',
           options: {
@@ -783,7 +788,7 @@ describe('MCP Protocol Compliance', () => {
 
     describe('Parameter Validation', () => {
       it('should return error when useCase parameter is missing', async () => {
-        const result = await toolHandler.executeTool('generate_terragrunt_config', {
+        const result = await toolHandler.executeTool('build_config', {
           // Missing useCase
           options: {
             bucket: 'test'
@@ -797,7 +802,7 @@ describe('MCP Protocol Compliance', () => {
       });
 
       it('should return error when options parameter is missing', async () => {
-        const result = await toolHandler.executeTool('generate_terragrunt_config', {
+        const result = await toolHandler.executeTool('build_config', {
           useCase: 'remote_state'
           // Missing options
         });
@@ -809,7 +814,7 @@ describe('MCP Protocol Compliance', () => {
       });
 
       it('should handle optional backend parameter correctly', async () => {
-        const result = await toolHandler.executeTool('generate_terragrunt_config', {
+        const result = await toolHandler.executeTool('build_config', {
           useCase: 'remote_state',
           // No backend specified - should still work
           options: {
@@ -827,7 +832,7 @@ describe('MCP Protocol Compliance', () => {
 
     describe('Error Handling Compliance', () => {
       it('should return MCP-compliant error for unknown use case', async () => {
-        const result = await toolHandler.executeTool('generate_terragrunt_config', {
+        const result = await toolHandler.executeTool('build_config', {
           useCase: 'unknown_use_case',
           options: {}
         });
@@ -840,7 +845,7 @@ describe('MCP Protocol Compliance', () => {
       });
 
       it('should return MCP-compliant error for invalid backend', async () => {
-        const result = await toolHandler.executeTool('generate_terragrunt_config', {
+        const result = await toolHandler.executeTool('build_config', {
           useCase: 'remote_state',
           backend: 'invalid_backend_xyz',
           options: {
@@ -855,7 +860,7 @@ describe('MCP Protocol Compliance', () => {
       });
 
       it('should return MCP-compliant error for missing required template variables', async () => {
-        const result = await toolHandler.executeTool('generate_terragrunt_config', {
+        const result = await toolHandler.executeTool('build_config', {
           useCase: 'remote_state',
           backend: 's3',
           options: {
@@ -880,7 +885,7 @@ describe('MCP Protocol Compliance', () => {
         ];
 
         for (const testCase of testCases) {
-          const result = await toolHandler.executeTool('generate_terragrunt_config', testCase);
+          const result = await toolHandler.executeTool('build_config', testCase);
           
           expect(result).toBeDefined();
           expect(typeof result).toBe('object');
@@ -947,13 +952,15 @@ describe('MCP Protocol Compliance', () => {
         expect(required.includes('level')).toBe(false);
       });
 
-      it('should require only topic parameter', () => {
+      it('should have flexible parameters for guidance routing', () => {
         const tools = toolHandler.getAvailableTools();
         const bestPracticesTool = tools.find(t => t.name === 'get_guidance');
         
+        // No fixed required params - tool intelligently routes based on query content
         expect(bestPracticesTool?.inputSchema.required).toBeDefined();
         expect(Array.isArray(bestPracticesTool?.inputSchema.required)).toBe(true);
-        expect(bestPracticesTool?.inputSchema.required).toEqual(['topic']);
+        expect(bestPracticesTool?.inputSchema.properties.query).toBeDefined();
+        expect(bestPracticesTool?.inputSchema.properties.type).toBeDefined();
       });
 
       it('should describe guidance routing in tool description', () => {

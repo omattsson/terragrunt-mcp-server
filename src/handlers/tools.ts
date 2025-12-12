@@ -90,6 +90,30 @@ interface GuidanceArgs {
     listAll?: boolean;  // List all available guidance
 }
 
+/**
+ * Type-safe arguments for unified build_config tool
+ * Combines generate and write functionality into single tool
+ * If write=true, generates config and writes to disk in one operation
+ */
+interface BuildConfigArgs {
+    // Generate parameters (required)
+    useCase: 'remote_state' | 'provider_generation' | 'dependencies' | 'hooks' | 'inputs';
+    options: Record<string, any>;
+    
+    // Generate-specific (optional)
+    backend?: string;
+    tier?: 'essential' | 'advanced' | 'complete';
+    strictValidation?: boolean;
+    custom_template?: any;
+    
+    // Write parameters (optional - enables write mode)
+    write?: boolean;
+    path?: string;
+    overwrite?: boolean;
+    createBackup?: boolean;
+    createParentDirs?: boolean;
+}
+
 export class ToolHandler {
     private resourceHandler: ResourceHandler;
     private docsManager: TerragruntDocsManager;
@@ -401,57 +425,58 @@ export class ToolHandler {
                 }
             },
             {
-                name: 'generate_terragrunt_config',
-                description: 'Generate a complete Terragrunt configuration from templates with variable substitution, explanations, and documentation. Includes HCL syntax validation. Supports custom user-provided templates.',
+                name: 'build_config',
+                description: 'Build a Terragrunt configuration from templates with optional file writing. Supports three modes: 1) Generate-only (useCase+options), 2) Write-only (content+path), 3) Generate+Write (useCase+options+write=true+path).',
                 inputSchema: {
                     type: 'object',
                     properties: {
                         useCase: {
                             type: 'string',
                             enum: ['remote_state', 'provider_generation', 'dependencies', 'hooks', 'inputs'],
-                            description: 'The use case to generate configuration for (remote_state, provider_generation, dependencies, hooks, inputs)'
+                            description: 'The use case to generate configuration for (required for generate mode)'
+                        },
+                        options: {
+                            type: 'object',
+                            description: 'Configuration variables for the template (required for generate mode)',
+                            additionalProperties: true
+                        },
+                        content: {
+                            type: 'string',
+                            description: 'HCL content to write directly (for write-only mode without generation)'
                         },
                         backend: {
                             type: 'string',
-                            description: 'Optional backend type for remote_state (e.g., "s3", "azurerm", "gcs", "azure")'
+                            description: 'Backend type for remote_state (e.g., "s3", "azurerm", "gcs")'
                         },
                         tier: {
                             type: 'string',
                             enum: ['essential', 'advanced', 'complete'],
-                            description: 'Optional template tier: essential (minimal attributes), advanced (extended attributes), complete (all attributes). Defaults to essential for backward compatibility.',
+                            description: 'Template tier: essential (minimal), advanced (extended), complete (all attributes)',
                             default: 'essential'
-                        },
-                        options: {
-                            type: 'object',
-                            description: 'Configuration variables for the template (e.g., bucket, region, account_id). Required variables depend on the selected template.',
-                            additionalProperties: true
                         },
                         strictValidation: {
                             type: 'boolean',
-                            description: 'If true, throw an error if HCL validation fails. If false (default), return the config with validation warnings.',
+                            description: 'Throw error if HCL validation fails (default: false)',
                             default: false
                         },
                         custom_template: {
                             type: 'object',
-                            description: 'Optional custom template to use instead of built-in templates. Must include: id, name, description, category, templateHcl. See documentation for full schema.',
+                            description: 'Custom template to use instead of built-in templates',
                             properties: {
-                                id: { type: 'string', description: 'Unique template identifier' },
-                                name: { type: 'string', description: 'Human-readable template name' },
-                                description: { type: 'string', description: 'Template description' },
+                                id: { type: 'string' },
+                                name: { type: 'string' },
+                                description: { type: 'string' },
                                 category: { 
                                     type: 'string', 
-                                    enum: ['backend', 'provider', 'dependency', 'hooks', 'inputs', 'advanced', 'configuration'],
-                                    description: 'Template category'
+                                    enum: ['backend', 'provider', 'dependency', 'hooks', 'inputs', 'advanced', 'configuration']
                                 },
                                 cloudProvider: { 
                                     type: 'string',
-                                    enum: ['aws', 'azure', 'gcp', 'multi'],
-                                    description: 'Optional cloud provider'
+                                    enum: ['aws', 'azure', 'gcp', 'multi']
                                 },
-                                templateHcl: { type: 'string', description: 'HCL template content with ${var.name} placeholders' },
+                                templateHcl: { type: 'string' },
                                 variables: {
                                     type: 'array',
-                                    description: 'Template variables',
                                     items: {
                                         type: 'object',
                                         properties: {
@@ -465,36 +490,19 @@ export class ToolHandler {
                                         required: ['name', 'type', 'required']
                                     }
                                 },
-                                tags: {
-                                    type: 'array',
-                                    items: { type: 'string' },
-                                    description: 'Search tags'
-                                },
-                                example: { type: 'string', description: 'Usage example' }
+                                tags: { type: 'array', items: { type: 'string' } },
+                                example: { type: 'string' }
                             },
                             required: ['id', 'name', 'description', 'category', 'templateHcl']
-                        }
-                    },
-                    required: ['useCase', 'options']
-                }
-            },
-            {
-                name: 'write_terragrunt_config',
-                description: 'Write a Terragrunt configuration to a file with security validation and backup support',
-                inputSchema: {
-                    type: 'object',
-                    properties: {
-                        content: {
-                            type: 'string',
-                            description: 'The HCL configuration content to write to the file'
+                        },
+                        write: {
+                            type: 'boolean',
+                            description: 'Write generated config to disk (default: false)',
+                            default: false
                         },
                         path: {
                             type: 'string',
-                            description: 'Path where the file should be written (relative or absolute). Must be within allowed directories.'
-                        },
-                        filePath: {
-                            type: 'string',
-                            description: 'Alternative to path parameter. Path where the file should be written.'
+                            description: 'File path for writing (required if write=true)'
                         },
                         overwrite: {
                             type: 'boolean',
@@ -503,20 +511,16 @@ export class ToolHandler {
                         },
                         createBackup: {
                             type: 'boolean',
-                            description: 'Create backup before overwriting existing files (default: true)',
+                            description: 'Create backup before overwriting (default: true)',
                             default: true
                         },
                         createParentDirs: {
                             type: 'boolean',
-                            description: 'Create parent directories if they don\'t exist (default: true)',
+                            description: 'Create parent directories if needed (default: true)',
                             default: true
                         }
                     },
-                    required: ['content'],
-                    oneOf: [
-                        { required: ['path'] },
-                        { required: ['filePath'] }
-                    ]
+                    required: []
                 }
             },
             {
@@ -670,61 +674,46 @@ export class ToolHandler {
                         args?.listAll ?? false
                     );
 
-                case 'generate_terragrunt_config':
+                case 'build_config':
+                    // Handle write-only mode (content provided directly)
+                    if (args?.content) {
+                        const targetPath = args?.path;
+                        if (!targetPath) {
+                            return {
+                                success: false,
+                                path: '',
+                                bytesWritten: 0,
+                                created: false,
+                                backedUp: false,
+                                error: 'path parameter is required when content is provided',
+                                errorType: 'VALIDATION_ERROR'
+                            };
+                        }
+                        return await this.writeTerragruntConfig(
+                            args.content,
+                            targetPath,
+                            args.overwrite ?? false,
+                            args.createBackup ?? true,
+                            args.createParentDirs ?? true
+                        );
+                    }
+                    
+                    // Handle generate mode (with optional write)
                     if (!args?.useCase) {
-                        return { error: 'useCase parameter is required' };
+                        return { error: 'useCase parameter is required (or provide content for write-only mode)' };
                     }
                     if (!args?.options) {
                         return { error: 'options parameter is required' };
                     }
-                    return await this.generateTerragruntConfig(
+                    return await this.buildConfig(
                         args.useCase,
-                        args.backend || undefined,
-                        args.tier || undefined,
                         args.options,
+                        args.backend,
+                        args.tier,
                         args.strictValidation ?? false,
-                        args.custom_template
-                    );
-
-                case 'write_terragrunt_config':
-                    if (!args?.content) {
-                        return {
-                            success: false,
-                            path: '',
-                            bytesWritten: 0,
-                            created: false,
-                            backedUp: false,
-                            error: 'content parameter is required',
-                            errorType: 'VALIDATION_ERROR'
-                        };
-                    }
-                    // Accept both 'path' and 'filePath' for compatibility
-                    const targetPath = args?.path || args?.filePath;
-                    if (!targetPath) {
-                        return {
-                            success: false,
-                            path: '',
-                            bytesWritten: 0,
-                            created: false,
-                            backedUp: false,
-                            error: 'path or filePath parameter is required',
-                            errorType: 'VALIDATION_ERROR'
-                        };
-                    }
-                    if (typeof targetPath !== 'string') {
-                        return {
-                            success: false,
-                            path: String(targetPath),
-                            bytesWritten: 0,
-                            created: false,
-                            backedUp: false,
-                            error: 'path must be a string',
-                            errorType: 'VALIDATION_ERROR'
-                        };
-                    }
-                    return await this.writeTerragruntConfig(
-                        args.content,
-                        targetPath,
+                        args.custom_template,
+                        args.write ?? false,
+                        args.path,
                         args.overwrite ?? false,
                         args.createBackup ?? true,
                         args.createParentDirs ?? true
@@ -1776,6 +1765,90 @@ export class ToolHandler {
     /**
      * Generate a complete Terragrunt configuration from templates
      */
+    /**
+     * Unified config builder - generates Terragrunt config with optional file writing
+     * Combines generate and write operations into single workflow
+     * Supports three modes:
+     * 1. Generate-only: useCase + options (no write/path)
+     * 2. Write-only: content + path (no useCase)  
+     * 3. Generate + Write: useCase + options + write=true + path
+     */
+    private async buildConfig(
+        useCase: string,
+        options: Record<string, any>,
+        backend?: string,
+        tier?: 'essential' | 'advanced' | 'complete',
+        strictValidation: boolean = false,
+        customTemplate?: any,
+        write: boolean = false,
+        path?: string,
+        overwrite: boolean = false,
+        createBackup: boolean = true,
+        createParentDirs: boolean = true
+    ): Promise<any> {
+        try {
+            // Generate the configuration
+            const generateResult = await this.generateTerragruntConfig(
+                useCase,
+                backend,
+                tier,
+                options,
+                strictValidation,
+                customTemplate
+            );
+
+            // If generation failed, return the error
+            if (!generateResult.success) {
+                return generateResult;
+            }
+
+            // If write mode is disabled, return generation result only
+            if (!write) {
+                return generateResult;
+            }
+
+            // Write mode enabled - validate path and write to disk
+            if (!path) {
+                return {
+                    ...generateResult,
+                    success: false,
+                    error: 'path parameter is required when write=true',
+                    writeError: true
+                };
+            }
+
+            // Write the generated config to disk
+            const writeResult = await this.writeTerragruntConfig(
+                generateResult.config,
+                path,
+                overwrite,
+                createBackup,
+                createParentDirs
+            );
+
+            // Combine generation and write results
+            return {
+                ...generateResult,
+                // Override success based on write result
+                success: generateResult.success && writeResult.success,
+                // Add write-specific fields
+                written: writeResult.success,
+                path: writeResult.path,
+                bytesWritten: writeResult.bytesWritten,
+                created: writeResult.created,
+                backedUp: writeResult.backedUp,
+                // Include write error if any
+                writeError: writeResult.error,
+                writeErrorType: writeResult.errorType
+            };
+        } catch (error) {
+            return {
+                success: false,
+                error: error instanceof Error ? error.message : 'Failed to build configuration'
+            };
+        }
+    }
+
     private async generateTerragruntConfig(
         useCase: string,
         backend?: string,
