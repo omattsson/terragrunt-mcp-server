@@ -515,7 +515,7 @@ describe('Performance Benchmarks', () => {
   });
 
   describe('8. Function Lookup Performance', () => {
-    describe('function_reference', () => {
+    describe('function_reference (GET mode)', () => {
       it('should handle first call (cache miss) in <200ms', async () => {
         // Create fresh ToolHandler to test true cache miss
         const freshToolHandler = new ToolHandler();
@@ -635,7 +635,7 @@ describe('Performance Benchmarks', () => {
       });
     });
 
-    describe('function_reference', () => {
+    describe('function_reference (LIST mode)', () => {
       it('should list all functions in <50ms', async () => {
         const startTime = performance.now();
         

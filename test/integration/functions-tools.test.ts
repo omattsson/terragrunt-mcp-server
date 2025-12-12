@@ -5,8 +5,7 @@ import { ToolHandler } from '../../src/handlers/tools.js';
  * Function Lookup Tools Integration Tests
  * 
  * These tests validate end-to-end functionality of the function lookup tools:
- * - function_reference: Retrieves detailed metadata for a specific function
- * - function_reference: Lists/searches/filters available functions
+ * - function_reference: Unified tool for function operations (GET specific function details or LIST/search/filter all functions)
  * 
  * Tests use real documentation parsing (not mocked) to ensure accurate extraction.
  */
@@ -22,7 +21,7 @@ describe('Function Lookup Tools Integration Tests', () => {
     console.log('ToolHandler initialized and functions loaded successfully');
   }, 120000); // Allow up to 2 minutes for initial documentation loading
 
-  describe('function_reference tool', () => {
+  describe('function_reference tool (GET mode)', () => {
     describe('Well-known function retrieval', () => {
       it('should retrieve path_relative_to_include with complete metadata', async () => {
         const result = await toolHandler.executeTool('function_reference', {
@@ -211,7 +210,7 @@ describe('Function Lookup Tools Integration Tests', () => {
     });
   });
 
-  describe('function_reference tool', () => {
+  describe('function_reference tool (LIST mode)', () => {
     describe('Basic listing', () => {
       it('should list all functions without parameters', async () => {
         const result = await toolHandler.executeTool('function_reference', {});

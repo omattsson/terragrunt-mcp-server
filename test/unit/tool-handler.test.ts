@@ -876,7 +876,7 @@ inputs = {
     });
   });
 
-  describe('Tool Execution - function_reference', () => {
+  describe('Tool Execution - function_reference (GET mode)', () => {
     it('should default to list mode when function_name is missing', async () => {
       const result = await toolHandler.executeTool('function_reference', {});
       
@@ -1047,7 +1047,7 @@ inputs = {
     });
   });
 
-  describe('Tool Execution - function_reference', () => {
+  describe('Tool Execution - function_reference (LIST mode)', () => {
     it('should list all functions when no parameters provided', async () => {
       const mockFunctions = [
         { name: 'get_env', signature: 'get_env(name, default) -> string', description: 'Get environment variable', parameters: [], returnType: 'string', category: 'env', examples: [], relatedFunctions: [] },
