@@ -350,81 +350,8 @@ describe('TerragruntFunctionsManager', () => {
     }
   });
 
-  describe('Fixture-based Function Extraction', () => {
-    it('can extract functions from real fixture data', async () => {
-      // Use real DocsManager with fixture data
-      const { TerragruntDocsManager } = await import('../../src/terragrunt/docs.js');
-      const realDocsManager = new TerragruntDocsManager();
-      
-      // Validate fixture first
-      const validation = await realDocsManager.validateFixture();
-      expect(validation.valid).toBe(true);
-      expect(validation.hasFunctionDocs).toBe(true);
-      
-      // Create functions manager with real docs
-      const realFunctionsManager = new TerragruntFunctionsManager(realDocsManager);
-      await realFunctionsManager.loadFunctions();
-      
-      // Should extract some functions from fixture
-      const functions = realFunctionsManager.listFunctions();
-      expect(functions.length).toBeGreaterThan(0);
-    });
-
-    it('extracted functions from fixture have complete metadata', async () => {
-      const { TerragruntDocsManager } = await import('../../src/terragrunt/docs.js');
-      const realDocsManager = new TerragruntDocsManager();
-      const realFunctionsManager = new TerragruntFunctionsManager(realDocsManager);
-      
-      await realFunctionsManager.loadFunctions();
-      const functions = realFunctionsManager.listFunctions();
-      
-      // Verify at least some functions were extracted
-      expect(functions.length).toBeGreaterThan(0);
-      
-      // Check that functions have expected structure
-      for (const fn of functions) {
-        expect(fn.name).toBeDefined();
-        expect(fn.signature).toBeDefined();
-        expect(fn.description).toBeDefined();
-        expect(fn.category).toBeDefined();
-        expect(Array.isArray(fn.parameters)).toBe(true);
-        expect(Array.isArray(fn.examples)).toBe(true);
-        expect(Array.isArray(fn.relatedFunctions)).toBe(true);
-      }
-    });
-
-    it('extracts all functions from issue #98 (missing built-in functions)', async () => {
-      const { TerragruntDocsManager } = await import('../../src/terragrunt/docs.js');
-      const realDocsManager = new TerragruntDocsManager();
-      const realFunctionsManager = new TerragruntFunctionsManager(realDocsManager);
-      
-      await realFunctionsManager.loadFunctions();
-      
-      // These 7 functions were reported as missing in issue #98
-      const missingFunctions = [
-        'find_in_parent_folders',
-        'run_cmd',
-        'read_terragrunt_config',
-        'sops_decrypt_file',
-        'read_tfvars_file',
-        'mark_as_read',
-        'constraint_check'
-      ];
-      
-      // Verify all functions are now extracted
-      for (const functionName of missingFunctions) {
-        const fn = realFunctionsManager.getFunction(functionName);
-        expect(fn, `Function ${functionName} should be extracted from documentation`).toBeTruthy();
-        expect(fn!.name).toBe(functionName);
-        expect(fn!.description).toBeTruthy();
-        expect(fn!.signature).toBeTruthy();
-      }
-      
-      // Verify total count includes these functions
-      const allFunctions = realFunctionsManager.listFunctions();
-      expect(allFunctions.length).toBeGreaterThanOrEqual(23 + 7); // 23 existing + 7 missing
-    });
-  });
+  // Note: Fixture-based extraction tests moved to test/integration/functions-manager-fixture.test.ts
+  // for better performance (those tests take >1s due to real fixture parsing)
 
   describe('getAvailableCategories', () => {
     it('returns all unique categories from cached functions', async () => {

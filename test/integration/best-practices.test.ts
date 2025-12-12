@@ -63,7 +63,7 @@ describe('Best Practices Integration Tests', () => {
         const result = await toolHandler.executeTool('get_guidance', { query: topic, mode: 'full' });
 
         expect(result).toBeDefined();
-        expect(result.topic).toBe(topic);
+        expect(result.query).toBe(topic);
         expect(result.recommendations).toBeDefined();
         expect(Array.isArray(result.recommendations)).toBe(true);
         expect(result.summary).toBeDefined();
@@ -82,7 +82,7 @@ describe('Best Practices Integration Tests', () => {
         mode: 'full'
       });
 
-      expect(result.topic).toBe('state_management');
+      expect(result.query).toBe('state_management');
       
       // If recommendations exist, they should all be beginner level
       if (result.recommendations && result.recommendations.length > 0) {
@@ -97,7 +97,7 @@ describe('Best Practices Integration Tests', () => {
         mode: 'full'
       });
 
-      expect(result.topic).toBe('dependencies');
+      expect(result.query).toBe('dependencies');
       
       if (result.recommendations && result.recommendations.length > 0) {
         expect(result.recommendations.every((r: any) => r.experienceLevel === 'intermediate')).toBe(true);
@@ -111,7 +111,7 @@ describe('Best Practices Integration Tests', () => {
         mode: 'full'
       });
 
-      expect(result.topic).toBe('performance');
+      expect(result.query).toBe('performance');
       
       if (result.recommendations && result.recommendations.length > 0) {
         expect(result.recommendations.every((r: any) => r.experienceLevel === 'advanced')).toBe(true);
@@ -291,7 +291,7 @@ describe('Best Practices Integration Tests', () => {
 
       // Verify result is valid
       expect(result).toBeDefined();
-      expect(result.topic).toBe('module_organization');
+      expect(result.query).toBe('module_organization');
       expect(result.confidence).toBeDefined();
 
       // Performance requirement: <300ms for cached analysis
@@ -310,7 +310,7 @@ describe('Best Practices Integration Tests', () => {
 
       // Verify result is valid
       expect(result).toBeDefined();
-      expect(result.topic).toBe('ci_cd');
+      expect(result.query).toBe('ci_cd');
       expect(result.recommendations).toBeDefined();
 
       // Even first-time should be reasonable (docs cached on disk)

@@ -19,7 +19,7 @@ describe('Static Best Practices - Integration', () => {
     it('should analyze project_structure topic end-to-end', async () => {
       const result = await analyzer.analyzeTopic('project_structure');
 
-      expect(result.topic).toBe('project_structure');
+      expect(result.query).toBe('project_structure');
       expect(result.recommendations.length).toBeGreaterThan(0);
       expect(result.confidence).toBeGreaterThanOrEqual(70);
       expect(result.commonPitfalls.length).toBeGreaterThan(0);
@@ -29,7 +29,7 @@ describe('Static Best Practices - Integration', () => {
     it('should analyze environment_config topic end-to-end', async () => {
       const result = await analyzer.analyzeTopic('environment_config');
 
-      expect(result.topic).toBe('environment_config');
+      expect(result.query).toBe('environment_config');
       expect(result.recommendations.length).toBeGreaterThan(0);
       expect(result.confidence).toBeGreaterThanOrEqual(70);
       expect(result.commonPitfalls.length).toBeGreaterThan(0);
@@ -141,7 +141,7 @@ describe('Static Best Practices - Integration', () => {
       it(`should analyze ${topic} topic successfully`, async () => {
         const result = await analyzer.analyzeTopic(topic);
 
-        expect(result.topic).toBe(topic);
+        expect(result.query).toBe(topic);
         expect(result.recommendations.length).toBeGreaterThan(0);
         expect(result.confidence).toBeGreaterThan(0);
       });

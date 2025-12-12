@@ -874,7 +874,7 @@ describe('Performance Benchmarks', () => {
         const duration = performance.now() - start;
         
         expect(result).toBeDefined();
-        expect(result.topic).toBe('module_organization');
+        expect(result.query).toBe('module_organization');
         expect(result.recommendations).toBeDefined();
         // Note: No strict time requirement for cold start due to doc loading variance
         
@@ -892,7 +892,7 @@ describe('Performance Benchmarks', () => {
         const duration = performance.now() - start;
         
         expect(result).toBeDefined();
-        expect(result.topic).toBe('state_management');
+        expect(result.query).toBe('state_management');
         expect(result.recommendations).toBeDefined();
         expect(duration).toBeLessThan(500); // Warm cache target: <500ms
         
@@ -917,7 +917,7 @@ describe('Performance Benchmarks', () => {
         const duration = performance.now() - start;
         
         expect(result).toBeDefined();
-        expect(result.topic).toBe('dependencies');
+        expect(result.query).toBe('dependencies');
         expect(result.recommendations).toBeDefined();
         expect(duration).toBeLessThan(50); // Cached lookup target: <50ms
         
@@ -936,7 +936,7 @@ describe('Performance Benchmarks', () => {
         const duration = performance.now() - start;
         
         expect(result).toBeDefined();
-        expect(result.topic).toBe('ci_cd');
+        expect(result.query).toBe('ci_cd');
         expect(result.recommendations).toBeDefined();
         expect(duration).toBeLessThan(400); // With filter target: <400ms
         
@@ -958,7 +958,7 @@ describe('Performance Benchmarks', () => {
           timings.push(duration);
           
           expect(result).toBeDefined();
-          expect(result.topic).toBe(topic);
+          expect(result.query).toBe(topic);
           expect(result.recommendations).toBeDefined();
         }
         
@@ -989,7 +989,7 @@ describe('Performance Benchmarks', () => {
         const duration = performance.now() - start;
         
         expect(result).toBeDefined();
-        expect(result.topic).toBe('dependencies');
+        expect(result.query).toBe('dependencies');
         expect(result.recommendations).toBeDefined();
         expect(duration).toBeLessThan(300); // Complex topic target: <300ms
         
@@ -1069,7 +1069,7 @@ describe('Performance Benchmarks', () => {
           searchTimings.push(duration);
           
           expect(result).toBeDefined();
-          expect(result.topic).toBe(topic);
+          expect(result.query).toBe(topic);
           expect(result.recommendations).toBeDefined();
         }
         
@@ -1091,7 +1091,7 @@ describe('Performance Benchmarks', () => {
         const duration = performance.now() - start;
         
         expect(result).toBeDefined();
-        expect(result.topic).toBe('state_management');
+        expect(result.query).toBe('state_management');
         expect(result.commonPitfalls).toBeDefined();
         expect(Array.isArray(result.commonPitfalls)).toBe(true);
         expect(duration).toBeLessThan(300); // Antipattern detection target: <300ms
@@ -1111,7 +1111,7 @@ describe('Performance Benchmarks', () => {
         const duration = performance.now() - start;
         
         expect(result).toBeDefined();
-        expect(result.topic).toBe('module_organization');
+        expect(result.query).toBe('module_organization');
         expect(result.recommendations).toBeDefined();
         expect(Array.isArray(result.recommendations)).toBe(true);
         expect(duration).toBeLessThan(300); // Ranking target: <300ms
@@ -1144,7 +1144,7 @@ describe('Performance Benchmarks', () => {
         expect(results).toHaveLength(5);
         results.forEach(result => {
           expect(result).toBeDefined();
-          expect(result.topic).toBe('ci_cd');
+          expect(result.query).toBe('ci_cd');
           expect(result.recommendations).toBeDefined();
         });
         expect(avgDuration).toBeLessThan(100); // Parallel cached target: <100ms per request
@@ -1169,7 +1169,7 @@ describe('Performance Benchmarks', () => {
         expect(results).toHaveLength(4);
         results.forEach((result, index) => {
           expect(result).toBeDefined();
-          expect(result.topic).toBe(topics[index]);
+          expect(result.query).toBe(topics[index]);
           expect(result.recommendations).toBeDefined();
         });
         
@@ -1200,7 +1200,7 @@ describe('Performance Benchmarks', () => {
         expect(results).toHaveLength(6);
         results.forEach((result, index) => {
           expect(result).toBeDefined();
-          expect(result.topic).toBe(operations[index].topic);
+          expect(result.query).toBe(operations[index].topic);
           expect(result.recommendations).toBeDefined();
         });
         
