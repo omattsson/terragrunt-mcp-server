@@ -1,6 +1,6 @@
 /**
- * Comprehensive integration test for unified search_docs tool (#173)
- * Tests all 4 modes: search, list, section, examples
+ * Comprehensive integration test for unified search_docs tool.
+ * Implements #173: Tests all 4 modes: search, list, section, examples.
  */
 
 import { describe, it, expect, beforeAll } from 'vitest';

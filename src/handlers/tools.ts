@@ -1256,7 +1256,7 @@ export class ToolHandler {
     }
 
     private async getCodeExamples(
-        topic?: string,
+        query?: string,
         mode: 'summary' | 'full' = 'summary',
         limit: number = 5,
         advanced: boolean = false,
@@ -1274,33 +1274,33 @@ export class ToolHandler {
                     exampleCount: cat.exampleCount
                 })),
                 totalExamples: this.advancedExamplesManager.getExampleCount(),
-                message: 'Use advanced=true with topic or category to get curated examples'
+                message: 'Use advanced=true with query or category to get curated examples'
             };
         }
 
         // Advanced examples mode
         if (advanced) {
-            return this.getAdvancedCodeExamples(topic, mode, limit, category);
+            return this.getAdvancedCodeExamples(query, mode, limit, category);
         }
 
         // Original doc-scraped examples mode (requires query)
-        if (!topic) {
+        if (!query) {
             return {
                 error: 'query parameter is required when advanced=false',
                 suggestion: 'Use advanced=true to browse curated examples, or provide a query to search documentation'
             };
         }
 
-        const results = await this.docsManager.getCodeExamples(topic);
+        const results = await this.docsManager.getCodeExamples(query);
 
         if (results.length === 0) {
             // Suggest advanced examples as alternative
-            const advancedResults = this.advancedExamplesManager.searchExamples(topic);
+            const advancedResults = this.advancedExamplesManager.searchExamples(query);
             if (advancedResults.length > 0) {
                 return {
-                    topic,
-                    error: `No code examples found in documentation for: ${topic}`,
-                    suggestion: `Try advanced=true to see ${advancedResults.length} curated example(s) matching this topic`,
+                    query,
+                    error: `No code examples found in documentation for: ${query}`,
+                    suggestion: `Try advanced=true to see ${advancedResults.length} curated example(s) matching this query`,
                     advancedMatches: advancedResults.slice(0, 3).map(r => ({
                         id: r.example.id,
                         name: r.example.name,
@@ -1309,8 +1309,8 @@ export class ToolHandler {
                 };
             }
             return {
-                topic,
-                error: `No code examples found for: ${topic}`,
+                query,
+                error: `No code examples found for: ${query}`,
                 suggestion: 'Try a broader search term, use search_terragrunt_docs, or try advanced=true for curated examples'
             };
         }
@@ -1318,7 +1318,7 @@ export class ToolHandler {
         // Summary mode: just titles, URLs, and counts
         if (mode === 'summary') {
             return {
-                topic,
+                query,
                 source: 'documentation',
                 documentCount: results.length,
                 documents: results.slice(0, limit).map(result => ({
@@ -1333,7 +1333,7 @@ export class ToolHandler {
 
         // Full mode: complete code examples (original behavior)
         return {
-            topic,
+            query,
             source: 'documentation',
             examples: results.slice(0, limit).map(result => ({
                 documentTitle: result.doc.title,

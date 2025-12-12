@@ -483,7 +483,7 @@ describe('MCP Protocol Compliance', () => {
       , detailLevel: 'full'
       });
 
-      expect(result.topic).toBe('dependencies');
+      expect(result.query).toBe('dependencies');
       expect(result.examples).toBeDefined();
       expect(Array.isArray(result.examples)).toBe(true);
     });

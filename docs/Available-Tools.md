@@ -1,6 +1,6 @@
 # Available Tools
 
-The Terragrunt MCP Server provides **12 specialized tools** for accessing and searching Terragrunt documentation, generating configurations, analyzing best practices, diagnosing errors, comparing blocks, and writing files. Each tool is designed for specific use cases to help you find the information you need quickly.
+The Terragrunt MCP Server provides a set of specialized tools for accessing and searching Terragrunt documentation, generating configurations, analyzing best practices, diagnosing errors, comparing blocks, and writing files. Each tool is designed for specific use cases to help you find the information you need quickly.
 
 ## Tool Overview
 

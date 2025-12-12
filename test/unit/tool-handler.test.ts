@@ -91,26 +91,26 @@ describe('ToolHandler', () => {
   expect(tools.length).toBeGreaterThanOrEqual(6);
     });
 
-    it('should include search_terragrunt_docs tool', () => {
+    it('should include search_docs tool (replaces search_terragrunt_docs)', () => {
       const tools = toolHandler.getAvailableTools();
       
-      const searchTool = tools.find(t => t.name === 'search_docs');
-      expect(searchTool).toBeDefined();
-      expect(searchTool?.inputSchema).toBeDefined();
+      const unifiedSearchTool = tools.find(t => t.name === 'search_docs');
+      expect(unifiedSearchTool).toBeDefined();
+      expect(unifiedSearchTool?.inputSchema).toBeDefined();
     });
 
-    it('should include get_terragrunt_sections tool', () => {
+    it('should include search_docs tool (replaces get_terragrunt_sections)', () => {
       const tools = toolHandler.getAvailableTools();
       
-      const sectionsTool = tools.find(t => t.name === 'search_docs');
-      expect(sectionsTool).toBeDefined();
+      const unifiedSearchTool = tools.find(t => t.name === 'search_docs');
+      expect(unifiedSearchTool).toBeDefined();
     });
 
-    it('should include get_section_docs tool', () => {
+    it('should include search_docs tool (replaces get_section_docs)', () => {
       const tools = toolHandler.getAvailableTools();
       
-      const sectionDocsTool = tools.find(t => t.name === 'search_docs');
-      expect(sectionDocsTool).toBeDefined();
+      const unifiedSearchTool = tools.find(t => t.name === 'search_docs');
+      expect(unifiedSearchTool).toBeDefined();
     });
 
     it('should include get_cli_command_help tool', () => {
@@ -127,11 +127,11 @@ describe('ToolHandler', () => {
       expect(hclTool).toBeDefined();
     });
 
-    it('should include get_code_examples tool', () => {
+    it('should include search_docs tool (replaces get_code_examples)', () => {
       const tools = toolHandler.getAvailableTools();
       
-      const examplesTool = tools.find(t => t.name === 'search_docs');
-      expect(examplesTool).toBeDefined();
+      const unifiedSearchTool = tools.find(t => t.name === 'search_docs');
+      expect(unifiedSearchTool).toBeDefined();
     });
 
     it('should have descriptions for all tools', () => {
@@ -185,6 +185,20 @@ describe('ToolHandler', () => {
       expect(tool?.inputSchema.required).toEqual([]);
       expect(tool?.inputSchema.properties.query).toBeDefined();
       expect(tool?.inputSchema.properties.section).toBeDefined();
+    });
+
+    it('should validate mode-dependent parameters at runtime', async () => {
+      // Test that runtime validation enforces mode-specific required params
+      
+      // Section mode requires 'section' parameter
+      const sectionResult = await toolHandler.executeTool('search_docs', { mode: 'section' });
+      expect(sectionResult.error).toBeDefined();
+      expect(sectionResult.error).toContain('section parameter is required');
+      
+      // Examples mode (non-advanced) requires 'query' parameter
+      const examplesResult = await toolHandler.executeTool('search_docs', { mode: 'examples', advanced: false });
+      expect(examplesResult.error).toBeDefined();
+      expect(examplesResult.error).toContain('query parameter is required');
     });
 
     it('should require command parameter for get_cli_command_help', () => {
@@ -520,7 +534,7 @@ describe('ToolHandler', () => {
         detailLevel: 'full'
       });
       
-      expect(result.topic).toBe('terraform');
+      expect(result.query).toBe('terraform');
       expect(result.examples).toBeDefined();
       expect(Array.isArray(result.examples)).toBe(true);
     });

@@ -212,7 +212,7 @@ describe('Summary Mode - Tool Integration Tests', () => {
                 return;
             }
 
-            expect(result).toHaveProperty('topic', 'remote state');
+            expect(result).toHaveProperty('query', 'remote state');
             expect(result).toHaveProperty('source', 'documentation');
             expect(result).toHaveProperty('documentCount');
             expect(result).toHaveProperty('documents');
@@ -243,7 +243,7 @@ describe('Summary Mode - Tool Integration Tests', () => {
                 return;
             }
 
-            expect(result).toHaveProperty('topic', 'remote state');
+            expect(result).toHaveProperty('query', 'remote state');
             expect(result).toHaveProperty('source', 'documentation');
             expect(result).toHaveProperty('examples');
             expect(result).toHaveProperty('totalDocuments');
