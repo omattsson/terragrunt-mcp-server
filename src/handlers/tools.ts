@@ -62,6 +62,22 @@ interface CLIReferenceArgs {
     pageSize?: number;
 }
 
+/**
+ * Type-safe arguments for unified function_reference tool
+ * Presence of function_name parameter determines get vs list mode
+ */
+interface FunctionReferenceArgs {
+    // Get mode: specific function details
+    function_name?: string;
+    mode?: 'summary' | 'full';
+    include_examples?: boolean;
+    // List mode: filtering and pagination
+    category?: string;
+    search?: string;
+    page?: number;
+    pageSize?: number;
+}
+
 export class ToolHandler {
     private resourceHandler: ResourceHandler;
     private docsManager: TerragruntDocsManager;
@@ -231,53 +247,43 @@ export class ToolHandler {
                 }
             },
             {
-                name: 'get_terragrunt_function',
-                description: 'Get documentation for a specific Terragrunt built-in function. Use mode=summary for overview (60-70% smaller), mode=full for complete details.',
+                name: 'function_reference',
+                description: 'Get function details or list available functions. Provide function_name for specific function help, or omit for listing mode with optional category/search filters.',
                 inputSchema: {
                     type: 'object',
                     properties: {
                         function_name: {
                             type: 'string',
-                            description: 'The Terragrunt function name (e.g., "get_env", "find_in_parent_folders")'
+                            description: 'Optional: specific function name for detailed help (e.g., "get_env", "find_in_parent_folders")'
                         },
                         mode: {
                             type: 'string',
                             enum: ['summary', 'full'],
-                            description: 'Response detail level: summary (name, signature, short description, counts) or full (complete details with examples)',
+                            description: 'Get mode: response detail level (summary or full)',
                             default: 'summary'
                         },
                         include_examples: {
                             type: 'boolean',
-                            description: 'Include code examples in full mode (ignored in summary mode)',
+                            description: 'Get mode: include code examples in full mode',
                             default: true
-                        }
-                    },
-                    required: ['function_name']
-                }
-            },
-            {
-                name: 'list_terragrunt_functions',
-                description: 'List Terragrunt built-in functions with optional filtering by category or search query',
-                inputSchema: {
-                    type: 'object',
-                    properties: {
+                        },
                         category: {
                             type: 'string',
-                            description: 'Optional category filter (e.g., "filesystem", "env", "path")'
+                            description: 'List mode: filter functions by category'
                         },
                         search: {
                             type: 'string',
-                            description: 'Optional search query to filter functions by name or description'
+                            description: 'List mode: search query to filter functions'
                         },
                         page: {
                             type: 'number',
-                            description: 'Page number (1-based)',
+                            description: 'List mode: page number for pagination',
                             default: 1,
                             minimum: 1
                         },
                         pageSize: {
                             type: 'number',
-                            description: 'Results per page',
+                            description: 'List mode: results per page',
                             default: 20,
                             minimum: 1,
                             maximum: 100
@@ -663,22 +669,8 @@ export class ToolHandler {
                 case 'cli_reference':
                     return await this.cliReference(args);
 
-                case 'get_terragrunt_function':
-                    if (!args?.function_name) {
-                        return { error: 'function_name parameter is required' };
-                    }
-                    return await this.getTerragruntFunction(
-                        args.function_name,
-                        args?.mode ?? 'summary',
-                        args?.include_examples ?? true
-                    );
-                case 'list_terragrunt_functions':
-                    return await this.listTerragruntFunctions(
-                        args?.category,
-                        args?.search,
-                        args?.page ?? 1,
-                        args?.pageSize ?? 20
-                    );
+                case 'function_reference':
+                    return await this.functionReference(args);
 
                 case 'get_hcl_config_reference':
                     return await this.getHclConfigReference(
@@ -954,6 +946,35 @@ export class ToolHandler {
         const page = this.normalizePositiveInt(args?.page, 1);
         const pageSize = this.normalizePositiveInt(args?.pageSize, 20);
         return await this.listCliCommands(args?.category, args?.search, page, pageSize);
+    }
+
+    /**
+     * Unified function reference router
+     * Routes to appropriate method based on function_name parameter presence.
+     *
+     * Behavior details (important for clients):
+     * - Get mode: when `function_name` is a non-empty string.
+     * - List mode: when `function_name` is omitted OR an empty/whitespace-only string.
+     * - Pagination: `page` and `pageSize` are normalized to positive integers to avoid
+     *   surprising slice behavior (e.g., negative pages).
+     */
+    private async functionReference(args: FunctionReferenceArgs): Promise<any> {
+        // Normalize empty/whitespace function_name strings to list mode.
+        const functionName = typeof args?.function_name === 'string' ? args.function_name.trim() : undefined;
+
+        // Get mode: specific function details
+        if (functionName) {
+            return await this.getTerragruntFunction(
+                functionName,
+                args?.mode ?? 'summary',
+                args?.include_examples ?? true
+            );
+        }
+
+        // List mode: all functions with optional filtering
+        const page = this.normalizePositiveInt(args?.page, 1);
+        const pageSize = this.normalizePositiveInt(args?.pageSize, 20);
+        return await this.listTerragruntFunctions(args?.category, args?.search, page, pageSize);
     }
 
     private normalizePositiveInt(value: unknown, defaultValue: number): number {
@@ -1629,7 +1650,7 @@ export class ToolHandler {
             const suggestions = this.getSimilarFunctionNames(functionName);
             const suggestionText = suggestions.length > 0
                 ? `Did you mean: ${suggestions.join(', ')}?`
-                : 'Try list_terragrunt_functions to see all available functions';
+                : 'Use function_reference without function_name parameter to see all available functions';
 
             return {
                 name: functionName,

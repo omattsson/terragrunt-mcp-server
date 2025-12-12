@@ -7,9 +7,9 @@ async function testFunctionsTools() {
   const toolHandler = new ToolHandler();
 
   // List functions
-  const listResp = await toolHandler.executeTool('list_terragrunt_functions', { limit: 10 });
+  const listResp = await toolHandler.executeTool('function_reference', { pageSize: 10 });
   if (listResp.error) {
-    console.error('❌ list_terragrunt_functions returned error:', listResp.error);
+    console.error('❌ function_reference (list mode) returned error:', listResp.error);
     process.exit(1);
   }
   const list = listResp.functions || [];
@@ -23,9 +23,9 @@ async function testFunctionsTools() {
   // Get details for first function
   const target = list[0]?.name;
   if (target) {
-    const getResp = await toolHandler.executeTool('get_terragrunt_function', { function_name: target });
+    const getResp = await toolHandler.executeTool('function_reference', { function_name: target });
     if (getResp.error) {
-      console.error('❌ get_terragrunt_function returned error:', getResp.error);
+      console.error('❌ function_reference (get mode) returned error:', getResp.error);
       process.exit(1);
     }
     console.log(`✅ Retrieved function '${getResp.name}'`);
@@ -33,7 +33,7 @@ async function testFunctionsTools() {
     console.log('   Return:', getResp.returnType || '(unknown)');
     console.log('   Params:', (getResp.parameters || []).map(p => `${p.name}:${p.type || '?'}`).join(', ') || '(none)');
   } else {
-    console.log('ℹ️  Skipping get_terragrunt_function because no functions were listed');
+    console.log('ℹ️  Skipping function_reference (get mode) because no functions were listed');
   }
 
   console.log('\n✨ Function tools tests completed.');
