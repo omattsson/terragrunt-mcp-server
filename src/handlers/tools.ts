@@ -44,7 +44,7 @@ interface SearchDocsArgs {
     detailLevel?: 'summary' | 'full';
     limit?: number;
     advanced?: boolean;
-    category?: string;
+    category?: AdvancedExampleCategory;
     listCategories?: boolean;
 }
 
