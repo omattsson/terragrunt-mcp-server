@@ -91,9 +91,11 @@ interface GuidanceArgs {
 }
 
 /**
- * Type-safe arguments for unified build_config tool
- * Combines generate and write functionality into single tool
- * If write=true, generates config and writes to disk in one operation
+ * Type-safe arguments for unified build_config tool.
+ * Supports three modes:
+ * 1. Generate-only: Provide useCase + options (returns config as string, does not write to disk).
+ * 2. Write-only: Provide content + path (writes pre-generated config to disk, skipping generation).
+ * 3. Generate + Write: Provide useCase + options + write=true + path (generates config and writes to disk in one operation).
  */
 interface BuildConfigArgs {
     // Generate parameters (required for generate mode)
@@ -682,6 +684,19 @@ export class ToolHandler {
                 case 'build_config':
                     // Handle write-only mode (content provided directly)
                     if (args?.content) {
+                        // Validate content is a string
+                        if (typeof args.content !== 'string') {
+                            return {
+                                success: false,
+                                path: '',
+                                bytesWritten: 0,
+                                created: false,
+                                backedUp: false,
+                                error: 'content parameter must be a string',
+                                errorType: 'VALIDATION_ERROR'
+                            };
+                        }
+                        
                         const targetPath = args?.path;
                         if (!targetPath) {
                             return {
@@ -691,6 +706,19 @@ export class ToolHandler {
                                 created: false,
                                 backedUp: false,
                                 error: 'path parameter is required when content is provided',
+                                errorType: 'VALIDATION_ERROR'
+                            };
+                        }
+                        
+                        // Validate path is a string
+                        if (typeof targetPath !== 'string') {
+                            return {
+                                success: false,
+                                path: '',
+                                bytesWritten: 0,
+                                created: false,
+                                backedUp: false,
+                                error: 'path parameter must be a string',
                                 errorType: 'VALIDATION_ERROR'
                             };
                         }
