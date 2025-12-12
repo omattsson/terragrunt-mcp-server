@@ -6,6 +6,10 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { ToolHandler } from '../../src/handlers/tools.js';
 
+// Shared constants for testing all modes consistently
+const SEARCH_MODES = ['search', 'list', 'section', 'examples'] as const;
+const EXAMPLE_CATEGORIES = ['hooks', 'inputs', 'outputs'] as const;
+
 describe('search_docs Unified Tool - Comprehensive Integration', () => {
   let toolHandler: ToolHandler;
 
@@ -210,9 +214,11 @@ describe('search_docs Unified Tool - Comprehensive Integration', () => {
         if (result.docs.length > 0) {
           expect(result.docs[0].content.length).toBeLessThan(500);
         }
-      } else {
-        // Error is acceptable
-        expect(true).toBe(true);
+      } else if (result.error) {
+        // If error occurs, verify it's a meaningful error message
+        expect(result.error).toBeDefined();
+        expect(typeof result.error).toBe('string');
+        expect(result.error.length).toBeGreaterThan(0);
       }
     });
 
@@ -263,7 +269,10 @@ describe('search_docs Unified Tool - Comprehensive Integration', () => {
       const result = await toolHandler.executeTool('search_docs', {
         mode: 'examples',
         advanced: true,
-        category: 'hooks' // Use category instead of query for reliable match
+        // Use category instead of query for reliable match: category performs exact
+        // matching against predefined categories, ensuring consistent results, whereas
+        // query uses fuzzy/semantic search which may produce variable results
+        category: 'hooks'
       });
 
       expect(result.source).toBe('advanced-examples');
@@ -349,13 +358,11 @@ describe('search_docs Unified Tool - Comprehensive Integration', () => {
 
   describe('Response Format Consistency', () => {
     it('should return JSON-serializable responses across all modes', async () => {
-      const modes = ['search', 'list', 'section', 'examples'];
-      const exampleCategories = ['hooks', 'inputs', 'outputs'];
       
-      for (const mode of modes) {
+      for (const mode of SEARCH_MODES) {
         // For "examples" mode, test multiple categories
         if (mode === 'examples') {
-          for (const category of exampleCategories) {
+          for (const category of EXAMPLE_CATEGORIES) {
             const args: any = { mode, advanced: true, category };
             const result = await toolHandler.executeTool('search_docs', args);
             // Should be JSON-serializable

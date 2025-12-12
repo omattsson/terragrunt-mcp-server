@@ -182,6 +182,12 @@ describe('ToolHandler', () => {
       const tool = tools.find(t => t.name === 'search_docs');
       
       // No schema-level required params (validation is mode-dependent at runtime)
+      // 
+      // WHY: The required parameters for this tool depend on the value of the 'mode' parameter.
+      // JSON Schema cannot express conditional required fields based on the value of another field
+      // in a way that is both precise and user-friendly for all clients. Therefore, we perform
+      // validation at runtime to provide accurate, mode-specific error messages and to avoid
+      // misleading API consumers with overly broad or incorrect schema-level requirements.
       expect(tool?.inputSchema.required).toEqual([]);
       expect(tool?.inputSchema.properties.query).toBeDefined();
       expect(tool?.inputSchema.properties.section).toBeDefined();

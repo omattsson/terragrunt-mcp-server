@@ -28,6 +28,26 @@ export interface Tool {
     inputSchema: any;
 }
 
+/**
+ * Type-safe arguments for unified search_docs tool
+ * Mode parameter determines which additional parameters are required
+ */
+interface SearchDocsArgs {
+    mode?: 'search' | 'list' | 'section' | 'examples';
+    // Search mode parameters
+    query?: string;
+    page?: number;
+    pageSize?: number;
+    // Section mode parameters
+    section?: string;
+    // Examples mode parameters
+    detailLevel?: 'summary' | 'full';
+    limit?: number;
+    advanced?: boolean;
+    category?: string;
+    listCategories?: boolean;
+}
+
 export class ToolHandler {
     private resourceHandler: ResourceHandler;
     private docsManager: TerragruntDocsManager;
@@ -873,7 +893,7 @@ export class ToolHandler {
      * Unified documentation search router
      * Routes to appropriate method based on mode parameter
      */
-    private async searchDocs(args: any): Promise<any> {
+    private async searchDocs(args: SearchDocsArgs): Promise<any> {
         const mode = args?.mode ?? 'search';
 
         switch (mode) {
