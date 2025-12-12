@@ -96,9 +96,9 @@ interface GuidanceArgs {
  * If write=true, generates config and writes to disk in one operation
  */
 interface BuildConfigArgs {
-    // Generate parameters (required)
-    useCase: 'remote_state' | 'provider_generation' | 'dependencies' | 'hooks' | 'inputs';
-    options: Record<string, any>;
+    // Generate parameters (required for generate mode)
+    useCase?: 'remote_state' | 'provider_generation' | 'dependencies' | 'hooks' | 'inputs';
+    options?: Record<string, any>;
     
     // Generate-specific (optional)
     backend?: string;
@@ -112,6 +112,11 @@ interface BuildConfigArgs {
     overwrite?: boolean;
     createBackup?: boolean;
     createParentDirs?: boolean;
+    
+    /**
+     * Write-only mode: provide content to write directly, skipping generation.
+     */
+    content?: string;
 }
 
 export class ToolHandler {
@@ -1762,9 +1767,6 @@ export class ToolHandler {
             : description;
     }
 
-    /**
-     * Generate a complete Terragrunt configuration from templates
-     */
     /**
      * Unified config builder - generates Terragrunt config with optional file writing
      * Combines generate and write operations into single workflow
