@@ -82,17 +82,17 @@ async function testServer() {
     if (!searchTool.results || searchTool.results.length === 0) throw new Error('No results from search tool');
     console.log(`✅ Search tool returned ${searchTool.results?.length || 0} results`);
 
-    // Test tool execution: get_terragrunt_sections
+    // Test tool execution: search_docs list mode (sections)
     const sectionsTool = await toolHandler.executeTool('search_docs', {mode: 'list'});
     if (!sectionsTool.sections || sectionsTool.sections.length === 0) throw new Error('No sections from sections tool');
     console.log(`✅ Sections tool returned ${sectionsTool.sections?.length || 0} sections`);
 
-    // Test tool execution: get_section_docs
+    // Test tool execution: search_docs section mode
     const firstSection = sectionsTool.sections[0]?.name;
     if (firstSection) {
       const sectionDocsTool = await toolHandler.executeTool('search_docs', {mode: 'section',  section: firstSection, detailLevel: 'full' });
-      if (!sectionDocsTool.docs || sectionDocsTool.docs.length === 0) throw new Error('No docs from get_section_docs tool');
-      console.log(`✅ get_section_docs tool returned ${sectionDocsTool.docs.length} docs for section ${firstSection}`);
+      if (!sectionDocsTool.docs || sectionDocsTool.docs.length === 0) throw new Error('No docs from section mode');
+      console.log(`✅ Section mode returned ${sectionDocsTool.docs.length} docs for section ${firstSection}`);
     }
 
     // Test tool execution: error handling
@@ -150,7 +150,7 @@ async function testServer() {
       console.log(`✅ HCL config reference tool returned ${hclRefRemoteState.docs.length} docs for 'remote_state' block`);
     }
 
-    // Test tool execution: get_code_examples
+    // Test tool execution: search_docs examples mode
     console.log('\n💻 Testing Code Examples Tool...');
     const codeExamples = await toolHandler.executeTool('search_docs', {mode: 'examples',  
       query: 'dependencies',

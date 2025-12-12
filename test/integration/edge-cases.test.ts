@@ -404,28 +404,28 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
       expect(result.exampleUsage).toBeDefined();
     });
 
-    it('should validate get_code_examples requires topic parameter', async () => {
+    it('should validate search_docs examples mode requires query parameter', async () => {
       const result = await toolHandler.executeTool('search_docs', {mode: 'examples',  detailLevel: 'full' });
 
       expect(result).toBeDefined();
       expect(result.error).toBeDefined();
-      expect(result.error).toContain('topic parameter is required');
+      expect(result.error).toContain('topic parameter is required when advanced=false');
     });
 
-    it('should validate get_section_docs requires section parameter', async () => {
+    it('should validate search_docs section mode requires section parameter', async () => {
       const result = await toolHandler.executeTool('search_docs', {mode: 'section',  detailLevel: 'full' });
 
       expect(result).toBeDefined();
       expect(result.error).toBeDefined();
-      expect(result.error).toContain('section parameter is required');
+      expect(result.error).toContain('section parameter is required for section mode');
     });
 
-    it('should validate search_terragrunt_docs requires query parameter', async () => {
+    it('should validate search_docs search mode requires query parameter', async () => {
       const result = await toolHandler.executeTool('search_docs', {mode: 'search', });
 
       expect(result).toBeDefined();
       expect(result.error).toBeDefined();
-      expect(result.error).toContain('query parameter is required');
+      expect(result.error).toContain('query parameter is required for search mode');
     });
   });
 

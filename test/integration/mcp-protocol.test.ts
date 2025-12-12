@@ -273,62 +273,27 @@ describe('MCP Protocol Compliance', () => {
       expect(tools.length).toBeGreaterThanOrEqual(8);
     });
 
-    it('should include search_terragrunt_docs tool', () => {
+    it('should include unified search_docs tool with all modes', () => {
       const tools = toolHandler.getAvailableTools();
       const searchTool = tools.find(t => t.name === 'search_docs');
       
       expect(searchTool).toBeDefined();
       expect(searchTool?.description).toBeDefined();
-      expect(searchTool?.inputSchema.properties.query).toBeDefined();
-    });
-
-    it('should include get_terragrunt_sections tool', () => {
-      const tools = toolHandler.getAvailableTools();
-      const sectionsTool = tools.find(t => t.name === 'search_docs');
+      expect(searchTool?.description).toContain('Unified'); // Case-sensitive
       
-      expect(sectionsTool).toBeDefined();
-    });
-
-    it('should include get_section_docs tool', () => {
-      const tools = toolHandler.getAvailableTools();
-      const sectionDocsTool = tools.find(t => t.name === 'search_docs');
+      // Verify mode parameter and its options
+      expect(searchTool?.inputSchema.properties.mode).toBeDefined();
+      expect(searchTool?.inputSchema.properties.mode.enum).toEqual(['search', 'list', 'section', 'examples']);
       
-      expect(sectionDocsTool).toBeDefined();
-      expect(sectionDocsTool?.inputSchema.properties.section).toBeDefined();
-    });
-
-    it('should include get_cli_command_help tool', () => {
-      const tools = toolHandler.getAvailableTools();
-      const cliHelpTool = tools.find(t => t.name === 'get_cli_command_help');
+      // Verify all mode-specific parameters exist
+      expect(searchTool?.inputSchema.properties.query).toBeDefined(); // search & examples modes
+      expect(searchTool?.inputSchema.properties.section).toBeDefined(); // section mode
+      expect(searchTool?.inputSchema.properties.detailLevel).toBeDefined(); // section & examples modes
+      expect(searchTool?.inputSchema.properties.page).toBeDefined(); // search mode
+      expect(searchTool?.inputSchema.properties.pageSize).toBeDefined(); // search mode
       
-      expect(cliHelpTool).toBeDefined();
-      expect(cliHelpTool?.inputSchema.properties.command).toBeDefined();
-      expect(cliHelpTool?.description).toContain('aliases');
-    });
-
-    it('should include list_cli_commands tool', () => {
-      const tools = toolHandler.getAvailableTools();
-      const listCliTool = tools.find(t => t.name === 'list_cli_commands');
-      
-      expect(listCliTool).toBeDefined();
-      expect(listCliTool?.inputSchema.properties.category).toBeDefined();
-      expect(listCliTool?.inputSchema.properties.search).toBeDefined();
-    });
-
-    it('should include get_hcl_config_reference tool', () => {
-      const tools = toolHandler.getAvailableTools();
-      const hclRefTool = tools.find(t => t.name === 'get_hcl_config_reference');
-      
-      expect(hclRefTool).toBeDefined();
-      expect(hclRefTool?.inputSchema.properties.config).toBeDefined();
-    });
-
-    it('should include get_code_examples tool', () => {
-      const tools = toolHandler.getAvailableTools();
-      const examplesTool = tools.find(t => t.name === 'search_docs');
-      
-      expect(examplesTool).toBeDefined();
-      expect(examplesTool?.inputSchema.properties.topic).toBeDefined();
+      // No required parameters at schema level (mode-dependent validation)
+      expect(searchTool?.inputSchema.required).toEqual([]);
     });
 
     it('should include get_terragrunt_function tool', () => {

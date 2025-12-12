@@ -199,7 +199,7 @@ describe('Performance Benchmarks', () => {
       console.log('Cache warmed up');
     }, 30000); // 30 second timeout for warm-up
 
-    it('should execute search_terragrunt_docs in <1 second', async () => {
+    it('should execute search_docs (search mode) in <1 second', async () => {
       const startTime = performance.now();
       
       const result = await toolHandler.executeTool('search_docs', {mode: 'search', 
@@ -213,10 +213,10 @@ describe('Performance Benchmarks', () => {
       expect(Array.isArray(result.results)).toBe(true);
       expect(duration).toBeLessThan(1000);
       
-      console.log(`✓ search_terragrunt_docs: ${duration.toFixed(2)}ms`);
+      console.log(`✓ search_docs (search mode): ${duration.toFixed(2)}ms`);
     });
 
-    it('should execute get_terragrunt_sections in <500ms', async () => {
+    it('should execute search_docs (list mode) in <500ms', async () => {
       const startTime = performance.now();
       
       const result = await toolHandler.executeTool('search_docs', {mode: 'list'});
@@ -227,10 +227,10 @@ describe('Performance Benchmarks', () => {
       expect(Array.isArray(result.sections)).toBe(true);
       expect(duration).toBeLessThan(500);
       
-      console.log(`✓ get_terragrunt_sections: ${duration.toFixed(2)}ms`);
+      console.log(`✓ search_docs (list mode): ${duration.toFixed(2)}ms`);
     });
 
-    it('should execute get_section_docs in <1 second', async () => {
+    it('should execute search_docs (section mode) in <1 second', async () => {
       const startTime = performance.now();
       
       const result = await toolHandler.executeTool('search_docs', {mode: 'section', 
@@ -244,7 +244,7 @@ describe('Performance Benchmarks', () => {
       expect(Array.isArray(result.docs)).toBe(true);
       expect(duration).toBeLessThan(1000);
       
-      console.log(`✓ get_section_docs: ${duration.toFixed(2)}ms`);
+      console.log(`✓ search_docs (section mode): ${duration.toFixed(2)}ms`);
     });
 
     it('should execute get_cli_command_help in <1 second', async () => {
@@ -279,7 +279,7 @@ describe('Performance Benchmarks', () => {
       console.log(`✓ get_hcl_config_reference: ${duration.toFixed(2)}ms`);
     });
 
-    it('should execute get_code_examples in <1.5 seconds', async () => {
+    it('should execute search_docs (examples mode) in <1.5 seconds', async () => {
       const startTime = performance.now();
       
       const result = await toolHandler.executeTool('search_docs', {mode: 'examples', 
@@ -294,7 +294,7 @@ describe('Performance Benchmarks', () => {
       expect(Array.isArray(result.examples)).toBe(true);
       expect(duration).toBeLessThan(1500);
       
-      console.log(`✓ get_code_examples: ${duration.toFixed(2)}ms`);
+      console.log(`✓ search_docs (examples mode): ${duration.toFixed(2)}ms`);
     });
 
     it('should benchmark all tools sequentially', async () => {

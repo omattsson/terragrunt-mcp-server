@@ -13,7 +13,7 @@ describe('Advanced Code Examples Integration', () => {
     toolHandler = new ToolHandler();
   });
 
-  describe('get_code_examples with advanced=true', () => {
+  describe('search_docs (examples mode) with advanced=true', () => {
     it('should return curated examples when searching by topic', async () => {
       const result = await toolHandler.executeTool('search_docs', {mode: 'examples', 
         advanced: true,
@@ -100,7 +100,7 @@ describe('Advanced Code Examples Integration', () => {
     });
   });
 
-  describe('get_code_examples with listCategories=true', () => {
+  describe('search_docs (examples mode) with listCategories=true', () => {
     it('should list all categories with example counts', async () => {
       const result = await toolHandler.executeTool('search_docs', {mode: 'examples', 
         listCategories: true
@@ -119,8 +119,8 @@ describe('Advanced Code Examples Integration', () => {
     });
   });
 
-  describe('get_code_examples backward compatibility', () => {
-    it('should still work with topic only (doc scraping)', async () => {
+  describe('search_docs (examples mode) fallback to doc scraping', () => {
+    it('should fallback to doc scraping with query only (advanced=false)', async () => {
       const result = await toolHandler.executeTool('search_docs', {mode: 'examples', 
         query: 'remote_state',
         detailLevel: 'full'
