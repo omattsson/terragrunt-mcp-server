@@ -299,12 +299,12 @@ describe('Performance Benchmarks', () => {
 
     it('should benchmark all tools sequentially', async () => {
       const tools = [
-        { name: 'search_docs', args: { query: 'test', limit: 5 } },
-        { name: 'search_docs', args: {} },
-        { name: 'search_docs', args: { section: 'reference' } },
+        { name: 'search_docs', args: { mode: 'search', query: 'test', limit: 5 } },
+        { name: 'search_docs', args: { mode: 'list' } },
+        { name: 'search_docs', args: { mode: 'section', section: 'reference' } },
         { name: 'get_cli_command_help', args: { command: 'apply' } },
         { name: 'get_hcl_config_reference', args: { config: 'terraform' } },
-        { name: 'search_docs', args: { topic: 'remote state', limit: 3 } }
+        { name: 'search_docs', args: { mode: 'examples', query: 'remote state', limit: 3 } }
       ];
 
       console.log('\n  Sequential tool execution benchmark:');
@@ -353,15 +353,15 @@ describe('Performance Benchmarks', () => {
 
     it('should handle 10 concurrent tool executions', async () => {
       const tools = [
-        { name: 'search_docs', args: { query: 'test1', limit: 3 } },
-        { name: 'search_docs', args: { query: 'test2', limit: 3 } },
-        { name: 'search_docs', args: {} },
-        { name: 'search_docs', args: { section: 'getting-started' } },
+        { name: 'search_docs', args: { mode: 'search', query: 'test1', limit: 3 } },
+        { name: 'search_docs', args: { mode: 'search', query: 'test2', limit: 3 } },
+        { name: 'search_docs', args: { mode: 'list' } },
+        { name: 'search_docs', args: { mode: 'section', section: 'getting-started' } },
         { name: 'get_cli_command_help', args: { command: 'plan' } },
         { name: 'get_hcl_config_reference', args: { config: 'dependency' } },
-        { name: 'search_docs', args: { topic: 'dependencies', limit: 3 } },
-        { name: 'search_docs', args: { query: 'test3', limit: 3 } },
-        { name: 'search_docs', args: { section: 'reference' } },
+        { name: 'search_docs', args: { mode: 'examples', query: 'dependencies', limit: 3 } },
+        { name: 'search_docs', args: { mode: 'search', query: 'test3', limit: 3 } },
+        { name: 'search_docs', args: { mode: 'section', section: 'reference' } },
         { name: 'get_cli_command_help', args: { command: 'apply' } }
       ];
 
