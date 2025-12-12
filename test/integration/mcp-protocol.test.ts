@@ -982,7 +982,7 @@ describe('MCP Protocol Compliance', () => {
 
         expect(result).toBeDefined();
         expect(typeof result).toBe('object');
-        expect(result.topic).toBe('state_management');
+        expect(result.query).toBe('state_management');
       }, 30000);
 
       it('should return MCP-compliant success response structure', async () => {
@@ -995,7 +995,7 @@ describe('MCP Protocol Compliance', () => {
         expect(typeof result).toBe('object');
         
         // Should have all required BestPracticeResult fields
-        expect(result.topic).toBeDefined();
+        expect(result.query).toBeDefined();
         expect(result.recommendations).toBeDefined();
         expect(result.summary).toBeDefined();
         expect(result.commonPitfalls).toBeDefined();
@@ -1012,7 +1012,7 @@ describe('MCP Protocol Compliance', () => {
         });
 
         // Validate field types
-        expect(typeof result.topic).toBe('string');
+        expect(typeof result.query).toBe('string');
         expect(Array.isArray(result.recommendations)).toBe(true);
         expect(typeof result.summary).toBe('string');
         expect(Array.isArray(result.commonPitfalls)).toBe(true);
@@ -1069,7 +1069,7 @@ describe('MCP Protocol Compliance', () => {
         expect(typeof result).toBe('object');
         
         // Should either ignore invalid level or return error
-        expect(result.topic || result.error).toBeDefined();
+        expect(result.query || result.error).toBeDefined();
       }, 30000);
 
       it('should handle optional level parameter correctly', async () => {
@@ -1080,7 +1080,7 @@ describe('MCP Protocol Compliance', () => {
         });
 
         expect(result).toBeDefined();
-        expect(result.topic).toBe('performance');
+        expect(result.query).toBe('performance');
         expect(result.recommendations).toBeDefined();
         expect(result.confidence).toBeDefined();
       }, 30000);
@@ -1094,7 +1094,7 @@ describe('MCP Protocol Compliance', () => {
 
         // Should still execute successfully, ignoring unknown params
         expect(result).toBeDefined();
-        expect(result.topic).toBe('testing');
+        expect(result.query).toBe('testing');
         expect(result.confidence).toBeDefined();
       }, 30000);
     });

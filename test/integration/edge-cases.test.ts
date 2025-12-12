@@ -704,7 +704,7 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
         const duration = Date.now() - startTime;
 
         expect(result).toBeDefined();
-        expect(result.topic).toBe(longTopic);
+        expect(result.query).toBe(longTopic);
         // Should handle gracefully, likely with error or empty result
         expect(result.recommendations).toBeDefined();
         expect(Array.isArray(result.recommendations)).toBe(true);
@@ -736,7 +736,7 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
         });
 
         expect(result).toBeDefined();
-        expect(result.topic).toContain('state_management');
+        expect(result.query).toContain('state_management');
         expect(result.recommendations).toBeDefined();
         expect(Array.isArray(result.recommendations)).toBe(true);
         expect(result.confidence).toBeDefined();
@@ -789,7 +789,7 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
         });
 
         expect(result).toBeDefined();
-        expect(result.topic).toBe('state_management');
+        expect(result.query).toBe('state_management');
         expect(result.recommendations).toBeDefined();
         expect(Array.isArray(result.recommendations)).toBe(true);
         // Should either ignore invalid level or return error
@@ -804,7 +804,7 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
         });
 
         expect(result).toBeDefined();
-        expect(result.topic).toBe('state_management');
+        expect(result.query).toBe('state_management');
         expect(result.recommendations).toBeDefined();
         expect(Array.isArray(result.recommendations)).toBe(true);
         // Should either normalize or handle gracefully
@@ -818,7 +818,7 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
         });
 
         expect(result).toBeDefined();
-        expect(result.topic).toBe('state_management');
+        expect(result.query).toBe('state_management');
         expect(result.recommendations).toBeDefined();
         expect(Array.isArray(result.recommendations)).toBe(true);
         // Should return all recommendations without filtering
@@ -836,7 +836,7 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
         });
 
         expect(result).toBeDefined();
-        expect(result.topic).toBe('state_management');
+        expect(result.query).toBe('state_management');
         expect(result.recommendations).toBeDefined();
         expect(Array.isArray(result.recommendations)).toBe(true);
         // Should either ignore empty string or return all recommendations
@@ -876,7 +876,7 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
         });
 
         expect(result).toBeDefined();
-        expect(result.topic).toBe('testing');
+        expect(result.query).toBe('testing');
         expect(result.recommendations).toBeDefined();
         expect(Array.isArray(result.recommendations)).toBe(true);
         expect(result.confidence).toBeDefined();
@@ -964,7 +964,7 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
         });
 
         expect(result).toBeDefined();
-        expect(result.topic).toBe('module_organization');
+        expect(result.query).toBe('module_organization');
         expect(result.recommendations).toBeDefined();
         expect(Array.isArray(result.recommendations)).toBe(true);
         expect(result.confidence).toBeDefined();

@@ -37,7 +37,7 @@ describe('get_guidance Tool Integration', () => {
       });
 
       expect(result).toBeDefined();
-      expect(result.topic).toBe('state_management');
+      expect(result.query).toBe('state_management');
       expect(result.confidence).toBeDefined();
       expect(typeof result.confidence).toBe('number');
       expect(result.confidence).toBeGreaterThanOrEqual(0);
@@ -73,7 +73,7 @@ describe('get_guidance Tool Integration', () => {
         mode: 'full'
       });
 
-      expect(result.topic).toBeDefined();
+      expect(result.query).toBeDefined();
       expect(result.recommendations).toBeDefined();
       expect(result.summary).toBeDefined();
       expect(result.commonPitfalls).toBeDefined();
@@ -91,7 +91,7 @@ describe('get_guidance Tool Integration', () => {
       });
 
       expect(result).toBeDefined();
-      expect(result.topic).toBe('state_management');
+      expect(result.query).toBe('state_management');
       expect(result.confidence).toBeDefined();
     });
 
@@ -200,7 +200,7 @@ describe('get_guidance Tool Integration', () => {
         });
 
         expect(result).toBeDefined();
-        expect(result.topic).toBe(topic);
+        expect(result.query).toBe(topic);
         expect(result.confidence).toBeDefined();
         expect(result.confidence).toBeGreaterThanOrEqual(0);
         expect(result.confidence).toBeLessThanOrEqual(100);
