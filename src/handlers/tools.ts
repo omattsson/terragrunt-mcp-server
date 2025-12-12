@@ -1283,11 +1283,11 @@ export class ToolHandler {
             return this.getAdvancedCodeExamples(topic, mode, limit, category);
         }
 
-        // Original doc-scraped examples mode (requires topic)
+        // Original doc-scraped examples mode (requires query)
         if (!topic) {
             return {
-                error: 'topic parameter is required when advanced=false',
-                suggestion: 'Use advanced=true to browse curated examples, or provide a topic to search documentation'
+                error: 'query parameter is required when advanced=false',
+                suggestion: 'Use advanced=true to browse curated examples, or provide a query to search documentation'
             };
         }
 

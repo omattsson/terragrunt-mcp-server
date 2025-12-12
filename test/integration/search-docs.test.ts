@@ -313,7 +313,7 @@ describe('search_docs Unified Tool - Comprehensive Integration', () => {
       });
 
       expect(result.error).toBeDefined();
-      expect(result.error).toContain('topic parameter is required');
+      expect(result.error).toContain('query parameter is required');
     });
   });
 

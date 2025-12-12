@@ -171,23 +171,6 @@ Find code examples and patterns.
 ---
 
 ## 2. get_terragrunt_function
-    {
-      "name": "getting-started",
-      "documentCount": 4
-    },
-    {
-      "name": "reference",
-      "documentCount": 36
-    },
-    {
-      "name": "features",
-      "documentCount": 18
-    }
-  ]
-}
-```
-
----
 
 ## 3. get_cli_command_help
 

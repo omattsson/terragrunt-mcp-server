@@ -409,7 +409,7 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
 
       expect(result).toBeDefined();
       expect(result.error).toBeDefined();
-      expect(result.error).toContain('topic parameter is required when advanced=false');
+      expect(result.error).toContain('query parameter is required when advanced=false');
     });
 
     it('should validate search_docs section mode requires section parameter', async () => {
