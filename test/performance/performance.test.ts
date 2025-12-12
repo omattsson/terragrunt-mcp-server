@@ -515,14 +515,14 @@ describe('Performance Benchmarks', () => {
   });
 
   describe('8. Function Lookup Performance', () => {
-    describe('get_terragrunt_function', () => {
+    describe('function_reference (GET mode)', () => {
       it('should handle first call (cache miss) in <200ms', async () => {
         // Create fresh ToolHandler to test true cache miss
         const freshToolHandler = new ToolHandler();
         
         const startTime = performance.now();
         
-        const result = await freshToolHandler.executeTool('get_terragrunt_function', {
+        const result = await freshToolHandler.executeTool('function_reference', {
           function_name: 'path_relative_to_include'
         , mode: 'full'
         });
@@ -539,7 +539,7 @@ describe('Performance Benchmarks', () => {
       it('should handle cached lookup', async () => {
         const startTime = performance.now();
         
-        const result = await toolHandler.executeTool('get_terragrunt_function', {
+        const result = await toolHandler.executeTool('function_reference', {
           function_name: 'path_relative_to_include'
         , mode: 'full'
         });
@@ -557,7 +557,7 @@ describe('Performance Benchmarks', () => {
         const startTime = performance.now();
         
         for (let i = 0; i < iterations; i++) {
-          const result = await toolHandler.executeTool('get_terragrunt_function', {
+          const result = await toolHandler.executeTool('function_reference', {
             function_name: 'path_relative_to_include'
           , mode: 'full'
           });
@@ -575,7 +575,7 @@ describe('Performance Benchmarks', () => {
       it('should handle lookup with examples in <15ms', async () => {
         const startTime = performance.now();
         
-        const result = await toolHandler.executeTool('get_terragrunt_function', {
+        const result = await toolHandler.executeTool('function_reference', {
           function_name: 'path_relative_to_include',
           include_examples: true
         , mode: 'full'
@@ -593,7 +593,7 @@ describe('Performance Benchmarks', () => {
       it('should handle lookup without examples in <10ms', async () => {
         const startTime = performance.now();
         
-        const result = await toolHandler.executeTool('get_terragrunt_function', {
+        const result = await toolHandler.executeTool('function_reference', {
           function_name: 'path_relative_to_include',
           include_examples: false
         , mode: 'full'
@@ -616,7 +616,7 @@ describe('Performance Benchmarks', () => {
         for (const funcName of functionNames) {
           const startTime = performance.now();
           
-          const result = await toolHandler.executeTool('get_terragrunt_function', {
+          const result = await toolHandler.executeTool('function_reference', {
             function_name: funcName
           , mode: 'full'
           });
@@ -635,11 +635,11 @@ describe('Performance Benchmarks', () => {
       });
     });
 
-    describe('list_terragrunt_functions', () => {
+    describe('function_reference (LIST mode)', () => {
       it('should list all functions in <50ms', async () => {
         const startTime = performance.now();
         
-        const result = await toolHandler.executeTool('list_terragrunt_functions', {});
+        const result = await toolHandler.executeTool('function_reference', {});
         
         const duration = performance.now() - startTime;
         
@@ -654,7 +654,7 @@ describe('Performance Benchmarks', () => {
       it('should filter by category in <30ms', async () => {
         const startTime = performance.now();
         
-        const result = await toolHandler.executeTool('list_terragrunt_functions', {
+        const result = await toolHandler.executeTool('function_reference', {
           category: 'path'
         });
         
@@ -675,7 +675,7 @@ describe('Performance Benchmarks', () => {
       it('should search by keyword in <100ms', async () => {
         const startTime = performance.now();
         
-        const result = await toolHandler.executeTool('list_terragrunt_functions', {
+        const result = await toolHandler.executeTool('function_reference', {
           search: 'path'
         });
         
@@ -693,7 +693,7 @@ describe('Performance Benchmarks', () => {
         const pageSize = 10;
         const startTime = performance.now();
         
-        const result = await toolHandler.executeTool('list_terragrunt_functions', {
+        const result = await toolHandler.executeTool('function_reference', {
           pageSize: pageSize
         });
         
@@ -710,7 +710,7 @@ describe('Performance Benchmarks', () => {
       it('should handle combined filters in <100ms', async () => {
         const startTime = performance.now();
         
-        const result = await toolHandler.executeTool('list_terragrunt_functions', {
+        const result = await toolHandler.executeTool('function_reference', {
           category: 'path',
           search: 'relative',
           limit: 5
@@ -745,7 +745,7 @@ describe('Performance Benchmarks', () => {
         
         const results = await Promise.all(
           functionNames.map(name => 
-            toolHandler.executeTool('get_terragrunt_function', { function_name: name , mode: 'full' })
+            toolHandler.executeTool('function_reference', { function_name: name , mode: 'full' })
           )
         );
         
@@ -765,11 +765,11 @@ describe('Performance Benchmarks', () => {
         const startTime = performance.now();
         
         const operations = [
-          toolHandler.executeTool('get_terragrunt_function', { function_name: 'path_relative_to_include' , mode: 'full' }),
-          toolHandler.executeTool('list_terragrunt_functions', { category: 'path' }),
-          toolHandler.executeTool('get_terragrunt_function', { function_name: 'get_env' , mode: 'full' }),
-          toolHandler.executeTool('list_terragrunt_functions', { search: 'terraform' }),
-          toolHandler.executeTool('get_terragrunt_function', { function_name: 'find_in_parent_folders' , mode: 'full' }),
+          toolHandler.executeTool('function_reference', { function_name: 'path_relative_to_include' , mode: 'full' }),
+          toolHandler.executeTool('function_reference', { category: 'path' }),
+          toolHandler.executeTool('function_reference', { function_name: 'get_env' , mode: 'full' }),
+          toolHandler.executeTool('function_reference', { search: 'terraform' }),
+          toolHandler.executeTool('function_reference', { function_name: 'find_in_parent_folders' , mode: 'full' }),
         ];
         
         const results = await Promise.all(operations);
@@ -797,7 +797,7 @@ describe('Performance Benchmarks', () => {
         const memBefore = process.memoryUsage();
         
         // Load all functions into cache
-        const result = await toolHandler.executeTool('list_terragrunt_functions', {});
+        const result = await toolHandler.executeTool('function_reference', {});
         
         const memAfter = process.memoryUsage();
         const heapIncrease = (memAfter.heapUsed - memBefore.heapUsed) / 1024 / 1024;
@@ -819,7 +819,7 @@ describe('Performance Benchmarks', () => {
         
         // Perform 1000 lookups
         for (let i = 0; i < 1000; i++) {
-          await toolHandler.executeTool('get_terragrunt_function', {
+          await toolHandler.executeTool('function_reference', {
             function_name: 'path_relative_to_include'
           , mode: 'full'
           });
@@ -830,7 +830,7 @@ describe('Performance Benchmarks', () => {
         
         // Perform another 1000 lookups
         for (let i = 0; i < 1000; i++) {
-          await toolHandler.executeTool('get_terragrunt_function', {
+          await toolHandler.executeTool('function_reference', {
             function_name: 'get_env'
           , mode: 'full'
           });

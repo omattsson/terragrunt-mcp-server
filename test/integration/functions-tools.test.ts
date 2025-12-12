@@ -5,8 +5,7 @@ import { ToolHandler } from '../../src/handlers/tools.js';
  * Function Lookup Tools Integration Tests
  * 
  * These tests validate end-to-end functionality of the function lookup tools:
- * - get_terragrunt_function: Retrieves detailed metadata for a specific function
- * - list_terragrunt_functions: Lists/searches/filters available functions
+ * - function_reference: Unified tool for function operations (GET specific function details or LIST/search/filter all functions)
  * 
  * Tests use real documentation parsing (not mocked) to ensure accurate extraction.
  */
@@ -18,14 +17,14 @@ describe('Function Lookup Tools Integration Tests', () => {
     toolHandler = new ToolHandler();
     
     // Prime the cache by loading functions once
-    await toolHandler.executeTool('list_terragrunt_functions', { limit: 1 });
+    await toolHandler.executeTool('function_reference', { limit: 1 });
     console.log('ToolHandler initialized and functions loaded successfully');
   }, 120000); // Allow up to 2 minutes for initial documentation loading
 
-  describe('get_terragrunt_function tool', () => {
+  describe('function_reference tool (GET mode)', () => {
     describe('Well-known function retrieval', () => {
       it('should retrieve path_relative_to_include with complete metadata', async () => {
-        const result = await toolHandler.executeTool('get_terragrunt_function', {
+        const result = await toolHandler.executeTool('function_reference', {
           function_name: 'path_relative_to_include'
         , mode: 'full'
         });
@@ -57,7 +56,7 @@ describe('Function Lookup Tools Integration Tests', () => {
       });
 
       it('should retrieve get_env with complete metadata', async () => {
-        const result = await toolHandler.executeTool('get_terragrunt_function', {
+        const result = await toolHandler.executeTool('function_reference', {
           function_name: 'get_env'
         , mode: 'full'
         });
@@ -76,7 +75,7 @@ describe('Function Lookup Tools Integration Tests', () => {
 
       it('should retrieve a well-known path function with complete metadata', async () => {
         // First get a function from the path category
-        const listResult = await toolHandler.executeTool('list_terragrunt_functions', {
+        const listResult = await toolHandler.executeTool('function_reference', {
           category: 'path',
           limit: 1
         });
@@ -84,7 +83,7 @@ describe('Function Lookup Tools Integration Tests', () => {
         expect(listResult.functions.length).toBeGreaterThan(0);
         const functionName = listResult.functions[0].name;
         
-        const result = await toolHandler.executeTool('get_terragrunt_function', {
+        const result = await toolHandler.executeTool('function_reference', {
           function_name: functionName
         , mode: 'full'
         });
@@ -102,7 +101,7 @@ describe('Function Lookup Tools Integration Tests', () => {
 
     describe('Metadata validation', () => {
       it('should include properly formatted examples when available', async () => {
-        const result = await toolHandler.executeTool('get_terragrunt_function', {
+        const result = await toolHandler.executeTool('function_reference', {
           function_name: 'get_env'
         , mode: 'full'
         });
@@ -123,7 +122,7 @@ describe('Function Lookup Tools Integration Tests', () => {
       });
 
       it('should populate related functions array when available', async () => {
-        const result = await toolHandler.executeTool('get_terragrunt_function', {
+        const result = await toolHandler.executeTool('function_reference', {
           function_name: 'path_relative_to_include'
         , mode: 'full'
         });
@@ -142,7 +141,7 @@ describe('Function Lookup Tools Integration Tests', () => {
 
     describe('Error handling', () => {
       it('should handle unknown function with error and suggestions', async () => {
-        const result = await toolHandler.executeTool('get_terragrunt_function', {
+        const result = await toolHandler.executeTool('function_reference', {
           function_name: 'nonexistent_function_xyz_12345'
         , mode: 'full'
         });
@@ -163,7 +162,7 @@ describe('Function Lookup Tools Integration Tests', () => {
 
     describe('Parameter behavior', () => {
       it('should include examples when include_examples=true', async () => {
-        const result = await toolHandler.executeTool('get_terragrunt_function', {
+        const result = await toolHandler.executeTool('function_reference', {
           function_name: 'get_env',
           include_examples: true
         , mode: 'full'
@@ -175,7 +174,7 @@ describe('Function Lookup Tools Integration Tests', () => {
       });
 
       it('should exclude examples when include_examples=false', async () => {
-        const result = await toolHandler.executeTool('get_terragrunt_function', {
+        const result = await toolHandler.executeTool('function_reference', {
           function_name: 'get_env',
           include_examples: false
         , mode: 'full'
@@ -190,7 +189,7 @@ describe('Function Lookup Tools Integration Tests', () => {
     describe('Performance', () => {
       it('should respond in <500ms for cached function lookup', async () => {
         // Get a real function name dynamically instead of hardcoding
-        const listResult = await toolHandler.executeTool('list_terragrunt_functions', {
+        const listResult = await toolHandler.executeTool('function_reference', {
           limit: 1
         });
         expect(listResult.functions).toBeDefined();
@@ -199,7 +198,7 @@ describe('Function Lookup Tools Integration Tests', () => {
 
         const start = performance.now();
 
-        await toolHandler.executeTool('get_terragrunt_function', {
+        await toolHandler.executeTool('function_reference', {
           function_name: functionName
         , mode: 'full'
         });
@@ -211,10 +210,10 @@ describe('Function Lookup Tools Integration Tests', () => {
     });
   });
 
-  describe('list_terragrunt_functions tool', () => {
+  describe('function_reference tool (LIST mode)', () => {
     describe('Basic listing', () => {
       it('should list all functions without parameters', async () => {
-        const result = await toolHandler.executeTool('list_terragrunt_functions', {});
+        const result = await toolHandler.executeTool('function_reference', {});
 
         // Should have proper structure
         expect(result.functions).toBeDefined();
@@ -241,7 +240,7 @@ describe('Function Lookup Tools Integration Tests', () => {
 
     describe('Category filtering', () => {
       it('should filter by path category', async () => {
-        const result = await toolHandler.executeTool('list_terragrunt_functions', {
+        const result = await toolHandler.executeTool('function_reference', {
           category: 'path'
         });
 
@@ -257,7 +256,7 @@ describe('Function Lookup Tools Integration Tests', () => {
       });
 
       it('should filter by environment category', async () => {
-        const result = await toolHandler.executeTool('list_terragrunt_functions', {
+        const result = await toolHandler.executeTool('function_reference', {
           category: 'environment'
         });
 
@@ -275,7 +274,7 @@ describe('Function Lookup Tools Integration Tests', () => {
 
     describe('Search functionality', () => {
       it('should search by function name', async () => {
-        const result = await toolHandler.executeTool('list_terragrunt_functions', {
+        const result = await toolHandler.executeTool('function_reference', {
           search: 'get_env'
         });
 
@@ -291,7 +290,7 @@ describe('Function Lookup Tools Integration Tests', () => {
       });
 
       it('should search by description content', async () => {
-        const result = await toolHandler.executeTool('list_terragrunt_functions', {
+        const result = await toolHandler.executeTool('function_reference', {
           search: 'environment'
         });
 
@@ -312,7 +311,7 @@ describe('Function Lookup Tools Integration Tests', () => {
 
     describe('Response structure validation', () => {
       it('should return proper structure with all required fields', async () => {
-        const result = await toolHandler.executeTool('list_terragrunt_functions', {
+        const result = await toolHandler.executeTool('function_reference', {
           limit: 10
         });
 
@@ -345,7 +344,7 @@ describe('Function Lookup Tools Integration Tests', () => {
       it('should respond in <500ms for cached list operation', async () => {
         const start = performance.now();
 
-        await toolHandler.executeTool('list_terragrunt_functions', {
+        await toolHandler.executeTool('function_reference', {
           limit: 20
         });
 
@@ -358,14 +357,14 @@ describe('Function Lookup Tools Integration Tests', () => {
 
   describe('Real Documentation Extraction', () => {
     it('should discover at least 10 major functions', async () => {
-      const result = await toolHandler.executeTool('list_terragrunt_functions', {});
+      const result = await toolHandler.executeTool('function_reference', {});
 
       expect(result.pagination.totalItems).toBeGreaterThanOrEqual(10);
       expect(result.functions.length).toBeGreaterThan(0);
     });
 
     it('should have all function categories represented', async () => {
-      const result = await toolHandler.executeTool('list_terragrunt_functions', {});
+      const result = await toolHandler.executeTool('function_reference', {});
 
       expect(result.categories).toBeDefined();
       expect(Array.isArray(result.categories)).toBe(true);
@@ -382,7 +381,7 @@ describe('Function Lookup Tools Integration Tests', () => {
 
     it('should extract examples correctly for at least one function', async () => {
       // Get a function known to have examples
-      const result = await toolHandler.executeTool('get_terragrunt_function', {
+      const result = await toolHandler.executeTool('function_reference', {
         function_name: 'get_env',
         include_examples: true
       , mode: 'full'
@@ -405,27 +404,21 @@ describe('Function Lookup Tools Integration Tests', () => {
     it('should have valid tool definitions', async () => {
       const tools = toolHandler.getAvailableTools();
       
-      // Should have our function tools
-      const getTool = tools.find(t => t.name === 'get_terragrunt_function');
-      const listTool = tools.find(t => t.name === 'list_terragrunt_functions');
+      // Should have our unified function tool
+      const functionTool = tools.find(t => t.name === 'function_reference');
       
-      expect(getTool).toBeDefined();
-      expect(listTool).toBeDefined();
+      expect(functionTool).toBeDefined();
       
-      // Validate get_terragrunt_function schema
-      expect(getTool?.inputSchema).toBeDefined();
-      expect(getTool?.inputSchema.type).toBe('object');
-      expect(getTool?.inputSchema.properties).toBeDefined();
-      expect(getTool?.inputSchema.required).toContain('function_name');
-      
-      // Validate list_terragrunt_functions schema
-      expect(listTool?.inputSchema).toBeDefined();
-      expect(listTool?.inputSchema.type).toBe('object');
-      expect(listTool?.inputSchema.properties).toBeDefined();
+      // Validate function_reference schema
+      expect(functionTool?.inputSchema).toBeDefined();
+      expect(functionTool?.inputSchema.type).toBe('object');
+      expect(functionTool?.inputSchema.properties).toBeDefined();
+      // All params are optional for dual-mode routing
+      expect(functionTool?.inputSchema.required).toEqual([]);
     });
 
     it('should return responses with correct schema for success', async () => {
-      const result = await toolHandler.executeTool('get_terragrunt_function', {
+      const result = await toolHandler.executeTool('function_reference', {
         function_name: 'get_env'
       , mode: 'full'
       });
@@ -446,7 +439,7 @@ describe('Function Lookup Tools Integration Tests', () => {
     });
 
     it('should format error responses properly', async () => {
-      const result = await toolHandler.executeTool('get_terragrunt_function', {
+      const result = await toolHandler.executeTool('function_reference', {
         function_name: 'invalid_function_name'
       , mode: 'full'
       });
@@ -464,7 +457,7 @@ describe('Function Lookup Tools Integration Tests', () => {
     });
 
     it('should have all required fields in list response', async () => {
-      const result = await toolHandler.executeTool('list_terragrunt_functions', {});
+      const result = await toolHandler.executeTool('function_reference', {});
 
       // Required top-level fields
       expect(result).toHaveProperty('functions');
