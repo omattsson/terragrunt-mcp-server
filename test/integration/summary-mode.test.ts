@@ -133,9 +133,9 @@ describe('Summary Mode - Tool Integration Tests', () => {
         });
     });
 
-    describe('get_section_docs', () => {
+    describe('search_docs', () => {
         it('should return summary mode by default', async () => {
-            const result = await toolHandler.executeTool('get_section_docs', {
+            const result = await toolHandler.executeTool('search_docs', {mode: 'section', 
                 section: 'getting-started'
             });
 
@@ -170,9 +170,9 @@ describe('Summary Mode - Tool Integration Tests', () => {
         });
 
         it('should return full mode when specified', async () => {
-            const result = await toolHandler.executeTool('get_section_docs', {
+            const result = await toolHandler.executeTool('search_docs', {mode: 'section', 
                 section: 'getting-started',
-                mode: 'full'
+                detailLevel: 'full'
             });
 
             // Skip test if section doesn't exist
@@ -201,10 +201,10 @@ describe('Summary Mode - Tool Integration Tests', () => {
         });
     });
 
-    describe('get_code_examples', () => {
+    describe('search_docs', () => {
         it('should return summary mode by default for regular examples', async () => {
-            const result = await toolHandler.executeTool('get_code_examples', {
-                topic: 'remote state'
+            const result = await toolHandler.executeTool('search_docs', {mode: 'examples', 
+                query: 'remote state'
             });
 
             // Skip test if no examples found
@@ -212,7 +212,7 @@ describe('Summary Mode - Tool Integration Tests', () => {
                 return;
             }
 
-            expect(result).toHaveProperty('topic', 'remote state');
+            expect(result).toHaveProperty('query', 'remote state');
             expect(result).toHaveProperty('source', 'documentation');
             expect(result).toHaveProperty('documentCount');
             expect(result).toHaveProperty('documents');
@@ -233,9 +233,9 @@ describe('Summary Mode - Tool Integration Tests', () => {
         });
 
         it('should return full mode when specified for regular examples', async () => {
-            const result = await toolHandler.executeTool('get_code_examples', {
-                topic: 'remote state',
-                mode: 'full'
+            const result = await toolHandler.executeTool('search_docs', {mode: 'examples', 
+                query: 'remote state',
+                detailLevel: 'full'
             });
 
             // Skip test if no examples found
@@ -243,7 +243,7 @@ describe('Summary Mode - Tool Integration Tests', () => {
                 return;
             }
 
-            expect(result).toHaveProperty('topic', 'remote state');
+            expect(result).toHaveProperty('query', 'remote state');
             expect(result).toHaveProperty('source', 'documentation');
             expect(result).toHaveProperty('examples');
             expect(result).toHaveProperty('totalDocuments');
@@ -263,10 +263,10 @@ describe('Summary Mode - Tool Integration Tests', () => {
         });
 
         it('should return summary mode for advanced examples', async () => {
-            const result = await toolHandler.executeTool('get_code_examples', {
-                topic: 'hook',
+            const result = await toolHandler.executeTool('search_docs', {mode: 'examples', 
+                query: 'hook',
                 advanced: true,
-                mode: 'summary'
+                detailLevel: 'summary'
             });
 
             // Skip test if no examples found
@@ -293,14 +293,14 @@ describe('Summary Mode - Tool Integration Tests', () => {
         });
 
         it('should have shorter response in summary mode', async () => {
-            const summaryResult = await toolHandler.executeTool('get_code_examples', {
-                topic: 'remote state',
-                mode: 'summary'
+            const summaryResult = await toolHandler.executeTool('search_docs', {mode: 'examples', 
+                query: 'remote state',
+                detailLevel: 'summary'
             });
             
-            const fullResult = await toolHandler.executeTool('get_code_examples', {
-                topic: 'remote state',
-                mode: 'full'
+            const fullResult = await toolHandler.executeTool('search_docs', {mode: 'examples', 
+                query: 'remote state',
+                detailLevel: 'full'
             });
 
             // Skip comparison if either failed

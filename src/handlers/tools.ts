@@ -28,6 +28,26 @@ export interface Tool {
     inputSchema: any;
 }
 
+/**
+ * Type-safe arguments for unified search_docs tool
+ * Mode parameter determines which additional parameters are required
+ */
+interface SearchDocsArgs {
+    mode?: 'search' | 'list' | 'section' | 'examples';
+    // Search mode parameters
+    query?: string;
+    page?: number;
+    pageSize?: number;
+    // Section mode parameters
+    section?: string;
+    // Examples mode parameters
+    detailLevel?: 'summary' | 'full';
+    limit?: number;
+    advanced?: boolean;
+    category?: AdvancedExampleCategory;
+    listCategories?: boolean;
+}
+
 export class ToolHandler {
     private resourceHandler: ResourceHandler;
     private docsManager: TerragruntDocsManager;
@@ -132,30 +152,68 @@ export class ToolHandler {
     getAvailableTools(): Tool[] {
         return [
             {
-                name: 'search_terragrunt_docs',
-                description: 'Search Terragrunt documentation for specific topics, commands, concepts, or configuration options',
+                name: 'search_docs',
+                description: 'Unified documentation search tool. Modes: search (semantic search), list (list sections), section (get section content), examples (find code examples). Use detailLevel=summary for concise results (60-90% smaller), detailLevel=full for complete content.',
                 inputSchema: {
                     type: 'object',
                     properties: {
+                        mode: {
+                            type: 'string',
+                            enum: ['search', 'list', 'section', 'examples'],
+                            description: 'Operation mode: search=semantic search across docs, list=list available sections, section=get specific section content, examples=find code examples',
+                            default: 'search'
+                        },
                         query: {
                             type: 'string',
-                            description: 'Search query for Terragrunt documentation (e.g., "dependencies", "remote state", "generate block")'
+                            description: 'Search query (required for search mode, optional for examples mode to filter results)'
+                        },
+                        section: {
+                            type: 'string',
+                            description: 'Section name (required for section mode, e.g., "getting-started", "reference", "features")'
+                        },
+                        detailLevel: {
+                            type: 'string',
+                            enum: ['summary', 'full'],
+                            description: 'Response detail level: summary (concise, 60-90% smaller) or full (complete content). Applies to section and examples modes.',
+                            default: 'summary'
                         },
                         page: {
                             type: 'number',
-                            description: 'Page number (1-based)',
+                            description: 'Page number (1-based) for search mode',
                             default: 1,
                             minimum: 1
                         },
                         pageSize: {
                             type: 'number',
-                            description: 'Results per page',
+                            description: 'Results per page for search mode',
                             default: 10,
                             minimum: 1,
                             maximum: 50
+                        },
+                        limit: {
+                            type: 'number',
+                            description: 'Maximum number of results for examples mode',
+                            default: 5,
+                            minimum: 1,
+                            maximum: 10
+                        },
+                        advanced: {
+                            type: 'boolean',
+                            description: 'For examples mode: return curated advanced examples with best practices',
+                            default: false
+                        },
+                        category: {
+                            type: 'string',
+                            description: 'For examples mode: filter by category (hooks, generate, environment, dependencies, dry-patterns)',
+                            enum: ['hooks', 'generate', 'environment', 'dependencies', 'dry-patterns']
+                        },
+                        listCategories: {
+                            type: 'boolean',
+                            description: 'For examples mode: list available categories',
+                            default: false
                         }
                     },
-                    required: ['query']
+                    required: []
                 }
             },
             {
@@ -212,35 +270,6 @@ export class ToolHandler {
                         }
                     },
                     required: []
-                }
-            },
-            {
-                name: 'get_terragrunt_sections',
-                description: 'Get all available documentation sections in Terragrunt docs',
-                inputSchema: {
-                    type: 'object',
-                    properties: {},
-                    required: []
-                }
-            },
-            {
-                name: 'get_section_docs',
-                description: 'Get documentation for a specific Terragrunt section. Use mode=summary for overview (85-90% smaller), mode=full for complete content.',
-                inputSchema: {
-                    type: 'object',
-                    properties: {
-                        section: {
-                            type: 'string',
-                            description: 'The section name (e.g., "getting-started", "reference", "features")'
-                        },
-                        mode: {
-                            type: 'string',
-                            enum: ['summary', 'full'],
-                            description: 'Response detail level: summary (titles, URLs, snippets) or full (complete content)',
-                            default: 'summary'
-                        }
-                    },
-                    required: ['section']
                 }
             },
             {
@@ -306,48 +335,6 @@ export class ToolHandler {
                         listBlocks: {
                             type: 'boolean',
                             description: 'If true, list all available HCL blocks (optionally filtered by category)',
-                            default: false
-                        }
-                    },
-                    required: []
-                }
-            },
-            {
-                name: 'get_code_examples',
-                description: 'Find code examples and snippets related to a specific Terragrunt topic. Use mode=summary for overview (80-85% smaller), mode=full for complete code. Use advanced=true for curated examples.',
-                inputSchema: {
-                    type: 'object',
-                    properties: {
-                        topic: {
-                            type: 'string',
-                            description: 'Topic or pattern to find examples for (e.g., "remote state", "dependencies", "before hooks")'
-                        },
-                        mode: {
-                            type: 'string',
-                            enum: ['summary', 'full'],
-                            description: 'Response detail level: summary (titles, URLs, counts) or full (complete code examples)',
-                            default: 'summary'
-                        },
-                        limit: {
-                            type: 'number',
-                            description: 'Maximum number of documents with examples to return',
-                            default: 5,
-                            minimum: 1,
-                            maximum: 10
-                        },
-                        advanced: {
-                            type: 'boolean',
-                            description: 'If true, return curated advanced examples with best practices, use cases, and pitfalls. If false, search scraped documentation.',
-                            default: false
-                        },
-                        category: {
-                            type: 'string',
-                            description: 'Filter advanced examples by category (only used when advanced=true)',
-                            enum: ['hooks', 'generate', 'environment', 'dependencies', 'dry-patterns']
-                        },
-                        listCategories: {
-                            type: 'boolean',
-                            description: 'If true, list all available advanced example categories with counts',
                             default: false
                         }
                     },
@@ -666,27 +653,8 @@ export class ToolHandler {
     private async executeToolInternal(name: string, args?: any): Promise<any> {
         try {
             switch (name) {
-                case 'search_terragrunt_docs':
-                    if (!args?.query) {
-                        return { error: 'query parameter is required' };
-                    }
-                    return await this.searchTerragruntDocs(
-                        args.query,
-                        args?.page ?? 1,
-                        args?.pageSize ?? 10
-                    );
-
-                case 'get_terragrunt_sections':
-                    return await this.getTerragruntSections();
-
-                case 'get_section_docs':
-                    if (!args?.section) {
-                        return { error: 'section parameter is required' };
-                    }
-                    return await this.getSectionDocs(
-                        args.section,
-                        args?.mode ?? 'summary'
-                    );
+                case 'search_docs':
+                    return await this.searchDocs(args);
 
                 case 'get_cli_command_help':
                     if (!args?.command) {
@@ -724,15 +692,6 @@ export class ToolHandler {
                         args?.config,
                         args?.category,
                         args?.listBlocks ?? false
-                    );
-                case 'get_code_examples':
-                    return await this.getCodeExamples(
-                        args?.topic,
-                        args?.mode ?? 'summary',
-                        args?.limit,
-                        args?.advanced ?? false,
-                        args?.category,
-                        args?.listCategories ?? false
                     );
 
                 case 'analyze_best_practices':
@@ -928,6 +887,55 @@ export class ToolHandler {
             })),
             totalDocs: docs.length
         };
+    }
+
+    /**
+     * Unified documentation search router
+     * Routes to appropriate method based on mode parameter
+     */
+    private async searchDocs(args: SearchDocsArgs): Promise<any> {
+        const mode = args?.mode ?? 'search';
+
+        switch (mode) {
+            case 'search':
+                // Semantic search across all docs
+                if (!args?.query) {
+                    return { error: 'query parameter is required for search mode' };
+                }
+                return await this.searchTerragruntDocs(
+                    args.query,
+                    args?.page ?? 1,
+                    args?.pageSize ?? 10
+                );
+
+            case 'list':
+                // List available documentation sections
+                return await this.getTerragruntSections();
+
+            case 'section':
+                // Get specific section content
+                if (!args?.section) {
+                    return { error: 'section parameter is required for section mode' };
+                }
+                return await this.getSectionDocs(
+                    args.section,
+                    args?.detailLevel ?? 'summary'
+                );
+
+            case 'examples':
+                // Search for code examples
+                return await this.getCodeExamples(
+                    args?.query,
+                    args?.detailLevel ?? 'summary',
+                    args?.limit,
+                    args?.advanced ?? false,
+                    args?.category,
+                    args?.listCategories ?? false
+                );
+
+            default:
+                return { error: `Unknown mode: ${mode}. Valid modes are: search, list, section, examples` };
+        }
     }
 
     private async getCliCommandHelp(command: string): Promise<any> {
@@ -1268,7 +1276,7 @@ export class ToolHandler {
     }
 
     private async getCodeExamples(
-        topic?: string,
+        query?: string,
         mode: 'summary' | 'full' = 'summary',
         limit: number = 5,
         advanced: boolean = false,
@@ -1286,33 +1294,33 @@ export class ToolHandler {
                     exampleCount: cat.exampleCount
                 })),
                 totalExamples: this.advancedExamplesManager.getExampleCount(),
-                message: 'Use advanced=true with topic or category to get curated examples'
+                message: 'Use advanced=true with query or category to get curated examples'
             };
         }
 
         // Advanced examples mode
         if (advanced) {
-            return this.getAdvancedCodeExamples(topic, mode, limit, category);
+            return this.getAdvancedCodeExamples(query, mode, limit, category);
         }
 
-        // Original doc-scraped examples mode (requires topic)
-        if (!topic) {
+        // Original doc-scraped examples mode (requires query)
+        if (!query) {
             return {
-                error: 'topic parameter is required when advanced=false',
-                suggestion: 'Use advanced=true to browse curated examples, or provide a topic to search documentation'
+                error: 'query parameter is required for examples mode when advanced=false',
+                suggestion: 'Use advanced=true to browse curated examples, or provide a query to search documentation'
             };
         }
 
-        const results = await this.docsManager.getCodeExamples(topic);
+        const results = await this.docsManager.getCodeExamples(query);
 
         if (results.length === 0) {
             // Suggest advanced examples as alternative
-            const advancedResults = this.advancedExamplesManager.searchExamples(topic);
+            const advancedResults = this.advancedExamplesManager.searchExamples(query);
             if (advancedResults.length > 0) {
                 return {
-                    topic,
-                    error: `No code examples found in documentation for: ${topic}`,
-                    suggestion: `Try advanced=true to see ${advancedResults.length} curated example(s) matching this topic`,
+                    query,
+                    error: `No code examples found in documentation for: ${query}`,
+                    suggestion: `Try advanced=true to see ${advancedResults.length} curated example(s) matching this query`,
                     advancedMatches: advancedResults.slice(0, 3).map(r => ({
                         id: r.example.id,
                         name: r.example.name,
@@ -1321,16 +1329,16 @@ export class ToolHandler {
                 };
             }
             return {
-                topic,
-                error: `No code examples found for: ${topic}`,
-                suggestion: 'Try a broader search term, use search_terragrunt_docs, or try advanced=true for curated examples'
+                query,
+                error: `No code examples found for: ${query}`,
+                suggestion: 'Try a broader search term, use search_docs, or try advanced=true for curated examples'
             };
         }
 
         // Summary mode: just titles, URLs, and counts
         if (mode === 'summary') {
             return {
-                topic,
+                query,
                 source: 'documentation',
                 documentCount: results.length,
                 documents: results.slice(0, limit).map(result => ({
@@ -1345,7 +1353,7 @@ export class ToolHandler {
 
         // Full mode: complete code examples (original behavior)
         return {
-            topic,
+            query,
             source: 'documentation',
             examples: results.slice(0, limit).map(result => ({
                 documentTitle: result.doc.title,

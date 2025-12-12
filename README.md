@@ -31,34 +31,26 @@ See [Advanced Backend Templates](docs/Advanced-Backend-Templates.md) for enterpr
 
 ### 🔧 Available Tools
 
-Eleven specialized tools for different documentation needs:
+12 specialized tools for different documentation needs:
 
-#### 1. **`search_terragrunt_docs`** - General Documentation Search
+#### 1. **`search_docs`** - Unified Documentation Search
 
-Search across all Terragrunt documentation for specific topics, commands, or concepts.
-
-- **Parameters**:
-  - `query` (string, required): Search query text
-  - `limit` (number, optional): Maximum results (default: 5, max: 20)
-- **Use cases**: General questions, broad topic searches, discovering documentation
-
-#### 2. **`get_terragrunt_sections`** - List Documentation Sections
-
-Get a complete list of all available documentation sections with document counts.
-
-- **Parameters**: None
-- **Returns**: Array of sections (e.g., "getting-started", "reference", "features")
-- **Use cases**: Understanding documentation structure, browsing by category
-
-#### 3. **`get_section_docs`** - Retrieve Section Documentation
-
-Get all documentation pages from a specific section.
+Unified tool for all documentation search needs - semantic search, browsing sections, retrieving content, and finding code examples.
 
 - **Parameters**:
-  - `section` (string, required): Section name (e.g., "getting-started", "reference")
-- **Use cases**: Deep diving into a specific topic area, reading sequential guides
+  - `mode` (string, optional): Operation mode - `search`, `list`, `section`, or `examples` (default: `search`)
+  - `query` (string, conditional): Search query text (required for `search` mode, optional for `examples`)
+  - `section` (string, conditional): Section name (required for `section` mode)
+  - `detailLevel` (string, optional): `summary` or `full` (default: `summary`)
+  - Additional mode-specific parameters (page, pageSize, limit, advanced, category, etc.)
+- **Modes**:
+  - **search**: Semantic search across all documentation
+  - **list**: List available documentation sections
+  - **section**: Get docs from a specific section
+  - **examples**: Find code examples and patterns (supports advanced curated examples)
+- **Use cases**: All doc-related tasks including search, browsing, section retrieval, and code examples
 
-#### 4. **`get_cli_command_help`** - CLI Command Documentation
+#### 2. **`get_cli_command_help`** - CLI Command Documentation
 
 Get detailed help documentation for specific Terragrunt CLI commands.
 
@@ -67,7 +59,7 @@ Get detailed help documentation for specific Terragrunt CLI commands.
 - **Returns**: Command documentation with usage, options, and examples
 - **Use cases**: Learning command syntax, understanding command options, CLI troubleshooting
 
-#### 5. **`get_hcl_config_reference`** - HCL Configuration Reference
+#### 3. **`get_hcl_config_reference`** - HCL Configuration Reference
 
 Get documentation for HCL configuration blocks, attributes, and functions used in `terragrunt.hcl`.
 
@@ -76,25 +68,7 @@ Get documentation for HCL configuration blocks, attributes, and functions used i
 - **Returns**: Configuration reference with syntax and usage details
 - **Use cases**: Writing terragrunt.hcl files, understanding configuration options
 
-#### 6. **`get_code_examples`** - Find Code Examples
-
-Find code examples and snippets related to specific Terragrunt topics or patterns. Supports both documentation search and curated advanced examples with best practices.
-
-- **Parameters**:
-  - `topic` (string, optional*): Topic or pattern (e.g., "remote state", "dependencies", "before hooks")
-  - `limit` (number, optional): Max documents to return (default: 5, max: 10)
-  - `advanced` (boolean, optional): If true, return curated advanced examples with best practices (default: false)
-  - `category` (string, optional): Filter advanced examples by category: "hooks", "generate", "environment", "dependencies", "dry-patterns"
-  - `listCategories` (boolean, optional): List all available advanced example categories
-
-  *topic is required when advanced=false, optional when advanced=true
-
-- **Returns**:
-  - With `advanced=false`: Code snippets from documentation
-  - With `advanced=true`: Curated examples with code, use cases, best practices, pitfalls, and related examples
-- **Use cases**: Learning by example, implementation patterns, advanced configuration guidance
-
-#### 7. **`get_terragrunt_function`** - Built-in Function Reference
+#### 4. **`get_terragrunt_function`** - Built-in Function Reference
 
 Get detailed documentation for a specific Terragrunt built-in function.
 

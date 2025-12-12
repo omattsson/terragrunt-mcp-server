@@ -13,12 +13,12 @@ describe('Advanced Code Examples Integration', () => {
     toolHandler = new ToolHandler();
   });
 
-  describe('get_code_examples with advanced=true', () => {
+  describe('search_docs (examples mode) with advanced=true', () => {
     it('should return curated examples when searching by topic', async () => {
-      const result = await toolHandler.executeTool('get_code_examples', {
+      const result = await toolHandler.executeTool('search_docs', {mode: 'examples', 
         advanced: true,
-        topic: 'before_hook',
-        mode: 'full'
+        query: 'before_hook',
+        detailLevel: 'full'
       });
 
       expect(result.source).toBe('advanced-examples');
@@ -29,10 +29,10 @@ describe('Advanced Code Examples Integration', () => {
     });
 
     it('should return examples filtered by category', async () => {
-      const result = await toolHandler.executeTool('get_code_examples', {
+      const result = await toolHandler.executeTool('search_docs', {mode: 'examples', 
         advanced: true,
         category: 'hooks',
-        mode: 'full'
+        detailLevel: 'full'
       });
 
       expect(result.source).toBe('advanced-examples');
@@ -42,10 +42,10 @@ describe('Advanced Code Examples Integration', () => {
     });
 
     it('should return full example details with markdown', async () => {
-      const result = await toolHandler.executeTool('get_code_examples', {
+      const result = await toolHandler.executeTool('search_docs', {mode: 'examples', 
         advanced: true,
-        topic: 'generate-backend',
-        mode: 'full'
+        query: 'generate-backend',
+        detailLevel: 'full'
       });
 
       expect(result.example).toBeDefined();
@@ -55,10 +55,10 @@ describe('Advanced Code Examples Integration', () => {
     });
 
     it('should return other matches when multiple results exist', async () => {
-      const result = await toolHandler.executeTool('get_code_examples', {
+      const result = await toolHandler.executeTool('search_docs', {mode: 'examples', 
         advanced: true,
-        topic: 'hook',
-        mode: 'full'
+        query: 'hook',
+        detailLevel: 'full'
       });
 
       expect(result.example).toBeDefined();
@@ -67,11 +67,11 @@ describe('Advanced Code Examples Integration', () => {
     });
 
     it('should filter search by category', async () => {
-      const result = await toolHandler.executeTool('get_code_examples', {
+      const result = await toolHandler.executeTool('search_docs', {mode: 'examples', 
         advanced: true,
-        topic: 'generate',
+        query: 'generate',
         category: 'generate',
-        mode: 'full'
+        detailLevel: 'full'
       });
 
       expect(result.example).toBeDefined();
@@ -79,7 +79,7 @@ describe('Advanced Code Examples Integration', () => {
     });
 
     it('should return overview when no topic or category specified', async () => {
-      const result = await toolHandler.executeTool('get_code_examples', {
+      const result = await toolHandler.executeTool('search_docs', {mode: 'examples', 
         advanced: true
       });
 
@@ -90,9 +90,9 @@ describe('Advanced Code Examples Integration', () => {
     });
 
     it('should return error for non-matching search with suggestions', async () => {
-      const result = await toolHandler.executeTool('get_code_examples', {
+      const result = await toolHandler.executeTool('search_docs', {mode: 'examples', 
         advanced: true,
-        topic: 'xyznonexistent123'
+        query: 'xyznonexistent123'
       });
 
       expect(result.error).toBeDefined();
@@ -100,9 +100,9 @@ describe('Advanced Code Examples Integration', () => {
     });
   });
 
-  describe('get_code_examples with listCategories=true', () => {
+  describe('search_docs (examples mode) with listCategories=true', () => {
     it('should list all categories with example counts', async () => {
-      const result = await toolHandler.executeTool('get_code_examples', {
+      const result = await toolHandler.executeTool('search_docs', {mode: 'examples', 
         listCategories: true
       });
 
@@ -119,11 +119,11 @@ describe('Advanced Code Examples Integration', () => {
     });
   });
 
-  describe('get_code_examples backward compatibility', () => {
-    it('should still work with topic only (doc scraping)', async () => {
-      const result = await toolHandler.executeTool('get_code_examples', {
-        topic: 'remote_state',
-        mode: 'full'
+  describe('search_docs (examples mode) fallback to doc scraping', () => {
+    it('should fallback to doc scraping with query only (advanced=false)', async () => {
+      const result = await toolHandler.executeTool('search_docs', {mode: 'examples', 
+        query: 'remote_state',
+        detailLevel: 'full'
       });
 
       // Should use documentation source
@@ -131,18 +131,18 @@ describe('Advanced Code Examples Integration', () => {
       expect(result.examples).toBeDefined();
     });
 
-    it('should require topic when advanced=false', async () => {
-      const result = await toolHandler.executeTool('get_code_examples', {
+    it('should require query when advanced=false', async () => {
+      const result = await toolHandler.executeTool('search_docs', {mode: 'examples', 
         advanced: false
       });
 
       expect(result.error).toBeDefined();
-      expect(result.error).toContain('topic parameter is required');
+      expect(result.error).toContain('query parameter is required for examples mode');
     });
 
     it('should suggest advanced examples when doc search fails', async () => {
-      const result = await toolHandler.executeTool('get_code_examples', {
-        topic: 'before_hook'  // This might not be in scraped docs
+      const result = await toolHandler.executeTool('search_docs', {mode: 'examples', 
+        query: 'before_hook'  // This might not be in scraped docs
       });
 
       // If no results in docs, should suggest advanced
@@ -154,10 +154,10 @@ describe('Advanced Code Examples Integration', () => {
 
   describe('advanced examples content validation', () => {
     it('should have hooks examples with expected content', async () => {
-      const result = await toolHandler.executeTool('get_code_examples', {
+      const result = await toolHandler.executeTool('search_docs', {mode: 'examples', 
         advanced: true,
         category: 'hooks',
-        mode: 'full'
+        detailLevel: 'full'
       });
 
       expect(result.examples.length).toBeGreaterThanOrEqual(4);
@@ -169,10 +169,10 @@ describe('Advanced Code Examples Integration', () => {
     });
 
     it('should have generate examples with expected content', async () => {
-      const result = await toolHandler.executeTool('get_code_examples', {
+      const result = await toolHandler.executeTool('search_docs', {mode: 'examples', 
         advanced: true,
         category: 'generate',
-        mode: 'full'
+        detailLevel: 'full'
       });
 
       expect(result.examples.length).toBeGreaterThanOrEqual(4);
@@ -183,10 +183,10 @@ describe('Advanced Code Examples Integration', () => {
     });
 
     it('should have environment examples with hierarchy patterns', async () => {
-      const result = await toolHandler.executeTool('get_code_examples', {
+      const result = await toolHandler.executeTool('search_docs', {mode: 'examples', 
         advanced: true,
-        topic: 'env-hierarchy',
-        mode: 'full'
+        query: 'env-hierarchy',
+        detailLevel: 'full'
       });
 
       expect(result.example).toBeDefined();
@@ -195,10 +195,10 @@ describe('Advanced Code Examples Integration', () => {
     });
 
     it('should have dependency examples with mock outputs', async () => {
-      const result = await toolHandler.executeTool('get_code_examples', {
+      const result = await toolHandler.executeTool('search_docs', {mode: 'examples', 
         advanced: true,
-        topic: 'dependency-mock-outputs',
-        mode: 'full'
+        query: 'dependency-mock-outputs',
+        detailLevel: 'full'
       });
 
       expect(result.example).toBeDefined();
@@ -206,10 +206,10 @@ describe('Advanced Code Examples Integration', () => {
     });
 
     it('should have DRY pattern examples with includes', async () => {
-      const result = await toolHandler.executeTool('get_code_examples', {
+      const result = await toolHandler.executeTool('search_docs', {mode: 'examples', 
         advanced: true,
-        topic: 'include',
-        mode: 'full'
+        query: 'include',
+        detailLevel: 'full'
       });
 
       expect(result.example).toBeDefined();
@@ -219,10 +219,10 @@ describe('Advanced Code Examples Integration', () => {
 
   describe('match quality', () => {
     it('should prioritize exact ID matches', async () => {
-      const result = await toolHandler.executeTool('get_code_examples', {
+      const result = await toolHandler.executeTool('search_docs', {mode: 'examples', 
         advanced: true,
-        topic: 'before-hook-validation',
-        mode: 'full'
+        query: 'before-hook-validation',
+        detailLevel: 'full'
       });
 
       expect(result.matchInfo.matchType).toBe('id');
@@ -230,10 +230,10 @@ describe('Advanced Code Examples Integration', () => {
     });
 
     it('should find tag matches', async () => {
-      const result = await toolHandler.executeTool('get_code_examples', {
+      const result = await toolHandler.executeTool('search_docs', {mode: 'examples', 
         advanced: true,
-        topic: 'slack',
-        mode: 'full'
+        query: 'slack',
+        detailLevel: 'full'
       });
 
       expect(result.example).toBeDefined();
@@ -241,10 +241,10 @@ describe('Advanced Code Examples Integration', () => {
     });
 
     it('should handle multi-word searches', async () => {
-      const result = await toolHandler.executeTool('get_code_examples', {
+      const result = await toolHandler.executeTool('search_docs', {mode: 'examples', 
         advanced: true,
-        topic: 'error handling hooks',
-        mode: 'full'
+        query: 'error handling hooks',
+        detailLevel: 'full'
       });
 
       expect(result.example).toBeDefined();

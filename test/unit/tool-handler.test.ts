@@ -91,26 +91,26 @@ describe('ToolHandler', () => {
   expect(tools.length).toBeGreaterThanOrEqual(6);
     });
 
-    it('should include search_terragrunt_docs tool', () => {
+    it('should include search_docs tool (replaces search_terragrunt_docs)', () => {
       const tools = toolHandler.getAvailableTools();
       
-      const searchTool = tools.find(t => t.name === 'search_terragrunt_docs');
-      expect(searchTool).toBeDefined();
-      expect(searchTool?.inputSchema).toBeDefined();
+      const unifiedSearchTool = tools.find(t => t.name === 'search_docs');
+      expect(unifiedSearchTool).toBeDefined();
+      expect(unifiedSearchTool?.inputSchema).toBeDefined();
     });
 
-    it('should include get_terragrunt_sections tool', () => {
+    it('should include search_docs tool (replaces get_terragrunt_sections)', () => {
       const tools = toolHandler.getAvailableTools();
       
-      const sectionsTool = tools.find(t => t.name === 'get_terragrunt_sections');
-      expect(sectionsTool).toBeDefined();
+      const unifiedSearchTool = tools.find(t => t.name === 'search_docs');
+      expect(unifiedSearchTool).toBeDefined();
     });
 
-    it('should include get_section_docs tool', () => {
+    it('should include search_docs tool (replaces get_section_docs)', () => {
       const tools = toolHandler.getAvailableTools();
       
-      const sectionDocsTool = tools.find(t => t.name === 'get_section_docs');
-      expect(sectionDocsTool).toBeDefined();
+      const unifiedSearchTool = tools.find(t => t.name === 'search_docs');
+      expect(unifiedSearchTool).toBeDefined();
     });
 
     it('should include get_cli_command_help tool', () => {
@@ -127,11 +127,11 @@ describe('ToolHandler', () => {
       expect(hclTool).toBeDefined();
     });
 
-    it('should include get_code_examples tool', () => {
+    it('should include search_docs tool (replaces get_code_examples)', () => {
       const tools = toolHandler.getAvailableTools();
       
-      const examplesTool = tools.find(t => t.name === 'get_code_examples');
-      expect(examplesTool).toBeDefined();
+      const unifiedSearchTool = tools.find(t => t.name === 'search_docs');
+      expect(unifiedSearchTool).toBeDefined();
     });
 
     it('should have descriptions for all tools', () => {
@@ -150,16 +150,18 @@ describe('ToolHandler', () => {
   });
 
   describe('Input Schema Validation', () => {
-    it('should require query parameter for search tool', () => {
+    it('should have mode parameter for unified search tool', () => {
       const tools = toolHandler.getAvailableTools();
-      const searchTool = tools.find(t => t.name === 'search_terragrunt_docs');
+      const searchTool = tools.find(t => t.name === 'search_docs');
       
-      expect(searchTool?.inputSchema.required).toContain('query');
+      expect(searchTool?.inputSchema.properties.mode).toBeDefined();
+      expect(searchTool?.inputSchema.properties.mode.enum).toEqual(['search', 'list', 'section', 'examples']);
+      expect(searchTool?.inputSchema.properties.mode.default).toBe('search');
     });
 
     it('should have optional page and pageSize parameters for search tool', () => {
       const tools = toolHandler.getAvailableTools();
-      const searchTool = tools.find(t => t.name === 'search_terragrunt_docs');
+      const searchTool = tools.find(t => t.name === 'search_docs');
       
       expect(searchTool?.inputSchema.properties.page).toBeDefined();
       expect(searchTool?.inputSchema.properties.page.default).toBe(1);
@@ -169,17 +171,40 @@ describe('ToolHandler', () => {
 
     it('should enforce pageSize boundaries for search tool', () => {
       const tools = toolHandler.getAvailableTools();
-      const searchTool = tools.find(t => t.name === 'search_terragrunt_docs');
+      const searchTool = tools.find(t => t.name === 'search_docs');
       
       expect(searchTool?.inputSchema.properties.pageSize.minimum).toBe(1);
       expect(searchTool?.inputSchema.properties.pageSize.maximum).toBe(50);
     });
 
-    it('should require section parameter for get_section_docs', () => {
+    it('should have query and section parameters for different modes', () => {
       const tools = toolHandler.getAvailableTools();
-      const tool = tools.find(t => t.name === 'get_section_docs');
+      const tool = tools.find(t => t.name === 'search_docs');
       
-      expect(tool?.inputSchema.required).toContain('section');
+      // No schema-level required params (validation is mode-dependent at runtime)
+      // 
+      // WHY: The required parameters for this tool depend on the value of the 'mode' parameter.
+      // JSON Schema cannot express conditional required fields based on the value of another field
+      // in a way that is both precise and user-friendly for all clients. Therefore, we perform
+      // validation at runtime to provide accurate, mode-specific error messages and to avoid
+      // misleading API consumers with overly broad or incorrect schema-level requirements.
+      expect(tool?.inputSchema.required).toEqual([]);
+      expect(tool?.inputSchema.properties.query).toBeDefined();
+      expect(tool?.inputSchema.properties.section).toBeDefined();
+    });
+
+    it('should validate mode-dependent parameters at runtime', async () => {
+      // Test that runtime validation enforces mode-specific required params
+      
+      // Section mode requires 'section' parameter
+      const sectionResult = await toolHandler.executeTool('search_docs', { mode: 'section' });
+      expect(sectionResult.error).toBeDefined();
+      expect(sectionResult.error).toContain('section parameter is required');
+      
+      // Examples mode (non-advanced) requires 'query' parameter
+      const examplesResult = await toolHandler.executeTool('search_docs', { mode: 'examples', advanced: false });
+      expect(examplesResult.error).toBeDefined();
+      expect(examplesResult.error).toContain('query parameter is required for examples mode');
     });
 
     it('should require command parameter for get_cli_command_help', () => {
@@ -199,7 +224,7 @@ describe('ToolHandler', () => {
 
     it('should have optional topic parameter for get_code_examples (advanced mode)', () => {
       const tools = toolHandler.getAvailableTools();
-      const tool = tools.find(t => t.name === 'get_code_examples');
+      const tool = tools.find(t => t.name === 'search_docs');
       
       // topic is now optional - can use advanced mode without topic
       expect(tool?.inputSchema.required).toEqual([]);
@@ -210,7 +235,7 @@ describe('ToolHandler', () => {
 
     it('should have no required parameters for get_terragrunt_sections', () => {
       const tools = toolHandler.getAvailableTools();
-      const tool = tools.find(t => t.name === 'get_terragrunt_sections');
+      const tool = tools.find(t => t.name === 'search_docs');
       
       expect(tool?.inputSchema.required).toHaveLength(0);
     });
@@ -256,7 +281,7 @@ describe('ToolHandler', () => {
 
   describe('Tool Execution - search_terragrunt_docs', () => {
     it('should execute search with query', async () => {
-      const result = await toolHandler.executeTool('search_terragrunt_docs', {
+      const result = await toolHandler.executeTool('search_docs', { mode: 'search', 
         query: 'remote state'
       });
       
@@ -266,7 +291,7 @@ describe('ToolHandler', () => {
     });
 
     it('should apply default pageSize of 10', async () => {
-      const result = await toolHandler.executeTool('search_terragrunt_docs', {
+      const result = await toolHandler.executeTool('search_docs', {mode: 'search', 
         query: 'test'
       });
       
@@ -275,7 +300,7 @@ describe('ToolHandler', () => {
     });
 
     it('should respect custom pageSize', async () => {
-      const result = await toolHandler.executeTool('search_terragrunt_docs', {
+      const result = await toolHandler.executeTool('search_docs', {mode: 'search', 
         query: 'test',
         pageSize: 2
       });
@@ -291,7 +316,7 @@ describe('ToolHandler', () => {
       };
       mockResourceHandler.searchDocumentation.mockResolvedValueOnce([longDoc]);
 
-      const result = await toolHandler.executeTool('search_terragrunt_docs', {
+      const result = await toolHandler.executeTool('search_docs', {mode: 'search', 
         query: 'test'
       });
       
@@ -301,7 +326,7 @@ describe('ToolHandler', () => {
     });
 
     it('should include pagination metadata in results', async () => {
-      const result = await toolHandler.executeTool('search_terragrunt_docs', {
+      const result = await toolHandler.executeTool('search_docs', {mode: 'search', 
         query: 'test'
       });
       
@@ -314,7 +339,7 @@ describe('ToolHandler', () => {
 
   describe('Tool Execution - get_terragrunt_sections', () => {
     it('should return all sections', async () => {
-      const result = await toolHandler.executeTool('get_terragrunt_sections', {});
+      const result = await toolHandler.executeTool('search_docs', {mode: 'list'});
       
       expect(result.sections).toBeDefined();
       expect(Array.isArray(result.sections)).toBe(true);
@@ -323,23 +348,23 @@ describe('ToolHandler', () => {
     });
 
     it('should include doc counts for each section', async () => {
-      const result = await toolHandler.executeTool('get_terragrunt_sections', {});
+      const result = await toolHandler.executeTool('search_docs', {mode: 'list'});
       
       expect(result.sections.every((s: any) => typeof s.docCount === 'number')).toBe(true);
     });
 
     it('should work without parameters', async () => {
       await expect(
-        toolHandler.executeTool('get_terragrunt_sections', {})
+        toolHandler.executeTool('search_docs', {mode: 'list'})
       ).resolves.toBeDefined();
     });
   });
 
   describe('Tool Execution - get_section_docs', () => {
     it('should return docs for valid section', async () => {
-      const result = await toolHandler.executeTool('get_section_docs', {
+      const result = await toolHandler.executeTool('search_docs', {mode: 'section', 
         section: 'getting-started',
-        mode: 'full'
+        detailLevel: 'full'
       });
       
       expect(result.section).toBe('getting-started');
@@ -350,7 +375,7 @@ describe('ToolHandler', () => {
     it('should return error for invalid section', async () => {
       mockDocsManager.getDocBySection.mockResolvedValueOnce([]);
 
-      const result = await toolHandler.executeTool('get_section_docs', {
+      const result = await toolHandler.executeTool('search_docs', {mode: 'section', 
         section: 'nonexistent'
       });
       
@@ -365,7 +390,7 @@ describe('ToolHandler', () => {
       };
       mockDocsManager.getDocBySection.mockResolvedValueOnce([longDoc]);
 
-      const result = await toolHandler.executeTool('get_section_docs', {
+      const result = await toolHandler.executeTool('search_docs', {mode: 'section', 
         section: 'test'
       });
       
@@ -510,12 +535,12 @@ describe('ToolHandler', () => {
       ];
       mockDocsManager.getCodeExamples.mockResolvedValueOnce(examples);
 
-      const result = await toolHandler.executeTool('get_code_examples', {
-        topic: 'terraform',
-        mode: 'full'
+      const result = await toolHandler.executeTool('search_docs', {mode: 'examples', 
+        query: 'terraform',
+        detailLevel: 'full'
       });
       
-      expect(result.topic).toBe('terraform');
+      expect(result.query).toBe('terraform');
       expect(result.examples).toBeDefined();
       expect(Array.isArray(result.examples)).toBe(true);
     });
@@ -523,8 +548,8 @@ describe('ToolHandler', () => {
     it('should return error when no examples found', async () => {
       mockDocsManager.getCodeExamples.mockResolvedValueOnce([]);
 
-      const result = await toolHandler.executeTool('get_code_examples', {
-        topic: 'nonexistent'
+      const result = await toolHandler.executeTool('search_docs', {mode: 'examples', 
+        query: 'nonexistent'
       });
       
       expect(result.error).toBeDefined();
@@ -538,9 +563,9 @@ describe('ToolHandler', () => {
       }));
       mockDocsManager.getCodeExamples.mockResolvedValueOnce(examples);
 
-      const result = await toolHandler.executeTool('get_code_examples', {
-        topic: 'test',
-        mode: 'full'
+      const result = await toolHandler.executeTool('search_docs', {mode: 'examples', 
+        query: 'test',
+        detailLevel: 'full'
       });
       
       expect(result.examples.length).toBeLessThanOrEqual(5);
@@ -553,10 +578,10 @@ describe('ToolHandler', () => {
       }));
       mockDocsManager.getCodeExamples.mockResolvedValueOnce(examples);
 
-      const result = await toolHandler.executeTool('get_code_examples', {
-        topic: 'test',
+      const result = await toolHandler.executeTool('search_docs', {mode: 'examples', 
+        query: 'test',
         limit: 3,
-        mode: 'full'
+        detailLevel: 'full'
       });
       
       expect(result.examples.length).toBeLessThanOrEqual(3);
@@ -617,9 +642,9 @@ inputs = {
       ];
       mockDocsManager.getCodeExamples.mockResolvedValueOnce(examples);
 
-      const result = await toolHandler.executeTool('get_code_examples', {
-        topic: 'test',
-        mode: 'full'
+      const result = await toolHandler.executeTool('search_docs', {mode: 'examples', 
+        query: 'test',
+        detailLevel: 'full'
       });
       
       expect(result.examples[0].codeSnippets[0]).toContain('# ... [Truncated. See full example at https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/]');
@@ -645,9 +670,9 @@ inputs = {
       ];
       mockDocsManager.getCodeExamples.mockResolvedValueOnce(examples);
 
-      const result = await toolHandler.executeTool('get_code_examples', {
-        topic: 'test',
-        mode: 'full'
+      const result = await toolHandler.executeTool('search_docs', {mode: 'examples', 
+        query: 'test',
+        detailLevel: 'full'
       });
       
       expect(result.examples[0].codeSnippets[0]).toBe(shortCode);
@@ -666,9 +691,9 @@ inputs = {
       ];
       mockDocsManager.getCodeExamples.mockResolvedValueOnce(examples);
 
-      const result = await toolHandler.executeTool('get_code_examples', {
-        topic: 'test',
-        mode: 'full'
+      const result = await toolHandler.executeTool('search_docs', {mode: 'examples', 
+        query: 'test',
+        detailLevel: 'full'
       });
       
       expect(result.examples[0].codeSnippets[0]).toBe(shortCode);
@@ -705,10 +730,10 @@ inputs = {
       };
       (toolHandler as any).advancedExamplesManager = mockAdvancedExamplesManager;
 
-      const result = await toolHandler.executeTool('get_code_examples', {
-        topic: 'test',
+      const result = await toolHandler.executeTool('search_docs', {mode: 'examples', 
+        query: 'test',
         advanced: true,
-        mode: 'full'
+        detailLevel: 'full'
       });
       
       expect(result.example.code).toContain('# ... [Truncated. See full example at https://terragrunt.gruntwork.io/docs/examples/backend-configuration/]');
@@ -745,10 +770,10 @@ inputs = {
       };
       (toolHandler as any).advancedExamplesManager = mockAdvancedExamplesManager;
 
-      const result = await toolHandler.executeTool('get_code_examples', {
-        topic: 'test',
+      const result = await toolHandler.executeTool('search_docs', {mode: 'examples', 
+        query: 'test',
         advanced: true,
-        mode: 'full'
+        detailLevel: 'full'
       });
       
       expect(result.example.code).toBe(shortCode);
@@ -767,9 +792,9 @@ inputs = {
       ];
       mockDocsManager.getCodeExamples.mockResolvedValueOnce(examples);
 
-      const result = await toolHandler.executeTool('get_code_examples', {
-        topic: 'test',
-        mode: 'full'
+      const result = await toolHandler.executeTool('search_docs', {mode: 'examples', 
+        query: 'test',
+        detailLevel: 'full'
       });
       
       expect(result.examples[0].codeSnippets[0]).toContain(`# ... [Truncated. See full example at ${docUrl}]`);
@@ -804,10 +829,10 @@ inputs = {
       };
       (toolHandler as any).advancedExamplesManager = mockAdvancedExamplesManager;
 
-      const result = await toolHandler.executeTool('get_code_examples', {
-        topic: 'test',
+      const result = await toolHandler.executeTool('search_docs', {mode: 'examples', 
+        query: 'test',
         advanced: true,
-        mode: 'full'
+        detailLevel: 'full'
       });
       
       expect(result.example.code).toContain('# ... [Truncated. See full example in documentation]');
@@ -1289,7 +1314,7 @@ inputs = {
     it('should handle tool execution errors gracefully', async () => {
       mockDocsManager.fetchLatestDocs.mockRejectedValueOnce(new Error('Network error'));
 
-      const result = await toolHandler.executeTool('get_terragrunt_sections', {});
+      const result = await toolHandler.executeTool('search_docs', {mode: 'list'});
       
       expect(result.error).toBeDefined();
     });
@@ -1298,20 +1323,20 @@ inputs = {
       mockResourceHandler.searchDocumentation.mockRejectedValueOnce(new Error('Search failed'));
 
       await expect(
-        toolHandler.executeTool('search_terragrunt_docs', { query: 'test' })
+        toolHandler.executeTool('search_docs', {mode: 'search',  query: 'test' })
       ).resolves.toBeDefined();
     });
   });
 
   describe('Response Format Validation', () => {
     it('should return JSON-serializable results', async () => {
-      const result = await toolHandler.executeTool('get_terragrunt_sections', {});
+      const result = await toolHandler.executeTool('search_docs', {mode: 'list'});
       
       expect(() => JSON.stringify(result)).not.toThrow();
     });
 
     it('should include helpful metadata in responses', async () => {
-      const result = await toolHandler.executeTool('search_terragrunt_docs', {
+      const result = await toolHandler.executeTool('search_docs', {mode: 'search', 
         query: 'test'
       });
       
@@ -1322,7 +1347,7 @@ inputs = {
     });
 
     it('should format results consistently', async () => {
-      const result = await toolHandler.executeTool('search_terragrunt_docs', {
+      const result = await toolHandler.executeTool('search_docs', {mode: 'search', 
         query: 'test'
       });
       

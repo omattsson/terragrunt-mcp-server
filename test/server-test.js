@@ -75,24 +75,24 @@ async function testServer() {
 
     // Test tool execution: search
     console.log('\n🎯 Testing Tool Execution...');
-    const searchTool = await toolHandler.executeTool('search_terragrunt_docs', {
+    const searchTool = await toolHandler.executeTool('search_docs', {mode: 'search', 
       query: 'remote state',
       limit: 3
     });
     if (!searchTool.results || searchTool.results.length === 0) throw new Error('No results from search tool');
     console.log(`✅ Search tool returned ${searchTool.results?.length || 0} results`);
 
-    // Test tool execution: get_terragrunt_sections
-    const sectionsTool = await toolHandler.executeTool('get_terragrunt_sections', {});
+    // Test tool execution: search_docs list mode (sections)
+    const sectionsTool = await toolHandler.executeTool('search_docs', {mode: 'list'});
     if (!sectionsTool.sections || sectionsTool.sections.length === 0) throw new Error('No sections from sections tool');
     console.log(`✅ Sections tool returned ${sectionsTool.sections?.length || 0} sections`);
 
-    // Test tool execution: get_section_docs
+    // Test tool execution: search_docs section mode
     const firstSection = sectionsTool.sections[0]?.name;
     if (firstSection) {
-      const sectionDocsTool = await toolHandler.executeTool('get_section_docs', { section: firstSection, mode: 'full' });
-      if (!sectionDocsTool.docs || sectionDocsTool.docs.length === 0) throw new Error('No docs from get_section_docs tool');
-      console.log(`✅ get_section_docs tool returned ${sectionDocsTool.docs.length} docs for section ${firstSection}`);
+      const sectionDocsTool = await toolHandler.executeTool('search_docs', { mode: 'section', section: firstSection, detailLevel: 'full' });
+      if (!sectionDocsTool.docs || sectionDocsTool.docs.length === 0) throw new Error('No docs from section mode');
+      console.log(`✅ Section mode returned ${sectionDocsTool.docs.length} docs for section ${firstSection}`);
     }
 
     // Test tool execution: error handling
@@ -101,7 +101,7 @@ async function testServer() {
     console.log('✅ Error returned for invalid tool as expected');
 
     // Test tool execution: invalid section
-    const badSection = await toolHandler.executeTool('get_section_docs', { section: 'doesnotexist' });
+    const badSection = await toolHandler.executeTool('search_docs', { mode: 'section', section: 'doesnotexist' });
     if (!badSection.error) console.log('ℹ️  No docs for invalid section (expected)');
     else console.log('✅ Error returned for invalid section as expected');
 
@@ -150,10 +150,10 @@ async function testServer() {
       console.log(`✅ HCL config reference tool returned ${hclRefRemoteState.docs.length} docs for 'remote_state' block`);
     }
 
-    // Test tool execution: get_code_examples
+    // Test tool execution: search_docs examples mode
     console.log('\n💻 Testing Code Examples Tool...');
-    const codeExamples = await toolHandler.executeTool('get_code_examples', { 
-      topic: 'dependencies',
+    const codeExamples = await toolHandler.executeTool('search_docs', {mode: 'examples',  
+      query: 'dependencies',
       limit: 5
     });
     if (codeExamples.error) {
@@ -165,16 +165,16 @@ async function testServer() {
     }
 
     // Test with other topics
-    const codeExamplesRemoteState = await toolHandler.executeTool('get_code_examples', { 
-      topic: 'remote state',
+    const codeExamplesRemoteState = await toolHandler.executeTool('search_docs', {mode: 'examples',  
+      query: 'remote state',
       limit: 3
     });
     if (!codeExamplesRemoteState.error && codeExamplesRemoteState.examples && codeExamplesRemoteState.examples.length > 0) {
       console.log(`✅ Code examples tool returned ${codeExamplesRemoteState.examples.length} examples for 'remote state'`);
     }
 
-    const codeExamplesHooks = await toolHandler.executeTool('get_code_examples', { 
-      topic: 'before hooks',
+    const codeExamplesHooks = await toolHandler.executeTool('search_docs', {mode: 'examples',  
+      query: 'before hooks',
       limit: 3
     });
     if (!codeExamplesHooks.error && codeExamplesHooks.examples && codeExamplesHooks.examples.length > 0) {
@@ -185,7 +185,7 @@ async function testServer() {
     console.log('\n🧪 Testing Edge Cases...');
     
     // Search with special characters
-    const specialSearch = await toolHandler.executeTool('search_terragrunt_docs', {
+    const specialSearch = await toolHandler.executeTool('search_docs', {mode: 'search', 
       query: 'S3 bucket & DynamoDB',
       limit: 5
     });
@@ -195,7 +195,7 @@ async function testServer() {
 
     // Very long search query
     const longQuery = 'terragrunt configuration file dependency management remote state backend S3 DynamoDB locking'.repeat(5);
-    const longSearch = await toolHandler.executeTool('search_terragrunt_docs', {
+    const longSearch = await toolHandler.executeTool('search_docs', {mode: 'search', 
       query: longQuery,
       limit: 1
     });
@@ -204,7 +204,7 @@ async function testServer() {
     }
 
     // Limit at boundaries
-    const limitZero = await toolHandler.executeTool('search_terragrunt_docs', {
+    const limitZero = await toolHandler.executeTool('search_docs', {mode: 'search', 
       query: 'test',
       limit: 0
     });
@@ -212,7 +212,7 @@ async function testServer() {
       console.log(`✅ Limit=0 handled: returned ${limitZero.results.length} results`);
     }
 
-    const limitOne = await toolHandler.executeTool('search_terragrunt_docs', {
+    const limitOne = await toolHandler.executeTool('search_docs', {mode: 'search', 
       query: 'test',
       limit: 1
     });
@@ -220,8 +220,8 @@ async function testServer() {
       console.log(`✅ Limit=1 respected: returned ${limitOne.results.length} results`);
     }
 
-    const limitTwenty = await toolHandler.executeTool('get_code_examples', {
-      topic: 'terraform',
+    const limitTwenty = await toolHandler.executeTool('search_docs', {mode: 'examples', 
+      query: 'terraform',
       limit: 20
     });
     if (!limitTwenty.error) {

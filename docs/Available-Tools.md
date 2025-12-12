@@ -1,20 +1,17 @@
 # Available Tools
 
-The Terragrunt MCP Server provides **15 specialized tools** for accessing and searching Terragrunt documentation, generating configurations, analyzing best practices, diagnosing errors, comparing blocks, and writing files. Each tool is designed for specific use cases to help you find the information you need quickly.
+The Terragrunt MCP Server provides a set of specialized tools for accessing and searching Terragrunt documentation, generating configurations, analyzing best practices, diagnosing errors, comparing blocks, and writing files. Each tool is designed for specific use cases to help you find the information you need quickly.
 
 ## Tool Overview
 
 | Tool | Purpose | Best For |
 |------|---------|----------|
-| `search_terragrunt_docs` | General search | Broad topic exploration |
+| `search_docs` | Unified documentation search | All doc-related tasks (search, browse, sections, examples) |
 | `get_terragrunt_function` | Get a single function | Looking up a specific built-in function |
 | `list_terragrunt_functions` | List functions | Browsing available built-in functions |
-| `get_terragrunt_sections` | List sections | Understanding doc structure |
-| `get_section_docs` | Section retrieval | Deep diving into topics |
 | `get_cli_command_help` | CLI command help | Command syntax, options, and examples |
 | `list_cli_commands` | List CLI commands | Browsing available CLI commands by category |
 | `get_hcl_config_reference` | HCL config reference | Writing terragrunt.hcl files |
-| `get_code_examples` | Find code snippets | Learning by example, advanced patterns |
 | `generate_terragrunt_config` | Configuration generator | Quick setup and best practices |
 | `write_terragrunt_config` | Write configs to disk | Saving generated configurations |
 | `analyze_best_practices` | Analyze practices by topic | Learning best practices and patterns |
@@ -24,33 +21,82 @@ The Terragrunt MCP Server provides **15 specialized tools** for accessing and se
 
 ---
 
-## 1. search_terragrunt_docs
+## 1. search_docs
 
-**Purpose**: Search across all Terragrunt documentation for specific topics, commands, or concepts.
+**Purpose**: Unified tool for all documentation search needs - semantic search, browsing sections, retrieving content, and finding code examples. Supports 4 modes controlled by the `mode` parameter.
 
-### Parameters — search_terragrunt_docs
+### Parameters — search_docs
 
-- **`query`** (string, required): Search query text
-- **`limit`** (number, optional): Maximum results (default: 5, max: 20)
+- **`mode`** (string, optional): Operation mode - `search`, `list`, `section`, or `examples` (default: `search`)
+- **`query`** (string, conditional): Search query text (required for `search` mode, optional for `examples` mode)
+- **`section`** (string, conditional): Section name (required for `section` mode)
+- **`detailLevel`** (string, optional): Response detail level - `summary` (concise, 60-90% smaller) or `full` (default: `summary`)
+- **`page`** (number, optional): Page number for `search` mode (default: 1)
+- **`pageSize`** (number, optional): Results per page for `search` mode (default: 10)
+- **`limit`** (number, optional): Maximum examples for `examples` mode (default: 5)
+- **`advanced`** (boolean, optional): Use curated examples in `examples` mode (default: false)
+- **`category`** (string, optional): Filter by category in `examples` mode with `advanced=true`
+- **`listCategories`** (boolean, optional): List available categories in `examples` mode (default: false)
 
-### Use Cases — search_terragrunt_docs
+### Modes — search_docs
 
-- General questions about Terragrunt
-- Broad topic exploration
-- Discovering documentation you didn't know existed
-- Finding all mentions of a specific concept
+#### Mode: search (default)
+Semantic search across all documentation.
 
-### Example Prompts — search_terragrunt_docs
+**Required**: `query`  
+**Optional**: `page`, `pageSize`
 
 ```text
 "Search for Terragrunt documentation about dependencies"
 "Find information about remote state"
-"What does Terragrunt say about generate blocks?"
-"Search for documentation on mocking"
 ```
 
-### Example Response — search_terragrunt_docs
+#### Mode: list
+List all available documentation sections with counts.
 
+**Required**: None
+
+```text
+"What documentation sections are available?"
+"List all Terragrunt documentation categories"
+```
+
+#### Mode: section
+Get all documentation pages in a specific section.
+
+**Required**: `section`  
+**Optional**: `detailLevel`
+
+```text
+"Show me all docs in the getting-started section"
+"Get reference documentation pages"
+```
+
+#### Mode: examples
+Find code examples and patterns.
+
+**Required**: `query` (when `advanced=false`)  
+**Optional**: `query`, `detailLevel`, `limit`, `advanced`, `category`, `listCategories`
+
+```text
+"Find code examples for dependencies"
+"Show me advanced examples for hooks"
+"List all example categories"
+```
+
+### Example Prompts — search_docs
+
+```text
+"Search for Terragrunt documentation about dependencies"
+"List all documentation sections"
+"Show me docs in the features section"
+"Find code examples for remote state"
+"Show advanced hook examples"
+```
+
+### Example Responses — search_docs
+
+**Search mode response:**
 ```json
 {
   "query": "dependencies",
@@ -63,103 +109,70 @@ The Terragrunt MCP Server provides **15 specialized tools** for accessing and se
       "lastUpdated": "2025-10-23"
     }
   ],
-  "total": 12,
-  "hasMore": true
+  "pagination": {
+    "page": 1,
+    "pageSize": 10,
+    "totalPages": 2,
+    "totalItems": 12,
+    "hasMore": true
+  }
 }
 ```
 
----
-
-## 2. get_terragrunt_sections
-
-**Purpose**: Get a complete list of all available documentation sections with document counts.
-
-### Parameters — get_terragrunt_sections
-
-None required.
-
-### Use Cases — get_terragrunt_sections
-
-- Understanding the documentation structure
-- Browsing by category
-- Finding the right section for deep exploration
-- Getting an overview of available topics
-
-### Example Prompts — get_terragrunt_sections
-
-```text
-"What documentation sections are available?"
-"List all Terragrunt documentation categories"
-"Show me the structure of Terragrunt docs"
-```
-
-### Example Response — get_terragrunt_sections
-
+**List mode response:**
 ```json
 {
   "sections": [
     {
       "name": "getting-started",
-      "documentCount": 4
+      "docCount": 5
     },
     {
-      "name": "reference",
-      "documentCount": 36
-    },
-    {
-      "name": "features",
-      "documentCount": 18
+      "name": "features", 
+      "docCount": 15
     }
-  ]
+  ],
+  "totalSections": 7
 }
 ```
 
----
-
-## 3. get_section_docs
-
-**Purpose**: Get all documentation pages from a specific section for comprehensive reading.
-
-### Parameters — get_section_docs
-
-- **`section`** (string, required): Section name (e.g., "getting-started", "reference", "features")
-
-### Use Cases — get_section_docs
-
-- Deep diving into a specific topic area
-- Reading documentation sequentially
-- Understanding a complete feature set
-- Comprehensive learning
-
-### Example Prompts — get_section_docs
-
-```text
-"Show me all getting-started documentation"
-"Get all reference documentation"
-"What's in the features section?"
-"Retrieve all CLI reference docs"
-```
-
-### Example Response — get_section_docs
-
+**Section mode response:**
 ```json
 {
-  "section": "getting-started",
+  "section": "features",
   "docs": [
     {
-      "title": "Quick Start",
-      "url": "https://terragrunt.gruntwork.io/docs/getting-started/quick-start/",
+      "title": "Dependencies",
+      "url": "https://...",
       "content": "...",
       "lastUpdated": "2025-10-23"
     }
   ],
-  "totalDocs": 4
+  "totalDocs": 15
+}
+```
+
+**Examples mode response:**
+```json
+{
+  "source": "advanced-examples",
+  "examples": [
+    {
+      "topic": "before_hook",
+      "code": "...",
+      "description": "...",
+      "useCases": ["..."]
+    }
+  ],
+  "totalExamples": 21
 }
 ```
 
 ---
 
-## 4. get_cli_command_help
+## 2. get_terragrunt_function
+
+## 3. get_cli_command_help
 
 **Purpose**: Get detailed help documentation for specific Terragrunt CLI commands, including options, usage patterns, and practical examples.
 
@@ -241,7 +254,7 @@ The tool automatically resolves common aliases:
 
 ---
 
-## 5. list_cli_commands
+## 4. list_cli_commands
 
 **Purpose**: List all available Terragrunt CLI commands organized by category, with optional filtering and search.
 
@@ -326,7 +339,7 @@ The tool automatically resolves common aliases:
 
 ---
 
-## 6. get_hcl_config_reference
+## 5. get_hcl_config_reference
 
 **Purpose**: Get documentation for HCL configuration blocks, attributes, and functions used in `terragrunt.hcl`.
 
@@ -369,181 +382,7 @@ The tool automatically resolves common aliases:
 
 ---
 
-## 7. get_code_examples
-
-**Purpose**: Find code examples and snippets related to specific Terragrunt topics or patterns. Supports both documentation search and curated advanced examples with best practices.
-
-### Parameters — get_code_examples
-
-- **`topic`** (string, optional*): Topic or pattern (e.g., "remote state", "dependencies", "before hooks")
-- **`limit`** (number, optional): Max documents to return (default: 5, max: 10)
-- **`advanced`** (boolean, optional): If true, return curated advanced examples with best practices (default: false)
-- **`category`** (string, optional): Filter advanced examples by category: "hooks", "generate", "environment", "dependencies", "dry-patterns"
-- **`listCategories`** (boolean, optional): List all available advanced example categories
-
-*topic is required when advanced=false, optional when advanced=true
-
-### Advanced Example Categories
-
-| Category | Description | Example Patterns |
-|----------|-------------|------------------|
-| `hooks` | Before/after hooks | validation, notifications, error handling |
-| `generate` | Generate blocks | backend, provider, version constraints |
-| `environment` | Environment config | hierarchies, merging, feature flags |
-| `dependencies` | Dependency patterns | mock outputs, skip, complex graphs |
-| `dry-patterns` | DRY patterns | includes, read_terragrunt_config |
-
-### Use Cases — get_code_examples
-
-- Learning by example
-- Finding implementation patterns
-- Quick reference for syntax
-- Advanced configuration with best practices
-- Understanding common pitfalls
-
-### Example Prompts — get_code_examples
-
-```text
-"Show me examples of using dependencies in Terragrunt"
-"Find code snippets for remote state configuration"
-"What are some examples of before_hook usage?"
-"Show me advanced examples for hooks"
-"Get curated examples for environment-specific configs"
-"List all advanced example categories"
-```
-
-### Example Response — get_code_examples (documentation mode)
-
-```json
-{
-  "topic": "dependency",
-  "source": "documentation",
-  "examples": [
-    {
-      "documentTitle": "Quick Start",
-      "documentUrl": "https://terragrunt.gruntwork.io/docs/getting-started/quick-start/",
-      "section": "getting-started",
-      "codeSnippets": [
-        "dependency \"vpc\" { config_path = \"../vpc\" }",
-        "inputs = { subnet_id = dependency.vpc.outputs.subnet_id }"
-      ],
-      "snippetCount": 5
-    }
-  ],
-  "totalDocuments": 3,
-  "hasMore": false
-}
-```
-
-### Example Response — get_code_examples (advanced mode)
-
-```json
-{
-  "topic": "before_hook",
-  "source": "advanced-examples",
-  "matchInfo": {
-    "matchType": "tag",
-    "score": 0.8
-  },
-  "example": {
-    "id": "before-hook-validation",
-    "name": "Pre-Apply Validation Hook",
-    "description": "Run validation scripts before apply to catch issues early",
-    "category": "hooks",
-    "complexity": "intermediate",
-    "code": "terraform {\n  before_hook \"validate_inputs\" {\n    commands = [\"apply\", \"plan\"]\n    execute = [\"./scripts/validate-inputs.sh\"]\n  }\n}",
-    "useCases": [
-      "Validate input variables before expensive operations",
-      "Run custom compliance checks before apply"
-    ],
-    "bestPractices": [
-      "Keep validation scripts fast",
-      "Use exit codes to signal failures"
-    ],
-    "pitfalls": [
-      "Long-running validations can frustrate developers",
-      "Validation scripts must be idempotent"
-    ],
-    "relatedExamples": [
-      { "id": "after-hook-notification", "relationship": "Pair with notifications" }
-    ],
-    "tags": ["hooks", "validation", "before_hook"]
-  },
-  "otherMatches": [
-    { "id": "hook-multi-command", "name": "Multi-Command Hook Pipeline" }
-  ],
-  "totalMatches": 4
-}
-```
-
----
-
-## 8. get_terragrunt_function
-
-**Purpose**: Retrieve a specific Terragrunt built-in function by name.
-
-### Parameters — get_terragrunt_function
-
-- **`name`** (string, required): Function name (e.g., "get_env", "find_in_parent_folders")
-
-### Example Prompts — get_terragrunt_function
-
-```text
-"Show Terragrunt function get_env"
-"Lookup the find_in_parent_folders function"
-```
-
-### Example Response — get_terragrunt_function
-
-```json
-{
-  "name": "get_env",
-  "signature": "get_env(name, default) -> string",
-  "description": "",
-  "parameters": [
-    { "name": "name", "type": "string", "required": true, "description": "" },
-    { "name": "default", "type": "string", "required": true, "description": "" }
-  ],
-  "returnType": "string",
-  "category": "functions",
-  "examples": [],
-  "relatedFunctions": []
-}
-```
-
----
-
-## 9. list_terragrunt_functions
-
-**Purpose**: List Terragrunt built-in functions, optionally filtered by category.
-
-### Parameters — list_terragrunt_functions
-
-- **`category`** (string, optional): Category filter (e.g., "filesystem", "env")
-- **`limit`** (number, optional): Maximum results (default: 50, max: 200)
-
-### Example Prompts — list_terragrunt_functions
-
-```text
-"List Terragrunt functions"
-"List functions in the env category"
-```
-
-### Example Response — list_terragrunt_functions
-
-```json
-{
-  "total": 42,
-  "hasMore": false,
-  "functions": [
-    { "name": "get_env", "signature": "get_env(name, default) -> string", "category": "functions", "description": "", "returnType": "string" }
-  ]
-}
-```
-
----
-
-## 10. generate_terragrunt_config
+## 6. generate_terragrunt_config
 
 **Purpose**: Generate complete `terragrunt.hcl` configurations from battle-tested templates based on your use case and cloud provider.
 
@@ -632,7 +471,7 @@ The tool provides **9 templates** covering **5 use cases**:
 
 ---
 
-## 11. write_terragrunt_config
+## 7. write_terragrunt_config
 
 **Purpose**: Write generated Terragrunt configurations to disk with security validation and backup support.
 
@@ -791,7 +630,7 @@ See [File Writing Guide](File-Writing-Guide.md) for detailed security configurat
 
 ---
 
-## 12. analyze_best_practices
+## 8. analyze_best_practices
 
 **Purpose**: Analyze and retrieve best practices for specific Terragrunt topics with experience-level filtering. Extracts patterns, recommendations, antipatterns, and real-world examples from documentation.
 
@@ -890,7 +729,7 @@ See [File Writing Guide](File-Writing-Guide.md) for detailed security configurat
 <!-- Note: The "configuration" template (Terraform version constraints) is included as part of the "inputs" use case. -->
 ---
 
-## 13. diagnose_terragrunt_error
+## 9. diagnose_terragrunt_error
 
 **Purpose**: Diagnose Terragrunt error messages and get actionable solutions, debugging steps, and relevant documentation links.
 
@@ -1097,7 +936,7 @@ When `enrichWithDocs: true`, you get additional documentation-sourced solutions:
 
 ---
 
-## 14. compare_hcl_blocks
+## 10. compare_hcl_blocks
 
 **Purpose**: Compare two similar HCL blocks and explain their differences, use cases, and when to use each. Supports natural language queries like "dependency vs dependencies" and uses fuzzy matching for typo tolerance.
 
@@ -1184,7 +1023,7 @@ When `enrichWithDocs: true`, you get additional documentation-sourced solutions:
 
 ---
 
-## 15. get_pattern_guidance
+## 11. get_pattern_guidance
 
 **Purpose**: Get guidance on choosing between Terragrunt configuration patterns for common scenarios. Returns decision criteria, pattern options with pros/cons, and code examples.
 
