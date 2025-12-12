@@ -209,7 +209,7 @@ describe('ToolHandler', () => {
       expect(examplesResult.error).toContain('query parameter is required for examples mode');
     });
 
-    it('should not require command parameter for cli_reference (supports list mode)', () => {
+    it('should have no required parameters for cli_reference (supports dual modes)', () => {
       const tools = toolHandler.getAvailableTools();
       const tool = tools.find(t => t.name === 'cli_reference');
       
