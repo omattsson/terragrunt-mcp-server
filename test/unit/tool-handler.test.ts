@@ -150,11 +150,13 @@ describe('ToolHandler', () => {
   });
 
   describe('Input Schema Validation', () => {
-    it('should require query parameter for search tool', () => {
+    it('should have mode parameter for unified search tool', () => {
       const tools = toolHandler.getAvailableTools();
       const searchTool = tools.find(t => t.name === 'search_docs');
       
-      expect(searchTool?.inputSchema.required).toContain('query');
+      expect(searchTool?.inputSchema.properties.mode).toBeDefined();
+      expect(searchTool?.inputSchema.properties.mode.enum).toEqual(['search', 'list', 'section', 'examples']);
+      expect(searchTool?.inputSchema.properties.mode.default).toBe('search');
     });
 
     it('should have optional page and pageSize parameters for search tool', () => {
@@ -175,11 +177,14 @@ describe('ToolHandler', () => {
       expect(searchTool?.inputSchema.properties.pageSize.maximum).toBe(50);
     });
 
-    it('should require section parameter for get_section_docs', () => {
+    it('should have query and section parameters for different modes', () => {
       const tools = toolHandler.getAvailableTools();
       const tool = tools.find(t => t.name === 'search_docs');
       
-      expect(tool?.inputSchema.required).toContain('section');
+      // No schema-level required params (validation is mode-dependent at runtime)
+      expect(tool?.inputSchema.required).toEqual([]);
+      expect(tool?.inputSchema.properties.query).toBeDefined();
+      expect(tool?.inputSchema.properties.section).toBeDefined();
     });
 
     it('should require command parameter for get_cli_command_help', () => {
