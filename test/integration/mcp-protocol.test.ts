@@ -413,6 +413,7 @@ describe('MCP Protocol Compliance', () => {
     it('should return structured response for section docs tool', async () => {
       const result = await toolHandler.executeTool('get_section_docs', {
         section: 'getting-started'
+      , mode: 'full'
       });
 
       expect(result.section).toBe('getting-started');
@@ -514,6 +515,7 @@ describe('MCP Protocol Compliance', () => {
       const result = await toolHandler.executeTool('get_code_examples', {
         topic: 'dependencies',
         limit: 3
+      , mode: 'full'
       });
 
       expect(result.topic).toBe('dependencies');
@@ -524,6 +526,7 @@ describe('MCP Protocol Compliance', () => {
     it('should return structured response for get_terragrunt_function tool', async () => {
       const result = await toolHandler.executeTool('get_terragrunt_function', {
         function_name: 'path_relative_to_include'
+      , mode: 'full'
       });
 
       expect(result.name).toBe('path_relative_to_include');
@@ -538,11 +541,13 @@ describe('MCP Protocol Compliance', () => {
       const withExamples = await toolHandler.executeTool('get_terragrunt_function', {
         function_name: 'path_relative_to_include',
         include_examples: true
+      , mode: 'full'
       });
 
       const withoutExamples = await toolHandler.executeTool('get_terragrunt_function', {
         function_name: 'path_relative_to_include',
         include_examples: false
+      , mode: 'full'
       });
 
       expect(withExamples.examples).toBeDefined();
@@ -606,7 +611,7 @@ describe('MCP Protocol Compliance', () => {
     });
 
     it('should validate required function_name parameter for get_terragrunt_function', async () => {
-      const result = await toolHandler.executeTool('get_terragrunt_function', {});
+      const result = await toolHandler.executeTool('get_terragrunt_function', { mode: 'full' });
 
       expect(result.error).toBeDefined();
       expect(result.error).toContain('function_name');
@@ -615,6 +620,7 @@ describe('MCP Protocol Compliance', () => {
     it('should return error for unknown function in get_terragrunt_function', async () => {
       const result = await toolHandler.executeTool('get_terragrunt_function', {
         function_name: 'nonexistent_function_12345'
+      , mode: 'full'
       });
 
       expect(result.error).toBeDefined();
@@ -658,6 +664,7 @@ describe('MCP Protocol Compliance', () => {
       // Should return error object, not throw
       const result = await toolHandler.executeTool('get_section_docs', {
         section: 'nonexistent-section'
+      , mode: 'full'
       });
 
       expect(result).toBeDefined();
@@ -999,6 +1006,7 @@ describe('MCP Protocol Compliance', () => {
       it('should execute successfully with valid topic', async () => {
         const result = await toolHandler.executeTool('analyze_best_practices', {
           topic: 'state_management'
+        , mode: 'full'
         });
 
         expect(result).toBeDefined();
@@ -1009,6 +1017,7 @@ describe('MCP Protocol Compliance', () => {
       it('should return MCP-compliant success response structure', async () => {
         const result = await toolHandler.executeTool('analyze_best_practices', {
           topic: 'module_organization'
+        , mode: 'full'
         });
 
         expect(result).toBeDefined();
@@ -1028,6 +1037,7 @@ describe('MCP Protocol Compliance', () => {
         const result = await toolHandler.executeTool('analyze_best_practices', {
           topic: 'dependencies',
           level: 'intermediate'
+        , mode: 'full'
         });
 
         // Validate field types
@@ -1051,6 +1061,7 @@ describe('MCP Protocol Compliance', () => {
       it('should include confidence score in valid range (0-100)', async () => {
         const result = await toolHandler.executeTool('analyze_best_practices', {
           topic: 'security'
+        , mode: 'full'
         });
 
         expect(result.confidence).toBeDefined();
@@ -1067,6 +1078,7 @@ describe('MCP Protocol Compliance', () => {
       it('should return error when topic parameter is missing', async () => {
         const result = await toolHandler.executeTool('analyze_best_practices', {
           // Missing topic
+          mode: 'full'
         });
 
         expect(result).toBeDefined();
@@ -1079,6 +1091,7 @@ describe('MCP Protocol Compliance', () => {
         const result = await toolHandler.executeTool('analyze_best_practices', {
           topic: 'state_management',
           level: 'invalid_level' as any
+        , mode: 'full'
         });
 
         // Should still return a result (not throw)
@@ -1093,6 +1106,7 @@ describe('MCP Protocol Compliance', () => {
         const result = await toolHandler.executeTool('analyze_best_practices', {
           topic: 'performance'
           // No level specified - should still work
+        , mode: 'full'
         });
 
         expect(result).toBeDefined();
@@ -1105,6 +1119,7 @@ describe('MCP Protocol Compliance', () => {
         const result = await toolHandler.executeTool('analyze_best_practices', {
           topic: 'testing',
           unknownParam: 'should be ignored' as any
+        , mode: 'full'
         });
 
         // Should still execute successfully, ignoring unknown params
@@ -1118,6 +1133,7 @@ describe('MCP Protocol Compliance', () => {
       it('should return MCP-compliant error for typo with fuzzy matching suggestions', async () => {
         const result = await toolHandler.executeTool('analyze_best_practices', {
           topic: 'state_managment' // Typo: missing 'e'
+        , mode: 'full'
         });
 
         expect(result).toBeDefined();
@@ -1143,6 +1159,7 @@ describe('MCP Protocol Compliance', () => {
       it('should return helpful suggestion for semantic queries', async () => {
         const result = await toolHandler.executeTool('analyze_best_practices', {
           topic: 'remote state' // Semantic query
+        , mode: 'full'
         });
 
         expect(result).toBeDefined();
@@ -1158,6 +1175,7 @@ describe('MCP Protocol Compliance', () => {
       it('should return MCP-compliant error for completely unknown topic', async () => {
         const result = await toolHandler.executeTool('analyze_best_practices', {
           topic: 'xyz_completely_invalid_topic_12345'
+        , mode: 'full'
         });
 
         expect(result).toBeDefined();
@@ -1213,6 +1231,7 @@ describe('MCP Protocol Compliance', () => {
     it('should provide helpful error messages', async () => {
       const result = await toolHandler.executeTool('get_section_docs', {
         section: 'nonexistent'
+      , mode: 'full'
       });
 
       if (result.error) {

@@ -356,7 +356,7 @@ export class ToolHandler {
             },
             {
                 name: 'analyze_best_practices',
-                description: 'Analyze best practices for a specific Terragrunt topic with confidence scoring. Use mode=summary for overview (70-80% smaller), mode=full for complete details with code examples.',
+                description: 'Analyze best practices for a specific Terragrunt topic with confidence scoring and fuzzy matching (suggests corrections for typos). Use mode=summary for overview (70-80% smaller), mode=full for complete details with code examples.',
                 inputSchema: {
                     type: 'object',
                     properties: {
