@@ -247,10 +247,10 @@ describe('Performance Benchmarks', () => {
       console.log(`✓ search_docs (section mode): ${duration.toFixed(2)}ms`);
     });
 
-    it('should execute get_cli_command_help in <1 second', async () => {
+    it('should execute cli_reference in <1 second', async () => {
       const startTime = performance.now();
       
-      const result = await toolHandler.executeTool('get_cli_command_help', {
+      const result = await toolHandler.executeTool('cli_reference', {
         command: 'plan'
       });
       
@@ -260,7 +260,7 @@ describe('Performance Benchmarks', () => {
       expect(result.command).toBeDefined();
       expect(duration).toBeLessThan(1000);
       
-      console.log(`✓ get_cli_command_help: ${duration.toFixed(2)}ms`);
+      console.log(`✓ cli_reference: ${duration.toFixed(2)}ms`);
     });
 
     it('should execute get_hcl_config_reference in <1 second', async () => {
@@ -302,7 +302,7 @@ describe('Performance Benchmarks', () => {
         { name: 'search_docs', args: { mode: 'search', query: 'test', limit: 5 } },
         { name: 'search_docs', args: { mode: 'list' } },
         { name: 'search_docs', args: { mode: 'section', section: 'reference' } },
-        { name: 'get_cli_command_help', args: { command: 'apply' } },
+        { name: 'cli_reference', args: { command: 'apply' } },
         { name: 'get_hcl_config_reference', args: { config: 'terraform' } },
         { name: 'search_docs', args: { mode: 'examples', query: 'remote state', limit: 3 } }
       ];
@@ -357,12 +357,12 @@ describe('Performance Benchmarks', () => {
         { name: 'search_docs', args: { mode: 'search', query: 'test2', limit: 3 } },
         { name: 'search_docs', args: { mode: 'list' } },
         { name: 'search_docs', args: { mode: 'section', section: 'getting-started' } },
-        { name: 'get_cli_command_help', args: { command: 'plan' } },
+        { name: 'cli_reference', args: { command: 'plan' } },
         { name: 'get_hcl_config_reference', args: { config: 'dependency' } },
         { name: 'search_docs', args: { mode: 'examples', query: 'dependencies', limit: 3 } },
         { name: 'search_docs', args: { mode: 'search', query: 'test3', limit: 3 } },
         { name: 'search_docs', args: { mode: 'section', section: 'reference' } },
-        { name: 'get_cli_command_help', args: { command: 'apply' } }
+        { name: 'cli_reference', args: { command: 'apply' } }
       ];
 
       const startTime = performance.now();

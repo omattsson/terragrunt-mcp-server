@@ -59,11 +59,13 @@ async function testServer() {
     }
 
     // Test error handling: invalid resource
-    try {
-      await resourceHandler.getResource('terragrunt://docs/section/doesnotexist');
-      console.log('❌ Expected error for invalid section, but none thrown');
-    } catch (e) {
-      console.log('✅ Error thrown for invalid section as expected');
+    // Resource handler returns a plain-text error payload (it does not throw).
+    const invalidSection = await resourceHandler.getResource('terragrunt://docs/section/doesnotexist');
+    const invalidText = invalidSection?.contents?.[0]?.text ?? '';
+    if (typeof invalidText === 'string' && invalidText.startsWith('Error:')) {
+      console.log('✅ Error returned for invalid section as expected');
+    } else {
+      console.log('❌ Expected error payload for invalid section, but none returned');
     }
 
     // Test tool handler
@@ -105,27 +107,27 @@ async function testServer() {
     if (!badSection.error) console.log('ℹ️  No docs for invalid section (expected)');
     else console.log('✅ Error returned for invalid section as expected');
 
-    // Test tool execution: get_cli_command_help
-    console.log('\n📖 Testing CLI Command Help Tool...');
-    const cliHelp = await toolHandler.executeTool('get_cli_command_help', { command: 'plan' });
+    // Test tool execution: cli_reference (get mode)
+    console.log('\n📖 Testing CLI Reference Tool (cli_reference)...');
+    const cliHelp = await toolHandler.executeTool('cli_reference', { command: 'plan' });
     if (cliHelp.error) {
-      console.log(`⚠️  CLI help returned error (may be expected if docs don't have command): ${cliHelp.error}`);
-    } else if (cliHelp.help) {
-      console.log(`✅ CLI command help tool returned help for 'plan'`);
+      console.log(`⚠️  CLI reference returned error: ${cliHelp.error}`);
+    } else if (cliHelp.formattedHelp || cliHelp.content) {
+      console.log(`✅ cli_reference returned help for 'plan'`);
     } else {
       console.log('ℹ️  No CLI help found for "plan" command');
     }
 
     // Test with another common command
-    const cliHelpApply = await toolHandler.executeTool('get_cli_command_help', { command: 'apply' });
-    if (!cliHelpApply.error && cliHelpApply.help) {
-      console.log(`✅ CLI command help tool returned help for 'apply'`);
+    const cliHelpApply = await toolHandler.executeTool('cli_reference', { command: 'apply' });
+    if (!cliHelpApply.error && (cliHelpApply.formattedHelp || cliHelpApply.content)) {
+      console.log(`✅ cli_reference returned help for 'apply'`);
     }
 
     // Test with run-all command
-    const cliHelpRunAll = await toolHandler.executeTool('get_cli_command_help', { command: 'run-all' });
-    if (!cliHelpRunAll.error && cliHelpRunAll.help) {
-      console.log(`✅ CLI command help tool returned help for 'run-all'`);
+    const cliHelpRunAll = await toolHandler.executeTool('cli_reference', { command: 'run-all' });
+    if (!cliHelpRunAll.error && (cliHelpRunAll.formattedHelp || cliHelpRunAll.content)) {
+      console.log(`✅ cli_reference returned help for 'run-all'`);
     }
 
     // Test tool execution: get_hcl_config_reference

@@ -48,6 +48,20 @@ interface SearchDocsArgs {
     listCategories?: boolean;
 }
 
+/**
+ * Type-safe arguments for unified cli_reference tool
+ * Presence of command parameter determines get vs list mode
+ */
+interface CLIReferenceArgs {
+    // Get mode: specific command help
+    command?: string;
+    // List mode: filtering and pagination
+    category?: 'main' | 'backend' | 'stack' | 'catalog' | 'discovery' | 'configuration' | 'shortcut';
+    search?: string;
+    page?: number;
+    pageSize?: number;
+}
+
 export class ToolHandler {
     private resourceHandler: ResourceHandler;
     private docsManager: TerragruntDocsManager;
@@ -273,43 +287,33 @@ export class ToolHandler {
                 }
             },
             {
-                name: 'get_cli_command_help',
-                description: 'Get detailed help documentation for a specific Terragrunt CLI command including options, usage, and examples. Supports command aliases like "run-all" (→ run --all) and "hclfmt" (→ hcl fmt).',
+                name: 'cli_reference',
+                description: 'Get CLI command help or list available commands. Provide "command" parameter for specific help, or omit for listing mode with optional category/search filters.',
                 inputSchema: {
                     type: 'object',
                     properties: {
                         command: {
                             type: 'string',
-                            description: 'The Terragrunt CLI command name (e.g., "plan", "apply", "run", "run-all", "hcl fmt", "hclfmt", "validate-inputs", "destroy")'
-                        }
-                    },
-                    required: ['command']
-                }
-            },
-            {
-                name: 'list_cli_commands',
-                description: 'List all available Terragrunt CLI commands organized by category (main, backend, stack, catalog, discovery, configuration, shortcut)',
-                inputSchema: {
-                    type: 'object',
-                    properties: {
+                            description: 'Optional: specific command name for detailed help (e.g., "plan", "apply", "run-all", "hcl fmt")'
+                        },
                         category: {
                             type: 'string',
-                            description: 'Optional category filter to show only commands in that category',
+                            description: 'Optional: filter commands by category (list mode only)',
                             enum: ['main', 'backend', 'stack', 'catalog', 'discovery', 'configuration', 'shortcut']
                         },
                         search: {
                             type: 'string',
-                            description: 'Optional search query to filter commands by name or description'
+                            description: 'Optional: search query to filter commands (list mode only)'
                         },
                         page: {
                             type: 'number',
-                            description: 'Page number (1-based)',
+                            description: 'Page number for pagination (list mode only)',
                             default: 1,
                             minimum: 1
                         },
                         pageSize: {
                             type: 'number',
-                            description: 'Commands per page',
+                            description: 'Commands per page (list mode only)',
                             default: 20,
                             minimum: 1
                         }
@@ -656,19 +660,8 @@ export class ToolHandler {
                 case 'search_docs':
                     return await this.searchDocs(args);
 
-                case 'get_cli_command_help':
-                    if (!args?.command) {
-                        return { error: 'command parameter is required' };
-                    }
-                    return await this.getCliCommandHelp(args.command);
-                
-                case 'list_cli_commands':
-                    return await this.listCliCommands(
-                        args?.category,
-                        args?.search,
-                        args?.page ?? 1,
-                        args?.pageSize ?? 20
-                    );
+                case 'cli_reference':
+                    return await this.cliReference(args);
 
                 case 'get_terragrunt_function':
                     if (!args?.function_name) {
@@ -938,6 +931,40 @@ export class ToolHandler {
         }
     }
 
+    /**
+     * Unified CLI reference router
+     * Routes to appropriate method based on command parameter presence.
+     *
+     * Behavior details (important for clients):
+     * - Get mode: when `command` is a non-empty string.
+     * - List mode: when `command` is omitted OR an empty/whitespace-only string.
+     * - Pagination: `page` and `pageSize` are normalized to positive integers to avoid
+     *   surprising slice behavior (e.g., negative pages).
+     */
+    private async cliReference(args: CLIReferenceArgs): Promise<any> {
+        // Normalize empty/whitespace command strings to list mode.
+        const command = typeof args?.command === 'string' ? args.command.trim() : undefined;
+
+        // Get mode: specific command help
+        if (command) {
+            return await this.getCliCommandHelp(command);
+        }
+
+        // List mode: all commands with optional filtering
+        const page = this.normalizePositiveInt(args?.page, 1);
+        const pageSize = this.normalizePositiveInt(args?.pageSize, 20);
+        return await this.listCliCommands(args?.category, args?.search, page, pageSize);
+    }
+
+    private normalizePositiveInt(value: unknown, defaultValue: number): number {
+        if (typeof value !== 'number' || !Number.isFinite(value)) {
+            return defaultValue;
+        }
+
+        const intValue = Math.floor(value);
+        return intValue >= 1 ? intValue : defaultValue;
+    }
+
     private async getCliCommandHelp(command: string): Promise<any> {
         // First, try to get structured documentation from CLICommandsManager
         const structuredCmd = this.cliCommandsManager.getCommand(command);
@@ -989,7 +1016,7 @@ export class ToolHandler {
                 error: `No CLI command documentation found for: ${command}`,
                 suggestions: suggestions.length > 0 ? suggestions : undefined,
                 availableCommands: allCommands,
-                hint: 'Use list_cli_commands to see all available commands organized by category'
+                hint: 'Use cli_reference without command parameter to see all available commands organized by category'
             };
         }
 

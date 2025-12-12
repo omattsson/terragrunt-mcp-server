@@ -338,7 +338,7 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
     });
 
     it('should handle invalid CLI command', async () => {
-      const result = await toolHandler.executeTool('get_cli_command_help', {
+      const result = await toolHandler.executeTool('cli_reference', {
         command: 'nonexistent-command-xyz'
       });
 
@@ -386,12 +386,14 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
   });
 
   describe('Tool Parameter Validation', () => {
-    it('should validate get_cli_command_help requires command parameter', async () => {
-      const result = await toolHandler.executeTool('get_cli_command_help', {});
+    it('should support cli_reference without command (list mode)', async () => {
+      const result = await toolHandler.executeTool('cli_reference', {});
 
       expect(result).toBeDefined();
-      expect(result.error).toBeDefined();
-      expect(result.error).toContain('command parameter is required');
+      // List mode should work without error
+      expect(result.error).toBeUndefined();
+      expect(result.commands).toBeDefined();
+      expect(Array.isArray(result.commands)).toBe(true);
     });
 
     it('should return summary when get_hcl_config_reference called without parameters', async () => {
@@ -549,7 +551,7 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
       const commands = ['plan', 'apply', 'init', 'validate-inputs', 'run-all'];
       
       for (const cmd of commands) {
-        const result = await toolHandler.executeTool('get_cli_command_help', {
+        const result = await toolHandler.executeTool('cli_reference', {
           command: cmd
         });
 
@@ -565,7 +567,7 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
     });
 
     it('should handle command with hyphens', async () => {
-      const result = await toolHandler.executeTool('get_cli_command_help', {
+      const result = await toolHandler.executeTool('cli_reference', {
         command: 'run-all'
       });
 
@@ -576,7 +578,7 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
     });
 
     it('should handle command with uppercase', async () => {
-      const result = await toolHandler.executeTool('get_cli_command_help', {
+      const result = await toolHandler.executeTool('cli_reference', {
         command: 'PLAN'
       });
 
@@ -586,7 +588,7 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
     });
 
     it('should resolve hclfmt alias to hcl fmt', async () => {
-      const result = await toolHandler.executeTool('get_cli_command_help', {
+      const result = await toolHandler.executeTool('cli_reference', {
         command: 'hclfmt'
       });
 
@@ -596,7 +598,7 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
     });
 
     it('should return comprehensive options for run command', async () => {
-      const result = await toolHandler.executeTool('get_cli_command_help', {
+      const result = await toolHandler.executeTool('cli_reference', {
         command: 'run'
       });
 
@@ -611,7 +613,7 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
     });
 
     it('should provide formatted markdown help', async () => {
-      const result = await toolHandler.executeTool('get_cli_command_help', {
+      const result = await toolHandler.executeTool('cli_reference', {
         command: 'plan'
       });
 
@@ -624,7 +626,7 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
 
   describe('List CLI Commands Edge Cases', () => {
     it('should list all command categories', async () => {
-      const result = await toolHandler.executeTool('list_cli_commands', {});
+      const result = await toolHandler.executeTool('cli_reference', {});
 
       expect(result.categories).toBeDefined();
       expect(result.pagination).toBeDefined();
@@ -632,7 +634,7 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
     });
 
     it('should filter by category', async () => {
-      const result = await toolHandler.executeTool('list_cli_commands', {
+      const result = await toolHandler.executeTool('cli_reference', {
         category: 'backend'
       });
 
@@ -642,7 +644,7 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
     });
 
     it('should search commands', async () => {
-      const result = await toolHandler.executeTool('list_cli_commands', {
+      const result = await toolHandler.executeTool('cli_reference', {
         search: 'format'
       });
 

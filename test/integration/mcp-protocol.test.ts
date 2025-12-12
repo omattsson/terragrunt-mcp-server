@@ -393,7 +393,7 @@ describe('MCP Protocol Compliance', () => {
     });
 
     it('should return structured response for CLI help tool', async () => {
-      const result = await toolHandler.executeTool('get_cli_command_help', {
+      const result = await toolHandler.executeTool('cli_reference', {
         command: 'plan'
       });
 
@@ -407,8 +407,8 @@ describe('MCP Protocol Compliance', () => {
       }
     });
 
-    it('should return all categories for list_cli_commands tool', async () => {
-      const result = await toolHandler.executeTool('list_cli_commands', {});
+    it('should return all categories for cli_reference in list mode', async () => {
+      const result = await toolHandler.executeTool('cli_reference', {});
 
       expect(result.categories).toBeDefined();
       expect(Array.isArray(result.categories)).toBe(true);
@@ -421,8 +421,8 @@ describe('MCP Protocol Compliance', () => {
       expect(categoryIds).toContain('configuration');
     });
 
-    it('should filter list_cli_commands by category', async () => {
-      const result = await toolHandler.executeTool('list_cli_commands', {
+    it('should filter cli_reference by category', async () => {
+      const result = await toolHandler.executeTool('cli_reference', {
         category: 'shortcut'
       });
 
@@ -436,8 +436,8 @@ describe('MCP Protocol Compliance', () => {
       expect(names).toContain('destroy');
     });
 
-    it('should search list_cli_commands by query', async () => {
-      const result = await toolHandler.executeTool('list_cli_commands', {
+    it('should search cli_reference by query', async () => {
+      const result = await toolHandler.executeTool('cli_reference', {
         search: 'validate'
       });
 

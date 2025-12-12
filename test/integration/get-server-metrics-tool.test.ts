@@ -45,7 +45,7 @@ describe('get_server_metrics MCP tool integration', () => {
   describe('Tool execution through MCP protocol', () => {
     it('should execute and return JSON format by default', async () => {
       // Execute a tool first to generate metrics
-      await toolHandler.executeTool('list_cli_commands', {});
+      await toolHandler.executeTool('cli_reference', {});
       
       const result = await toolHandler.executeTool('get_server_metrics', {});
       
@@ -57,7 +57,7 @@ describe('get_server_metrics MCP tool integration', () => {
     });
 
     it('should execute and return text format when requested', async () => {
-      await toolHandler.executeTool('list_cli_commands', {});
+      await toolHandler.executeTool('cli_reference', {});
       
       const result = await toolHandler.executeTool('get_server_metrics', { format: 'text' });
       
@@ -68,19 +68,19 @@ describe('get_server_metrics MCP tool integration', () => {
     });
 
     it('should apply filter parameter correctly', async () => {
-      await toolHandler.executeTool('list_cli_commands', {});
+      await toolHandler.executeTool('cli_reference', {});
       
       const result = await toolHandler.executeTool('get_server_metrics', { 
-        filter: 'list_cli_commands' 
+        filter: 'cli_reference' 
       });
       
       expect(result.format).toBe('json');
-      expect(result.filter).toBe('list_cli_commands');
-      expect(result.metrics['tool:list_cli_commands']).toBeDefined();
+      expect(result.filter).toBe('cli_reference');
+      expect(result.metrics['tool:cli_reference']).toBeDefined();
     });
 
     it('should reset metrics when requested', async () => {
-      await toolHandler.executeTool('list_cli_commands', {});
+      await toolHandler.executeTool('cli_reference', {});
       
       const resetResult = await toolHandler.executeTool('get_server_metrics', { 
         reset: true 
@@ -93,7 +93,7 @@ describe('get_server_metrics MCP tool integration', () => {
     });
 
     it('should track metrics from multiple tool calls', async () => {
-      await toolHandler.executeTool('list_cli_commands', {});
+      await toolHandler.executeTool('cli_reference', {});
       await toolHandler.executeTool('list_terragrunt_functions', {});
       
       const result = await toolHandler.executeTool('get_server_metrics', {});
@@ -105,7 +105,7 @@ describe('get_server_metrics MCP tool integration', () => {
 
   describe('Combined tool and resource metrics', () => {
     it('should track metrics across multiple operations', async () => {
-      await toolHandler.executeTool('list_cli_commands', {});
+      await toolHandler.executeTool('cli_reference', {});
       await toolHandler.executeTool('list_terragrunt_functions', {});
       
       const result = await toolHandler.executeTool('get_server_metrics', {});
