@@ -137,7 +137,7 @@ describe('Advanced Code Examples Integration', () => {
       });
 
       expect(result.error).toBeDefined();
-      expect(result.error).toContain('query parameter is required');
+      expect(result.error).toContain('query parameter is required for examples mode');
     });
 
     it('should suggest advanced examples when doc search fails', async () => {

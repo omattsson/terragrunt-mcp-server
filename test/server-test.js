@@ -90,7 +90,7 @@ async function testServer() {
     // Test tool execution: search_docs section mode
     const firstSection = sectionsTool.sections[0]?.name;
     if (firstSection) {
-      const sectionDocsTool = await toolHandler.executeTool('search_docs', {mode: 'section',  section: firstSection, detailLevel: 'full' });
+      const sectionDocsTool = await toolHandler.executeTool('search_docs', { mode: 'section', section: firstSection, detailLevel: 'full' });
       if (!sectionDocsTool.docs || sectionDocsTool.docs.length === 0) throw new Error('No docs from section mode');
       console.log(`✅ Section mode returned ${sectionDocsTool.docs.length} docs for section ${firstSection}`);
     }
@@ -101,7 +101,7 @@ async function testServer() {
     console.log('✅ Error returned for invalid tool as expected');
 
     // Test tool execution: invalid section
-    const badSection = await toolHandler.executeTool('search_docs', {mode: 'section',  section: 'doesnotexist' });
+    const badSection = await toolHandler.executeTool('search_docs', { mode: 'section', section: 'doesnotexist' });
     if (!badSection.error) console.log('ℹ️  No docs for invalid section (expected)');
     else console.log('✅ Error returned for invalid section as expected');
 

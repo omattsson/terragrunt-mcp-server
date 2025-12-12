@@ -1286,7 +1286,7 @@ export class ToolHandler {
         // Original doc-scraped examples mode (requires query)
         if (!query) {
             return {
-                error: 'query parameter is required when advanced=false',
+                error: 'query parameter is required for examples mode when advanced=false',
                 suggestion: 'Use advanced=true to browse curated examples, or provide a query to search documentation'
             };
         }
@@ -1311,7 +1311,7 @@ export class ToolHandler {
             return {
                 query,
                 error: `No code examples found for: ${query}`,
-                suggestion: 'Try a broader search term, use search_terragrunt_docs, or try advanced=true for curated examples'
+                suggestion: 'Try a broader search term, use search_docs, or try advanced=true for curated examples'
             };
         }
 

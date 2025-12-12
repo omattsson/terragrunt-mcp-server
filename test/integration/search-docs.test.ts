@@ -313,7 +313,7 @@ describe('search_docs Unified Tool - Comprehensive Integration', () => {
       });
 
       expect(result.error).toBeDefined();
-      expect(result.error).toContain('query parameter is required');
+      expect(result.error).toContain('query parameter is required for examples mode');
     });
   });
 
@@ -350,22 +350,26 @@ describe('search_docs Unified Tool - Comprehensive Integration', () => {
   describe('Response Format Consistency', () => {
     it('should return JSON-serializable responses across all modes', async () => {
       const modes = ['search', 'list', 'section', 'examples'];
+      const exampleCategories = ['hooks', 'inputs', 'outputs'];
       
       for (const mode of modes) {
-        const args: any = { mode };
-        
-        // Add required params per mode
-        if (mode === 'search') args.query = 'test';
-        if (mode === 'section') args.section = 'getting-started';
+        // For "examples" mode, test multiple categories
         if (mode === 'examples') {
-          args.advanced = true;
-          args.category = 'hooks';
+          for (const category of exampleCategories) {
+            const args: any = { mode, advanced: true, category };
+            const result = await toolHandler.executeTool('search_docs', args);
+            // Should be JSON-serializable
+            expect(() => JSON.stringify(result)).not.toThrow();
+          }
+        } else {
+          const args: any = { mode };
+          // Add required params per mode
+          if (mode === 'search') args.query = 'test';
+          if (mode === 'section') args.section = 'getting-started';
+          const result = await toolHandler.executeTool('search_docs', args);
+          // Should be JSON-serializable
+          expect(() => JSON.stringify(result)).not.toThrow();
         }
-
-        const result = await toolHandler.executeTool('search_docs', args);
-        
-        // Should be JSON-serializable
-        expect(() => JSON.stringify(result)).not.toThrow();
       }
     });
 

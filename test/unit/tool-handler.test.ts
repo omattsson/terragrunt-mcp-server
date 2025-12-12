@@ -198,7 +198,7 @@ describe('ToolHandler', () => {
       // Examples mode (non-advanced) requires 'query' parameter
       const examplesResult = await toolHandler.executeTool('search_docs', { mode: 'examples', advanced: false });
       expect(examplesResult.error).toBeDefined();
-      expect(examplesResult.error).toContain('query parameter is required');
+      expect(examplesResult.error).toContain('query parameter is required for examples mode');
     });
 
     it('should require command parameter for get_cli_command_help', () => {
@@ -275,7 +275,7 @@ describe('ToolHandler', () => {
 
   describe('Tool Execution - search_terragrunt_docs', () => {
     it('should execute search with query', async () => {
-      const result = await toolHandler.executeTool('search_docs', {mode: 'search', 
+      const result = await toolHandler.executeTool('search_docs', { mode: 'search', 
         query: 'remote state'
       });
       
