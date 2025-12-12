@@ -247,10 +247,10 @@ describe('Performance Benchmarks', () => {
       console.log(`✓ search_docs (section mode): ${duration.toFixed(2)}ms`);
     });
 
-    it('should execute get_cli_command_help in <1 second', async () => {
+    it('should execute cli_reference in <1 second', async () => {
       const startTime = performance.now();
       
-      const result = await toolHandler.executeTool('get_cli_command_help', {
+      const result = await toolHandler.executeTool('cli_reference', {
         command: 'plan'
       });
       
@@ -260,7 +260,7 @@ describe('Performance Benchmarks', () => {
       expect(result.command).toBeDefined();
       expect(duration).toBeLessThan(1000);
       
-      console.log(`✓ get_cli_command_help: ${duration.toFixed(2)}ms`);
+      console.log(`✓ cli_reference: ${duration.toFixed(2)}ms`);
     });
 
     it('should execute get_hcl_config_reference in <1 second', async () => {

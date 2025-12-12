@@ -31,7 +31,7 @@ See [Advanced Backend Templates](docs/Advanced-Backend-Templates.md) for enterpr
 
 ### 🔧 Available Tools
 
-12 specialized tools for different documentation needs:
+11 specialized tools for different documentation needs:
 
 #### 1. **`search_docs`** - Unified Documentation Search
 
