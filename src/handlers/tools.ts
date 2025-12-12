@@ -92,33 +92,59 @@ interface GuidanceArgs {
 
 /**
  * Type-safe arguments for unified build_config tool.
- * Supports three modes:
- * 1. Generate-only: Provide useCase + options (returns config as string, does not write to disk).
- * 2. Write-only: Provide content + path (writes pre-generated config to disk, skipping generation).
- * 3. Generate + Write: Provide useCase + options + write=true + path (generates config and writes to disk in one operation).
+ * Supports three operational modes with mode-specific required parameters:
+ * 
+ * 1. Generate-only: Generates configuration and returns it (does not write to disk).
+ *    - Required: useCase, options
+ *    - Optional: backend, tier, strictValidation, custom_template
+ * 
+ * 2. Write-only: Writes provided HCL content to disk (does not generate).
+ *    - Required: content, path
+ *    - Optional: overwrite, createBackup, createParentDirs, strictValidation
+ * 
+ * 3. Generate+Write: Generates configuration and writes it to disk in one operation.
+ *    - Required: useCase, options, write=true, path
+ *    - Optional: backend, tier, strictValidation, custom_template, overwrite, createBackup, createParentDirs
+ * 
+ * Routing precedence: If 'content' is provided, it takes precedence over 'useCase' (write-only mode is used).
  */
 interface BuildConfigArgs {
-    // Generate parameters (required for generate mode)
-    useCase?: 'remote_state' | 'provider_generation' | 'dependencies' | 'hooks' | 'inputs';
-    options?: Record<string, any>;
+    // Mode 2: Write-only mode parameter (takes precedence if provided)
+    content?: string;
     
-    // Generate-specific (optional)
+    // Mode 1 & 3: Generate parameters (required for generate modes)
+    useCase?: 'remote_state' | 'provider_generation' | 'dependencies' | 'hooks' | 'inputs';
+    options?: Record<string, string | number | boolean | undefined>;
+    
+    // Generate-specific optional parameters
     backend?: string;
     tier?: 'essential' | 'advanced' | 'complete';
     strictValidation?: boolean;
-    custom_template?: any;
+    custom_template?: {
+        id: string;
+        name: string;
+        description: string;
+        category: 'backend' | 'provider' | 'dependency' | 'hooks' | 'inputs' | 'advanced' | 'configuration';
+        cloudProvider?: 'aws' | 'azure' | 'gcp' | 'multi';
+        templateHcl: string;
+        variables?: Array<{
+            name: string;
+            type: string;
+            required: boolean;
+            description?: string;
+            defaultValue?: unknown;
+            example?: string;
+        }>;
+        tags?: string[];
+        example?: string;
+    };
     
-    // Write parameters (optional - enables write mode)
+    // Write mode parameters (optional - enables write mode)
     write?: boolean;
     path?: string;
     overwrite?: boolean;
     createBackup?: boolean;
     createParentDirs?: boolean;
-    
-    /**
-     * Write-only mode: provide content to write directly, skipping generation.
-     */
-    content?: string;
 }
 
 export class ToolHandler {
@@ -433,7 +459,23 @@ export class ToolHandler {
             },
             {
                 name: 'build_config',
-                description: 'Build a Terragrunt configuration from templates with optional file writing. Supports three modes: 1) Generate-only (useCase+options), 2) Write-only (content+path), 3) Generate+Write (useCase+options+write=true+path).',
+                description: `Build a Terragrunt configuration from templates, with optional file writing. 
+
+Supports three modes (parameters required for each mode listed below):
+
+1. **Generate-only**: Generates configuration and returns it (does not write to disk).
+   - Required: \`useCase\`, \`options\`
+   - Optional: \`backend\`, \`tier\`, \`strictValidation\`, \`custom_template\`
+
+2. **Write-only**: Writes provided HCL content to disk (does not generate).
+   - Required: \`content\`, \`path\`
+   - Optional: \`overwrite\`, \`createBackup\`, \`createParentDirs\`, \`strictValidation\`
+
+3. **Generate+Write**: Generates configuration and writes it to disk in one operation.
+   - Required: \`useCase\`, \`options\`, \`write=true\`, \`path\`
+   - Optional: \`backend\`, \`tier\`, \`strictValidation\`, \`custom_template\`, \`overwrite\`, \`createBackup\`, \`createParentDirs\`
+
+**Routing precedence:** If \`content\` is provided, it takes precedence over \`useCase\` (i.e., write-only mode is used). The tool validates mutually exclusive parameters and returns an error if both are provided.`,
                 inputSchema: {
                     type: 'object',
                     properties: {
@@ -682,6 +724,19 @@ export class ToolHandler {
                     );
 
                 case 'build_config':
+                    // Validate mutually exclusive parameters
+                    if (args?.content && args?.useCase) {
+                        return {
+                            success: false,
+                            path: '',
+                            bytesWritten: 0,
+                            created: false,
+                            backedUp: false,
+                            error: 'Cannot provide both content (write-only mode) and useCase (generate mode). Choose one mode: write-only requires content+path, generate modes require useCase+options.',
+                            errorType: 'VALIDATION_ERROR'
+                        };
+                    }
+                    
                     // Handle write-only mode (content provided directly)
                     if (args?.content) {
                         // Validate content is a string
@@ -738,11 +793,26 @@ export class ToolHandler {
                     if (!args?.options) {
                         return { error: 'options parameter is required' };
                     }
+                    
+                    // Validate write mode parameters early
+                    if (args.write && !args.path) {
+                        return { 
+                            error: 'path parameter is required when write=true',
+                            errorType: 'VALIDATION_ERROR'
+                        };
+                    }
+                    if (args.write && args.path && typeof args.path !== 'string') {
+                        return { 
+                            error: 'path parameter must be a string',
+                            errorType: 'VALIDATION_ERROR'
+                        };
+                    }
+                    
                     return await this.buildConfig(
                         args.useCase,
-                        args.options,
                         args.backend,
                         args.tier,
+                        args.options,
                         args.strictValidation ?? false,
                         args.custom_template,
                         args.write ?? false,
@@ -1796,18 +1866,20 @@ export class ToolHandler {
     }
 
     /**
-     * Unified config builder - generates Terragrunt config with optional file writing
-     * Combines generate and write operations into single workflow
-     * Supports three modes:
-     * 1. Generate-only: useCase + options (no write/path)
-     * 2. Write-only: content + path (no useCase)  
-     * 3. Generate + Write: useCase + options + write=true + path
+     * Unified config builder - generates Terragrunt config with optional file writing.
+     * Combines generate and write operations into single workflow.
+     * 
+     * Supports two modes (write-only is handled in executeTool):
+     * 1. Generate-only: useCase + options (returns config, does not write)
+     * 2. Generate + Write: useCase + options + write=true + path (generates and writes in one operation)
+     * 
+     * Note: Write-only mode (content + path) is handled directly in executeTool, not by this method.
      */
     private async buildConfig(
         useCase: string,
-        options: Record<string, any>,
-        backend?: string,
-        tier?: 'essential' | 'advanced' | 'complete',
+        backend: string | undefined,
+        tier: 'essential' | 'advanced' | 'complete' | undefined,
+        options: Record<string, string | number | boolean | undefined>,
         strictValidation: boolean = false,
         customTemplate?: any,
         write: boolean = false,
@@ -1817,7 +1889,16 @@ export class ToolHandler {
         createParentDirs: boolean = true
     ): Promise<any> {
         try {
-            // Generate the configuration
+            // Validate write mode parameters (should have been validated earlier in executeTool)
+            if (write && !path) {
+                return {
+                    success: false,
+                    error: 'path parameter is required when write=true',
+                    errorType: 'VALIDATION_ERROR'
+                };
+            }
+            
+            // Generate the configuration with correct parameter order (useCase, backend, tier, options)
             const generateResult = await this.generateTerragruntConfig(
                 useCase,
                 backend,
@@ -1837,39 +1918,31 @@ export class ToolHandler {
                 return generateResult;
             }
 
-            // Write mode enabled - validate path and write to disk
-            if (!path) {
-                return {
-                    ...generateResult,
-                    success: false,
-                    error: 'path parameter is required when write=true',
-                    writeError: true
-                };
-            }
-
             // Write the generated config to disk
             const writeResult = await this.writeTerragruntConfig(
                 generateResult.config,
-                path,
+                path!,
                 overwrite,
                 createBackup,
                 createParentDirs
             );
 
-            // Combine generation and write results
+            // Combine generation and write results with nested structure for clarity
             return {
                 ...generateResult,
                 // Override success based on write result
                 success: generateResult.success && writeResult.success,
-                // Add write-specific fields
-                written: writeResult.success,
-                path: writeResult.path,
-                bytesWritten: writeResult.bytesWritten,
-                created: writeResult.created,
-                backedUp: writeResult.backedUp,
-                // Include write error if any
-                writeError: writeResult.error,
-                writeErrorType: writeResult.errorType
+                // Nest write-specific fields under writeResult to avoid field conflicts
+                writeResult: {
+                    written: writeResult.success,
+                    path: writeResult.path,
+                    bytesWritten: writeResult.bytesWritten,
+                    created: writeResult.created,
+                    backedUp: writeResult.backedUp,
+                    backupPath: writeResult.backupPath,
+                    error: writeResult.error,
+                    errorType: writeResult.errorType
+                }
             };
         } catch (error) {
             return {
