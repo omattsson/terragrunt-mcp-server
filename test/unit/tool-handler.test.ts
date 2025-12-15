@@ -190,8 +190,8 @@ describe('ToolHandler', () => {
     it('should handle edge case pageSize values gracefully', async () => {
       // Verify graceful handling of edge case pageSize values after removing schema constraints
       // Implementation behavior (see calculatePagination in tools.ts):
-      // - pageSize <= 0: Returns empty results to avoid division by zero (explicit guard)
-      // - pageSize > 0: Accepts any value and returns available results
+      // - pageSize > 0: Returns available results (accepts any positive value)
+      // - pageSize <= 0: Returns empty results (explicit guard to avoid division by zero or invalid input)
       // This graceful degradation prevents errors while signaling invalid input through empty results
       
       // Test with pageSize=0 (returns empty results per implementation guard)
@@ -206,8 +206,6 @@ describe('ToolHandler', () => {
       expect(resultTooSmall.results).toEqual([]);
       
       // Test with negative pageSize (returns empty results per implementation guard)
-      // Rationale: Silent acceptance with empty results signals invalid input without throwing errors
-      // This maintains API stability while allowing clients to detect invalid values via empty result set
       const resultNegative = await toolHandler.executeTool('search_docs', {
         mode: 'search',
         query: 'test',
@@ -239,7 +237,6 @@ describe('ToolHandler', () => {
       expect(resultValid.error).toBeUndefined();
       expect(resultValid.pagination.pageSize).toBe(25);
       // Verify implementation doesn't always return empty arrays - should return results for valid pageSize
-      // (This ensures the edge case handling for pageSize <= 0 doesn't affect normal operation)
       expect(Array.isArray(resultValid.results)).toBe(true);
       // If docs exist for query 'test', results should be non-empty
       // This verifies pageSize > 0 actually returns data, unlike pageSize <= 0

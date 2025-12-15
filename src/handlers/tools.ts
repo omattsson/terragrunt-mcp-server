@@ -202,6 +202,8 @@ export class ToolHandler {
         const totalItems = items.length;
         
         // Explicitly handle pageSize <= 0 to avoid division by zero and Infinity
+        // Rationale: Silent acceptance with empty results signals invalid input without throwing errors.
+        // This maintains API stability while allowing clients to detect invalid values via empty result set.
         if (pageSize <= 0) {
             return {
                 results: [],
@@ -718,7 +720,7 @@ export class ToolHandler {
                         args.tier,
                         args.options,
                         args.strictValidation ?? false,
-                        args.custom_template,
+                        args.custom_template,  // Still supported for backward compatibility despite schema removal
                         args.write ?? false,
                         args.path,
                         args.overwrite ?? false,
@@ -732,7 +734,10 @@ export class ToolHandler {
                     }
                     // Reconstruct nested objects from flattened parameters
                     // If nested form provided, use it; otherwise construct from flattened properties
-                    // This maintains backward compatibility with both old (nested) and new (flat) schemas
+                    // This maintains backward compatibility with both old (nested) and new (flat) schemas.
+                    // Example:
+                    //   Old schema: { context: { command, version, ... } }
+                    //   New schema: { command, version, ... }
                     const context = this.reconstructNestedObject(args.context, {
                         command: args.command,
                         version: args.version,
@@ -964,8 +969,8 @@ export class ToolHandler {
     /**
      * Reconstruct nested object from flattened properties
      * Used for backward compatibility when migrating from nested to flat schemas
-     * @param nestedValue - Existing nested object if provided
-     * @param flatProperties - Flattened properties to construct object from
+     * @param nestedValue - Existing nested object if provided by legacy clients still using old schema
+     * @param flatProperties - Flattened properties to construct object from (new schema format)
      * @returns Nested object with undefined values filtered out
      */
     private reconstructNestedObject<T extends Record<string, any>>(
