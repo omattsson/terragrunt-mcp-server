@@ -459,7 +459,7 @@ export class ToolHandler {
             },
             {
                 name: 'build_config',
-                description: 'Build Terragrunt config from templates with optional file writing. Three modes: 1) Generate-only (useCase+options) returns config, 2) Write-only (content+path) writes to disk, 3) Generate+Write (useCase+options+write+path) does both. Validates mutually exclusive params (content vs useCase).',
+                description: 'Build Terragrunt config from templates with optional file writing. Supports three modes: generate-only (useCase and options), write-only (content and path), or generate and write (useCase, options, write, and path). Validates that content and useCase are mutually exclusive.',
                 inputSchema: {
                     type: 'object',
                     properties: {
@@ -711,6 +711,11 @@ export class ToolHandler {
                     // Validate mutually exclusive parameters
                     if (args?.content && args?.useCase) {
                         return {
+                            success: false,
+                            path: '',
+                            bytesWritten: 0,
+                            created: false,
+                            backedUp: false,
                             error: 'Cannot provide both content (write-only mode) and useCase (generate mode). Choose one mode: write-only requires content+path, generate modes require useCase+options.',
                             errorType: 'VALIDATION_ERROR'
                         };
@@ -1868,15 +1873,6 @@ export class ToolHandler {
         createParentDirs: boolean = true
     ): Promise<any> {
         try {
-            // Validate write mode parameters (should have been validated earlier in executeTool)
-            if (write && !path) {
-                return {
-                    success: false,
-                    error: 'path parameter is required when write=true',
-                    errorType: 'VALIDATION_ERROR'
-                };
-            }
-            
             // Generate the configuration with correct parameter order (useCase, backend, tier, options)
             const generateResult = await this.generateTerragruntConfig(
                 useCase,
@@ -1906,22 +1902,20 @@ export class ToolHandler {
                 createParentDirs
             );
 
-            // Combine generation and write results with nested structure for clarity
+            // Combine generation and write results with flattened structure
             return {
                 ...generateResult,
-                // Override success based on write result
+                // Override success based on combined result
                 success: generateResult.success && writeResult.success,
-                // Nest write-specific fields under writeResult to avoid field conflicts
-                writeResult: {
-                    written: writeResult.success,
-                    path: writeResult.path,
-                    bytesWritten: writeResult.bytesWritten,
-                    created: writeResult.created,
-                    backedUp: writeResult.backedUp,
-                    backupPath: writeResult.backupPath,
-                    error: writeResult.error,
-                    errorType: writeResult.errorType
-                }
+                // Flatten write-specific fields with prefix for consistent API
+                writeSuccess: writeResult.success,
+                writePath: writeResult.path,
+                writeBytesWritten: writeResult.bytesWritten,
+                writeCreated: writeResult.created,
+                writeBackedUp: writeResult.backedUp,
+                writeBackupPath: writeResult.backupPath,
+                writeError: writeResult.error,
+                writeErrorType: writeResult.errorType
             };
         } catch (error) {
             return {

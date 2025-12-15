@@ -1,11 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { TerragruntDocsManager } from '../../src/terragrunt/docs.js';
 
-// Set fast retry timeouts for tests to avoid long waits
-process.env.TERRAGRUNT_RETRY_INITIAL_DELAY = '10';
-process.env.TERRAGRUNT_RETRY_MAX_DELAY = '50';
-process.env.TERRAGRUNT_RETRY_BACKOFF_MULTIPLIER = '1.5';
-
 // Mock node-fetch
 vi.mock('node-fetch', () => ({
   default: vi.fn()
@@ -31,9 +26,22 @@ describe('Error Handling - Network Failures', () => {
   let docsManager: TerragruntDocsManager;
   let mockFetch: any;
   let mockFs: any;
+  let originalEnv: Record<string, string | undefined>;
 
   beforeEach(async () => {
     vi.clearAllMocks();
+    
+    // Save original environment variables
+    originalEnv = {
+      TERRAGRUNT_RETRY_INITIAL_DELAY: process.env.TERRAGRUNT_RETRY_INITIAL_DELAY,
+      TERRAGRUNT_RETRY_MAX_DELAY: process.env.TERRAGRUNT_RETRY_MAX_DELAY,
+      TERRAGRUNT_RETRY_BACKOFF_MULTIPLIER: process.env.TERRAGRUNT_RETRY_BACKOFF_MULTIPLIER
+    };
+    
+    // Set fast retry timeouts for tests to avoid long waits
+    process.env.TERRAGRUNT_RETRY_INITIAL_DELAY = '10';
+    process.env.TERRAGRUNT_RETRY_MAX_DELAY = '50';
+    process.env.TERRAGRUNT_RETRY_BACKOFF_MULTIPLIER = '1.5';
     
     // Get mocked modules
     const fetchModule = await import('node-fetch');
@@ -53,6 +61,11 @@ describe('Error Handling - Network Failures', () => {
 
   afterEach(() => {
     vi.clearAllMocks();
+    
+    // Restore original environment variables
+    process.env.TERRAGRUNT_RETRY_INITIAL_DELAY = originalEnv.TERRAGRUNT_RETRY_INITIAL_DELAY;
+    process.env.TERRAGRUNT_RETRY_MAX_DELAY = originalEnv.TERRAGRUNT_RETRY_MAX_DELAY;
+    process.env.TERRAGRUNT_RETRY_BACKOFF_MULTIPLIER = originalEnv.TERRAGRUNT_RETRY_BACKOFF_MULTIPLIER;
   });
 
   describe('Network Failures During Doc Fetch', () => {
