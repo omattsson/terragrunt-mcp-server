@@ -733,9 +733,10 @@ export class ToolHandler {
                         return { error: 'error_message parameter is required' };
                     }
                     // Reconstruct nested objects from flattened parameters
-                    // If nested form provided, use it; otherwise construct from flattened properties
+                    // If nested form provided, use it; otherwise construct from flattened properties.
                     // This maintains backward compatibility with both old (nested) and new (flat) schemas.
                     // Precedence: If both nested and flattened forms are provided, nested takes priority.
+                    // (Nested takes priority to preserve behavior of existing clients that still pass the old format.)
                     // Example:
                     //   Old schema: { context: { command, version, ... } }
                     //   New schema: { command, version, ... }
