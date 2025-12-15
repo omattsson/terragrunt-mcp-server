@@ -1,4 +1,3 @@
-import { ResourceHandler } from './resources.js';
 import { TerragruntDocsManager } from '../terragrunt/docs.js';
 import { TerragruntFunctionsManager } from '../terragrunt/functions.js';
 import { BestPracticesAnalyzer } from '../terragrunt/best-practices.js';
@@ -148,7 +147,6 @@ interface BuildConfigArgs {
 }
 
 export class ToolHandler {
-    private resourceHandler: ResourceHandler;
     private docsManager: TerragruntDocsManager;
     private functionsManager: TerragruntFunctionsManager;
     private bestPracticesAnalyzer: BestPracticesAnalyzer;
@@ -166,7 +164,6 @@ export class ToolHandler {
 
     constructor(metricsManager?: IMetricsManager) {
         this.metricsManager = metricsManager || new NullMetricsManager();
-        this.resourceHandler = new ResourceHandler(this.metricsManager);
         this.docsManager = new TerragruntDocsManager();
         this.functionsManager = new TerragruntFunctionsManager(this.docsManager);
         this.bestPracticesAnalyzer = new BestPracticesAnalyzer(this.docsManager);
@@ -836,7 +833,7 @@ export class ToolHandler {
         page: number = 1,
         pageSize: number = 10
     ): Promise<any> {
-        const results = await this.resourceHandler.searchDocumentation(query);
+        const results = await this.docsManager.searchDocs(query);
 
         // Apply pagination
         const { results: paginatedResults, pagination } = this.calculatePagination(

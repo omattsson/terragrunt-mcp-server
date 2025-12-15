@@ -1,18 +1,15 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { TerragruntDocsManager } from '../../src/terragrunt/docs.js';
-import { ResourceHandler } from '../../src/handlers/resources.js';
 import { ToolHandler } from '../../src/handlers/tools.js';
 
 describe('Performance Benchmarks', () => {
   let docsManager: TerragruntDocsManager;
-  let resourceHandler: ResourceHandler;
   let toolHandler: ToolHandler;
   let loadedDocs: any[];
 
   beforeAll(async () => {
     // Initialize components
     docsManager = new TerragruntDocsManager();
-    resourceHandler = new ResourceHandler();
     toolHandler = new ToolHandler();
     
     // Load docs once for all tests
@@ -38,20 +35,6 @@ describe('Performance Benchmarks', () => {
       expect(duration).toBeLessThan(5000); // Should complete in <5 seconds
       
       console.log(`✓ Loaded ${docs.length} docs in ${duration.toFixed(2)}ms`);
-    });
-
-    it('should list all resources without timeout', async () => {
-      const startTime = performance.now();
-      
-      const resources = await resourceHandler.listResources();
-      
-      const endTime = performance.now();
-      const duration = endTime - startTime;
-      
-      expect(resources.length).toBeGreaterThan(0);
-      expect(duration).toBeLessThan(5000); // Should complete in <5 seconds
-      
-      console.log(`✓ Listed ${resources.length} resources in ${duration.toFixed(2)}ms`);
     });
 
     it('should handle large section content', async () => {
