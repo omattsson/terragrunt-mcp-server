@@ -4,15 +4,16 @@ A comprehensive guide to Terragrunt best practices across all major topics. This
 
 ## Overview
 
-The `analyze_best_practices` tool provides structured guidance across seven key topics:
+The `get_guidance` tool provides structured guidance across multiple topics when used with `type: 'best-practices'`:
 
-- **module_organization** - Module structure and organization patterns
+- **module_organization** / **project_structure** - Module structure and organization patterns
 - **state_management** - Remote state configuration and best practices
 - **dependencies** - Managing dependencies between modules
 - **ci_cd** - CI/CD integration patterns and workflows
 - **security** - Security considerations and best practices
 - **performance** - Performance optimization techniques
 - **testing** - Testing strategies and patterns
+- **environment_config** - Environment configuration patterns
 
 Each topic provides recommendations filtered by experience level (beginner, intermediate, advanced) to ensure guidance matches your team's expertise.
 
@@ -22,21 +23,37 @@ Each topic provides recommendations filtered by experience level (beginner, inte
 
 ```json
 {
-  "tool": "analyze_best_practices",
+  "tool": "get_guidance",
   "arguments": {
-    "topic": "state_management"
+    "query": "state_management"
   }
 }
 ```
+
+The tool automatically routes to best practices when you use a known topic like "state_management", "security", etc.
 
 ### With Experience Level Filter
 
 ```json
 {
-  "tool": "analyze_best_practices",
+  "tool": "get_guidance",
   "arguments": {
-    "topic": "module_organization",
-    "level": "beginner"
+    "query": "module_organization",
+    "level": "beginner",
+    "mode": "full"
+  }
+}
+```
+
+### With Explicit Type
+
+```json
+{
+  "tool": "get_guidance",
+  "arguments": {
+    "query": "dependencies",
+    "type": "best-practices",
+    "mode": "summary"
   }
 }
 ```
@@ -59,7 +76,7 @@ The tool returns comprehensive structured data:
 
 ```json
 {
-  "topic": "state_management",
+  "query": "state_management",
   "recommendations": [
     {
       "practice": "Always use remote state for production",

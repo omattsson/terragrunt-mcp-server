@@ -50,7 +50,7 @@ Expected: Should list available Terragrunt documentation and configuration tools
 | [Function Lookup](#2-function-lookup-tools) | `get_terragrunt_function`, `list_terragrunt_functions` | 10 |
 | [CLI and HCL Reference](#3-cli-and-hcl-reference-tools) | `get_cli_command_help`, `get_hcl_config_reference`, `get_code_examples` | 8 |
 | [Config Generation](#4-config-generation-tool) | `generate_terragrunt_config` | 14 |
-| [Best Practices](#5-best-practices-tool) | `analyze_best_practices` | 6 |
+| [Best Practices](#5-best-practices-tool) | `get_guidance` | 6 |
 | [Error Diagnosis](#6-error-diagnosis-tool) | `diagnose_terragrunt_error` | 6 |
 | [File Writing](#7-file-writing-tool) | `write_terragrunt_config` | 6 |
 | [Edge Cases and Errors](#8-edge-cases-and-error-handling) | All tools | 10 |
@@ -442,7 +442,7 @@ with bucket "test-bucket"
 
 ## 5. Best Practices Tool
 
-### 5.1 analyze_best_practices
+### 5.1 get_guidance
 
 #### Test 5.1.1: Module Organization
 **Prompt:**
