@@ -81,11 +81,17 @@ describe('Error Handling - Network Failures', () => {
         { title: 'Test', url: 'http://example.com', content: 'test', section: 'test', lastUpdated: '2025-01-01' }
       ]));
 
+      const startTime = Date.now();
       const docs = await docsManager.fetchLatestDocs();
+      const elapsed = Date.now() - startTime;
       
       // Should fall back to fixture
       expect(docs).toBeDefined();
       expect(Array.isArray(docs)).toBe(true);
+      
+      // Verify retry configuration is being used (should complete faster with test settings)
+      // With 3 retries at 10ms, 15ms, 22.5ms intervals, should complete well under 1000ms
+      expect(elapsed).toBeLessThan(1000);
     });
 
     it('should handle HTTP 404 error', async () => {

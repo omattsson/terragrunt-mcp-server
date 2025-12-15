@@ -711,11 +711,6 @@ export class ToolHandler {
                     // Validate mutually exclusive parameters
                     if (args?.content && args?.useCase) {
                         return {
-                            success: false,
-                            path: '',
-                            bytesWritten: 0,
-                            created: false,
-                            backedUp: false,
                             error: 'Cannot provide both content (write-only mode) and useCase (generate mode). Choose one mode: write-only requires content+path, generate modes require useCase+options.',
                             errorType: 'VALIDATION_ERROR'
                         };
@@ -1903,6 +1898,10 @@ export class ToolHandler {
             );
 
             // Combine generation and write results with nested writeResult to avoid field collisions
+            // Nesting prevents collisions between:
+            // - generateResult.success vs writeResult.success
+            // - generateResult.error vs writeResult.error  
+            // - potential future fields like 'path', 'created', etc.
             return {
                 ...generateResult,
                 // Override success based on combined result
