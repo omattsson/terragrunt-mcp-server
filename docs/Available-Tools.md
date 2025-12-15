@@ -808,7 +808,7 @@ See [File Writing Guide](File-Writing-Guide.md) for detailed security configurat
 
 ## 7. diagnose_terragrunt_error
 
-**Purpose**: Diagnose Terragrunt error messages and get actionable solutions, debugging steps, and relevant documentation links. Uses pattern matching with 66 error patterns across 7 categories.
+**Purpose**: Diagnose Terragrunt error messages and get actionable solutions, debugging steps, and relevant documentation links.
 
 ### Parameters — diagnose_terragrunt_error
 
@@ -947,8 +947,6 @@ When `enrichWithDocs: true`, you get additional documentation-sourced solutions:
 - **`safe`**: Command is read-only or has no side effects
 - **`caution`**: Command modifies state or infrastructure
 - **`destructive`**: Command may cause data loss or destroy resources
-
-<!-- Note: The "configuration" template (Terraform version constraints) is included as part of the "inputs" use case. -->
 
 ---
 
