@@ -161,7 +161,7 @@ describe('Best Practices Integration Tests', () => {
 
       // MCP requires structured responses, not exceptions
       expect(result).toBeTypeOf('object');
-      expect(result).toHaveProperty('topic');
+      expect(result).toHaveProperty('query');
       expect(result).toHaveProperty('recommendations');
       expect(result).toHaveProperty('summary');
       expect(result).toHaveProperty('commonPitfalls');
@@ -187,7 +187,7 @@ describe('Best Practices Integration Tests', () => {
         const result = await toolHandler.executeTool('get_guidance', { query: topic, mode: 'full' });
 
         // All results should have same structure
-        expect(result).toHaveProperty('topic');
+        expect(result).toHaveProperty('query');
         expect(result).toHaveProperty('recommendations');
         expect(result).toHaveProperty('summary');
         expect(result).toHaveProperty('commonPitfalls');

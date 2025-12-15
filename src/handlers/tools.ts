@@ -459,23 +459,7 @@ export class ToolHandler {
             },
             {
                 name: 'build_config',
-                description: `Build a Terragrunt configuration from templates, with optional file writing. 
-
-Supports three modes (parameters required for each mode listed below):
-
-1. **Generate-only**: Generates configuration and returns it (does not write to disk).
-   - Required: \`useCase\`, \`options\`
-   - Optional: \`backend\`, \`tier\`, \`strictValidation\`, \`custom_template\`
-
-2. **Write-only**: Writes provided HCL content to disk (does not generate).
-   - Required: \`content\`, \`path\`
-   - Optional: \`overwrite\`, \`createBackup\`, \`createParentDirs\`, \`strictValidation\`
-
-3. **Generate+Write**: Generates configuration and writes it to disk in one operation.
-   - Required: \`useCase\`, \`options\`, \`write=true\`, \`path\`
-   - Optional: \`backend\`, \`tier\`, \`strictValidation\`, \`custom_template\`, \`overwrite\`, \`createBackup\`, \`createParentDirs\`
-
-**Routing precedence:** If \`content\` is provided, it takes precedence over \`useCase\` (i.e., write-only mode is used). The tool validates mutually exclusive parameters and returns an error if both are provided.`,
+                description: 'Build Terragrunt config from templates with optional file writing. Three modes: 1) Generate-only (useCase+options) returns config, 2) Write-only (content+path) writes to disk, 3) Generate+Write (useCase+options+write+path) does both. Validates mutually exclusive params (content vs useCase).',
                 inputSchema: {
                     type: 'object',
                     properties: {
@@ -1643,7 +1627,7 @@ Supports three modes (parameters required for each mode listed below):
                     : 'Try one of the supported topics: module_organization, state_management, dependencies, ci_cd, security, performance, testing';
 
                 return {
-                    topic,
+                    query: topic,
                     error: `No best practices found for topic: ${topic}`,
                     suggestion,
                     recommendations: [],
@@ -1656,7 +1640,7 @@ Supports three modes (parameters required for each mode listed below):
             // Summary mode: lean response with short descriptions
             if (mode === 'summary') {
                 return {
-                    topic: result.topic,
+                    query: result.query,
                     practiceCount: result.recommendations.length,
                     practices: result.recommendations.map(rec => ({
                         practice: rec.practice,
@@ -1670,7 +1654,7 @@ Supports three modes (parameters required for each mode listed below):
 
             // Full mode: complete result including all details (original behavior)
             return {
-                topic: result.topic,
+                query: result.query,
                 recommendations: result.recommendations,
                 summary: result.summary,
                 commonPitfalls: result.commonPitfalls,
@@ -1682,7 +1666,7 @@ Supports three modes (parameters required for each mode listed below):
         } catch (error) {
             console.error(`Error analyzing best practices for ${topic}:`, error);
             return {
-                topic,
+                query: topic,
                 error: error instanceof Error ? error.message : 'Failed to analyze best practices',
                 recommendations: [],
                 summary: '',

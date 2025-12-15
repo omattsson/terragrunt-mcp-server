@@ -74,7 +74,7 @@ describe('Summary Mode - Tool Integration Tests', () => {
                 query: 'state_management'
             });
 
-            expect(result).toHaveProperty('topic', 'state_management');
+            expect(result).toHaveProperty('query', 'state_management');
             expect(result).toHaveProperty('practiceCount');
             expect(result).toHaveProperty('practices');
             expect(result).toHaveProperty('summary');
@@ -101,7 +101,7 @@ describe('Summary Mode - Tool Integration Tests', () => {
                 mode: 'full'
             });
 
-            expect(result).toHaveProperty('topic', 'state_management');
+            expect(result).toHaveProperty('query', 'state_management');
             expect(result).toHaveProperty('recommendations');
             expect(result).toHaveProperty('summary');
             expect(result).toHaveProperty('commonPitfalls');

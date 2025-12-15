@@ -1164,7 +1164,7 @@ export interface ExperienceNotes {
  * Result of analyzing best practices for a topic
  */
 export interface BestPracticeResult {
-  topic: string;
+  query: string;
   recommendations: PracticeRecommendation[];
   summary: string;
   commonPitfalls: string[];
@@ -2275,7 +2275,7 @@ export class BestPracticesAnalyzer {
       }
 
       const result: BestPracticeResult = {
-        topic,
+        query: topic,
         recommendations: filteredRecommendations,
         summary,
         commonPitfalls,
@@ -2307,7 +2307,7 @@ export class BestPracticesAnalyzer {
     }
 
     return {
-      topic,
+      query: topic,
       recommendations: [],
       summary,
       commonPitfalls: [],
