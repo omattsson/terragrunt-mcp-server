@@ -745,30 +745,21 @@ export class ToolHandler {
                     // Reconstruct nested objects from flattened parameters
                     // If nested form provided, use it; otherwise construct from flattened properties
                     // This maintains backward compatibility with both old (nested) and new (flat) schemas
-                    // Filter out undefined values to avoid polluting objects with undefined properties
-                    const context = args.context
-                        ? args.context
-                        : Object.fromEntries(
-                            Object.entries({
-                                command: args.command,
-                                version: args.version,
-                                os: args.os,
-                                filePath: args.filePath,
-                                module: args.module,
-                                backend: args.backend
-                            }).filter(([_, v]) => v !== undefined)
-                        );
-                    const options = args.options
-                        ? args.options
-                        : Object.fromEntries(
-                            Object.entries({
-                                maxMatches: args.maxMatches,
-                                minConfidence: args.minConfidence,
-                                enableFuzzyMatching: args.enableFuzzyMatching,
-                                enrichWithDocs: args.enrichWithDocs,
-                                includeDestructiveCommands: args.includeDestructiveCommands
-                            }).filter(([_, v]) => v !== undefined)
-                        );
+                    const context = this.reconstructNestedObject(args.context, {
+                        command: args.command,
+                        version: args.version,
+                        os: args.os,
+                        filePath: args.filePath,
+                        module: args.module,
+                        backend: args.backend
+                    });
+                    const options = this.reconstructNestedObject(args.options, {
+                        maxMatches: args.maxMatches,
+                        minConfidence: args.minConfidence,
+                        enableFuzzyMatching: args.enableFuzzyMatching,
+                        enrichWithDocs: args.enrichWithDocs,
+                        includeDestructiveCommands: args.includeDestructiveCommands
+                    });
                     return await this.diagnoseTerragruntError(
                         args.error_message,
                         context,
@@ -980,6 +971,25 @@ export class ToolHandler {
         const page = this.normalizePositiveInt(args?.page, 1);
         const pageSize = this.normalizePositiveInt(args?.pageSize, 20);
         return await this.listTerragruntFunctions(args?.category, args?.search, page, pageSize);
+    }
+
+    /**
+     * Reconstruct nested object from flattened properties
+     * Used for backward compatibility when migrating from nested to flat schemas
+     * @param nestedValue - Existing nested object if provided
+     * @param flatProperties - Flattened properties to construct object from
+     * @returns Nested object with undefined values filtered out
+     */
+    private reconstructNestedObject<T extends Record<string, any>>(
+        nestedValue: T | undefined,
+        flatProperties: Record<string, any>
+    ): T {
+        if (nestedValue) {
+            return nestedValue;
+        }
+        return Object.fromEntries(
+            Object.entries(flatProperties).filter(([_, v]) => v !== undefined)
+        ) as T;
     }
 
     private normalizePositiveInt(value: unknown, defaultValue: number): number {
