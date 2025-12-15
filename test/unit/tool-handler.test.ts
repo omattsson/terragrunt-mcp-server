@@ -230,9 +230,10 @@ describe('ToolHandler', () => {
       expect(Array.isArray(resultTooLarge.results)).toBe(true);
       
       // Test with valid pageSize (should return actual results if documents exist)
+      // Use 'terragrunt' query which is guaranteed to exist in Terragrunt documentation fixture
       const resultValid = await toolHandler.executeTool('search_docs', {
         mode: 'search',
-        query: 'test',
+        query: 'terragrunt',
         pageSize: 25
       });
       expect(resultValid).toBeDefined();
@@ -240,8 +241,8 @@ describe('ToolHandler', () => {
       expect(resultValid.pagination.pageSize).toBe(25);
       // Verify implementation doesn't always return empty arrays - should return results for valid pageSize
       expect(Array.isArray(resultValid.results)).toBe(true);
-      // Explicit assertion: Test data must contain results for query 'test'
-      // If this fails, test data setup is wrong or fixture is missing
+      // Explicit assertion: Fixture data must contain results for 'terragrunt' query
+      // Using 'terragrunt' ensures robust test as it's a core term in all Terragrunt docs
       expect(resultValid.pagination.totalItems).toBeGreaterThan(0);
       expect(resultValid.results.length).toBeGreaterThan(0);
       // Verify no warning field for valid pageSize (unlike invalid pageSize cases)
