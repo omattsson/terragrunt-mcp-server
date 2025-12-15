@@ -31,7 +31,7 @@ See [Advanced Backend Templates](docs/Advanced-Backend-Templates.md) for enterpr
 
 ### 🔧 Available Tools
 
-11 specialized tools for different documentation needs:
+**8 consolidated tools** for comprehensive Terragrunt assistance (7 core + 1 observability):
 
 #### 1. **`search_docs`** - Unified Documentation Search
 
@@ -50,146 +50,121 @@ Unified tool for all documentation search needs - semantic search, browsing sect
   - **examples**: Find code examples and patterns (supports advanced curated examples)
 - **Use cases**: All doc-related tasks including search, browsing, section retrieval, and code examples
 
-#### 2. **`get_cli_command_help`** - CLI Command Documentation
+#### 2. **`function_reference`** - Built-in Function Reference
 
-Get detailed help documentation for specific Terragrunt CLI commands.
+Get function details OR list all functions - unified tool for Terragrunt built-in function documentation.
 
-- **Parameters**:
-  - `command` (string, required): Command name (e.g., "plan", "apply", "run-all", "hclfmt")
-- **Returns**: Command documentation with usage, options, and examples
-- **Use cases**: Learning command syntax, understanding command options, CLI troubleshooting
-
-#### 3. **`get_hcl_config_reference`** - HCL Configuration Reference
-
-Get documentation for HCL configuration blocks, attributes, and functions used in `terragrunt.hcl`.
-
-- **Parameters**:
-  - `config` (string, required): Config element name (e.g., "terraform", "remote_state", "dependency", "inputs")
-- **Returns**: Configuration reference with syntax and usage details
-- **Use cases**: Writing terragrunt.hcl files, understanding configuration options
-
-#### 4. **`get_terragrunt_function`** - Built-in Function Reference
-
-Get detailed documentation for a specific Terragrunt built-in function.
-
-- **Parameters**:
-  - `function_name` (string, required): Function name (e.g., "path_relative_to_include", "get_env")
+- **Get Mode** (when `function_name` provided):
+  - `function_name` (string): Function name (e.g., "path_relative_to_include", "get_env")
+  - `mode` (string, optional): Detail level - `summary` or `full` (default: `summary`)
   - `include_examples` (boolean, optional): Include code examples (default: true)
-- **Returns**: Complete function metadata including signature, parameters, return type, examples
-- **Use cases**: Learning function syntax, understanding parameters, finding usage examples
-
-#### 8. **`list_terragrunt_functions`** - List Built-in Functions
-
-List all available Terragrunt built-in functions with filtering and search capabilities.
-
-- **Parameters**:
+  - **Returns**: Complete function metadata including signature, parameters, return type, examples
+- **List Mode** (when no `function_name`):
   - `category` (string, optional): Filter by category (e.g., "path", "aws", "environment")
   - `search` (string, optional): Search in function names and descriptions
-  - `limit` (number, optional): Maximum results to return (default: all functions)
-- **Returns**: Array of functions with name, signature, category, and description
-- **Use cases**: Discovering available functions, browsing by category, finding functions by keyword
+  - `page` (number, optional): Page number (default: 1)
+  - `pageSize` (number, optional): Results per page (default: 20)
+  - **Returns**: Array of functions with name, signature, category, and description
+- **Use cases**: Looking up specific functions, discovering available functions, browsing by category
 
-#### 9. **`generate_terragrunt_config`** - Configuration Generator
+#### 3. **`cli_reference`** - CLI Command Reference
 
-Generate complete `terragrunt.hcl` configurations based on use case and requirements using battle-tested templates.
+Get command help OR list commands - unified tool for Terragrunt CLI command documentation.
 
-- **Parameters**:
-  - `useCase` (string, required): Configuration type - one of:
-    - `"remote_state"` - Remote state backend configuration
-    - `"provider_generation"` - Provider block generation
-    - `"dependencies"` - Module dependency configuration
-    - `"hooks"` - Before/after hooks for automation
-    - `"inputs"` - Input variables configuration
-  - `backend` (string, optional): Backend type for remote_state use case:
-    - `"s3"` - AWS S3 + DynamoDB
-    - `"azurerm"` - Azure Blob Storage
-    - `"gcs"` - Google Cloud Storage
-  - `options` (object, optional): Configuration options (varies by use case and backend):
-    - For S3: `bucket`, `key`, `region`, `dynamodb_table`, `encrypt`
-    - For Azure: `storage_account_name`, `container_name`, `key`, `resource_group_name`
-    - For GCS: `bucket`, `prefix`, `project`, `credentials`
-    - For hooks: `name`, `commands`, `execute`, `working_dir`, `run_on_error`
-    - For dependencies: `name`, `config_path`, `mock_outputs_allowed`
-    - For inputs: `environment`, `region`, or any custom key-value pairs
-    - For providers: `path`, `if_exists`, `region`, `account_id`
-- **Returns**:
-  - `config` - Complete HCL configuration ready to use
-  - `explanation` - Human-readable description of what the config does
-  - `nextSteps` - Suggested next actions
-  - `relatedDocs` - Links to relevant Terragrunt documentation
-- **Use cases**: Quick project setup, learning HCL syntax, best practice configurations, starting new modules
+- **Get Mode** (when `command` provided):
+  - `command` (string): Command name (e.g., "plan", "apply", "run-all", "hclfmt")
+  - **Returns**: Command documentation with usage, options, and examples
+- **List Mode** (when no `command`):
+  - `category` (string, optional): Filter by category (`main`, `backend`, `stack`, `catalog`, `discovery`, `configuration`, `shortcut`)
+  - `search` (string, optional): Search in command names and descriptions
+  - `page` (number, optional): Page number (default: 1)
+  - `pageSize` (number, optional): Commands per page (default: 20)
+  - **Returns**: Array of commands with name, category, and description
+- **Use cases**: Learning command syntax, understanding command options, CLI troubleshooting, discovering available commands
 
-**Example prompts:**
+#### 4. **`get_hcl_config_reference`** - HCL Configuration Reference
 
-```text
-"Generate a terragrunt config for S3 remote state in us-east-1"
-"Create an Azure backend configuration for my terraform state"
-"Show me how to set up dependencies between terragrunt modules"
-"Generate a before hook to run terraform fmt"
-"Create an inputs configuration for a production environment"
-```
-
-#### 10. **`write_terragrunt_config`** - Write Configuration to Disk
-
-Securely write generated or modified Terragrunt configurations to disk with directory whitelisting, path traversal protection, and automatic backup capabilities.
+Get documentation for HCL configuration blocks used in `terragrunt.hcl` files.
 
 - **Parameters**:
-  - `path` (string, required): Absolute file path where config should be written
-  - `content` (string, required): HCL configuration content to write
-  - `overwrite` (boolean, optional): Allow overwriting existing files (default: false)
-  - `createBackup` (boolean, optional): Create backup before overwrite (default: from env var)
-  - `createParentDirs` (boolean, optional): Create parent directories if missing (default: true)
-- **Security**: Disabled by default, requires explicit configuration:
-  - `TERRAGRUNT_MCP_FILE_WRITE_ENABLED=true` - Enable file writing
-  - `TERRAGRUNT_MCP_ALLOWED_DIRS` - Comma-separated whitelist of allowed directories
-  - `TERRAGRUNT_MCP_AUTO_BACKUP` - Auto-create backups (default: true)
-  - `TERRAGRUNT_MCP_MAX_FILE_SIZE` - Maximum file size limit (default: 1MB)
-- **Use cases**: Saving generated configs, automating configuration updates, batch file operations
-- **See**: [File Writing Guide](docs/File-Writing-Guide.md) for detailed security configuration
+  - `config` (string, optional): Block name (e.g., "terraform", "remote_state", "dependency", "inputs", "generate", "locals")
+  - `category` (string, optional): Filter blocks by category (`core`, `modules`, `generation`, `execution`, `iam`, `terraform`)
+  - `listBlocks` (boolean, optional): List all available HCL blocks (default: false)
+- **Returns**: HCL block documentation with syntax, attributes, examples, and usage patterns
+- **Use cases**: Writing terragrunt.hcl files, understanding configuration options, discovering available blocks
 
-**Example prompts:**
+#### 5. **`get_guidance`** - Best Practices & Comparisons
 
-```text
-"Write this configuration to /home/user/terraform/terragrunt.hcl"
-"Save the generated config to my project directory"
-"Create a new terragrunt.hcl file with S3 backend configuration"
-```
-
-#### 11. **`analyze_best_practices`** - Analyze Best Practices by Topic
-
-Extract and analyze best practices, patterns, antipatterns, and recommendations from Terragrunt documentation for specific topics with experience-level filtering.
+Get best practices, comparisons, or patterns for Terragrunt usage.
 
 - **Parameters**:
-  - `topic` (string, required): Topic to analyze
-    - `module_organization`, `state_management`, `dependencies`, `ci_cd`, `security`, `performance`, `testing`
-  - `level` (string, optional): Filter by experience level
-    - `beginner`, `intermediate`, `advanced`
+  - `query` (string, optional): Topic, comparison, or scenario
+  - `type` (string, optional): Guidance type - `best-practices`, `comparison`, or `pattern`
+  - `mode` (string, optional): Detail level - `summary` or `full` (default: `summary`)
+  - `level` (string, optional): Experience level - `beginner`, `intermediate`, or `advanced`
+  - `listAll` (boolean, optional): List all available guidance (default: false)
 - **Returns**: Structured recommendations with priority, rationale, examples, antipatterns, tradeoffs, and experience notes
-- **Use cases**: Learning best practices, understanding patterns, avoiding common pitfalls, getting experience-appropriate guidance
+- **Use cases**: Learning best practices, understanding patterns, avoiding common pitfalls, comparing approaches, getting experience-appropriate guidance
 
 **Example prompts:**
 
 ```text
 "What are the best practices for state management?"
-"Show me beginner-level module organization practices"
-"Analyze CI/CD best practices for Terragrunt"
-"What should I avoid when setting up dependencies?"
+"Compare different approaches for module organization"
+"Show me beginner-level dependency management practices"
+"What patterns should I use for CI/CD with Terragrunt?"
 ```
 
-#### 12. **`diagnose_terragrunt_error`** - Error Diagnosis and Troubleshooting
+#### 6. **`build_config`** - Generate or Write Terragrunt Configuration
 
-Diagnose Terragrunt error messages and get actionable solutions, debugging steps, and relevant documentation links. Uses pattern matching with 66 error patterns across 7 categories.
+Generate OR write OR generate+write Terragrunt configurations - unified tool for configuration management.
+
+- **Generate Mode** (when `useCase` provided, no `content`):
+  - `useCase` (string): Configuration type - `remote_state`, `provider_generation`, `dependencies`, `hooks`, or `inputs`
+  - `options` (object): Template variables (varies by use case and backend)
+  - `backend` (string, optional): Backend type for remote_state - `s3`, `azurerm`, or `gcs`
+  - `tier` (string, optional): Template tier - `essential`, `advanced`, or `complete` (default: `essential`)
+  - `strictValidation` (boolean, optional): Enable strict validation (default: false)
+  - **Returns**: Generated HCL configuration with explanation and next steps
+- **Write Mode** (when `content` provided):
+  - `content` (string): HCL content to write
+  - `path` (string): File path where config should be written
+  - `overwrite` (boolean, optional): Allow overwriting existing files (default: false)
+  - `createBackup` (boolean, optional): Create backup before overwrite (default: true)
+  - `createParentDirs` (boolean, optional): Create parent directories if missing (default: true)
+  - **Returns**: Write confirmation with file path
+- **Generate+Write Mode** (when `useCase` + `write=true` + `path`):
+  - Combines both modes - generates configuration and writes to disk in one operation
+  - **Returns**: Generated config + write confirmation
+- **Security**: File writing disabled by default, requires explicit configuration (see [File Writing Guide](docs/File-Writing-Guide.md))
+- **Use cases**: Quick project setup, learning HCL syntax, best practice configurations, saving generated configs, automating configuration updates
+
+**Example prompts:**
+
+```text
+"Generate a terragrunt config for S3 remote state in us-east-1"
+"Write this configuration to /home/user/terraform/terragrunt.hcl"
+"Generate and save an Azure backend configuration to my project"
+"Show me how to set up dependencies between terragrunt modules"
+```
+
+#### 7. **`diagnose_terragrunt_error`** - Error Diagnosis and Troubleshooting
+
+Diagnose Terragrunt error messages and get actionable solutions, debugging steps, and relevant documentation links.
 
 - **Parameters**:
   - `error_message` (string, required): The error message from Terragrunt to diagnose
-  - `context` (object, optional): Additional context (command, version, os, filePath, module, backend)
-  - `options` (object, optional): Diagnosis options
-    - `maxMatches` (number): Maximum matches to return (default: 3)
-    - `minConfidence` (number): Minimum confidence score 0-1 (default: 0.3)
-    - `enableFuzzyMatching` (boolean): Enable fuzzy matching (default: true)
-    - `enrichWithDocs` (boolean): Enrich with documentation-sourced solutions (default: false)
-    - `includeDestructiveCommands` (boolean): Include destructive commands in solutions (default: true)
-- **Returns**: Matches with confidence scores, solutions, debugging steps, related errors, and documentation links
+  - `command` (string, optional): Command that was run (e.g., "apply", "plan")
+  - `version` (string, optional): Terragrunt version
+  - `os` (string, optional): Operating system
+  - `filePath` (string, optional): File path where error occurred
+  - `module` (string, optional): Module name
+  - `backend` (string, optional): Backend type
+  - `maxMatches` (number, optional): Maximum matches to return (default: 3)
+  - `minConfidence` (number, optional): Minimum confidence score 0-1 (default: 0.3)
+  - `enableFuzzyMatching` (boolean, optional): Enable fuzzy matching (default: true)
+  - `enrichWithDocs` (boolean, optional): Enrich with documentation-sourced solutions (default: false)
+- **Returns**: Matches with confidence scores, solutions, debugging steps, related errors, and documentation links (66 error patterns across 7 categories)
 - **Use cases**: Troubleshooting errors, getting actionable solutions, finding relevant documentation
 
 **Example prompts:**
@@ -201,6 +176,10 @@ Diagnose Terragrunt error messages and get actionable solutions, debugging steps
 ```
 
 See the [Troubleshooting Guide](docs/Troubleshooting-Guide.md) for detailed usage examples and best practices.
+
+---
+
+For complete tool documentation and examples, see [Available Tools](docs/Available-Tools.md).
 
 ### 📖 Resources
 
@@ -341,30 +320,36 @@ Once configured, interact with Terragrunt documentation directly through Copilot
 terragrunt-mcp-server/
 ├── src/
 │   ├── index.ts                 # MCP server entry point
-│   ├── server.ts                # Server initialization and setup
 │   ├── handlers/
-│   │   ├── tools.ts             # Tool execution handlers (8 tools)
-│   │   ├── resources.ts         # Resource access handlers
+│   │   ├── tools.ts             # Tool execution handlers (7 consolidated tools)
 │   │   └── prompts.ts           # Prompt templates (future)
 │   ├── terragrunt/
 │   │   ├── docs.ts              # Documentation fetching and caching
-│   │   ├── commands.ts          # Terragrunt CLI wrapper (future)
+│   │   ├── functions.ts         # Built-in functions manager
+│   │   ├── cli-commands.ts      # CLI commands manager
+│   │   ├── hcl-blocks.ts        # HCL configuration blocks manager
+│   │   ├── best-practices.ts    # Best practices analyzer
+│   │   ├── generator.ts         # Configuration generator
+│   │   ├── file-writer.ts       # Secure file writing
+│   │   ├── error-patterns.ts    # Error diagnosis patterns
 │   │   ├── config.ts            # Configuration management
 │   │   └── utils.ts             # Utility functions
 │   └── types/
 │       ├── mcp.ts               # MCP protocol type definitions
 │       └── terragrunt.ts        # Terragrunt-specific types
 ├── test/
-│   ├── server-test.js           # Integration tests
-│   └── test-retry-fallback.mjs  # Resilience tests
+│   ├── unit/                    # Unit tests (Vitest)
+│   ├── integration/             # Integration tests
+│   ├── performance/             # Performance benchmarks
+│   └── edge-cases/              # Edge case validation
 ├── fixtures/
 │   └── terragrunt-docs-fixture.json  # Offline documentation cache
 ├── .cache/                      # Auto-generated cache (gitignored)
 │   └── terragrunt-docs/
 │       ├── docs-cache.json      # Cached documentation (~1.1MB)
 │       └── metadata.json        # Cache timestamps
-├── schemas/
-│   └── mcp-protocol.json        # MCP protocol schema
+├── docs/                        # Comprehensive documentation
+├── schemas/                     # JSON schemas
 ├── package.json                 # Node.js dependencies
 ├── tsconfig.json                # TypeScript configuration
 └── README.md                    # This file
@@ -373,9 +358,9 @@ terragrunt-mcp-server/
 ### Key Files
 
 - **`src/index.ts`**: Main entry point that initializes the MCP server with stdio transport
-- **`src/handlers/tools.ts`**: Implements all 8 tools for documentation access
+- **`src/handlers/tools.ts`**: Implements all 7 consolidated tools for documentation access
 - **`src/terragrunt/docs.ts`**: Core documentation manager with caching, retry logic, and fallbacks
-- **`test/server-test.js`**: Comprehensive test suite validating all functionality
+- **`test/`**: Comprehensive test suite with unit, integration, and performance tests
 
 ## Development
 
@@ -480,8 +465,8 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for development guidelines and contributi
 This server implements the [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) using the official SDK (`@modelcontextprotocol/sdk`). It provides:
 
 - **Stdio Transport**: Direct integration with VS Code and other MCP clients
-- **Resource Handlers**: Expose documentation as structured resources
-- **Tool Handlers**: Eight specialized tools for different documentation queries
+- **Tool Handlers**: Seven consolidated tools for comprehensive Terragrunt assistance
+- **Tool-Only Architecture**: Simplified design with no MCP resources (v0.5.0+)
 - **Prompt Handlers**: Future support for guided workflows
 
 ### Documentation Caching System
@@ -514,11 +499,12 @@ Uses Cheerio to parse the official Terragrunt documentation site:
 
 ## Version History
 
-See [RELEASE.md](RELEASE.md) for detailed version history and changelog.
+See [CHANGELOG.md](CHANGELOG.md) for detailed version history and migration guides.
 
-**Current Version**: 0.2.0
+**Current Version**: 0.5.0
 
-- 6 specialized documentation tools
+- 7 consolidated tools (simplified from 11)
+- Tool-only architecture (resources removed)
 - Multi-tier caching with network resilience
 - Docker support
 - Comprehensive test coverage

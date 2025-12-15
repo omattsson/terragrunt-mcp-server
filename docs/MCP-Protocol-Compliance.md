@@ -6,19 +6,20 @@ This document describes the comprehensive Model Context Protocol (MCP) complianc
 
 ## Test Statistics
 
-- **Total MCP Compliance Tests**: 57
+- **Total MCP Compliance Tests**: 57+
 - **Test Categories**: 10
 - **Test Duration**: ~155ms
 - **Status**: ✅ All passing
+- **Version**: Tests updated for v0.5.0 (7 consolidated tools, tool-only architecture)
 
 ## What is MCP?
 
 The Model Context Protocol (MCP) is a standardized protocol for communication between AI assistants and context providers. It defines:
 
-- **Resources**: Documents and data that can be discovered and read
-- **Tools**: Executable functions that perform actions
+- **Tools**: Executable functions that perform actions (7 in v0.5.0)
 - **Request/Response Format**: Structured JSON-RPC messages
 - **Error Handling**: Consistent error reporting
+- **Note**: Resources were removed in v0.5.0 for simplified tool-only architecture
 
 ## Test Categories
 
@@ -36,15 +37,14 @@ Validates that the MCP server initializes correctly with proper configuration:
   name: 'terragrunt-mcp-server',
   version: '1.0.0',
   capabilities: {
-    resources: {},
-    tools: {}
+    tools: {}  // v0.5.0: Tool-only architecture (resources removed)
   }
 }
 ```
 
 ### 2. ListResourcesRequest Compliance (8 tests)
 
-Tests that resource listing follows MCP specification:
+**Note**: Resources removed in v0.5.0. These tests validate historical resource behavior for reference.
 
 #### Required Fields
 Every resource must have:
@@ -105,6 +105,10 @@ Tests that resource reading follows MCP specification:
 ### 4. ListToolsRequest Compliance (12 tests)
 
 Tests that tool listing follows MCP specification:
+
+#### Tool Count
+- **v0.5.0**: Expects exactly 7 consolidated tools
+- **Previous versions**: Had 11 separate tools
 
 #### Required Fields
 Every tool must have:

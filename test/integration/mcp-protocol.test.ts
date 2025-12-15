@@ -98,9 +98,9 @@ describe('MCP Protocol Compliance', () => {
       });
     });
 
-    it('should return at least 8 tools', () => {
+    it('should return exactly 8 tools (v0.5.0: 7 core + metrics)', () => {
       const tools = toolHandler.getAvailableTools();
-      expect(tools.length).toBeGreaterThanOrEqual(8);
+      expect(tools.length).toBe(8);
     });
 
     it('should include unified search_docs tool with all modes', () => {

@@ -1,3 +1,32 @@
+/**
+ * ToolHandler - MCP Tool Handler for Terragrunt Documentation Server
+ * 
+ * v0.5.0 - Consolidated Tool Architecture
+ * ========================================
+ * 
+ * This handler implements 8 consolidated tools for comprehensive Terragrunt assistance:
+ * 
+ * 1. search_docs           - Unified documentation search (search/list/section/examples modes)
+ * 2. function_reference    - Get/list built-in functions (unified get+list)
+ * 3. cli_reference         - Get/list CLI commands (unified get+list)
+ * 4. get_hcl_config_reference - HCL block documentation
+ * 5. get_guidance          - Best practices, comparisons, and patterns
+ * 6. build_config          - Generate/write/generate+write configurations (unified)
+ * 7. diagnose_terragrunt_error - Error diagnosis and troubleshooting
+ * 8. get_server_metrics    - Server observability and performance monitoring
+ * 
+ * Architecture Changes in v0.5.0:
+ * - Consolidated 11 separate tools into 8 (7 core + 1 observability)
+ * - Removed separate get/list tools in favor of mode-based routing
+ * - Unified generate+write operations into single build_config tool
+ * - Tool-only architecture (resources removed)
+ * 
+ * Migration from v0.4.x:
+ * - get_terragrunt_function + list_terragrunt_functions → function_reference
+ * - get_cli_command_help + list_cli_commands → cli_reference  
+ * - generate_terragrunt_config + write_terragrunt_config → build_config
+ */
+
 import { TerragruntDocsManager } from '../terragrunt/docs.js';
 import { TerragruntFunctionsManager } from '../terragrunt/functions.js';
 import { BestPracticesAnalyzer } from '../terragrunt/best-practices.js';

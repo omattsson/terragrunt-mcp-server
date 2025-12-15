@@ -5,9 +5,10 @@
 This is a **Model Context Protocol (MCP) server** that provides Terragrunt documentation access to AI assistants via VS Code. The architecture follows MCP standards with handler-based separation:
 
 - **`src/index.ts`**: MCP server entry point using `@modelcontextprotocol/sdk` with stdio transport
-- **Handlers**: `src/handlers/` contains `ResourceHandler`, `ToolHandler`, and `PromptHandler` for MCP protocol
-- **Domain Logic**: `src/terragrunt/` contains `DocsManager` (caching/fetching), `FunctionsManager` (built-in functions), `CommandsManager`
+- **Handlers**: `src/handlers/` contains `ToolHandler` and `PromptHandler` for MCP protocol (v0.5.0: tool-only architecture)
+- **Domain Logic**: `src/terragrunt/` contains `DocsManager` (caching/fetching), `FunctionsManager` (built-in functions), `CommandsManager`, and more
 - **Types**: `src/types/` defines MCP and Terragrunt-specific interfaces
+- **v0.5.0 Update**: Resources removed for simplified tool-only architecture with 7 consolidated tools
 
 ## Critical ES Module Requirements
 
@@ -127,7 +128,9 @@ Resources use `terragrunt://docs/{type}/{identifier}`:
 1. **Define in `ToolHandler.getAvailableTools()`**: Add schema with name, description, inputSchema
 2. **Implement in `ToolHandler.executeTool()`**: Add case to switch statement
 3. **Add tests**: Unit test in `test/unit/tool-handler.test.ts` + integration in `test/integration/`
-4. **Update tool count**: Adjust MCP protocol test assertion (`>= N tools`) if adding, not replacing
+4. **Update tool count**: Adjust MCP protocol test assertion (currently expects 7 tools) if adding
+5. **Update documentation**: README.md, Available-Tools.md, and CHANGELOG.md with new tool details
+6. **Consider consolidation**: Can this be merged into an existing tool with mode parameter?
 
 ### Adding a New Manager
 1. **Create class in `src/terragrunt/`**: Follow constructor dependency injection pattern
