@@ -11,12 +11,10 @@ The Terragrunt MCP Server provides a set of specialized tools for accessing and 
 | `list_terragrunt_functions` | List functions | Browsing available built-in functions |
 | `cli_reference` | CLI command reference | Command help, listing, and browsing by category |
 | `get_hcl_config_reference` | HCL config reference | Writing terragrunt.hcl files |
+| `get_guidance` | Unified guidance tool | Best practices, comparisons, and patterns |
 | `generate_terragrunt_config` | Configuration generator | Quick setup and best practices |
 | `write_terragrunt_config` | Write configs to disk | Saving generated configurations |
-| `analyze_best_practices` | Analyze practices by topic | Learning best practices and patterns |
 | `diagnose_terragrunt_error` | Error diagnosis | Troubleshooting Terragrunt errors |
-| `compare_hcl_blocks` | Block comparison | Understanding differences between similar blocks |
-| `get_pattern_guidance` | Pattern guidance | Choosing between configuration patterns |
 
 ---
 
@@ -654,61 +652,89 @@ See [File Writing Guide](File-Writing-Guide.md) for detailed security configurat
 
 ---
 
-## 8. analyze_best_practices
+## 8. get_guidance
 
-**Purpose**: Analyze and retrieve best practices for specific Terragrunt topics with experience-level filtering. Extracts patterns, recommendations, antipatterns, and real-world examples from documentation.
+**Purpose**: Unified tool for getting best practices, comparing HCL blocks, and choosing between patterns. Intelligently routes based on query content or explicit type hints. Consolidates functionality of three previous tools into one streamlined interface.
 
-### Parameters — analyze_best_practices
+### Parameters — get_guidance
 
-- **`topic`** (string, required): Topic to analyze. One of:
-  - `module_organization` - Module structure and organization patterns
-  - `state_management` - Remote state configuration and best practices
-  - `dependencies` - Managing dependencies between modules
-  - `ci_cd` - CI/CD integration patterns and workflows
-  - `security` - Security considerations and best practices
-  - `performance` - Performance optimization techniques
-  - `testing` - Testing strategies and patterns
-- **`level`** (string, optional): Filter by experience level
-  - `beginner` - Basic practices for getting started
-  - `intermediate` - Standard practices for production use
-  - `advanced` - Complex patterns for enterprise scenarios
+- **`query`** (string, optional): What to get guidance on - a topic, comparison, or scenario
+  - Best practice topics: `state_management`, `security`, `performance`, `dependencies`, `ci_cd`, `testing`, `module_organization`, `project_structure`, `environment_config`
+  - Comparison queries: `"dependency vs dependencies"`, `"inputs vs locals"`, `"generate vs terraform.source"`
+  - Pattern scenarios: `"managing dependencies"`, `"configuration inheritance"`, `"backend setup"`
+- **`type`** (string, optional): Explicit routing hint - `best-practices`, `comparison`, or `pattern`
+- **`mode`** (string, optional): Detail level for best practices - `summary` (default) or `full`
+- **`level`** (string, optional): Experience level filter for best practices - `beginner`, `intermediate`, or `advanced`
+- **`listAll`** (boolean, optional): List all available guidance options
 
-### Use Cases — analyze_best_practices
+### Intelligent Routing
 
-- Learning recommended patterns for a specific topic
-- Understanding what to avoid (antipatterns)
-- Finding trade-offs and considerations
+The tool automatically detects the type of guidance based on your query:
+
+1. **Comparison keywords** (`vs`, `versus`, `compared to`) → Block comparisons
+2. **Known topics** (`security`, `performance`, etc.) → Best practices
+3. **Scenarios** → Pattern guidance
+4. **Explicit `type` parameter** → Forces specific routing
+
+### Use Cases — get_guidance
+
+**Best Practices:**
+- Learning recommended patterns for a topic
+- Understanding antipatterns and what to avoid
 - Getting experience-appropriate recommendations
 - Discovering real-world examples
-- Identifying common pitfalls
 
-### Example Prompts — analyze_best_practices
+**Comparisons:**
+- Understanding differences between similar constructs
+- Deciding which block to use for your use case
+- Learning about common mistakes
+
+**Patterns:**
+- Making architectural decisions
+- Choosing between different approaches
+- Understanding trade-offs between patterns
+
+### Example Prompts — get_guidance
 
 ```text
 "What are the best practices for state management?"
-"Show me beginner-level module organization practices"
-"Analyze CI/CD best practices for Terragrunt"
-"What are advanced dependency management patterns?"
-"What should I avoid when configuring remote state?"
+"Compare dependency vs dependencies"
+"How should I manage dependencies between modules?"
+"Show me security best practices for beginners"
+"What's the difference between inputs and locals?"
+"Help me choose a pattern for configuration inheritance"
 ```
 
-### Example Usage — analyze_best_practices
+### Example Usage — get_guidance (Best Practices)
 
 ```json
 {
-  "tool": "analyze_best_practices",
+  "tool": "get_guidance",
   "arguments": {
-    "topic": "state_management",
+    "query": "state_management",
+    "type": "best-practices",
+    "mode": "full",
     "level": "beginner"
   }
 }
 ```
 
-### Example Response — analyze_best_practices
+### Example Usage — get_guidance (Comparison)
 
 ```json
 {
-  "topic": "state_management",
+  "tool": "get_guidance",
+  "arguments": {
+    "query": "dependency vs dependencies"
+  }
+}
+```
+
+### Example Response — get_guidance (Best Practices)
+
+```json
+{
+  "query": "state_management",
   "recommendations": [
     {
       "practice": "Always use remote state for production environments",
@@ -739,14 +765,14 @@ See [File Writing Guide](File-Writing-Guide.md) for detailed security configurat
 }
 ```
 
-### Best Practices — analyze_best_practices
+### Best Practices — get_guidance
 
-1. **Start with your experience level** - Filter to get appropriate recommendations
-2. **Review antipatterns first** - Learn what NOT to do
-3. **Check trade-offs** - Understand the implications of each practice
-4. **Use with other tools** - Combine with `get_code_examples` for implementation details
-5. **Apply iteratively** - Start with beginner practices and progress
-6. **Cross-reference examples** - Verify practices with real code samples
+1. **Use natural language** - Tool understands queries like "dependency vs dependencies"
+2. **Let routing auto-detect** - Usually don't need explicit `type` parameter
+3. **Filter by experience level** - Use `level` for appropriate recommendations
+4. **Start with summary mode** - Use `mode: 'summary'` for quick insights, `full` for details
+5. **List available guidance** - Use `listAll: true` to see all options
+6. **Combine with other tools** - Use with `search_docs` for implementation
 
 
 
@@ -938,182 +964,25 @@ When `enrichWithDocs: true`, you get additional documentation-sourced solutions:
 → First use `generate_terragrunt_config`, then `write_terragrunt_config` to save it
 
 **"What are the best practices for X?"**
-→ Use `analyze_best_practices` with your topic to get recommendations and patterns
+→ Use `get_guidance` with your topic (auto-routes to best practices)
 
 **"How should I organize my modules/manage state/handle dependencies?"**
-→ Use `analyze_best_practices` to learn recommended patterns and what to avoid
+→ Use `get_guidance` to learn recommended patterns and what to avoid
+
+**"What's the difference between dependency and dependencies?"**
+→ Use `get_guidance` with "dependency vs dependencies" (auto-routes to comparison)
+
+**"When should I use include vs multiple includes?"**
+→ Use `get_guidance` for block comparisons or architectural patterns
+
+**"How should I manage dependencies between modules?"**
+→ Use `get_guidance` to see different approaches with pros/cons (auto-routes to patterns)
 
 **"I'm getting an error, what should I do?"**
 → Use `diagnose_terragrunt_error` to analyze the error and get solutions
 
 **"Help me troubleshoot this Terragrunt error..."**
 → Use `diagnose_terragrunt_error` with `enrichWithDocs: true` for comprehensive solutions
-
-**"What's the difference between dependency and dependencies?"**
-→ Use `compare_hcl_blocks` to see a detailed comparison with use cases
-
-**"When should I use include vs multiple includes?"**
-→ Use `compare_hcl_blocks` for block-level differences or `get_pattern_guidance` for architectural patterns
-
-**"How should I manage dependencies between modules?"**
-→ Use `get_pattern_guidance` to see different approaches with pros/cons and examples
-
----
-
-## 10. compare_hcl_blocks
-
-**Purpose**: Compare two similar HCL blocks and explain their differences, use cases, and when to use each. Supports natural language queries like "dependency vs dependencies" and uses fuzzy matching for typo tolerance.
-
-### Parameters — compare_hcl_blocks
-
-- **`block1`** (string, optional): First block name or comparison query (e.g., "dependency" or "dependency vs dependencies")
-- **`block2`** (string, optional): Second block name (optional if block1 contains both)
-- **`listComparisons`** (boolean, optional): List all available comparisons
-
-### Available Comparisons
-
-| Comparison | Summary |
-|------------|---------|
-| `dependency` vs `dependencies` | Single dependency with output access vs. bulk ordering without outputs |
-| `include` vs `multiple includes` | Single parent inheritance vs. composable configuration from multiple sources |
-| `inputs` vs `locals` | Values passed to Terraform vs. internal Terragrunt values |
-| `generate` vs `terraform.source` | Creating .tf files vs. specifying module source |
-| `before_hook` vs `after_hook` | Commands before Terraform vs. commands after |
-| `remote_state` vs `dependency` | Where to store state vs. how to read other module outputs |
-
-### Use Cases — compare_hcl_blocks
-
-- Understanding subtle differences between similar constructs
-- Deciding which block to use for your use case
-- Learning about common mistakes with each block
-- Getting syntax examples for both options
-
-### Example Prompts — compare_hcl_blocks
-
-```text
-"What's the difference between dependency and dependencies?"
-"Compare inputs vs locals in Terragrunt"
-"When should I use generate vs terraform.source?"
-"Explain before_hook versus after_hook"
-```
-
-### Example Response — compare_hcl_blocks
-
-```json
-{
-  "found": true,
-  "comparison": {
-    "id": "dependency-vs-dependencies",
-    "blocks": ["dependency", "dependencies"],
-    "summary": "dependency defines a single module dependency with output access; dependencies lists modules that must run first without output access.",
-    "block1": {
-      "name": "dependency",
-      "purpose": "Declare a dependency on another Terragrunt module and access its outputs",
-      "syntax": "dependency \"vpc\" {\n  config_path = \"../vpc\"\n  ...\n}",
-      "keyFeatures": [
-        "Access outputs from dependent module",
-        "Supports mock_outputs for planning",
-        "Each dependency block has a unique name"
-      ]
-    },
-    "block2": {
-      "name": "dependencies",
-      "purpose": "Declare execution order dependencies without needing output access",
-      "syntax": "dependencies {\n  paths = [\"../vpc\", \"../sg\"]\n}",
-      "keyFeatures": [
-        "Simple list of paths that must be applied first",
-        "No access to outputs from listed modules",
-        "Lightweight - no state file reading required"
-      ]
-    },
-    "keyDifferences": [
-      {
-        "aspect": "Output Access",
-        "block1": "Full access to dependent module outputs",
-        "block2": "No output access - ordering only"
-      }
-    ],
-    "whenToUse": {
-      "useBlock1When": ["You need to pass outputs from one module to another"],
-      "useBlock2When": ["You only need to ensure modules run in a specific order"]
-    },
-    "commonMistakes": [
-      "Using dependencies when you actually need output values"
-    ],
-    "relatedDocs": ["https://terragrunt.gruntwork.io/docs/..."]
-  }
-}
-```
-
----
-
-## 11. get_pattern_guidance
-
-**Purpose**: Get guidance on choosing between Terragrunt configuration patterns for common scenarios. Returns decision criteria, pattern options with pros/cons, and code examples.
-
-### Parameters — get_pattern_guidance
-
-- **`scenario`** (string, optional): The scenario to get guidance for (e.g., "managing dependencies", "configuration inheritance")
-- **`listPatterns`** (boolean, optional): List all available pattern guidance topics
-
-### Available Pattern Topics
-
-| Scenario | Question Answered |
-|----------|-------------------|
-| Module Dependency Management | How should I manage dependencies between my Terragrunt modules? |
-| Configuration Inheritance | How should I structure configuration inheritance in my project? |
-| Backend State Management | How should I configure my Terraform backend in Terragrunt? |
-
-### Use Cases — get_pattern_guidance
-
-- Making architectural decisions about project structure
-- Choosing between different approaches for common problems
-- Understanding trade-offs between patterns
-- Getting working examples for your chosen pattern
-
-### Example Prompts — get_pattern_guidance
-
-```text
-"How should I manage dependencies between modules?"
-"What's the best way to handle configuration inheritance?"
-"How do I configure state management in Terragrunt?"
-"Help me choose a pattern for my multi-environment setup"
-```
-
-### Example Response — get_pattern_guidance
-
-```json
-{
-  "found": true,
-  "guidance": {
-    "id": "module-dependency-management",
-    "scenario": "Managing dependencies between Terraform modules",
-    "question": "How should I manage dependencies between my Terragrunt modules?",
-    "decisionCriteria": [
-      {
-        "criterion": "You need to pass output values from one module to another",
-        "recommendation": "Use dependency blocks",
-        "reason": "dependency blocks expose .outputs for accessing values like VPC IDs"
-      },
-      {
-        "criterion": "You only need modules to run in a specific order, no data passing",
-        "recommendation": "Use dependencies block",
-        "reason": "dependencies is lighter weight - no state reading, just ordering"
-      }
-    ],
-    "patterns": [
-      {
-        "name": "Explicit Output Dependencies",
-        "description": "Use named dependency blocks for each module whose outputs you need",
-        "example": "dependency \"vpc\" {\n  config_path = \"../vpc\"\n  mock_outputs = { vpc_id = \"mock\" }\n}",
-        "pros": ["Clear, explicit data flow", "Supports mock values"],
-        "cons": ["Reads state files (slower)", "Must maintain mock_outputs"]
-      }
-    ],
-    "relatedComparisons": ["dependency vs dependencies"]
-  }
-}
-```
 
 ---
 
