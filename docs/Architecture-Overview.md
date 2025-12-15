@@ -22,7 +22,7 @@ This page provides a comprehensive overview of the Terragrunt MCP Server's archi
 │  ┌────────────────▼─────────────────────────────────────┐   │
 │  │          MCP Protocol Handlers                       │   │
 │  │  ┌──────────────────────────┐  ┌─────────────────┐  │   │
-│  │  │   Tool Handler (7 tools) │  │  Prompts Handler│  │   │
+│  │  │   Tool Handler (8 tools) │  │  Prompts Handler│  │   │
 │  │  │   (Tool-Only Architecture)│  │    (Future)     │  │   │
 │  │  └────────────┬─────────────┘  └─────────────────┘  │   │
 │  └───────────────┼────────────────────────────────────────┘   │

@@ -7,7 +7,7 @@
  * and tooling integration for AI assistants.
  * 
  * Architecture: Tool-only (resources removed in v0.5.0)
- * Tools: 7 consolidated tools (down from 11 in v0.4.x)
+ * Tools: 8 tools (7 core + 1 observability, down from 11 in v0.4.x)
  */
 
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';

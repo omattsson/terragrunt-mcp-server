@@ -358,7 +358,7 @@ terragrunt-mcp-server/
 ### Key Files
 
 - **`src/index.ts`**: Main entry point that initializes the MCP server with stdio transport
-- **`src/handlers/tools.ts`**: Implements all 7 consolidated tools for documentation access
+- **`src/handlers/tools.ts`**: Implements all 8 consolidated tools for documentation access
 - **`src/terragrunt/docs.ts`**: Core documentation manager with caching, retry logic, and fallbacks
 - **`test/`**: Comprehensive test suite with unit, integration, and performance tests
 
@@ -465,7 +465,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for development guidelines and contributi
 This server implements the [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) using the official SDK (`@modelcontextprotocol/sdk`). It provides:
 
 - **Stdio Transport**: Direct integration with VS Code and other MCP clients
-- **Tool Handlers**: Seven consolidated tools for comprehensive Terragrunt assistance
+- **Tool Handlers**: Eight consolidated tools for comprehensive Terragrunt assistance
 - **Tool-Only Architecture**: Simplified design with no MCP resources (v0.5.0+)
 - **Prompt Handlers**: Future support for guided workflows
 
@@ -503,7 +503,7 @@ See [CHANGELOG.md](CHANGELOG.md) for detailed version history and migration guid
 
 **Current Version**: 0.5.0
 
-- 7 consolidated tools (simplified from 11)
+- 8 consolidated tools (simplified from 11)
 - Tool-only architecture (resources removed)
 - Multi-tier caching with network resilience
 - Docker support

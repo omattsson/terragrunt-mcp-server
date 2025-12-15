@@ -107,7 +107,7 @@ Tests that resource reading follows MCP specification:
 Tests that tool listing follows MCP specification:
 
 #### Tool Count
-- **v0.5.0**: Expects exactly 7 consolidated tools
+- **v0.5.0**: Expects exactly 8 tools (7 core + 1 observability)
 - **Previous versions**: Had 11 separate tools
 
 #### Required Fields
