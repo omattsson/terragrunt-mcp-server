@@ -4,17 +4,13 @@ import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import {
     CallToolRequestSchema,
-    ListResourcesRequestSchema,
     ListToolsRequestSchema,
-    ReadResourceRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
-import { ResourceHandler } from './handlers/resources.js';
 import { ToolHandler } from './handlers/tools.js';
 import { MetricsManager } from './terragrunt/metrics.js';
 
 class TerragruntMCPServer {
     private server: Server;
-    private resourceHandler: ResourceHandler;
     private toolHandler: ToolHandler;
     private metricsManager: MetricsManager;
 
@@ -26,54 +22,19 @@ class TerragruntMCPServer {
             },
             {
                 capabilities: {
-                    resources: {},
                     tools: {},
                 },
             }
         );
 
-        // Create shared metrics manager for both handlers
+        // Create shared metrics manager
         this.metricsManager = new MetricsManager();
-        this.resourceHandler = new ResourceHandler(this.metricsManager);
         this.toolHandler = new ToolHandler(this.metricsManager);
 
         this.setupHandlers();
     }
 
     private setupHandlers() {
-        // List available resources
-        this.server.setRequestHandler(ListResourcesRequestSchema, async () => {
-            try {
-                const resources = await this.resourceHandler.listResources();
-                return { resources };
-            } catch (error) {
-                console.error('Error listing resources:', error);
-                return { resources: [] };
-            }
-        });
-
-        // Read a specific resource
-        this.server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
-            try {
-                const { uri } = request.params;
-                const resource = await this.resourceHandler.getResource(uri);
-                return {
-                    contents: resource.contents,
-                };
-            } catch (error) {
-                const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-                console.error('Error reading resource:', errorMsg);
-                return {
-                    contents: [
-                        {
-                            type: 'text',
-                            text: `Error: ${errorMsg}`,
-                        },
-                    ],
-                };
-            }
-        });
-
         // List available tools
         this.server.setRequestHandler(ListToolsRequestSchema, async () => {
             try {

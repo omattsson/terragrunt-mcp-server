@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 
 import { TerragruntDocsManager } from '../dist/terragrunt/docs.js';
-import { ResourceHandler } from '../dist/handlers/resources.js';
 import { ToolHandler } from '../dist/handlers/tools.js';
 
 async function testServer() {
@@ -29,44 +28,6 @@ async function testServer() {
     // Edge case: empty search
     const emptySearch = await docsManager.searchDocs('');
     if (emptySearch.length !== docs.length) console.log('ℹ️  Empty search returns all docs (expected)');
-
-    // Test resource handler
-    console.log('\n📖 Testing Resource Handler...');
-    const resourceHandler = new ResourceHandler();
-    const resources = await resourceHandler.listResources();
-    if (!Array.isArray(resources) || resources.length === 0) throw new Error('No resources listed');
-    console.log(`✅ Listed ${resources.length} resources`);
-
-    // Test resource content: overview
-    const overview = await resourceHandler.getResource('terragrunt://docs/overview');
-    if (!overview.contents[0].text.includes('Terragrunt Documentation Overview')) throw new Error('Overview content missing');
-    console.log('✅ Overview resource content OK');
-
-    // Test resource content: section
-    const sectionUri = resources.find(r => r.uri.startsWith('terragrunt://docs/section/'))?.uri;
-    if (sectionUri) {
-      const sectionContent = await resourceHandler.getResource(sectionUri);
-      if (!sectionContent.contents[0].text.includes('Terragrunt')) throw new Error('Section content missing');
-      console.log('✅ Section resource content OK');
-    }
-
-    // Test resource content: page
-    const pageUri = resources.find(r => r.uri.startsWith('terragrunt://docs/page/'))?.uri;
-    if (pageUri) {
-      const pageContent = await resourceHandler.getResource(pageUri);
-      if (!pageContent.contents[0].text) throw new Error('Page content missing');
-      console.log('✅ Page resource content OK');
-    }
-
-    // Test error handling: invalid resource
-    // Resource handler returns a plain-text error payload (it does not throw).
-    const invalidSection = await resourceHandler.getResource('terragrunt://docs/section/doesnotexist');
-    const invalidText = invalidSection?.contents?.[0]?.text ?? '';
-    if (typeof invalidText === 'string' && invalidText.startsWith('Error:')) {
-      console.log('✅ Error returned for invalid section as expected');
-    } else {
-      console.log('❌ Expected error payload for invalid section, but none returned');
-    }
 
     // Test tool handler
     console.log('\n🔧 Testing Tool Handler...');

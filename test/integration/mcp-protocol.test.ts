@@ -2,12 +2,9 @@ import { describe, it, expect, beforeAll } from 'vitest';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import {
   CallToolRequestSchema,
-  ListResourcesRequestSchema,
   ListToolsRequestSchema,
-  ReadResourceRequestSchema,
   ListPromptsRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
-import { ResourceHandler } from '../../src/handlers/resources.js';
 import { ToolHandler } from '../../src/handlers/tools.js';
 import { TerragruntDocsManager } from '../../src/terragrunt/docs.js';
 
@@ -24,7 +21,6 @@ import { TerragruntDocsManager } from '../../src/terragrunt/docs.js';
  */
 describe('MCP Protocol Compliance', () => {
   let server: Server;
-  let resourceHandler: ResourceHandler;
   let toolHandler: ToolHandler;
   let docsManager: TerragruntDocsManager;
 
@@ -39,13 +35,11 @@ describe('MCP Protocol Compliance', () => {
       },
       {
         capabilities: {
-          resources: {},
           tools: {},
         },
       }
     );
 
-    resourceHandler = new ResourceHandler();
     toolHandler = new ToolHandler();
     docsManager = new TerragruntDocsManager();
     
@@ -59,176 +53,12 @@ describe('MCP Protocol Compliance', () => {
       // Server info is private, but we can verify it was created
     });
 
-    it('should declare resource capabilities', () => {
-      // Server capabilities are set in constructor
-      expect(server).toBeDefined();
-    });
-
     it('should declare tool capabilities', () => {
       expect(server).toBeDefined();
     });
   });
 
-  describe('ListResourcesRequest Compliance', () => {
-    it('should handle ListResourcesRequest with no parameters', async () => {
-      const resources = await resourceHandler.listResources();
 
-      expect(resources).toBeDefined();
-      expect(Array.isArray(resources)).toBe(true);
-      expect(resources.length).toBeGreaterThan(0);
-    });
-
-    it('should return resources with valid MCP resource schema', async () => {
-      const resources = await resourceHandler.listResources();
-
-      resources.forEach(resource => {
-        // Each resource must have required MCP fields
-        expect(resource.uri).toBeDefined();
-        expect(typeof resource.uri).toBe('string');
-        expect(resource.name).toBeDefined();
-        expect(typeof resource.name).toBe('string');
-        expect(resource.mimeType).toBeDefined();
-        expect(typeof resource.mimeType).toBe('string');
-        
-        // Optional fields if present should be correct type
-        if (resource.description) {
-          expect(typeof resource.description).toBe('string');
-        }
-      });
-    });
-
-    it('should return resources with valid URI format', async () => {
-      const resources = await resourceHandler.listResources();
-
-      resources.forEach(resource => {
-        // URIs should follow the terragrunt:// scheme
-        expect(resource.uri).toMatch(/^terragrunt:\/\//);
-        
-        // URI should be properly formatted (no spaces, special chars encoded)
-        expect(resource.uri).not.toMatch(/\s/);
-      });
-    });
-
-    it('should return resources with text/markdown MIME type', async () => {
-      const resources = await resourceHandler.listResources();
-
-      resources.forEach(resource => {
-        expect(resource.mimeType).toBe('text/markdown');
-      });
-    });
-
-    it('should include overview resource', async () => {
-      const resources = await resourceHandler.listResources();
-
-      const overview = resources.find(r => r.uri === 'terragrunt://docs/overview');
-      expect(overview).toBeDefined();
-      expect(overview?.name).toBe('Terragrunt Documentation Overview');
-    });
-
-    it('should include section resources', async () => {
-      const resources = await resourceHandler.listResources();
-
-      const sectionResources = resources.filter(r => r.uri.startsWith('terragrunt://docs/section/'));
-      expect(sectionResources.length).toBeGreaterThan(0);
-    });
-
-    it('should include page resources', async () => {
-      const resources = await resourceHandler.listResources();
-
-      const pageResources = resources.filter(r => r.uri.startsWith('terragrunt://docs/page/'));
-      expect(pageResources.length).toBeGreaterThan(0);
-    });
-
-    it('should limit resources to prevent overwhelming clients', async () => {
-      const resources = await resourceHandler.listResources();
-
-      // Should be reasonable number (not thousands)
-      expect(resources.length).toBeLessThan(200);
-    });
-  });
-
-  describe('ReadResourceRequest Compliance', () => {
-    it('should handle ReadResourceRequest with valid URI', async () => {
-      const resource = await resourceHandler.getResource('terragrunt://docs/overview');
-
-      expect(resource).toBeDefined();
-      expect(resource.contents).toBeDefined();
-      expect(Array.isArray(resource.contents)).toBe(true);
-      expect(resource.contents.length).toBeGreaterThan(0);
-    });
-
-    it('should return content with valid MCP content schema', async () => {
-      const resource = await resourceHandler.getResource('terragrunt://docs/overview');
-
-      resource.contents.forEach((content: any) => {
-        expect(content.type).toBeDefined();
-        expect(typeof content.type).toBe('string');
-        expect(content.type).toBe('text');
-        expect(content.text).toBeDefined();
-        expect(typeof content.text).toBe('string');
-      });
-    });
-
-    it('should return text/markdown content type', async () => {
-      const resource = await resourceHandler.getResource('terragrunt://docs/overview');
-
-      // Resource has mimeType at top level, not in contents
-      expect(resource.mimeType).toBe('text/markdown');
-      
-      resource.contents.forEach((content: any) => {
-        expect(content.type).toBe('text');
-      });
-    });
-
-    it('should return non-empty content text', async () => {
-      const resource = await resourceHandler.getResource('terragrunt://docs/overview');
-
-      resource.contents.forEach((content: any) => {
-        expect(content.text.length).toBeGreaterThan(0);
-      });
-    });
-
-    it('should handle encoded URIs correctly', async () => {
-      const resources = await resourceHandler.listResources();
-      const pageResource = resources.find(r => r.uri.startsWith('terragrunt://docs/page/'));
-      
-      if (pageResource) {
-        const resource = await resourceHandler.getResource(pageResource.uri);
-        expect(resource.contents).toBeDefined();
-        expect(resource.contents.length).toBeGreaterThan(0);
-      }
-    });
-
-    it('should return error response for invalid URI scheme', async () => {
-      const resource = await resourceHandler.getResource('invalid://scheme/test');
-      
-      // Returns error in contents, not throws
-      expect(resource.contents).toBeDefined();
-      expect(resource.contents[0].text).toContain('Error');
-      expect(resource.mimeType).toBe('text/plain');
-    });
-
-    it('should return error response for non-existent resource', async () => {
-      const resource = await resourceHandler.getResource('terragrunt://docs/page/nonexistent-12345');
-      
-      // Returns error in contents, not throws
-      expect(resource.contents).toBeDefined();
-      expect(resource.contents[0].text).toContain('Error');
-      expect(resource.contents[0].text).toContain('not found');
-      expect(resource.mimeType).toBe('text/plain');
-    });
-
-    it('should handle section resources', async () => {
-      const resources = await resourceHandler.listResources();
-      const sectionResource = resources.find(r => r.uri.startsWith('terragrunt://docs/section/'));
-      
-      if (sectionResource) {
-        const resource = await resourceHandler.getResource(sectionResource.uri);
-        expect(resource.contents).toBeDefined();
-        expect(resource.contents[0].text).toContain('Terragrunt');
-      }
-    });
-  });
 
   describe('ListToolsRequest Compliance', () => {
     it('should handle ListToolsRequest with no parameters', () => {
@@ -1199,16 +1029,6 @@ describe('MCP Protocol Compliance', () => {
   });
 
   describe('Error Response Compliance', () => {
-    it('should return error response (not throw) for invalid resources', async () => {
-      const resource = await resourceHandler.getResource('terragrunt://docs/invalid');
-      
-      // Should return error in contents, not throw
-      expect(resource).toBeDefined();
-      expect(resource.contents).toBeDefined();
-      expect(resource.contents[0].text).toContain('Error');
-      expect(resource.mimeType).toBe('text/plain');
-    });
-
     it('should return error object (not throw) for invalid tool parameters', async () => {
       const result = await toolHandler.executeTool('search_docs', {mode: 'search', });
 
@@ -1279,57 +1099,9 @@ describe('MCP Protocol Compliance', () => {
     });
   });
 
-  describe('URI Encoding Compliance', () => {
-    it('should properly encode resource URIs', async () => {
-      const resources = await resourceHandler.listResources();
-      
-      resources.forEach(resource => {
-        // URIs with special characters should be encoded
-        if (resource.uri.includes('%')) {
-          // If encoded, should be valid
-          expect(() => decodeURIComponent(resource.uri)).not.toThrow();
-        }
-      });
-    });
 
-    it('should handle reading encoded URIs', async () => {
-      const resources = await resourceHandler.listResources();
-      const encodedResource = resources.find(r => r.uri.includes('%'));
-      
-      if (encodedResource) {
-        const resource = await resourceHandler.getResource(encodedResource.uri);
-        expect(resource.contents).toBeDefined();
-      }
-    });
-
-    it('should maintain URI consistency between list and read', async () => {
-      const resources = await resourceHandler.listResources();
-      const firstResource = resources[0];
-      
-      // Should be able to read using exact URI from list
-      const resource = await resourceHandler.getResource(firstResource.uri);
-      
-      // Contents don't have URI field, but mimeType should match
-      expect(resource.mimeType).toBeDefined();
-      expect(resource.contents).toBeDefined();
-      expect(resource.contents.length).toBeGreaterThan(0);
-    });
-  });
 
   describe('Concurrency Compliance', () => {
-    it('should handle concurrent resource reads', async () => {
-      const resources = await resourceHandler.listResources();
-      const uris = resources.slice(0, 5).map(r => r.uri);
-      
-      const promises = uris.map(uri => resourceHandler.getResource(uri));
-      const results = await Promise.all(promises);
-      
-      expect(results.length).toBe(uris.length);
-      results.forEach(result => {
-        expect(result.contents).toBeDefined();
-      });
-    });
-
     it('should handle concurrent tool executions', async () => {
       const promises = [
         toolHandler.executeTool('search_docs', {mode: 'search',  query: 'test1', limit: 1 }),
@@ -1365,8 +1137,6 @@ describe('MCP Protocol Compliance', () => {
   describe('Protocol Version Compliance', () => {
     it('should use MCP SDK types correctly', () => {
       // Verify we're using the official MCP SDK schemas
-      expect(ListResourcesRequestSchema).toBeDefined();
-      expect(ReadResourceRequestSchema).toBeDefined();
       expect(ListToolsRequestSchema).toBeDefined();
       expect(CallToolRequestSchema).toBeDefined();
     });
