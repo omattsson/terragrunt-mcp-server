@@ -195,11 +195,11 @@ describe('ToolHandler', () => {
       expect(tool?.inputSchema.properties.section).toBeDefined();
     });
 
-    it('should enforce pageSize boundaries at runtime despite schema simplification', async () => {
-      // Test that runtime validation still respects logical boundaries for pageSize
-      // even though min/max constraints were removed from schema for token reduction
+    it('should handle edge case pageSize values gracefully', async () => {
+      // Verify graceful handling of edge case pageSize values after removing schema constraints
+      // Implementation accepts any value and handles it reasonably rather than enforcing strict boundaries
       
-      // Test with pageSize below minimum (should return empty results)
+      // Test with pageSize=0 (returns empty results)
       const resultTooSmall = await toolHandler.executeTool('search_docs', {
         mode: 'search',
         query: 'test',
