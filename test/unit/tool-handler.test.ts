@@ -191,8 +191,8 @@ describe('ToolHandler', () => {
       // Verify graceful handling of edge case pageSize values after removing schema constraints
       // Implementation behavior (see calculatePagination in tools.ts):
       // - pageSize > 0: Returns available results (accepts any positive value)
-      // - pageSize <= 0: Returns empty results (explicit guard to avoid division by zero or invalid input)
-      // This graceful degradation prevents errors while signaling invalid input through empty results
+      // - pageSize <= 0: Returns empty results with warning field (explicit guard to avoid division by zero)
+      // Note: Implementation now includes warning field to help distinguish invalid input from legitimate empty results
       
       // Test with pageSize=0 (returns empty results per implementation guard)
       const resultTooSmall = await toolHandler.executeTool('search_docs', {
@@ -204,6 +204,8 @@ describe('ToolHandler', () => {
       expect(resultTooSmall.pagination).toBeDefined();
       expect(resultTooSmall.pagination.pageSize).toBe(0);
       expect(resultTooSmall.results).toEqual([]);
+      expect(resultTooSmall.pagination.warning).toBeDefined();
+      expect(resultTooSmall.pagination.warning).toContain('Invalid pageSize');
       
       // Test with negative pageSize (returns empty results per implementation guard)
       const resultNegative = await toolHandler.executeTool('search_docs', {
@@ -238,11 +240,12 @@ describe('ToolHandler', () => {
       expect(resultValid.pagination.pageSize).toBe(25);
       // Verify implementation doesn't always return empty arrays - should return results for valid pageSize
       expect(Array.isArray(resultValid.results)).toBe(true);
-      // If docs exist for query 'test', results should be non-empty
-      // This verifies pageSize > 0 actually returns data, unlike pageSize <= 0
-      if (resultValid.pagination.totalItems > 0) {
-        expect(resultValid.results.length).toBeGreaterThan(0);
-      }
+      // Explicit assertion: Test data must contain results for query 'test'
+      // If this fails, test data setup is wrong or fixture is missing
+      expect(resultValid.pagination.totalItems).toBeGreaterThan(0);
+      expect(resultValid.results.length).toBeGreaterThan(0);
+      // Verify no warning field for valid pageSize (unlike invalid pageSize cases)
+      expect(resultValid.pagination.warning).toBeUndefined();
     });
 
     it('should validate mode-dependent parameters at runtime', async () => {

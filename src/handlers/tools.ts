@@ -202,8 +202,7 @@ export class ToolHandler {
         const totalItems = items.length;
         
         // Explicitly handle pageSize <= 0 to avoid division by zero and Infinity
-        // Rationale: Silent acceptance with empty results signals invalid input without throwing errors.
-        // This maintains API stability while allowing clients to detect invalid values via empty result set.
+        // Returns empty results with warning field to distinguish from legitimate empty result sets
         if (pageSize <= 0) {
             return {
                 results: [],
@@ -213,7 +212,8 @@ export class ToolHandler {
                     totalPages: 1,
                     totalItems,
                     hasMore: false,
-                    hasPrevious: false
+                    hasPrevious: false,
+                    warning: `Invalid pageSize (${pageSize}). Must be positive integer. Returning empty results.`
                 }
             };
         }
@@ -735,6 +735,7 @@ export class ToolHandler {
                     // Reconstruct nested objects from flattened parameters
                     // If nested form provided, use it; otherwise construct from flattened properties
                     // This maintains backward compatibility with both old (nested) and new (flat) schemas.
+                    // Precedence: If both nested and flattened forms are provided, nested takes priority.
                     // Example:
                     //   Old schema: { context: { command, version, ... } }
                     //   New schema: { command, version, ... }
