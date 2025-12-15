@@ -983,7 +983,8 @@ export class ToolHandler {
             return nestedValue;
         }
         return Object.fromEntries(
-            Object.entries(flatProperties).filter(([_, v]) => v !== undefined)
+            // Filter out undefined values regardless of key
+            Object.entries(flatProperties).filter(([key, v]) => v !== undefined)
         ) as T;
     }
 
