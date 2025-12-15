@@ -99,10 +99,9 @@ describe('MCP Protocol Compliance', () => {
     });
 
   it('should return exactly 8 tools (v0.5.0: 8 tools total)', () => {
-
-  it('should include unified search_docs tool with all modes', () => {
     const tools = toolHandler.getAvailableTools();
-    const searchTool = tools.find(t => t.name === 'search_docs');
+    expect(tools.length).toBe(8);
+  });
       
       expect(searchTool).toBeDefined();
       expect(searchTool?.description).toBeDefined();
