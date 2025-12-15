@@ -268,8 +268,9 @@ EOF
   });
 
   it('should still accept custom_template parameter despite schema removal (backward compatibility)', async () => {
-    // Verify that even though custom_template was removed from schema,
-    // the implementation still accepts and processes it correctly
+    // Verify backward compatibility: even though custom_template was removed from schema
+    // to reduce tokens, the implementation still accepts the old nested object structure
+    // and processes it correctly. This ensures old client code continues to work.
     const customTemplate = {
       id: 'backward-compat-test',
       name: 'Backward Compatibility Test',

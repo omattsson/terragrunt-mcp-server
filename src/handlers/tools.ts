@@ -745,38 +745,25 @@ export class ToolHandler {
                     // Reconstruct nested objects from flattened parameters
                     // If nested form provided, use it; otherwise construct from flattened properties
                     // This maintains backward compatibility with both old (nested) and new (flat) schemas
-                    const context = args.context ? {
-                        ...args.context,
-                        // Allow flattened properties to override nested ones if both provided
-                        ...(args.command !== undefined && { command: args.command }),
-                        ...(args.version !== undefined && { version: args.version }),
-                        ...(args.os !== undefined && { os: args.os }),
-                        ...(args.filePath !== undefined && { filePath: args.filePath }),
-                        ...(args.module !== undefined && { module: args.module }),
-                        ...(args.backend !== undefined && { backend: args.backend })
-                    } : {
-                        command: args.command,
-                        version: args.version,
-                        os: args.os,
-                        filePath: args.filePath,
-                        module: args.module,
-                        backend: args.backend
-                    };
-                    const options = args.options ? {
-                        ...args.options,
-                        // Allow flattened properties to override nested ones if both provided
-                        ...(args.maxMatches !== undefined && { maxMatches: args.maxMatches }),
-                        ...(args.minConfidence !== undefined && { minConfidence: args.minConfidence }),
-                        ...(args.enableFuzzyMatching !== undefined && { enableFuzzyMatching: args.enableFuzzyMatching }),
-                        ...(args.enrichWithDocs !== undefined && { enrichWithDocs: args.enrichWithDocs }),
-                        ...(args.includeDestructiveCommands !== undefined && { includeDestructiveCommands: args.includeDestructiveCommands })
-                    } : {
-                        maxMatches: args.maxMatches,
-                        minConfidence: args.minConfidence,
-                        enableFuzzyMatching: args.enableFuzzyMatching,
-                        enrichWithDocs: args.enrichWithDocs,
-                        includeDestructiveCommands: args.includeDestructiveCommands
-                    };
+                    const context = args.context
+                        ? args.context
+                        : {
+                            command: args.command,
+                            version: args.version,
+                            os: args.os,
+                            filePath: args.filePath,
+                            module: args.module,
+                            backend: args.backend
+                        };
+                    const options = args.options
+                        ? args.options
+                        : {
+                            maxMatches: args.maxMatches,
+                            minConfidence: args.minConfidence,
+                            enableFuzzyMatching: args.enableFuzzyMatching,
+                            enrichWithDocs: args.enrichWithDocs,
+                            includeDestructiveCommands: args.includeDestructiveCommands
+                        };
                     return await this.diagnoseTerragruntError(
                         args.error_message,
                         context,

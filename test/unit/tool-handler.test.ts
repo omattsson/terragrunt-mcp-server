@@ -199,23 +199,38 @@ describe('ToolHandler', () => {
       // Test that runtime validation still respects logical boundaries for pageSize
       // even though min/max constraints were removed from schema for token reduction
       
-      // Test with pageSize below minimum (should clamp to 1)
+      // Test with pageSize below minimum (should return empty results)
       const resultTooSmall = await toolHandler.executeTool('search_docs', {
         mode: 'search',
         query: 'test',
         pageSize: 0
       });
       expect(resultTooSmall).toBeDefined();
-      // Should either clamp to 1 or return error - verify implementation handles it
+      expect(resultTooSmall.pagination).toBeDefined();
+      expect(resultTooSmall.pagination.pageSize).toBe(0);
+      expect(resultTooSmall.results).toEqual([]);
       
-      // Test with pageSize above maximum (should clamp to 50)
+      // Test with negative pageSize (should return empty results)
+      const resultNegative = await toolHandler.executeTool('search_docs', {
+        mode: 'search',
+        query: 'test',
+        pageSize: -5
+      });
+      expect(resultNegative).toBeDefined();
+      expect(resultNegative.results).toEqual([]);
+      
+      // Test with excessively large pageSize (should accept but return available results)
       const resultTooLarge = await toolHandler.executeTool('search_docs', {
         mode: 'search',
         query: 'test',
         pageSize: 1000
       });
       expect(resultTooLarge).toBeDefined();
-      // Should either clamp to 50 or return reasonable subset
+      expect(resultTooLarge.error).toBeUndefined();
+      expect(resultTooLarge.pagination).toBeDefined();
+      expect(resultTooLarge.pagination.pageSize).toBe(1000);
+      // Should return all available results without error
+      expect(Array.isArray(resultTooLarge.results)).toBe(true);
       
       // Test with valid pageSize
       const resultValid = await toolHandler.executeTool('search_docs', {
@@ -225,6 +240,7 @@ describe('ToolHandler', () => {
       });
       expect(resultValid).toBeDefined();
       expect(resultValid.error).toBeUndefined();
+      expect(resultValid.pagination.pageSize).toBe(25);
     });
 
     it('should validate mode-dependent parameters at runtime', async () => {
