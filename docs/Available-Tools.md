@@ -673,8 +673,6 @@ The tool provides **9 templates** covering **5 use cases**:
 
 ### Security Features — build_config (write mode)
 
-File writing includes comprehensive security validation:
-
 ### Security Features — build_config (write mode)
 
 File writing includes comprehensive security validation:
@@ -814,15 +812,13 @@ See [File Writing Guide](File-Writing-Guide.md) for detailed security configurat
 
 **Purpose**: Diagnose Terragrunt error messages and get actionable solutions, debugging steps, and relevant documentation links. Uses pattern matching with 66 error patterns across 7 categories.
 
-### Parameters — get_guidance
+### Parameters — diagnose_terragrunt_error
 
-- **`query`** (string, optional): What to get guidance on - a topic, comparison, or scenario
-  - Best practice topics: `state_management`, `security`, `performance`, `dependencies`, `ci_cd`, `testing`, `module_organization`, `project_structure`, `environment_config`
-  - Comparison queries: `"dependency vs dependencies"`, `"inputs vs locals"`, `"generate vs terraform.source"`
-  - Pattern scenarios: `"managing dependencies"`, `"configuration inheritance"`, `"backend setup"`
-- **`type`** (string, optional): Explicit routing hint - `best-practices`, `comparison`, or `pattern`
-- **`mode`** (string, optional): Detail level for best practices - `summary` (default) or `full`
-- **`level`** (string, optional): Experience level filter for best practices - `beginner`, `intermediate`, or `advanced`
+- **`error_message`** (string, required): The error message from Terragrunt to diagnose
+- **`context`** (object, optional): Additional context about the error
+  - `command` (string): The terragrunt command that was run
+  - `version` (string): Terragrunt version if known
+  - `os` (string): Operating system (linux, darwin, windows)
 - **`listAll`** (boolean, optional): List all available guidance options
 
 ### Intelligent Routing
@@ -932,152 +928,7 @@ The tool automatically detects the type of guidance based on your query:
 5. **List available guidance** - Use `listAll: true` to see all options
 6. **Combine with other tools** - Use with `search_docs` for implementation
 
-
-
 <!-- Note: The "configuration" template (Terraform version constraints) is included as part of the "inputs" use case. -->
----
-
-
-
-**Purpose**: Diagnose Terragrunt error messages and get actionable solutions, debugging steps, and relevant documentation links.
-
-### Parameters — diagnose_terragrunt_error
-
-- **`error_message`** (string, required): The error message from Terragrunt to diagnose
-- **`context`** (object, optional): Additional context about the error
-  - `command` (string): The terragrunt command that was run
-  - `version` (string): Terragrunt version if known
-  - `os` (string): Operating system (linux, darwin, windows)
-  - `filePath` (string): Path to the terragrunt.hcl file
-  - `module` (string): Module name if applicable
-  - `backend` (string): Backend type (s3, gcs, azurerm, etc.)
-- **`options`** (object, optional): Diagnosis options
-  - `maxMatches` (number): Maximum matches to return (default: 3)
-  - `minConfidence` (number): Minimum confidence score 0-1 (default: 0.3)
-  - `enableFuzzyMatching` (boolean): Enable fuzzy matching (default: true)
-  - `enrichWithDocs` (boolean): Enrich with documentation-sourced solutions (default: false)
-  - `includeDestructiveCommands` (boolean): Include destructive commands in solutions (default: true)
-
-### Use Cases — diagnose_terragrunt_error
-
-- Troubleshooting Terragrunt errors
-- Getting actionable solutions for common problems
-- Finding relevant documentation for specific errors
-- Understanding what went wrong and how to fix it
-
-### Example Prompts — diagnose_terragrunt_error
-
-```text
-"I'm getting this error: Error acquiring the state lock"
-"Help me fix: Backend configuration changed since last init"
-"What does this error mean: No Terraform files found"
-"Diagnose this terragrunt error and tell me how to fix it"
-```
-
-### Example Response — diagnose_terragrunt_error (Basic)
-
-```json
-{
-  "success": true,
-  "overallConfidence": 0.95,
-  "matchCount": 1,
-  "matches": [
-    {
-      "patternId": "backend-config-changed",
-      "patternName": "Backend Configuration Changed",
-      "category": "backend",
-      "confidence": 0.95,
-      "description": "Backend configuration has changed since last init",
-      "likelyCause": "Backend bucket, region, or key was modified",
-      "solutions": [
-        {
-          "step": 1,
-          "command": "terragrunt init -reconfigure",
-          "explanation": "Reinitialize with new backend configuration"
-        }
-      ],
-      "documentationRefs": ["https://terragrunt.gruntwork.io/docs/..."]
-    }
-  ],
-  "debuggingSteps": [
-    "Run with --terragrunt-debug flag for verbose output",
-    "Check terragrunt.hcl syntax with terragrunt validate-inputs"
-  ],
-  "relatedErrors": ["State Lock Error", "Backend Access Denied"],
-  "generalAdvice": [
-    "Check your terragrunt.hcl configuration for syntax errors",
-    "Verify all required inputs are provided"
-  ]
-}
-```
-
-### Example Response — diagnose_terragrunt_error (Enriched)
-
-When `enrichWithDocs: true`, you get additional documentation-sourced solutions:
-
-```json
-{
-  "success": true,
-  "overallConfidence": 0.95,
-  "matchCount": 1,
-  "enrichmentSuccessful": true,
-  "matches": [...],
-  "richSolutions": [
-    {
-      "step": "Step 1: Reinitialize with new backend configuration",
-      "command": "terragrunt init -reconfigure",
-      "explanation": "Forces Terraform to reconfigure backend without migrating state",
-      "warnings": ["This will reinitialize the backend without migrating state"],
-      "safetyLevel": "caution",
-      "source": "pattern"
-    },
-    {
-      "step": "Verify backend configuration",
-      "command": "terragrunt terragrunt-info",
-      "explanation": "Shows current backend configuration from documentation",
-      "warnings": [],
-      "safetyLevel": "safe",
-      "source": "documentation"
-    }
-  ],
-  "orderedDebuggingSteps": [
-    {
-      "order": 1,
-      "action": "Verify backend configuration in terragrunt.hcl",
-      "explanation": "Check remote_state block settings"
-    },
-    {
-      "order": 2,
-      "action": "Ensure backend storage exists and is accessible",
-      "verificationCommand": "aws s3 ls s3://your-bucket",
-      "explanation": "S3 bucket must exist and be accessible"
-    }
-  ],
-  "documentationLinks": [
-    {
-      "url": "https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/#remote_state",
-      "title": "Remote State Configuration",
-      "excerpt": "Configure your backend with the remote_state block...",
-      "relevanceScore": 0.9
-    }
-  ],
-  "relatedErrorDetails": [
-    {
-      "errorId": "state-lock-error",
-      "name": "State Lock Error",
-      "category": "state",
-      "reason": "Related to backend/state operations",
-      "similarityScore": 0.7
-    }
-  ]
-}
-```
-
-### Solution Safety Levels
-
-- **`safe`**: Command is read-only or has no side effects
-- **`caution`**: Command modifies state or infrastructure
-- **`destructive`**: Command may cause data loss or destroy resources
 
 ---
 
