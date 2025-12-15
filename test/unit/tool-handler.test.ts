@@ -171,14 +171,6 @@ describe('ToolHandler', () => {
       expect(searchTool?.inputSchema.properties.pageSize.default).toBe(10);
     });
 
-    it('should have pageSize parameter with default for search tool', () => {
-      const tools = toolHandler.getAvailableTools();
-      const searchTool = tools.find(t => t.name === 'search_docs');
-      
-      expect(searchTool?.inputSchema.properties.pageSize).toBeDefined();
-      expect(searchTool?.inputSchema.properties.pageSize.default).toBe(10);
-    });
-
     it('should have query and section parameters for different modes', () => {
       const tools = toolHandler.getAvailableTools();
       const tool = tools.find(t => t.name === 'search_docs');
@@ -237,7 +229,7 @@ describe('ToolHandler', () => {
       // Should return all available results without error
       expect(Array.isArray(resultTooLarge.results)).toBe(true);
       
-      // Test with valid pageSize
+      // Test with valid pageSize (should return actual results if documents exist)
       const resultValid = await toolHandler.executeTool('search_docs', {
         mode: 'search',
         query: 'test',
@@ -246,6 +238,14 @@ describe('ToolHandler', () => {
       expect(resultValid).toBeDefined();
       expect(resultValid.error).toBeUndefined();
       expect(resultValid.pagination.pageSize).toBe(25);
+      // Verify implementation doesn't always return empty arrays - should return results for valid pageSize
+      // (This ensures the edge case handling for pageSize <= 0 doesn't affect normal operation)
+      expect(Array.isArray(resultValid.results)).toBe(true);
+      // If docs exist for query 'test', results should be non-empty
+      // This verifies pageSize > 0 actually returns data, unlike pageSize <= 0
+      if (resultValid.pagination.totalItems > 0) {
+        expect(resultValid.results.length).toBeGreaterThan(0);
+      }
     });
 
     it('should validate mode-dependent parameters at runtime', async () => {
