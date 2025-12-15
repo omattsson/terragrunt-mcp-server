@@ -1907,13 +1907,13 @@ export class ToolHandler {
                 ...generateResult,
                 // Override success based on combined result
                 success: generateResult.success && writeResult.success,
-                // Flatten write-specific fields with prefix for consistent API
-                writeSuccess: writeResult.success,
-                writePath: writeResult.path,
-                writeBytesWritten: writeResult.bytesWritten,
-                writeCreated: writeResult.created,
-                writeBackedUp: writeResult.backedUp,
-                writeBackupPath: writeResult.backupPath,
+                // Flatten write-specific fields for consistent API
+                written: writeResult.success,
+                path: writeResult.path,
+                bytesWritten: writeResult.bytesWritten,
+                created: writeResult.created,
+                backedUp: writeResult.backedUp,
+                backupPath: writeResult.backupPath,
                 writeError: writeResult.error,
                 writeErrorType: writeResult.errorType
             };
