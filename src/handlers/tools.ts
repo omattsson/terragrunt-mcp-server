@@ -78,18 +78,6 @@ interface FunctionReferenceArgs {
 }
 
 /**
- * Type-safe arguments for unified get_guidance tool
- * Intelligent routing based on query content and optional type hint
- */
-interface GuidanceArgs {
-    query?: string;
-    type?: 'best-practices' | 'comparison' | 'pattern';
-    mode?: 'summary' | 'full';  // For best practices
-    level?: 'beginner' | 'intermediate' | 'advanced';  // For best practices
-    listAll?: boolean;  // List all available guidance
-}
-
-/**
  * Type-safe arguments for unified build_config tool.
  * Supports three operational modes with mode-specific required parameters:
  * 
