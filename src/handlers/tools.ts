@@ -1902,20 +1902,12 @@ export class ToolHandler {
                 createParentDirs
             );
 
-            // Combine generation and write results with flattened structure
+            // Combine generation and write results with nested writeResult to avoid field collisions
             return {
                 ...generateResult,
                 // Override success based on combined result
                 success: generateResult.success && writeResult.success,
-                // Flatten write-specific fields for consistent API
-                written: writeResult.success,
-                path: writeResult.path,
-                bytesWritten: writeResult.bytesWritten,
-                created: writeResult.created,
-                backedUp: writeResult.backedUp,
-                backupPath: writeResult.backupPath,
-                writeError: writeResult.error,
-                writeErrorType: writeResult.errorType
+                writeResult: writeResult
             };
         } catch (error) {
             return {

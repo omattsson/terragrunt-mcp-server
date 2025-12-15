@@ -435,11 +435,12 @@ inputs = {
       expect(result.config).toContain('remote_state');
       expect(result.config).toContain('s3');
       
-      // Verify write result fields use consistent naming (no prefix)
-      expect(result.written).toBe(true);
-      expect(result.path).toBe(targetPath);
-      expect(result.created).toBe(true);
-      expect(result.bytesWritten).toBeGreaterThan(0);
+      // Verify write result is nested under writeResult object to avoid field collisions
+      expect(result.writeResult).toBeDefined();
+      expect(result.writeResult.success).toBe(true);
+      expect(result.writeResult.path).toBe(targetPath);
+      expect(result.writeResult.created).toBe(true);
+      expect(result.writeResult.bytesWritten).toBeGreaterThan(0);
 
       // Verify file was actually created with correct content
       const fileContent = await fs.readFile(targetPath, 'utf-8');
