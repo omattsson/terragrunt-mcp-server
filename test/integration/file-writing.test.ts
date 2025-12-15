@@ -81,7 +81,7 @@ inputs = {
   vpc_cidr = "10.0.0.0/16"
 }`;
 
-      const result = await toolHandler.executeTool('write_terragrunt_config', {
+      const result = await toolHandler.executeTool('build_config', {
         path: targetPath,
         content: content,
         overwrite: false,
@@ -105,7 +105,7 @@ inputs = {
       const targetPath = path.join(allowedDir, 'env', 'prod', 'terragrunt.hcl');
       const content = 'terraform { source = "..." }';
 
-      const result = await toolHandler.executeTool('write_terragrunt_config', {
+      const result = await toolHandler.executeTool('build_config', {
         path: targetPath,
         content: content
       });
@@ -127,7 +127,7 @@ inputs = {
 
       for (const file of files) {
         const targetPath = path.join(allowedDir, file.name);
-        const result = await toolHandler.executeTool('write_terragrunt_config', {
+        const result = await toolHandler.executeTool('build_config', {
           path: targetPath,
           content: file.content
         });
@@ -153,7 +153,7 @@ inputs = {
       await fs.writeFile(targetPath, originalContent);
 
       // Attempt to overwrite
-      const result = await toolHandler.executeTool('write_terragrunt_config', {
+      const result = await toolHandler.executeTool('build_config', {
         path: targetPath,
         content: newContent,
         overwrite: false
@@ -178,7 +178,7 @@ inputs = {
       await fs.writeFile(targetPath, originalContent);
 
       // Overwrite
-      const result = await toolHandler.executeTool('write_terragrunt_config', {
+      const result = await toolHandler.executeTool('build_config', {
         path: targetPath,
         content: newContent,
         overwrite: true
@@ -203,7 +203,7 @@ inputs = {
       await fs.writeFile(targetPath, originalContent);
 
       // Overwrite with backup
-      const result = await toolHandler.executeTool('write_terragrunt_config', {
+      const result = await toolHandler.executeTool('build_config', {
         path: targetPath,
         content: newContent,
         overwrite: true,
@@ -230,7 +230,7 @@ inputs = {
       // Write and overwrite multiple times
       await fs.writeFile(targetPath, 'content v1');
       
-      const result1 = await toolHandler.executeTool('write_terragrunt_config', {
+      const result1 = await toolHandler.executeTool('build_config', {
         path: targetPath,
         content: 'content v2',
         overwrite: true,
@@ -240,7 +240,7 @@ inputs = {
       // Small delay to ensure different timestamp
       await new Promise(resolve => setTimeout(resolve, 10));
 
-      const result2 = await toolHandler.executeTool('write_terragrunt_config', {
+      const result2 = await toolHandler.executeTool('build_config', {
         path: targetPath,
         content: 'content v3',
         overwrite: true,
@@ -264,7 +264,7 @@ inputs = {
     it('should reject path traversal attempts with ../', async () => {
       const maliciousPath = path.join(allowedDir, '..', '..', 'etc', 'passwd');
       
-      const result = await toolHandler.executeTool('write_terragrunt_config', {
+      const result = await toolHandler.executeTool('build_config', {
         path: maliciousPath,
         content: 'malicious content'
       });
@@ -277,7 +277,7 @@ inputs = {
     it('should reject paths outside allowed directories', async () => {
       const outsidePath = path.join(tmpdir(), 'outside', 'terragrunt.hcl');
       
-      const result = await toolHandler.executeTool('write_terragrunt_config', {
+      const result = await toolHandler.executeTool('build_config', {
         path: outsidePath,
         content: 'content'
       });
@@ -292,7 +292,7 @@ inputs = {
       const targetPath = path.join(allowedDir, 'large.hcl');
       const largeContent = 'x'.repeat(2 * 1024 * 1024); // 2MB (exceeds 1MB limit)
       
-      const result = await toolHandler.executeTool('write_terragrunt_config', {
+      const result = await toolHandler.executeTool('build_config', {
         path: targetPath,
         content: largeContent
       });
@@ -308,7 +308,7 @@ inputs = {
       const expectedPath = path.join(allowedDir, 'file.hcl');
       const content = 'test content';
       
-      const result = await toolHandler.executeTool('write_terragrunt_config', {
+      const result = await toolHandler.executeTool('build_config', {
         path: unnormalizedPath,
         content: content
       });
@@ -325,7 +325,7 @@ inputs = {
   describe('Generate + Write Workflow', () => {
     it('should generate config and write to file', async () => {
       // Step 1: Generate configuration
-      const generateResult = await toolHandler.executeTool('generate_terragrunt_config', {
+      const generateResult = await toolHandler.executeTool('build_config', {
         useCase: 'remote_state',
         backend: 's3',
         options: {
@@ -343,7 +343,7 @@ inputs = {
 
       // Step 2: Write generated config to file
       const targetPath = path.join(allowedDir, 'generated-terragrunt.hcl');
-      const writeResult = await toolHandler.executeTool('write_terragrunt_config', {
+      const writeResult = await toolHandler.executeTool('build_config', {
         path: targetPath,
         content: generateResult.config
       });
@@ -360,7 +360,7 @@ inputs = {
       const targetPath = path.join(allowedDir, 'workflow-test.hcl');
 
       // Step 1: Generate initial config
-      const initialConfig = await toolHandler.executeTool('generate_terragrunt_config', {
+      const initialConfig = await toolHandler.executeTool('build_config', {
         useCase: 'remote_state',
         backend: 's3',
         options: {
@@ -372,14 +372,14 @@ inputs = {
       });
 
       // Step 2: Write initial config
-      const write1 = await toolHandler.executeTool('write_terragrunt_config', {
+      const write1 = await toolHandler.executeTool('build_config', {
         path: targetPath,
         content: initialConfig.config
       });
       expect(write1.success).toBe(true);
 
       // Step 3: Generate updated config
-      const updatedConfig = await toolHandler.executeTool('generate_terragrunt_config', {
+      const updatedConfig = await toolHandler.executeTool('build_config', {
         useCase: 'remote_state',
         backend: 's3',
         options: {
@@ -391,7 +391,7 @@ inputs = {
       });
 
       // Step 4: Update file with backup
-      const write2 = await toolHandler.executeTool('write_terragrunt_config', {
+      const write2 = await toolHandler.executeTool('build_config', {
         path: targetPath,
         content: updatedConfig.config,
         overwrite: true,
@@ -409,11 +409,51 @@ inputs = {
       const currentContent = await fs.readFile(targetPath, 'utf-8');
       expect(currentContent).toBe(updatedConfig.config);
     });
+
+    it('should generate and write config in single unified call (Mode 3)', async () => {
+      // Test the unified generate+write mode (Mode 3)
+      // This is the key feature providing 67% token reduction
+      const targetPath = path.join(allowedDir, 'unified-mode3.hcl');
+
+      const result = await toolHandler.executeTool('build_config', {
+        useCase: 'remote_state',
+        backend: 's3',
+        options: {
+          bucket: 'unified-terraform-state',
+          region: 'us-west-2',
+          key: 'unified.tfstate',
+          encrypt: true,
+          dynamodb_table: 'unified-locks'
+        },
+        write: true,
+        path: targetPath
+      });
+
+      // Verify combined response structure (generation + write results)
+      expect(result.success).toBe(true);
+      expect(result.config).toBeDefined();
+      expect(result.config).toContain('remote_state');
+      expect(result.config).toContain('s3');
+      
+      // Verify write result is nested under writeResult object to avoid field collisions
+      expect(result.writeResult).toBeDefined();
+      expect(result.writeResult.success).toBe(true);
+      expect(result.writeResult.path).toBe(targetPath);
+      expect(result.writeResult.created).toBe(true);
+      expect(result.writeResult.bytesWritten).toBeGreaterThan(0);
+
+      // Verify file was actually created with correct content
+      const fileContent = await fs.readFile(targetPath, 'utf-8');
+      expect(fileContent).toBe(result.config);
+      expect(fileContent).toContain('unified-terraform-state');
+      expect(fileContent).toContain('us-west-2');
+      expect(fileContent).toContain('unified.tfstate');
+    });
   });
 
   describe('Error Handling', () => {
     it('should handle missing required parameters', async () => {
-      const result = await toolHandler.executeTool('write_terragrunt_config', {
+      const result = await toolHandler.executeTool('build_config', {
         // Missing 'path' parameter
         content: 'some content'
       });
@@ -423,7 +463,7 @@ inputs = {
     });
 
     it('should handle invalid path types', async () => {
-      const result = await toolHandler.executeTool('write_terragrunt_config', {
+      const result = await toolHandler.executeTool('build_config', {
         path: 123, // Invalid type
         content: 'content'
       });
@@ -447,7 +487,7 @@ inputs = {
       await fs.chmod(readOnlyDir, 0o444);
 
       const targetPath = path.join(readOnlyDir, 'test.hcl');
-      const result = await handler.executeTool('write_terragrunt_config', {
+      const result = await handler.executeTool('build_config', {
         path: targetPath,
         content: 'content'
       });
@@ -468,7 +508,7 @@ inputs = {
       process.env.TERRAGRUNT_MCP_FILE_WRITE_ENABLED = 'false';
       const handler = new ToolHandler();
 
-      const result = await handler.executeTool('write_terragrunt_config', {
+      const result = await handler.executeTool('build_config', {
         path: path.join(allowedDir, 'test.hcl'),
         content: 'content'
       });
@@ -483,7 +523,7 @@ inputs = {
       process.env.TERRAGRUNT_MCP_ALLOWED_DIRS = '';
       const handler = new ToolHandler();
 
-      const result = await handler.executeTool('write_terragrunt_config', {
+      const result = await handler.executeTool('build_config', {
         path: path.join(allowedDir, 'test.hcl'),
         content: 'content'
       });
@@ -503,13 +543,13 @@ inputs = {
       const handler = new ToolHandler();
 
       // Write to first directory
-      const result1 = await handler.executeTool('write_terragrunt_config', {
+      const result1 = await handler.executeTool('build_config', {
         path: path.join(dir1, 'test1.hcl'),
         content: 'content 1'
       });
 
       // Write to second directory
-      const result2 = await handler.executeTool('write_terragrunt_config', {
+      const result2 = await handler.executeTool('build_config', {
         path: path.join(dir2, 'test2.hcl'),
         content: 'content 2'
       });
@@ -528,7 +568,7 @@ inputs = {
       const targetPath = path.join(allowedDir, 'mcp-test.hcl');
       const content = 'terraform { }';
 
-      const result = await toolHandler.executeTool('write_terragrunt_config', {
+      const result = await toolHandler.executeTool('build_config', {
         path: targetPath,
         content: content
       });
@@ -548,7 +588,7 @@ inputs = {
     });
 
     it('should return valid error schema on failure', async () => {
-      const result = await toolHandler.executeTool('write_terragrunt_config', {
+      const result = await toolHandler.executeTool('build_config', {
         path: '/invalid/path/outside/allowed',
         content: 'content'
       });
@@ -565,7 +605,7 @@ inputs = {
     it('should handle tool execution without throwing', async () => {
       // Even with invalid input, should not throw, just return error
       await expect(
-        toolHandler.executeTool('write_terragrunt_config', {
+        toolHandler.executeTool('build_config', {
           path: null,
           content: undefined
         })

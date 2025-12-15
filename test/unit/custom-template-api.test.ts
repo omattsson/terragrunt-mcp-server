@@ -70,7 +70,7 @@ describe('Custom Template API Integration', () => {
       tags: ['aws', 's3', 'kms', 'custom']
     };
 
-    const result = await toolHandler.executeTool('generate_terragrunt_config', {
+    const result = await toolHandler.executeTool('build_config', {
       useCase: 'remote_state',
       backend: 'custom-s3-backend',
       options: {
@@ -101,7 +101,7 @@ describe('Custom Template API Integration', () => {
       // Missing required fields: description, category, templateHcl
     };
 
-    const result = await toolHandler.executeTool('generate_terragrunt_config', {
+    const result = await toolHandler.executeTool('build_config', {
       useCase: 'remote_state',
       options: {
         test: 'value'
@@ -115,7 +115,7 @@ describe('Custom Template API Integration', () => {
   });
 
   it('should work without custom template (backward compatibility)', async () => {
-    const result = await toolHandler.executeTool('generate_terragrunt_config', {
+    const result = await toolHandler.executeTool('build_config', {
       useCase: 'remote_state',
       backend: 's3',
       options: {
@@ -143,7 +143,7 @@ describe('Custom Template API Integration', () => {
       tags: []
     };
 
-    const result = await toolHandler.executeTool('generate_terragrunt_config', {
+    const result = await toolHandler.executeTool('build_config', {
       useCase: 'remote_state',
       options: {},
       custom_template: templateWithInvalidHcl
@@ -179,7 +179,7 @@ describe('Custom Template API Integration', () => {
       tags: ['security', 'hooks']
     };
 
-    const result = await toolHandler.executeTool('generate_terragrunt_config', {
+    const result = await toolHandler.executeTool('build_config', {
       useCase: 'hooks',
       backend: 'security-scan-hook',  // Pass template ID as backend
       options: {
@@ -235,7 +235,7 @@ EOF
       tags: ['aws', 'azure', 'multi-cloud']
     };
 
-    const result = await toolHandler.executeTool('generate_terragrunt_config', {
+    const result = await toolHandler.executeTool('build_config', {
       useCase: 'provider_generation',
       backend: 'multi-cloud-provider',  // Pass template ID as backend
       options: {
@@ -255,7 +255,7 @@ EOF
 
   it('should include custom template in tool schema', () => {
     const tools = toolHandler.getAvailableTools();
-    const generateTool = tools.find(t => t.name === 'generate_terragrunt_config');
+    const generateTool = tools.find(t => t.name === 'build_config');
 
     expect(generateTool).toBeDefined();
     expect(generateTool?.inputSchema.properties.custom_template).toBeDefined();

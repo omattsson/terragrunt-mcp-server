@@ -26,9 +26,22 @@ describe('Error Handling - Network Failures', () => {
   let docsManager: TerragruntDocsManager;
   let mockFetch: any;
   let mockFs: any;
+  let originalEnv: Record<string, string | undefined>;
 
   beforeEach(async () => {
     vi.clearAllMocks();
+    
+    // Save original environment variables
+    originalEnv = {
+      TERRAGRUNT_RETRY_INITIAL_DELAY: process.env.TERRAGRUNT_RETRY_INITIAL_DELAY,
+      TERRAGRUNT_RETRY_MAX_DELAY: process.env.TERRAGRUNT_RETRY_MAX_DELAY,
+      TERRAGRUNT_RETRY_BACKOFF_MULTIPLIER: process.env.TERRAGRUNT_RETRY_BACKOFF_MULTIPLIER
+    };
+    
+    // Set fast retry timeouts for tests to avoid long waits
+    process.env.TERRAGRUNT_RETRY_INITIAL_DELAY = '10';
+    process.env.TERRAGRUNT_RETRY_MAX_DELAY = '50';
+    process.env.TERRAGRUNT_RETRY_BACKOFF_MULTIPLIER = '1.5';
     
     // Get mocked modules
     const fetchModule = await import('node-fetch');
@@ -48,6 +61,11 @@ describe('Error Handling - Network Failures', () => {
 
   afterEach(() => {
     vi.clearAllMocks();
+    
+    // Restore original environment variables
+    process.env.TERRAGRUNT_RETRY_INITIAL_DELAY = originalEnv.TERRAGRUNT_RETRY_INITIAL_DELAY;
+    process.env.TERRAGRUNT_RETRY_MAX_DELAY = originalEnv.TERRAGRUNT_RETRY_MAX_DELAY;
+    process.env.TERRAGRUNT_RETRY_BACKOFF_MULTIPLIER = originalEnv.TERRAGRUNT_RETRY_BACKOFF_MULTIPLIER;
   });
 
   describe('Network Failures During Doc Fetch', () => {
@@ -63,11 +81,17 @@ describe('Error Handling - Network Failures', () => {
         { title: 'Test', url: 'http://example.com', content: 'test', section: 'test', lastUpdated: '2025-01-01' }
       ]));
 
+      const startTime = Date.now();
       const docs = await docsManager.fetchLatestDocs();
+      const elapsed = Date.now() - startTime;
       
       // Should fall back to fixture
       expect(docs).toBeDefined();
       expect(Array.isArray(docs)).toBe(true);
+      
+      // Verify retry configuration is being used (should complete faster with test settings)
+      // With 3 retries at 10ms, 15ms, 22.5ms intervals, should complete well under 1000ms
+      expect(elapsed).toBeLessThan(1000);
     });
 
     it('should handle HTTP 404 error', async () => {
