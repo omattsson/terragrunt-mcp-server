@@ -1200,7 +1200,7 @@ describe('Performance Benchmarks', () => {
         expect(results).toHaveLength(6);
         results.forEach((result, index) => {
           expect(result).toBeDefined();
-          expect(result.topic).toBe(operations[index].query);
+          expect(result.query).toBe(operations[index].query);
           expect(result.recommendations).toBeDefined();
         });
         

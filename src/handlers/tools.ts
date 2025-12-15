@@ -711,11 +711,6 @@ export class ToolHandler {
                     // Validate mutually exclusive parameters
                     if (args?.content && args?.useCase) {
                         return {
-                            success: false,
-                            path: '',
-                            bytesWritten: 0,
-                            created: false,
-                            backedUp: false,
                             error: 'Cannot provide both content (write-only mode) and useCase (generate mode). Choose one mode: write-only requires content+path, generate modes require useCase+options.',
                             errorType: 'VALIDATION_ERROR'
                         };
@@ -1865,7 +1860,7 @@ export class ToolHandler {
         tier: 'essential' | 'advanced' | 'complete' | undefined,
         options: Record<string, string | number | boolean | undefined>,
         strictValidation: boolean = false,
-        customTemplate?: any,
+        customTemplate?: BuildConfigArgs['custom_template'],
         write: boolean = false,
         path?: string,
         overwrite: boolean = false,
