@@ -817,114 +817,136 @@ See [File Writing Guide](File-Writing-Guide.md) for detailed security configurat
   - `command` (string): The terragrunt command that was run
   - `version` (string): Terragrunt version if known
   - `os` (string): Operating system (linux, darwin, windows)
-- **`listAll`** (boolean, optional): List all available guidance options
+  - `filePath` (string): Path to the terragrunt.hcl file
+  - `module` (string): Module name if applicable
+  - `backend` (string): Backend type (s3, gcs, azurerm, etc.)
+- **`options`** (object, optional): Diagnosis options
+  - `maxMatches` (number): Maximum matches to return (default: 3)
+  - `minConfidence` (number): Minimum confidence score 0-1 (default: 0.3)
+  - `enableFuzzyMatching` (boolean): Enable fuzzy matching (default: true)
+  - `enrichWithDocs` (boolean): Enrich with documentation-sourced solutions (default: false)
+  - `includeDestructiveCommands` (boolean): Include destructive commands in solutions (default: true)
 
-### Intelligent Routing
+### Use Cases — diagnose_terragrunt_error
 
-The tool automatically detects the type of guidance based on your query:
+- Troubleshooting Terragrunt errors
+- Getting actionable solutions for common problems
+- Finding relevant documentation for specific errors
+- Understanding what went wrong and how to fix it
 
-1. **Comparison keywords** (`vs`, `versus`, `compared to`) → Block comparisons
-2. **Known topics** (`security`, `performance`, etc.) → Best practices
-3. **Scenarios** → Pattern guidance
-4. **Explicit `type` parameter** → Forces specific routing
-
-### Use Cases — get_guidance
-
-**Best Practices:**
-- Learning recommended patterns for a topic
-- Understanding antipatterns and what to avoid
-- Getting experience-appropriate recommendations
-- Discovering real-world examples
-
-**Comparisons:**
-- Understanding differences between similar constructs
-- Deciding which block to use for your use case
-- Learning about common mistakes
-
-**Patterns:**
-- Making architectural decisions
-- Choosing between different approaches
-- Understanding trade-offs between patterns
-
-### Example Prompts — get_guidance
+### Example Prompts — diagnose_terragrunt_error
 
 ```text
-"What are the best practices for state management?"
-"Compare dependency vs dependencies"
-"How should I manage dependencies between modules?"
-"Show me security best practices for beginners"
-"What's the difference between inputs and locals?"
-"Help me choose a pattern for configuration inheritance"
+"I'm getting this error: Error acquiring the state lock"
+"Help me fix: Backend configuration changed since last init"
+"What does this error mean: No Terraform files found"
+"Diagnose this terragrunt error and tell me how to fix it"
 ```
 
-### Example Usage — get_guidance (Best Practices)
+### Example Response — diagnose_terragrunt_error (Basic)
 
 ```json
 {
-  "tool": "get_guidance",
-  "arguments": {
-    "query": "state_management",
-    "type": "best-practices",
-    "mode": "full",
-    "level": "beginner"
-  }
-}
-```
-
-### Example Usage — get_guidance (Comparison)
-
-```json
-{
-  "tool": "get_guidance",
-  "arguments": {
-    "query": "dependency vs dependencies"
-  }
-}
-```
-
-### Example Response — get_guidance (Best Practices)
-
-```json
-{
-  "query": "state_management",
-  "recommendations": [
+  "success": true,
+  "overallConfidence": 0.95,
+  "matchCount": 1,
+  "matches": [
     {
-      "practice": "Always use remote state for production environments",
-      "priority": "critical",
-      "experienceLevel": "beginner",
-      "category": "state_management",
-      "rationale": "Remote state ensures your infrastructure state is safely backed up and can be shared across teams",
-      "examples": ["remote_state {\n  backend = \"s3\"\n  ..."],
-      "antipatterns": ["Don't use local state for multi-user environments"],
-      "tradeoffs": ["Centralized state may increase latency"],
-      "relatedDocs": ["https://terragrunt.gruntwork.io/docs/..."]
+      "patternId": "backend-config-changed",
+      "patternName": "Backend Configuration Changed",
+      "category": "backend",
+      "confidence": 0.95,
+      "description": "Backend configuration has changed since last init",
+      "likelyCause": "Backend bucket, region, or key was modified",
+      "solutions": [
+        {
+          "step": 1,
+          "command": "terragrunt init -reconfigure",
+          "explanation": "Reinitialize with new backend configuration"
+        }
+      ],
+      "documentationRefs": ["https://terragrunt.gruntwork.io/docs/..."]
     }
   ],
-  "summary": "Best practices for state_management include using remote state backends, enabling encryption and versioning, and implementing state locking to prevent concurrent modifications...",
-  "commonPitfalls": [
-    "Storing sensitive data directly in state files",
-    "Not configuring state locking for multi-user environments"
+  "debuggingSteps": [
+    "Run with --terragrunt-debug flag for verbose output",
+    "Check terragrunt.hcl syntax with terragrunt validate-inputs"
   ],
-  "experienceNotes": {
-    "beginner": ["Start with S3 backend and basic encryption"],
-    "intermediate": ["Implement state locking with DynamoDB"],
-    "advanced": ["Consider state backend optimization for enterprise scale"]
-  },
-  "realWorldExamples": [
-    "S3 backend with encryption and versioning enabled",
-    "State locking configuration to prevent concurrent modifications"
+  "relatedErrors": ["State Lock Error", "Backend Access Denied"],
+  "generalAdvice": [
+    "Check your terragrunt.hcl configuration for syntax errors",
+    "Verify all required inputs are provided"
   ]
 }
 ```
 
-### Best Practices — get_guidance
+### Example Response — diagnose_terragrunt_error (Enriched)
 
-1. **Use natural language** - Tool understands queries like "dependency vs dependencies"
-2. **Let routing auto-detect** - Usually don't need explicit `type` parameter
-3. **Filter by experience level** - Use `level` for appropriate recommendations
-4. **Start with summary mode** - Use `mode: 'summary'` for quick insights, `full` for details
-5. **List available guidance** - Use `listAll: true` to see all options
-6. **Combine with other tools** - Use with `search_docs` for implementation
+When `enrichWithDocs: true`, you get additional documentation-sourced solutions:
+
+```json
+{
+  "success": true,
+  "overallConfidence": 0.95,
+  "matchCount": 1,
+  "enrichmentSuccessful": true,
+  "matches": [...],
+  "richSolutions": [
+    {
+      "step": "Step 1: Reinitialize with new backend configuration",
+      "command": "terragrunt init -reconfigure",
+      "explanation": "Forces Terraform to reconfigure backend without migrating state",
+      "warnings": ["This will reinitialize the backend without migrating state"],
+      "safetyLevel": "caution",
+      "source": "pattern"
+    },
+    {
+      "step": "Verify backend configuration",
+      "command": "terragrunt terragrunt-info",
+      "explanation": "Shows current backend configuration from documentation",
+      "warnings": [],
+      "safetyLevel": "safe",
+      "source": "documentation"
+    }
+  ],
+  "orderedDebuggingSteps": [
+    {
+      "order": 1,
+      "action": "Verify backend configuration in terragrunt.hcl",
+      "explanation": "Check remote_state block settings"
+    },
+    {
+      "order": 2,
+      "action": "Ensure backend storage exists and is accessible",
+      "verificationCommand": "aws s3 ls s3://your-bucket",
+      "explanation": "S3 bucket must exist and be accessible"
+    }
+  ],
+  "documentationLinks": [
+    {
+      "url": "https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/#remote_state",
+      "title": "Remote State Configuration",
+      "excerpt": "Configure your backend with the remote_state block...",
+      "relevanceScore": 0.9
+    }
+  ],
+  "relatedErrorDetails": [
+    {
+      "errorId": "state-lock-error",
+      "name": "State Lock Error",
+      "category": "state",
+      "reason": "Related to backend/state operations",
+      "similarityScore": 0.7
+    }
+  ]
+}
+```
+
+### Solution Safety Levels
+
+- **`safe`**: Command is read-only or has no side effects
+- **`caution`**: Command modifies state or infrastructure
+- **`destructive`**: Command may cause data loss or destroy resources
 
 <!-- Note: The "configuration" template (Terraform version constraints) is included as part of the "inputs" use case. -->
 
