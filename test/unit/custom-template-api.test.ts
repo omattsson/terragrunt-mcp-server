@@ -253,14 +253,60 @@ EOF
     expect(result.config).toContain('provider "azurerm"');
   });
 
-  it('should include custom template in tool schema', () => {
+  it('should have build_config tool with essential parameters', () => {
     const tools = toolHandler.getAvailableTools();
     const generateTool = tools.find(t => t.name === 'build_config');
 
     expect(generateTool).toBeDefined();
-    expect(generateTool?.inputSchema.properties.custom_template).toBeDefined();
-    expect(generateTool?.inputSchema.properties.custom_template.type).toBe('object');
-    expect(generateTool?.inputSchema.properties.custom_template.properties.id).toBeDefined();
-    expect(generateTool?.inputSchema.properties.custom_template.properties.templateHcl).toBeDefined();
+    // Custom template removed from schema to reduce token overhead
+    // It's still supported via the implementation, just not advertised in schema
+    expect(generateTool?.inputSchema.properties.useCase).toBeDefined();
+    expect(generateTool?.inputSchema.properties.options).toBeDefined();
+    expect(generateTool?.inputSchema.properties.write).toBeDefined();
+    // Verify custom_template is NOT in schema (token reduction)
+    expect(generateTool?.inputSchema.properties.custom_template).toBeUndefined();
+  });
+
+  it('should still accept custom_template parameter despite schema removal (backward compatibility)', async () => {
+    // Verify backward compatibility: even though custom_template was removed from schema
+    // to reduce tokens, the implementation still accepts the old nested object structure
+    // and processes it correctly. This ensures old client code continues to work.
+    const customTemplate = {
+      id: 'backward-compat-test',
+      name: 'Backward Compatibility Test',
+      description: 'Test that custom_template still works',
+      category: 'backend',
+      cloudProvider: 'aws',
+      templateHcl: `remote_state {
+  backend = "s3"
+  config = {
+    bucket = "{{bucket}}"
+    key    = "test.tfstate"
+  }
+}`,
+      variables: [
+        {
+          name: 'bucket',
+          type: 'string',
+          description: 'S3 bucket',
+          required: true
+        }
+      ]
+    };
+
+    const result = await toolHandler.executeTool('build_config', {
+      useCase: 'remote_state',
+      backend: 'backward-compat-test',  // Match the template ID
+      options: {
+        bucket: 'test-bucket'
+      },
+      custom_template: customTemplate
+    });
+
+    // Verify the custom template was used successfully
+    expect(result.success).toBe(true);
+    expect(result.usedCustomTemplate).toBe(true);
+    expect(result.config).toContain('test-bucket');
+    expect(result.config).toContain('test.tfstate');
   });
 });

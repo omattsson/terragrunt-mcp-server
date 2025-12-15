@@ -39,4 +39,5 @@ export interface PaginationMetadata {
     totalItems: number;
     hasMore: boolean;
     hasPrevious: boolean;
+    warning?: string;  // Optional warning for invalid input (e.g., pageSize <= 0)
 }

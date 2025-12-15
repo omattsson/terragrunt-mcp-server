@@ -171,14 +171,6 @@ describe('ToolHandler', () => {
       expect(searchTool?.inputSchema.properties.pageSize.default).toBe(10);
     });
 
-    it('should enforce pageSize boundaries for search tool', () => {
-      const tools = toolHandler.getAvailableTools();
-      const searchTool = tools.find(t => t.name === 'search_docs');
-      
-      expect(searchTool?.inputSchema.properties.pageSize.minimum).toBe(1);
-      expect(searchTool?.inputSchema.properties.pageSize.maximum).toBe(50);
-    });
-
     it('should have query and section parameters for different modes', () => {
       const tools = toolHandler.getAvailableTools();
       const tool = tools.find(t => t.name === 'search_docs');
@@ -193,6 +185,68 @@ describe('ToolHandler', () => {
       expect(tool?.inputSchema.required).toEqual([]);
       expect(tool?.inputSchema.properties.query).toBeDefined();
       expect(tool?.inputSchema.properties.section).toBeDefined();
+    });
+
+    it('should handle edge case pageSize values gracefully', async () => {
+      // Verify graceful handling of edge case pageSize values after removing schema constraints
+      // Implementation behavior (see calculatePagination in tools.ts):
+      // - pageSize > 0: Returns available results (accepts any positive value)
+      // - pageSize <= 0: Returns empty results with warning field (explicit guard to avoid division by zero)
+      // Note: Implementation now includes warning field to help distinguish invalid input from legitimate empty results
+      
+      // Test with pageSize=0 (returns empty results per implementation guard)
+      const resultTooSmall = await toolHandler.executeTool('search_docs', {
+        mode: 'search',
+        query: 'test',
+        pageSize: 0
+      });
+      expect(resultTooSmall).toBeDefined();
+      expect(resultTooSmall.pagination).toBeDefined();
+      expect(resultTooSmall.pagination.pageSize).toBe(0);
+      expect(resultTooSmall.results).toEqual([]);
+      expect(resultTooSmall.pagination.warning).toBeDefined();
+      expect(resultTooSmall.pagination.warning).toContain('Invalid pageSize');
+      
+      // Test with negative pageSize (returns empty results per implementation guard)
+      const resultNegative = await toolHandler.executeTool('search_docs', {
+        mode: 'search',
+        query: 'test',
+        pageSize: -5
+      });
+      expect(resultNegative).toBeDefined();
+      expect(resultNegative.results).toEqual([]);
+      
+      // Test with excessively large pageSize (should accept but return available results)
+      const resultTooLarge = await toolHandler.executeTool('search_docs', {
+        mode: 'search',
+        query: 'test',
+        pageSize: 1000
+      });
+      expect(resultTooLarge).toBeDefined();
+      expect(resultTooLarge.error).toBeUndefined();
+      expect(resultTooLarge.pagination).toBeDefined();
+      expect(resultTooLarge.pagination.pageSize).toBe(1000);
+      // Should return all available results without error
+      expect(Array.isArray(resultTooLarge.results)).toBe(true);
+      
+      // Test with valid pageSize (should return actual results if documents exist)
+      // Use 'terragrunt' query which is guaranteed to exist in Terragrunt documentation fixture
+      const resultValid = await toolHandler.executeTool('search_docs', {
+        mode: 'search',
+        query: 'terragrunt',
+        pageSize: 25
+      });
+      expect(resultValid).toBeDefined();
+      expect(resultValid.error).toBeUndefined();
+      expect(resultValid.pagination.pageSize).toBe(25);
+      // Verify implementation doesn't always return empty arrays - should return results for valid pageSize
+      expect(Array.isArray(resultValid.results)).toBe(true);
+      // Explicit assertion: Fixture data must contain results for 'terragrunt' query
+      // Using 'terragrunt' ensures robust test as it's a core term in all Terragrunt docs
+      expect(resultValid.pagination.totalItems).toBeGreaterThan(0);
+      expect(resultValid.results.length).toBeGreaterThan(0);
+      // Verify no warning field for valid pageSize (unlike invalid pageSize cases)
+      expect(resultValid.pagination.warning).toBeUndefined();
     });
 
     it('should validate mode-dependent parameters at runtime', async () => {
@@ -264,25 +318,27 @@ describe('ToolHandler', () => {
       expect(diagnoseTool?.inputSchema.properties.error_message.type).toBe('string');
     });
 
-    it('should have optional context parameter for diagnose_terragrunt_error', () => {
+    it('should have optional context parameters for diagnose_terragrunt_error', () => {
       const tools = toolHandler.getAvailableTools();
       const diagnoseTool = tools.find(t => t.name === 'diagnose_terragrunt_error');
       
-      expect(diagnoseTool?.inputSchema.properties.context).toBeDefined();
-      expect(diagnoseTool?.inputSchema.properties.context.type).toBe('object');
-      expect(diagnoseTool?.inputSchema.properties.context.properties.command).toBeDefined();
-      expect(diagnoseTool?.inputSchema.properties.context.properties.backend).toBeDefined();
+      // Schema is now flattened - context properties are at top level
+      expect(diagnoseTool?.inputSchema.properties.command).toBeDefined();
+      expect(diagnoseTool?.inputSchema.properties.backend).toBeDefined();
+      expect(diagnoseTool?.inputSchema.properties.version).toBeDefined();
+      expect(diagnoseTool?.inputSchema.properties.os).toBeDefined();
     });
 
-    it('should have optional options parameter with defaults for diagnose_terragrunt_error', () => {
+    it('should have optional options parameters with defaults for diagnose_terragrunt_error', () => {
       const tools = toolHandler.getAvailableTools();
       const diagnoseTool = tools.find(t => t.name === 'diagnose_terragrunt_error');
       
-      expect(diagnoseTool?.inputSchema.properties.options).toBeDefined();
-      expect(diagnoseTool?.inputSchema.properties.options.properties.maxMatches.default).toBe(3);
-      expect(diagnoseTool?.inputSchema.properties.options.properties.minConfidence.default).toBe(0.3);
-      expect(diagnoseTool?.inputSchema.properties.options.properties.enableFuzzyMatching.default).toBe(true);
-      expect(diagnoseTool?.inputSchema.properties.options.properties.enrichWithDocs.default).toBe(false);
+      // Schema is now flattened - options properties are at top level
+      expect(diagnoseTool?.inputSchema.properties.maxMatches).toBeDefined();
+      expect(diagnoseTool?.inputSchema.properties.maxMatches.default).toBe(3);
+      expect(diagnoseTool?.inputSchema.properties.minConfidence.default).toBe(0.3);
+      expect(diagnoseTool?.inputSchema.properties.enableFuzzyMatching.default).toBe(true);
+      expect(diagnoseTool?.inputSchema.properties.enrichWithDocs.default).toBe(false);
     });
   });
 

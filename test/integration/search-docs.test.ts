@@ -27,7 +27,7 @@ describe('search_docs Unified Tool - Comprehensive Integration', () => {
 
       expect(searchTool).toBeDefined();
       expect(searchTool?.name).toBe('search_docs');
-      expect(searchTool?.description).toContain('Unified');
+      expect(searchTool?.description).toContain('Search');
       expect(searchTool?.inputSchema.type).toBe('object');
     });
 

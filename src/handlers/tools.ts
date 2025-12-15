@@ -78,18 +78,6 @@ interface FunctionReferenceArgs {
 }
 
 /**
- * Type-safe arguments for unified get_guidance tool
- * Intelligent routing based on query content and optional type hint
- */
-interface GuidanceArgs {
-    query?: string;
-    type?: 'best-practices' | 'comparison' | 'pattern';
-    mode?: 'summary' | 'full';  // For best practices
-    level?: 'beginner' | 'intermediate' | 'advanced';  // For best practices
-    listAll?: boolean;  // List all available guidance
-}
-
-/**
  * Type-safe arguments for unified build_config tool.
  * Supports three operational modes with mode-specific required parameters:
  * 
@@ -214,6 +202,7 @@ export class ToolHandler {
         const totalItems = items.length;
         
         // Explicitly handle pageSize <= 0 to avoid division by zero and Infinity
+        // Returns empty results with warning field to distinguish from legitimate empty result sets
         if (pageSize <= 0) {
             return {
                 results: [],
@@ -223,7 +212,8 @@ export class ToolHandler {
                     totalPages: 1,
                     totalItems,
                     hasMore: false,
-                    hasPrevious: false
+                    hasPrevious: false,
+                    warning: `Invalid pageSize (${pageSize}). Must be positive integer. Returning empty results.`
                 }
             };
         }
@@ -249,63 +239,58 @@ export class ToolHandler {
         return [
             {
                 name: 'search_docs',
-                description: 'Unified documentation search tool. Modes: search (semantic search), list (list sections), section (get section content), examples (find code examples). Use detailLevel=summary for concise results (60-90% smaller), detailLevel=full for complete content.',
+                description: 'Search docs, list sections, or find code examples',
                 inputSchema: {
                     type: 'object',
                     properties: {
                         mode: {
                             type: 'string',
                             enum: ['search', 'list', 'section', 'examples'],
-                            description: 'Operation mode: search=semantic search across docs, list=list available sections, section=get specific section content, examples=find code examples',
+                            description: 'Operation mode',
                             default: 'search'
                         },
                         query: {
                             type: 'string',
-                            description: 'Search query (required for search mode, optional for examples mode to filter results)'
+                            description: 'Search query'
                         },
                         section: {
                             type: 'string',
-                            description: 'Section name (required for section mode, e.g., "getting-started", "reference", "features")'
+                            description: 'Section name'
                         },
                         detailLevel: {
                             type: 'string',
                             enum: ['summary', 'full'],
-                            description: 'Response detail level: summary (concise, 60-90% smaller) or full (complete content). Applies to section and examples modes.',
+                            description: 'Detail level',
                             default: 'summary'
                         },
                         page: {
                             type: 'number',
-                            description: 'Page number (1-based) for search mode',
-                            default: 1,
-                            minimum: 1
+                            description: 'Page number',
+                            default: 1
                         },
                         pageSize: {
                             type: 'number',
-                            description: 'Results per page for search mode',
-                            default: 10,
-                            minimum: 1,
-                            maximum: 50
+                            description: 'Results per page',
+                            default: 10
                         },
                         limit: {
                             type: 'number',
-                            description: 'Maximum number of results for examples mode',
-                            default: 5,
-                            minimum: 1,
-                            maximum: 10
+                            description: 'Max results',
+                            default: 5
                         },
                         advanced: {
                             type: 'boolean',
-                            description: 'For examples mode: return curated advanced examples with best practices',
+                            description: 'Return advanced examples',
                             default: false
                         },
                         category: {
                             type: 'string',
-                            description: 'For examples mode: filter by category (hooks, generate, environment, dependencies, dry-patterns)',
+                            description: 'Filter by category',
                             enum: ['hooks', 'generate', 'environment', 'dependencies', 'dry-patterns']
                         },
                         listCategories: {
                             type: 'boolean',
-                            description: 'For examples mode: list available categories',
+                            description: 'List categories',
                             default: false
                         }
                     },
@@ -314,47 +299,42 @@ export class ToolHandler {
             },
             {
                 name: 'function_reference',
-                description: 'Unified tool for Terragrunt function reference. GET mode (with function_name): retrieve specific function details with mode=summary (60-70% smaller) or mode=full. LIST mode (without function_name): browse/search all functions with optional category filter, search query, and pagination.',
+                description: 'Get function details or list all functions',
                 inputSchema: {
                     type: 'object',
                     properties: {
-                        // GET mode parameters
                         function_name: {
                             type: 'string',
-                            description: 'Function name for GET mode (e.g., "get_env", "find_in_parent_folders"). Omit for LIST mode.'
+                            description: 'Function name'
                         },
                         mode: {
                             type: 'string',
                             enum: ['summary', 'full'],
-                            description: 'GET mode: Response detail level. summary=name, signature, short description, counts (60-70% smaller). full=complete details with examples. Default: summary',
+                            description: 'Detail level',
                             default: 'summary'
                         },
                         include_examples: {
                             type: 'boolean',
-                            description: 'GET mode: Include code examples in full mode (ignored in summary mode). Default: true',
+                            description: 'Include examples',
                             default: true
                         },
-                        // LIST mode parameters
                         category: {
                             type: 'string',
-                            description: 'LIST mode: Optional category filter (e.g., "filesystem", "env", "path")'
+                            description: 'Category filter'
                         },
                         search: {
                             type: 'string',
-                            description: 'LIST mode: Optional search query to filter functions by name or description'
+                            description: 'Search query'
                         },
                         page: {
                             type: 'number',
-                            description: 'LIST mode: Page number (1-based). Default: 1',
-                            default: 1,
-                            minimum: 1
+                            description: 'Page number',
+                            default: 1
                         },
                         pageSize: {
                             type: 'number',
-                            description: 'LIST mode: Results per page. Default: 20',
-                            default: 20,
-                            minimum: 1,
-                            maximum: 100
+                            description: 'Results per page',
+                            default: 20
                         }
                     },
                     required: []
@@ -362,34 +342,32 @@ export class ToolHandler {
             },
             {
                 name: 'cli_reference',
-                description: 'Get CLI command help or list available commands. Provide "command" parameter for specific help, or omit for listing mode with optional category/search filters.',
+                description: 'Get CLI command help or list commands',
                 inputSchema: {
                     type: 'object',
                     properties: {
                         command: {
                             type: 'string',
-                            description: 'Optional: specific command name for detailed help (e.g., "plan", "apply", "run-all", "hcl fmt")'
+                            description: 'Command name'
                         },
                         category: {
                             type: 'string',
-                            description: 'Optional: filter commands by category (list mode only)',
+                            description: 'Category filter',
                             enum: ['main', 'backend', 'stack', 'catalog', 'discovery', 'configuration', 'shortcut']
                         },
                         search: {
                             type: 'string',
-                            description: 'Optional: search query to filter commands (list mode only)'
+                            description: 'Search query'
                         },
                         page: {
                             type: 'number',
-                            description: 'Page number for pagination (list mode only)',
-                            default: 1,
-                            minimum: 1
+                            description: 'Page number',
+                            default: 1
                         },
                         pageSize: {
                             type: 'number',
-                            description: 'Commands per page (list mode only)',
-                            default: 20,
-                            minimum: 1
+                            description: 'Commands per page',
+                            default: 20
                         }
                     },
                     required: []
@@ -397,22 +375,22 @@ export class ToolHandler {
             },
             {
                 name: 'get_hcl_config_reference',
-                description: 'Get comprehensive documentation for Terragrunt HCL configuration blocks including syntax, attributes, examples, and usage. Supports structured block definitions for terraform, remote_state, locals, inputs, include, dependency, generate, hooks, and more.',
+                description: 'Get HCL block docs with syntax and examples',
                 inputSchema: {
                     type: 'object',
                     properties: {
                         config: {
                             type: 'string',
-                            description: 'HCL block name to get documentation for (e.g., "terraform", "remote_state", "dependency", "inputs", "include", "generate", "locals")'
+                            description: 'Block name'
                         },
                         category: {
                             type: 'string',
-                            description: 'Filter blocks by category',
+                            description: 'Category filter',
                             enum: ['core', 'modules', 'generation', 'execution', 'iam', 'terraform']
                         },
                         listBlocks: {
                             type: 'boolean',
-                            description: 'If true, list all available HCL blocks (optionally filtered by category)',
+                            description: 'List all blocks',
                             default: false
                         }
                     },
@@ -421,33 +399,33 @@ export class ToolHandler {
             },
             {
                 name: 'get_guidance',
-                description: 'Get best practices, comparisons, or pattern guidance for Terragrunt configurations. Intelligently routes based on query: comparison keywords ("vs", "versus") → comparisons; known topics (security, performance, etc.) → best practices; scenarios → patterns. Supports explicit type hints and listing all available guidance.',
+                description: 'Get best practices, comparisons, or patterns',
                 inputSchema: {
                     type: 'object',
                     properties: {
                         query: {
                             type: 'string',
-                            description: 'What to get guidance on: a topic (e.g., "security"), comparison query (e.g., "dependency vs dependencies"), or scenario (e.g., "managing dependencies")'
+                            description: 'Topic, comparison, or scenario'
                         },
                         type: {
                             type: 'string',
                             enum: ['best-practices', 'comparison', 'pattern'],
-                            description: 'Optional routing hint to force specific guidance type'
+                            description: 'Guidance type'
                         },
                         mode: {
                             type: 'string',
                             enum: ['summary', 'full'],
-                            description: 'Response detail level for best practices: summary (concise) or full (complete with examples)',
+                            description: 'Detail level',
                             default: 'summary'
                         },
                         level: {
                             type: 'string',
                             enum: ['beginner', 'intermediate', 'advanced'],
-                            description: 'Experience level filter for best practices'
+                            description: 'Experience level'
                         },
                         listAll: {
                             type: 'boolean',
-                            description: 'If true, list all available topics, comparisons, and patterns',
+                            description: 'List all available',
                             default: false
                         }
                     },
@@ -456,97 +434,61 @@ export class ToolHandler {
             },
             {
                 name: 'build_config',
-                description: 'Build Terragrunt config from templates with optional file writing. Supports three modes: generate-only (useCase and options), write-only (content and path), or generate and write (useCase, options, write, and path). Validates that content and useCase are mutually exclusive.',
+                description: 'Generate or write Terragrunt configuration',
                 inputSchema: {
                     type: 'object',
                     properties: {
                         useCase: {
                             type: 'string',
                             enum: ['remote_state', 'provider_generation', 'dependencies', 'hooks', 'inputs'],
-                            description: 'The use case to generate configuration for (required for generate mode)'
+                            description: 'Use case'
                         },
                         options: {
                             type: 'object',
-                            description: 'Configuration variables for the template (required for generate mode)',
+                            description: 'Template variables',
                             additionalProperties: true
                         },
                         content: {
                             type: 'string',
-                            description: 'HCL content to write directly (for write-only mode without generation)'
+                            description: 'HCL content to write'
                         },
                         backend: {
                             type: 'string',
-                            description: 'Backend type for remote_state (e.g., "s3", "azurerm", "gcs")'
+                            description: 'Backend type'
                         },
                         tier: {
                             type: 'string',
                             enum: ['essential', 'advanced', 'complete'],
-                            description: 'Template tier: essential (minimal), advanced (extended), complete (all attributes)',
+                            description: 'Template tier',
                             default: 'essential'
                         },
                         strictValidation: {
                             type: 'boolean',
-                            description: 'Throw error if HCL validation fails (default: false)',
+                            description: 'Strict validation',
                             default: false
-                        },
-                        custom_template: {
-                            type: 'object',
-                            description: 'Custom template to use instead of built-in templates',
-                            properties: {
-                                id: { type: 'string' },
-                                name: { type: 'string' },
-                                description: { type: 'string' },
-                                category: { 
-                                    type: 'string', 
-                                    enum: ['backend', 'provider', 'dependency', 'hooks', 'inputs', 'advanced', 'configuration']
-                                },
-                                cloudProvider: { 
-                                    type: 'string',
-                                    enum: ['aws', 'azure', 'gcp', 'multi']
-                                },
-                                templateHcl: { type: 'string' },
-                                variables: {
-                                    type: 'array',
-                                    items: {
-                                        type: 'object',
-                                        properties: {
-                                            name: { type: 'string' },
-                                            type: { type: 'string' },
-                                            description: { type: 'string' },
-                                            required: { type: 'boolean' },
-                                            defaultValue: {},
-                                            example: { type: 'string' }
-                                        },
-                                        required: ['name', 'type', 'required']
-                                    }
-                                },
-                                tags: { type: 'array', items: { type: 'string' } },
-                                example: { type: 'string' }
-                            },
-                            required: ['id', 'name', 'description', 'category', 'templateHcl']
                         },
                         write: {
                             type: 'boolean',
-                            description: 'Write generated config to disk (default: false)',
+                            description: 'Write to disk',
                             default: false
                         },
                         path: {
                             type: 'string',
-                            description: 'File path for writing (required if write=true)'
+                            description: 'File path'
                         },
                         overwrite: {
                             type: 'boolean',
-                            description: 'Allow overwriting existing files (default: false)',
+                            description: 'Allow overwrite',
                             default: false
                         },
                         createBackup: {
                             type: 'boolean',
-                            description: 'Create backup before overwriting (default: true)',
+                            description: 'Create backup',
                             default: true
                         },
                         createParentDirs: {
                             type: 'boolean',
-                            description: 'Create parent directories if needed (default: true)',
+                            description: 'Create parent dirs',
                             default: true
                         }
                     },
@@ -555,74 +497,62 @@ export class ToolHandler {
             },
             {
                 name: 'diagnose_terragrunt_error',
-                description: 'Diagnose a Terragrunt error message and get actionable solutions, debugging steps, and relevant documentation. Supports fuzzy matching and can optionally enrich results with documentation-sourced solutions.',
+                description: 'Diagnose Terragrunt errors with solutions',
                 inputSchema: {
                     type: 'object',
                     properties: {
                         error_message: {
                             type: 'string',
-                            description: 'The error message from Terragrunt to diagnose'
+                            description: 'Error message'
                         },
-                        context: {
-                            type: 'object',
-                            description: 'Optional context about the error',
-                            properties: {
-                                command: {
-                                    type: 'string',
-                                    description: 'The terragrunt command that was run (e.g., "terragrunt apply")'
-                                },
-                                version: {
-                                    type: 'string',
-                                    description: 'Terragrunt version if known'
-                                },
-                                os: {
-                                    type: 'string',
-                                    description: 'Operating system (linux, darwin, windows)'
-                                },
-                                filePath: {
-                                    type: 'string',
-                                    description: 'Path to the terragrunt.hcl file if known'
-                                },
-                                module: {
-                                    type: 'string',
-                                    description: 'Module name if applicable'
-                                },
-                                backend: {
-                                    type: 'string',
-                                    description: 'Backend type (s3, gcs, azurerm, etc.)'
-                                }
-                            }
+                        command: {
+                            type: 'string',
+                            description: 'Command run'
                         },
-                        options: {
-                            type: 'object',
-                            description: 'Options for diagnosis',
-                            properties: {
-                                maxMatches: {
-                                    type: 'number',
-                                    description: 'Maximum number of pattern matches to return (default: 3)',
-                                    default: 3
-                                },
-                                minConfidence: {
-                                    type: 'number',
-                                    description: 'Minimum confidence score for matches 0-1 (default: 0.3)',
-                                    default: 0.3
-                                },
-                                enableFuzzyMatching: {
-                                    type: 'boolean',
-                                    description: 'Enable fuzzy matching for partial matches (default: true)',
-                                    default: true
-                                },
-                                enrichWithDocs: {
-                                    type: 'boolean',
-                                    description: 'Enrich diagnosis with documentation-sourced solutions and links (default: false)',
-                                    default: false
-                                },
-                                includeDestructiveCommands: {
-                                    type: 'boolean',
-                                    description: 'Include destructive commands in solutions (default: true)',
-                                    default: true
-                                }
-                            }
+                        version: {
+                            type: 'string',
+                            description: 'Terragrunt version'
+                        },
+                        os: {
+                            type: 'string',
+                            description: 'Operating system'
+                        },
+                        filePath: {
+                            type: 'string',
+                            description: 'File path'
+                        },
+                        module: {
+                            type: 'string',
+                            description: 'Module name'
+                        },
+                        backend: {
+                            type: 'string',
+                            description: 'Backend type'
+                        },
+                        maxMatches: {
+                            type: 'number',
+                            description: 'Max matches',
+                            default: 3
+                        },
+                        minConfidence: {
+                            type: 'number',
+                            description: 'Min confidence',
+                            default: 0.3
+                        },
+                        enableFuzzyMatching: {
+                            type: 'boolean',
+                            description: 'Fuzzy matching',
+                            default: true
+                        },
+                        enrichWithDocs: {
+                            type: 'boolean',
+                            description: 'Enrich with docs',
+                            default: false
+                        },
+                        includeDestructiveCommands: {
+                            type: 'boolean',
+                            description: 'Include destructive',
+                            default: true
                         }
                     },
                     required: ['error_message']
@@ -630,23 +560,23 @@ export class ToolHandler {
             },
             {
                 name: 'get_server_metrics',
-                description: 'Get server metrics for tools and resources with optional filtering and reset functionality',
+                description: 'Get server metrics',
                 inputSchema: {
                     type: 'object',
                     properties: {
                         filter: {
                             type: 'string',
-                            description: 'Optional filter to show only metrics matching this string'
+                            description: 'Filter pattern'
                         },
                         format: {
                             type: 'string',
                             enum: ['json', 'text'],
-                            description: 'Output format (json or text)',
+                            description: 'Output format',
                             default: 'json'
                         },
                         reset: {
                             type: 'boolean',
-                            description: 'Reset metrics after retrieving them',
+                            description: 'Reset after get',
                             default: false
                         }
                     },
@@ -790,7 +720,7 @@ export class ToolHandler {
                         args.tier,
                         args.options,
                         args.strictValidation ?? false,
-                        args.custom_template,
+                        args.custom_template,  // Still supported for backward compatibility despite schema removal
                         args.write ?? false,
                         args.path,
                         args.overwrite ?? false,
@@ -802,10 +732,33 @@ export class ToolHandler {
                     if (!args?.error_message) {
                         return { error: 'error_message parameter is required' };
                     }
+                    // Reconstruct nested objects from flattened parameters
+                    // If nested form provided, use it; otherwise construct from flattened properties.
+                    // This maintains backward compatibility with both old (nested) and new (flat) schemas.
+                    // Precedence: If both nested and flattened forms are provided, nested takes priority.
+                    // (Nested takes priority to preserve behavior of existing clients that still pass the old format.)
+                    // Example:
+                    //   Old schema: { context: { command, version, ... } }
+                    //   New schema: { command, version, ... }
+                    const context = this.reconstructNestedObject(args.context, {
+                        command: args.command,
+                        version: args.version,
+                        os: args.os,
+                        filePath: args.filePath,
+                        module: args.module,
+                        backend: args.backend
+                    });
+                    const options = this.reconstructNestedObject(args.options, {
+                        maxMatches: args.maxMatches,
+                        minConfidence: args.minConfidence,
+                        enableFuzzyMatching: args.enableFuzzyMatching,
+                        enrichWithDocs: args.enrichWithDocs,
+                        includeDestructiveCommands: args.includeDestructiveCommands
+                    });
                     return await this.diagnoseTerragruntError(
                         args.error_message,
-                        args.context,
-                        args.options
+                        context,
+                        options
                     );
 
                 case 'get_server_metrics':
@@ -1013,6 +966,26 @@ export class ToolHandler {
         const page = this.normalizePositiveInt(args?.page, 1);
         const pageSize = this.normalizePositiveInt(args?.pageSize, 20);
         return await this.listTerragruntFunctions(args?.category, args?.search, page, pageSize);
+    }
+
+    /**
+     * Reconstruct nested object from flattened properties
+     * Used for backward compatibility when migrating from nested to flat schemas
+     * @param nestedValue - Existing nested object if provided by legacy clients still using old schema
+     * @param flatProperties - Flattened properties to construct object from (new schema format)
+     * @returns Nested object with undefined values filtered out
+     */
+    private reconstructNestedObject<T extends Record<string, any>>(
+        nestedValue: T | undefined,
+        flatProperties: Record<string, any>
+    ): T {
+        if (nestedValue) {
+            return nestedValue;
+        }
+        return Object.fromEntries(
+            // Filter out undefined values regardless of key
+            Object.entries(flatProperties).filter(([key, v]) => v !== undefined)
+        ) as T;
     }
 
     private normalizePositiveInt(value: unknown, defaultValue: number): number {
