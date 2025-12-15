@@ -6,7 +6,7 @@ This document describes the comprehensive Model Context Protocol (MCP) complianc
 
 ## Test Statistics
 
-- **Total MCP Compliance Tests**: 57+
+- **Total MCP Compliance Tests**: 79
 - **Test Categories**: 10
 - **Test Duration**: ~155ms
 - **Status**: ✅ All passing

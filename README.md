@@ -31,7 +31,9 @@ See [Advanced Backend Templates](docs/Advanced-Backend-Templates.md) for enterpr
 
 ### 🔧 Available Tools
 
-**8 consolidated tools** for comprehensive Terragrunt assistance (7 core + 1 observability):
+**8 consolidated tools** for comprehensive Terragrunt assistance:
+- **7 core tools** (tools 1-7): Documentation, functions, CLI, HCL reference, guidance, config generation, error diagnosis
+- **1 observability tool** (tool 8): Server metrics and monitoring
 
 #### 1. **`search_docs`** - Unified Documentation Search
 
