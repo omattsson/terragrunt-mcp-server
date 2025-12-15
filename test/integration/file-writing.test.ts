@@ -409,6 +409,46 @@ inputs = {
       const currentContent = await fs.readFile(targetPath, 'utf-8');
       expect(currentContent).toBe(updatedConfig.config);
     });
+
+    it('should generate and write config in single unified call (Mode 3)', async () => {
+      // Test the unified generate+write mode (Mode 3)
+      // This is the key feature providing 67% token reduction
+      const targetPath = path.join(allowedDir, 'unified-mode3.hcl');
+
+      const result = await toolHandler.executeTool('build_config', {
+        useCase: 'remote_state',
+        backend: 's3',
+        options: {
+          bucket: 'unified-terraform-state',
+          region: 'us-west-2',
+          key: 'unified.tfstate',
+          encrypt: true,
+          dynamodb_table: 'unified-locks'
+        },
+        write: true,
+        path: targetPath
+      });
+
+      // Verify combined response structure (generation + write results)
+      expect(result.success).toBe(true);
+      expect(result.config).toBeDefined();
+      expect(result.config).toContain('remote_state');
+      expect(result.config).toContain('s3');
+      
+      // Verify write result is nested
+      expect(result.writeResult).toBeDefined();
+      expect(result.writeResult.written).toBe(true);
+      expect(result.writeResult.path).toBe(targetPath);
+      expect(result.writeResult.created).toBe(true);
+      expect(result.writeResult.bytesWritten).toBeGreaterThan(0);
+
+      // Verify file was actually created with correct content
+      const fileContent = await fs.readFile(targetPath, 'utf-8');
+      expect(fileContent).toBe(result.config);
+      expect(fileContent).toContain('unified-terraform-state');
+      expect(fileContent).toContain('us-west-2');
+      expect(fileContent).toContain('unified.tfstate');
+    });
   });
 
   describe('Error Handling', () => {
