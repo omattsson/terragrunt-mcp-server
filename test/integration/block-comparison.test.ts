@@ -18,7 +18,7 @@ describe('Block Comparison and Pattern Guidance Tools', () => {
       const guidanceTool = tools.find(t => t.name === 'get_guidance');
       
       expect(guidanceTool).toBeDefined();
-      expect(guidanceTool!.description).toContain('guidance');
+      expect(guidanceTool!.description).toContain('best practices');
       expect(guidanceTool!.inputSchema.properties.query).toBeDefined();
       expect(guidanceTool!.inputSchema.properties.type).toBeDefined();
       expect(guidanceTool!.inputSchema.properties.listAll).toBeDefined();

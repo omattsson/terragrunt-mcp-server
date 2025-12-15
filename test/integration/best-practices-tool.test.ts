@@ -15,8 +15,8 @@ describe('get_guidance Tool Integration', () => {
       
       expect(tool).toBeDefined();
       expect(tool?.name).toBe('get_guidance');
-      expect(tool?.description).toContain('guidance');
-      expect(tool?.description).toContain('query');
+      expect(tool?.description).toContain('best practices');
+      expect(tool?.description).toContain('comparisons');
     });
 
     it('has proper input schema', () => {

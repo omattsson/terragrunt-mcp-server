@@ -171,12 +171,12 @@ describe('ToolHandler', () => {
       expect(searchTool?.inputSchema.properties.pageSize.default).toBe(10);
     });
 
-    it('should enforce pageSize boundaries for search tool', () => {
+    it('should have pageSize parameter with default for search tool', () => {
       const tools = toolHandler.getAvailableTools();
       const searchTool = tools.find(t => t.name === 'search_docs');
       
-      expect(searchTool?.inputSchema.properties.pageSize.minimum).toBe(1);
-      expect(searchTool?.inputSchema.properties.pageSize.maximum).toBe(50);
+      expect(searchTool?.inputSchema.properties.pageSize).toBeDefined();
+      expect(searchTool?.inputSchema.properties.pageSize.default).toBe(10);
     });
 
     it('should have query and section parameters for different modes', () => {
@@ -264,25 +264,27 @@ describe('ToolHandler', () => {
       expect(diagnoseTool?.inputSchema.properties.error_message.type).toBe('string');
     });
 
-    it('should have optional context parameter for diagnose_terragrunt_error', () => {
+    it('should have optional context parameters for diagnose_terragrunt_error', () => {
       const tools = toolHandler.getAvailableTools();
       const diagnoseTool = tools.find(t => t.name === 'diagnose_terragrunt_error');
       
-      expect(diagnoseTool?.inputSchema.properties.context).toBeDefined();
-      expect(diagnoseTool?.inputSchema.properties.context.type).toBe('object');
-      expect(diagnoseTool?.inputSchema.properties.context.properties.command).toBeDefined();
-      expect(diagnoseTool?.inputSchema.properties.context.properties.backend).toBeDefined();
+      // Schema is now flattened - context properties are at top level
+      expect(diagnoseTool?.inputSchema.properties.command).toBeDefined();
+      expect(diagnoseTool?.inputSchema.properties.backend).toBeDefined();
+      expect(diagnoseTool?.inputSchema.properties.version).toBeDefined();
+      expect(diagnoseTool?.inputSchema.properties.os).toBeDefined();
     });
 
-    it('should have optional options parameter with defaults for diagnose_terragrunt_error', () => {
+    it('should have optional options parameters with defaults for diagnose_terragrunt_error', () => {
       const tools = toolHandler.getAvailableTools();
       const diagnoseTool = tools.find(t => t.name === 'diagnose_terragrunt_error');
       
-      expect(diagnoseTool?.inputSchema.properties.options).toBeDefined();
-      expect(diagnoseTool?.inputSchema.properties.options.properties.maxMatches.default).toBe(3);
-      expect(diagnoseTool?.inputSchema.properties.options.properties.minConfidence.default).toBe(0.3);
-      expect(diagnoseTool?.inputSchema.properties.options.properties.enableFuzzyMatching.default).toBe(true);
-      expect(diagnoseTool?.inputSchema.properties.options.properties.enrichWithDocs.default).toBe(false);
+      // Schema is now flattened - options properties are at top level
+      expect(diagnoseTool?.inputSchema.properties.maxMatches).toBeDefined();
+      expect(diagnoseTool?.inputSchema.properties.maxMatches.default).toBe(3);
+      expect(diagnoseTool?.inputSchema.properties.minConfidence.default).toBe(0.3);
+      expect(diagnoseTool?.inputSchema.properties.enableFuzzyMatching.default).toBe(true);
+      expect(diagnoseTool?.inputSchema.properties.enrichWithDocs.default).toBe(false);
     });
   });
 

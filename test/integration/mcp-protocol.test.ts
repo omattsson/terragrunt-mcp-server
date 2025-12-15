@@ -109,7 +109,7 @@ describe('MCP Protocol Compliance', () => {
       
       expect(searchTool).toBeDefined();
       expect(searchTool?.description).toBeDefined();
-      expect(searchTool?.description).toContain('Unified'); // Case-sensitive
+      expect(searchTool?.description).toContain('Search'); // Case-sensitive
       
       // Verify mode parameter and its options
       expect(searchTool?.inputSchema.properties.mode).toBeDefined();
@@ -736,7 +736,7 @@ describe('MCP Protocol Compliance', () => {
         expect(guidanceTool?.name).toBe('get_guidance');
         expect(guidanceTool?.description).toBeDefined();
         expect(typeof guidanceTool?.description).toBe('string');
-        expect(guidanceTool?.description).toContain('guidance');
+        expect(guidanceTool?.description).toContain('best practices');
       });
 
       it('should have valid JSON Schema for get_guidance', () => {
@@ -798,7 +798,7 @@ describe('MCP Protocol Compliance', () => {
         const guidanceTool = tools.find(t => t.name === 'get_guidance');
         
         expect(guidanceTool?.description).toBeDefined();
-        expect(guidanceTool?.description.toLowerCase()).toContain('guidance');
+        expect(guidanceTool?.description.toLowerCase()).toContain('best practices');
         expect(guidanceTool?.description.toLowerCase()).toMatch(/best practices|comparison|pattern/);
       });
     });

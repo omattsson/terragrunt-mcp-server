@@ -253,14 +253,15 @@ EOF
     expect(result.config).toContain('provider "azurerm"');
   });
 
-  it('should include custom template in tool schema', () => {
+  it('should have build_config tool with essential parameters', () => {
     const tools = toolHandler.getAvailableTools();
     const generateTool = tools.find(t => t.name === 'build_config');
 
     expect(generateTool).toBeDefined();
-    expect(generateTool?.inputSchema.properties.custom_template).toBeDefined();
-    expect(generateTool?.inputSchema.properties.custom_template.type).toBe('object');
-    expect(generateTool?.inputSchema.properties.custom_template.properties.id).toBeDefined();
-    expect(generateTool?.inputSchema.properties.custom_template.properties.templateHcl).toBeDefined();
+    // Custom template removed from schema to reduce token overhead
+    // It's still supported via the implementation, just not advertised in schema
+    expect(generateTool?.inputSchema.properties.useCase).toBeDefined();
+    expect(generateTool?.inputSchema.properties.options).toBeDefined();
+    expect(generateTool?.inputSchema.properties.write).toBeDefined();
   });
 });
