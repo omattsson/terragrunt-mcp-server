@@ -842,7 +842,7 @@ export class ToolHandler {
             pageSize
         );
 
-        return {
+        const response = {
             query,
             results: paginatedResults.map(doc => ({
                 title: doc.title,
@@ -855,6 +855,11 @@ export class ToolHandler {
             })),
             pagination
         };
+
+        // Log metrics for search operations
+        this.metricsManager.logResponse('tool', `search_docs:${query}`, response);
+
+        return response;
     }
 
     private async getTerragruntSections(): Promise<any> {
