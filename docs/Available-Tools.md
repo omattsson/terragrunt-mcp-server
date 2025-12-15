@@ -560,7 +560,7 @@ The tool automatically resolves common aliases:
 
 **Purpose**: Unified tool for generating OR writing OR generating+writing Terragrunt configurations. Supports three operational modes with intelligent routing based on provided parameters.
 
-### Parameters — generate_terragrunt_config
+### Parameters — build_config
 
 - **`useCase`** (string, required): Configuration type to generate:
   - `"remote_state"` - Remote state backend configuration (S3, Azure Blob, GCS)
@@ -670,8 +670,6 @@ The tool provides **9 templates** covering **5 use cases**:
 | inputs | 1 template | Multi-cloud |
 
 <!-- Note: The "configuration" template (Terraform version constraints) is included as part of the "inputs" use case. -->
-
-### Security Features — build_config (write mode)
 
 ### Security Features — build_config (write mode)
 
