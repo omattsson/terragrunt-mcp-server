@@ -82,7 +82,7 @@ describe('Mode Configuration System', () => {
     });
 
     describe('CONFIG mode', () => {
-      it('should include exactly the expected configuration generation tools', () => {
+      it('should include exactly the configuration generation tools', () => {
         const tools = MODE_CONFIGS[ServerMode.CONFIG].tools.slice().sort();
         const expectedTools = ['build_config', 'get_hcl_config_reference'].sort();
         expect(tools).toEqual(expectedTools);

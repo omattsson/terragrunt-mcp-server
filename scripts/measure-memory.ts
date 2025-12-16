@@ -146,7 +146,7 @@ async function main() {
     .forEach(r => {
       const memSavings = ((fullMode.totalMB - r.totalMB) / fullMode.totalMB * 100);
       const mgrSavings = ((fullMode.managerCount - r.managerCount) / fullMode.managerCount * 100);
-      const startupGain = ((fullMode.startupMs - r.startupMs) / fullMode.startupMs * 100);
+      const startupGain = ((fullMode.startupTimeMs - r.startupTimeMs) / fullMode.startupTimeMs * 100);
       
       const row = [
         r.mode.padEnd(12),

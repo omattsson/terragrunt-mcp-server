@@ -41,6 +41,10 @@ export type DependencyType =
 
 /**
  * Common dependencies shared across multiple modes
+ * 
+ * - docs: TerragruntDocsManager provides base documentation access needed by most modes
+ * - hcl: HCLBlocksManager provides structured HCL block reference (used by get_hcl_config_reference tool)
+ *   included in BASE_DEPS because it's lightweight and commonly needed across CORE and CONFIG modes
  */
 const BASE_DEPS: DependencyType[] = ['docs', 'hcl'];
 

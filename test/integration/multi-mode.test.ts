@@ -5,8 +5,8 @@
  * tool availability, lazy loading, and performance characteristics.
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
-import { ServerMode, shouldEnableTool, shouldLoadDependency, getModeConfig } from '../../src/modes/config.js';
+import { describe, it, expect } from 'vitest';
+import { ServerMode, shouldLoadDependency, getModeConfig } from '../../src/modes/config.js';
 import { ToolHandler } from '../../src/handlers/tools.js';
 
 describe('Multi-Mode Architecture Integration Tests', () => {
