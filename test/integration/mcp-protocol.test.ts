@@ -102,25 +102,29 @@ describe('MCP Protocol Compliance', () => {
     const tools = toolHandler.getAvailableTools();
     expect(tools.length).toBe(8);
   });
+
+  it('should include unified search_docs tool with all modes', () => {
+    const tools = toolHandler.getAvailableTools();
+    const searchTool = tools.find(t => t.name === 'search_docs');
       
-      expect(searchTool).toBeDefined();
-      expect(searchTool?.description).toBeDefined();
-      expect(searchTool?.description).toContain('Search'); // Case-sensitive
+    expect(searchTool).toBeDefined();
+    expect(searchTool?.description).toBeDefined();
+    expect(searchTool?.description).toContain('Search'); // Case-sensitive
       
-      // Verify mode parameter and its options
-      expect(searchTool?.inputSchema.properties.mode).toBeDefined();
-      expect(searchTool?.inputSchema.properties.mode.enum).toEqual(['search', 'list', 'section', 'examples']);
+    // Verify mode parameter and its options
+    expect(searchTool?.inputSchema.properties.mode).toBeDefined();
+    expect(searchTool?.inputSchema.properties.mode.enum).toEqual(['search', 'list', 'section', 'examples']);
       
-      // Verify all mode-specific parameters exist
-      expect(searchTool?.inputSchema.properties.query).toBeDefined(); // search & examples modes
-      expect(searchTool?.inputSchema.properties.section).toBeDefined(); // section mode
-      expect(searchTool?.inputSchema.properties.detailLevel).toBeDefined(); // section & examples modes
-      expect(searchTool?.inputSchema.properties.page).toBeDefined(); // search mode
-      expect(searchTool?.inputSchema.properties.pageSize).toBeDefined(); // search mode
+    // Verify all mode-specific parameters exist
+    expect(searchTool?.inputSchema.properties.query).toBeDefined(); // search & examples modes
+    expect(searchTool?.inputSchema.properties.section).toBeDefined(); // section mode
+    expect(searchTool?.inputSchema.properties.detailLevel).toBeDefined(); // section & examples modes
+    expect(searchTool?.inputSchema.properties.page).toBeDefined(); // search mode
+    expect(searchTool?.inputSchema.properties.pageSize).toBeDefined(); // search mode
       
-      // No required parameters at schema level (mode-dependent validation)
-      expect(searchTool?.inputSchema.required).toEqual([]);
-    });
+    // No required parameters at schema level (mode-dependent validation)
+    expect(searchTool?.inputSchema.required).toEqual([]);
+  });
 
     it('should include function_reference tool with dual-mode parameters', () => {
       const tools = toolHandler.getAvailableTools();
