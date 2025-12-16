@@ -175,7 +175,7 @@ async function main() {
   console.log(`\nFULL Mode Baseline:`);
   console.log(`  Memory: ${fullMode.totalMB} MB`);
   console.log(`  Managers: ${fullMode.managerCount}/12`);
-  console.log(`  Startup: ${fullMode.startupMs} ms`);
+  console.log(`  Startup: ${fullMode.startupTimeMs} ms`);
   
   console.log(`\nAverage Savings Across Specialized Modes:`);
   console.log(`  Memory: ${avgMemSavings >= 0 ? '+' : ''}${avgMemSavings.toFixed(1)}%`);

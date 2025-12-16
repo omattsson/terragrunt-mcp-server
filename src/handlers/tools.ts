@@ -288,17 +288,22 @@ export class ToolHandler {
     }
     
     /**
-     * Check if a manager is available. Returns error response if not.
-     * After calling this and checking for error, use non-null assertion (!) on the manager.
+     * Check if a manager is available. Returns the manager if available, or an error response.
+     * This pattern eliminates the need for non-null assertions throughout the code.
+     * 
+     * @example
+     * const docsManager = this.checkManager(this.docsManager, 'DocsManager');
+     * if ('error' in docsManager) return docsManager;
+     * // docsManager is now typed as non-null
      */
-    private checkManager<T>(manager: T | undefined, managerName: string): { error: string; errorType: string } | null {
+    private checkManager<T>(manager: T | undefined, managerName: string): T | { error: string; errorType: string } {
         if (!manager) {
             return {
                 error: `${managerName} is not available in ${this.mode} mode. This tool is disabled.`,
                 errorType: 'MODE_RESTRICTION'
             };
         }
-        return null;
+        return manager;
     }
 
     /**
@@ -899,6 +904,7 @@ export class ToolHandler {
         page: number = 1,
         pageSize: number = 10
     ): Promise<any> {
+        // docsManager validated by caller (searchDocs)
         const results = await this.docsManager!.searchDocs(query);
 
         // Apply pagination
@@ -987,8 +993,8 @@ export class ToolHandler {
      */
     private async searchDocs(args: SearchDocsArgs): Promise<any> {
         // Check if DocsManager is available
-        const docsCheck = this.checkManager(this.docsManager, 'DocsManager');
-        if (docsCheck) return docsCheck;
+        const docsManager = this.checkManager(this.docsManager, 'DocsManager');
+        if ('error' in docsManager) return docsManager;
         
         const mode = args?.mode ?? 'search';
 
@@ -1020,8 +1026,8 @@ export class ToolHandler {
 
             case 'examples':
                 // Search for code examples
-                const advancedCheck = this.checkManager(this.advancedExamplesManager, 'AdvancedExamplesManager');
-                if (advancedCheck) return advancedCheck;
+                const advancedExamplesManager = this.checkManager(this.advancedExamplesManager, 'AdvancedExamplesManager');
+                if ('error' in advancedExamplesManager) return advancedExamplesManager;
                 
                 return await this.getCodeExamples(
                     args?.query,
@@ -1049,8 +1055,8 @@ export class ToolHandler {
      */
     private async cliReference(args: CLIReferenceArgs): Promise<any> {
         // Check if CLICommandsManager is available
-        const cliCheck = this.checkManager(this.cliCommandsManager, 'CLICommandsManager');
-        if (cliCheck) return cliCheck;
+        const cliCommandsManager = this.checkManager(this.cliCommandsManager, 'CLICommandsManager');
+        if ('error' in cliCommandsManager) return cliCommandsManager;
         
         // Normalize empty/whitespace command strings to list mode.
         const command = typeof args?.command === 'string' ? args.command.trim() : undefined;
@@ -1075,8 +1081,8 @@ export class ToolHandler {
      */
     private async functionReference(args: FunctionReferenceArgs): Promise<any> {
         // Check if FunctionsManager is available
-        const functionsCheck = this.checkManager(this.functionsManager, 'FunctionsManager');
-        if (functionsCheck) return functionsCheck;
+        const functionsManager = this.checkManager(this.functionsManager, 'FunctionsManager');
+        if ('error' in functionsManager) return functionsManager;
         
         // Normalize empty/whitespace function_name strings to list mode.
         const functionName = typeof args?.function_name === 'string' ? args.function_name.trim() : undefined;
@@ -1277,8 +1283,8 @@ export class ToolHandler {
         listBlocks?: boolean
     ): Promise<any> {
         // Check if HCLBlocksManager is available
-        const hclCheck = this.checkManager(this.hclBlocksManager, 'HCLBlocksManager');
-        if (hclCheck) return hclCheck;
+        const hclBlocksManager = this.checkManager(this.hclBlocksManager, 'HCLBlocksManager');
+        if ('error' in hclBlocksManager) return hclBlocksManager;
         
         // List all blocks (optionally filtered by category)
         if (listBlocks) {
@@ -1975,13 +1981,13 @@ export class ToolHandler {
         createParentDirs: boolean = true
     ): Promise<any> {
         // Check if ConfigGenerator is available
-        const configCheck = this.checkManager(this.configGenerator, 'ConfigGenerator');
-        if (configCheck) return configCheck;
+        const configGenerator = this.checkManager(this.configGenerator, 'ConfigGenerator');
+        if ('error' in configGenerator) return configGenerator;
         
         // Check if FileWriter is available when write is requested
         if (write) {
-            const writerCheck = this.checkManager(this.fileWriter, 'FileWriter');
-            if (writerCheck) return writerCheck;
+            const fileWriter = this.checkManager(this.fileWriter, 'FileWriter');
+            if ('error' in fileWriter) return fileWriter;
         }
         
         try {
@@ -2122,11 +2128,11 @@ export class ToolHandler {
         createParentDirs: boolean
     ): Promise<any> {
         // Check if FileWriter is available
-        const writerCheck = this.checkManager(this.fileWriter, 'FileWriter');
-        if (writerCheck) return writerCheck;
+        const fileWriter = this.checkManager(this.fileWriter, 'FileWriter');
+        if ('error' in fileWriter) return fileWriter;
         
         try {
-            const result = await this.fileWriter!.writeFile({
+            const result = await fileWriter.writeFile({
                 content,
                 filePath,
                 overwrite,
@@ -2171,11 +2177,11 @@ export class ToolHandler {
         }
     ): Promise<any> {
         // Check if ErrorPatternMatcher is available
-        const errorCheck = this.checkManager(this.errorPatternMatcher, 'ErrorPatternMatcher');
-        if (errorCheck) return errorCheck;
+        const errorPatternMatcher = this.checkManager(this.errorPatternMatcher, 'ErrorPatternMatcher');
+        if ('error' in errorPatternMatcher) return errorPatternMatcher;
         
         try {
-            const diagnosis = await this.errorPatternMatcher!.diagnoseError(
+            const diagnosis = await errorPatternMatcher.diagnoseError(
                 errorMessage,
                 context,
                 {
@@ -2253,12 +2259,12 @@ export class ToolHandler {
         listAll: boolean = false
     ): Promise<any> {
         // Check if BestPracticesAnalyzer is available
-        const practicesCheck = this.checkManager(this.bestPracticesAnalyzer, 'BestPracticesAnalyzer');
-        if (practicesCheck) return practicesCheck;
+        const bestPracticesAnalyzer = this.checkManager(this.bestPracticesAnalyzer, 'BestPracticesAnalyzer');
+        if ('error' in bestPracticesAnalyzer) return bestPracticesAnalyzer;
         
         // Check if BlockComparisonManager is available
-        const comparisonCheck = this.checkManager(this.blockComparisonManager, 'BlockComparisonManager');
-        if (comparisonCheck) return comparisonCheck;
+        const blockComparisonManager = this.checkManager(this.blockComparisonManager, 'BlockComparisonManager');
+        if ('error' in blockComparisonManager) return blockComparisonManager;
         
         // List all available guidance
         if (listAll) {
