@@ -9,6 +9,8 @@
     "start:config": "node bin/terragrunt-mcp-config",
     "start:guidance": "node bin/terragrunt-mcp-guidance",
     "start:observability": "node bin/terragrunt-mcp-observability",
+    "measure-tokens": "tsx scripts/measure-token-overhead.ts",
+    "benchmark-modes": "tsx scripts/benchmark-modes.ts",
     "dev": "ts-node src/index.ts",
     "build": "tsc",
     "lint": "eslint src/**/*.ts",
@@ -53,6 +55,7 @@
     "@vitest/coverage-v8": "^4.0.3",
     "@vitest/ui": "^4.0.3",
     "eslint": "^9.0.0",
+    "tsx": "^4.21.0",
     "vitest": "^4.0.3"
   },
   "type": "module",
