@@ -49,6 +49,7 @@ import type { AdvancedExampleCategory } from '../types/advanced-examples.js';
 import type { IMetricsManager, MetricsResponse } from '../types/metrics.js';
 import type { PaginationMetadata } from '../types/mcp.js';
 import { NullMetricsManager } from '../terragrunt/metrics.js';
+import { ServerMode, shouldLoadDependency, shouldEnableTool } from '../modes/config.js';
 
 export interface Tool {
     name: string;
@@ -164,48 +165,100 @@ interface BuildConfigArgs {
 }
 
 export class ToolHandler {
-    private docsManager: TerragruntDocsManager;
-    private functionsManager: TerragruntFunctionsManager;
-    private bestPracticesAnalyzer: BestPracticesAnalyzer;
-    private errorPatternMatcher: ErrorPatternMatcher;
-    private cliCommandsManager: CLICommandsManager;
-    private hclBlocksManager: HCLBlocksManager;
-    private advancedExamplesManager: AdvancedExamplesManager;
-    private blockComparisonManager: BlockComparisonManager;
+    private mode: ServerMode;
+    private docsManager?: TerragruntDocsManager;
+    private functionsManager?: TerragruntFunctionsManager;
+    private bestPracticesAnalyzer?: BestPracticesAnalyzer;
+    private errorPatternMatcher?: ErrorPatternMatcher;
+    private cliCommandsManager?: CLICommandsManager;
+    private hclBlocksManager?: HCLBlocksManager;
+    private advancedExamplesManager?: AdvancedExamplesManager;
+    private blockComparisonManager?: BlockComparisonManager;
     private functionsLoaded: boolean = false;
-    private templatesManager: TemplatesManager;
-    private templateLibrary: ConfigTemplateLibrary;
-    private configGenerator: TerragruntConfigGenerator;
-    private fileWriter: FileWriter;
+    private templatesManager?: TemplatesManager;
+    private templateLibrary?: ConfigTemplateLibrary;
+    private configGenerator?: TerragruntConfigGenerator;
+    private fileWriter?: FileWriter;
     private metricsManager: IMetricsManager;
 
-    constructor(metricsManager?: IMetricsManager) {
+    constructor(metricsManager?: IMetricsManager, mode: ServerMode = ServerMode.FULL) {
+        this.mode = mode;
         this.metricsManager = metricsManager || new NullMetricsManager();
-        this.docsManager = new TerragruntDocsManager();
-        this.functionsManager = new TerragruntFunctionsManager(this.docsManager);
-        this.bestPracticesAnalyzer = new BestPracticesAnalyzer(this.docsManager);
-        this.errorPatternMatcher = new ErrorPatternMatcher(this.docsManager);
-        this.cliCommandsManager = new CLICommandsManager();
-        this.hclBlocksManager = new HCLBlocksManager();
-        this.advancedExamplesManager = new AdvancedExamplesManager();
-        this.blockComparisonManager = new BlockComparisonManager();
         
-        // Initialize templates manager with builtin and filesystem loaders
-        this.templatesManager = new TemplatesManager([
-            new BuiltinTemplateLoader(),
-            new FilesystemTemplateLoader()  // Defaults to ~/.terragrunt-mcp/templates/
-        ]);
+        // Initialize managers based on mode
+        this.initializeManagers();
+    }
+    
+    /**
+     * Lazy initialization of managers based on server mode.
+     * Only instantiates managers needed for the current mode to reduce memory footprint.
+     */
+    private initializeManagers(): void {
+        // DocsManager is required by multiple dependencies
+        if (shouldLoadDependency('docs', this.mode)) {
+            this.docsManager = new TerragruntDocsManager();
+        }
         
-        this.templateLibrary = new ConfigTemplateLibrary(this.templatesManager);
-        this.configGenerator = new TerragruntConfigGenerator(this.docsManager, this.templateLibrary);
+        // Functions management
+        if (shouldLoadDependency('functions', this.mode) && this.docsManager) {
+            this.functionsManager = new TerragruntFunctionsManager(this.docsManager);
+        }
         
-        // Initialize file writer (can be configured via environment or config file)
-        this.fileWriter = new FileWriter({
-            enabled: process.env.TERRAGRUNT_MCP_FILE_WRITE_ENABLED !== 'false',
-            allowedDirectories: this.parseAllowedDirectories(),
-            autoBackup: process.env.TERRAGRUNT_MCP_AUTO_BACKUP !== 'false',
-            maxFileSize: parseInt(process.env.TERRAGRUNT_MCP_MAX_FILE_SIZE || '1048576', 10) || 1048576
-        });
+        // Best practices and guidance
+        if (shouldLoadDependency('bestPractices', this.mode) && this.docsManager) {
+            this.bestPracticesAnalyzer = new BestPracticesAnalyzer(this.docsManager);
+        }
+        
+        // Error diagnosis
+        if (shouldLoadDependency('errorPatterns', this.mode) && this.docsManager) {
+            this.errorPatternMatcher = new ErrorPatternMatcher(this.docsManager);
+        }
+        
+        // CLI commands
+        if (shouldLoadDependency('cli', this.mode)) {
+            this.cliCommandsManager = new CLICommandsManager();
+        }
+        
+        // HCL blocks
+        if (shouldLoadDependency('hcl', this.mode)) {
+            this.hclBlocksManager = new HCLBlocksManager();
+        }
+        
+        // Advanced examples
+        if (shouldLoadDependency('advancedExamples', this.mode)) {
+            this.advancedExamplesManager = new AdvancedExamplesManager();
+        }
+        
+        // Block comparisons
+        if (shouldLoadDependency('comparisons', this.mode)) {
+            this.blockComparisonManager = new BlockComparisonManager();
+        }
+        
+        // Configuration generation subsystem
+        if (shouldLoadDependency('templates', this.mode)) {
+            // Initialize templates manager with builtin and filesystem loaders
+            this.templatesManager = new TemplatesManager([
+                new BuiltinTemplateLoader(),
+                new FilesystemTemplateLoader()  // Defaults to ~/.terragrunt-mcp/templates/
+            ]);
+            
+            this.templateLibrary = new ConfigTemplateLibrary(this.templatesManager);
+            
+            // Generator requires docs dependency
+            if (shouldLoadDependency('generator', this.mode) && this.docsManager) {
+                this.configGenerator = new TerragruntConfigGenerator(this.docsManager, this.templateLibrary);
+            }
+        }
+        
+        // File writer (independent of templates but often used together)
+        if (shouldLoadDependency('fileWriter', this.mode)) {
+            this.fileWriter = new FileWriter({
+                enabled: process.env.TERRAGRUNT_MCP_FILE_WRITE_ENABLED !== 'false',
+                allowedDirectories: this.parseAllowedDirectories(),
+                autoBackup: process.env.TERRAGRUNT_MCP_AUTO_BACKUP !== 'false',
+                maxFileSize: parseInt(process.env.TERRAGRUNT_MCP_MAX_FILE_SIZE || '1048576', 10) || 1048576
+            });
+        }
     }
     
     /**
@@ -218,6 +271,20 @@ export class ToolHandler {
         }
         // Default to current working directory
         return [process.cwd()];
+    }
+    
+    /**
+     * Check if a manager is available. Returns error response if not.
+     * After calling this and checking for error, use non-null assertion (!) on the manager.
+     */
+    private checkManager<T>(manager: T | undefined, managerName: string): { error: string; errorType: string } | null {
+        if (!manager) {
+            return {
+                error: `${managerName} is not available in ${this.mode} mode. This tool is disabled.`,
+                errorType: 'MODE_RESTRICTION'
+            };
+        }
+        return null;
     }
 
     /**
@@ -265,7 +332,7 @@ export class ToolHandler {
     }
 
     getAvailableTools(): Tool[] {
-        return [
+        const allTools = [
             {
                 name: 'search_docs',
                 description: 'Search docs, list sections, or find code examples',
@@ -613,6 +680,9 @@ export class ToolHandler {
                 }
             }
         ];
+        
+        // Filter tools based on server mode
+        return allTools.filter(tool => shouldEnableTool(tool.name, this.mode));
     }
 
     async executeTool(name: string, args?: any): Promise<any> {
@@ -902,6 +972,10 @@ export class ToolHandler {
      * Routes to appropriate method based on mode parameter
      */
     private async searchDocs(args: SearchDocsArgs): Promise<any> {
+        // Check if DocsManager is available
+        const docsCheck = this.checkManager(this.docsManager, 'DocsManager');
+        if (docsCheck) return docsCheck;
+        
         const mode = args?.mode ?? 'search';
 
         switch (mode) {
@@ -932,6 +1006,9 @@ export class ToolHandler {
 
             case 'examples':
                 // Search for code examples
+                const advancedCheck = this.checkManager(this.advancedExamplesManager, 'AdvancedExamplesManager');
+                if (advancedCheck) return advancedCheck;
+                
                 return await this.getCodeExamples(
                     args?.query,
                     args?.detailLevel ?? 'summary',
@@ -957,6 +1034,10 @@ export class ToolHandler {
      *   surprising slice behavior (e.g., negative pages).
      */
     private async cliReference(args: CLIReferenceArgs): Promise<any> {
+        // Check if CLICommandsManager is available
+        const cliCheck = this.checkManager(this.cliCommandsManager, 'CLICommandsManager');
+        if (cliCheck) return cliCheck;
+        
         // Normalize empty/whitespace command strings to list mode.
         const command = typeof args?.command === 'string' ? args.command.trim() : undefined;
 
@@ -979,6 +1060,10 @@ export class ToolHandler {
      * - Pagination: `page` and `pageSize` are normalized to positive integers.
      */
     private async functionReference(args: FunctionReferenceArgs): Promise<any> {
+        // Check if FunctionsManager is available
+        const functionsCheck = this.checkManager(this.functionsManager, 'FunctionsManager');
+        if (functionsCheck) return functionsCheck;
+        
         // Normalize empty/whitespace function_name strings to list mode.
         const functionName = typeof args?.function_name === 'string' ? args.function_name.trim() : undefined;
 
@@ -1177,6 +1262,10 @@ export class ToolHandler {
         category?: string,
         listBlocks?: boolean
     ): Promise<any> {
+        // Check if HCLBlocksManager is available
+        const hclCheck = this.checkManager(this.hclBlocksManager, 'HCLBlocksManager');
+        if (hclCheck) return hclCheck;
+        
         // List all blocks (optionally filtered by category)
         if (listBlocks) {
             const blocks = this.hclBlocksManager.listBlocks(
@@ -1871,6 +1960,16 @@ export class ToolHandler {
         createBackup: boolean = true,
         createParentDirs: boolean = true
     ): Promise<any> {
+        // Check if ConfigGenerator is available
+        const configCheck = this.checkManager(this.configGenerator, 'ConfigGenerator');
+        if (configCheck) return configCheck;
+        
+        // Check if FileWriter is available when write is requested
+        if (write) {
+            const writerCheck = this.checkManager(this.fileWriter, 'FileWriter');
+            if (writerCheck) return writerCheck;
+        }
+        
         try {
             // Generate the configuration with correct parameter order (useCase, backend, tier, options)
             const generateResult = await this.generateTerragruntConfig(
@@ -2008,6 +2107,10 @@ export class ToolHandler {
         createBackup: boolean,
         createParentDirs: boolean
     ): Promise<any> {
+        // Check if FileWriter is available
+        const writerCheck = this.checkManager(this.fileWriter, 'FileWriter');
+        if (writerCheck) return writerCheck;
+        
         try {
             const result = await this.fileWriter.writeFile({
                 content,
@@ -2053,6 +2156,10 @@ export class ToolHandler {
             includeDestructiveCommands?: boolean;
         }
     ): Promise<any> {
+        // Check if ErrorPatternMatcher is available
+        const errorCheck = this.checkManager(this.errorPatternMatcher, 'ErrorPatternMatcher');
+        if (errorCheck) return errorCheck;
+        
         try {
             const diagnosis = await this.errorPatternMatcher.diagnoseError(
                 errorMessage,
@@ -2131,6 +2238,14 @@ export class ToolHandler {
         level?: 'beginner' | 'intermediate' | 'advanced',
         listAll: boolean = false
     ): Promise<any> {
+        // Check if BestPracticesAnalyzer is available
+        const practicesCheck = this.checkManager(this.bestPracticesAnalyzer, 'BestPracticesAnalyzer');
+        if (practicesCheck) return practicesCheck;
+        
+        // Check if BlockComparisonManager is available
+        const comparisonCheck = this.checkManager(this.blockComparisonManager, 'BlockComparisonManager');
+        if (comparisonCheck) return comparisonCheck;
+        
         // List all available guidance
         if (listAll) {
             const bestPracticeTopics = [
