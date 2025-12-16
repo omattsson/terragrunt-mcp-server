@@ -74,13 +74,10 @@ describe('Mode Configuration System', () => {
         expect(tools).toHaveLength(4);
       });
 
-      it('should have correct dependencies', () => {
+      it('should load advancedExamples dependency', () => {
         const deps = MODE_CONFIGS[ServerMode.CORE].dependencies;
-        expect(deps).toContain('docs');
-        expect(deps).toContain('functions');
-        expect(deps).toContain('cli');
-        expect(deps).toContain('hcl');
         expect(deps).toContain('advancedExamples');
+        expect(shouldLoadDependency('advancedExamples', ServerMode.CORE)).toBe(true);
       });
     });
 

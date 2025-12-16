@@ -16,7 +16,7 @@ interface MemoryMetrics {
   heapUsedMB: number;
   externalMB: number;
   totalMB: number;
-  startupMs: number;
+  startupTimeMs: number;
 }
 
 function formatMB(bytes: number): string {
@@ -56,7 +56,7 @@ async function benchmarkMode(mode: ServerMode): Promise<MemoryMetrics> {
   const managerCount = countLoadedManagers(handler as any);
   
   // Measure after initialization
-  const startupMs = performance.now() - startTime;
+  const startupTimeMs = performance.now() - startTime;
   const memAfter = process.memoryUsage();
   
   // Calculate deltas
@@ -71,7 +71,7 @@ async function benchmarkMode(mode: ServerMode): Promise<MemoryMetrics> {
     heapUsedMB: parseFloat(formatMB(heapDelta)),
     externalMB: parseFloat(formatMB(externalDelta)),
     totalMB: parseFloat(formatMB(totalDelta)),
-    startupMs: parseFloat(startupMs.toFixed(2)),
+    startupTimeMs: parseFloat(startupTimeMs.toFixed(2)),
   };
 }
 
@@ -123,7 +123,7 @@ async function main() {
       r.heapUsedMB.toFixed(2).padStart(8),
       r.externalMB.toFixed(2).padStart(9),
       r.totalMB.toFixed(2).padStart(9),
-      r.startupMs.toFixed(2).padStart(12)
+      r.startupTimeMs.toFixed(2).padStart(12)
     ];
     console.log(`│ ${row.join(' │ ')} │`);
   });

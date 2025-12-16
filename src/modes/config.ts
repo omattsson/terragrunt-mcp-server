@@ -40,6 +40,11 @@ export type DependencyType =
   | 'metrics';         // MetricsManager
 
 /**
+ * Common dependencies shared across multiple modes
+ */
+const BASE_DEPS: DependencyType[] = ['docs', 'hcl'];
+
+/**
  * Mode configurations defining tools and dependencies for each mode
  */
 export const MODE_CONFIGS: Record<ServerMode, ModeConfig> = {
@@ -48,14 +53,14 @@ export const MODE_CONFIGS: Record<ServerMode, ModeConfig> = {
     description: 'Essential documentation search and reference tools',
     tools: ['search_docs', 'cli_reference', 'function_reference', 'get_hcl_config_reference'],
     estimatedTokens: 965,
-    dependencies: ['docs', 'functions', 'cli', 'hcl', 'advancedExamples']
+    dependencies: [...BASE_DEPS, 'functions', 'cli', 'advancedExamples']
   },
   [ServerMode.CONFIG]: {
     name: ServerMode.CONFIG,
     description: 'Configuration generation and file writing',
     tools: ['build_config', 'get_hcl_config_reference'],
     estimatedTokens: 640,
-    dependencies: ['docs', 'templates', 'generator', 'hcl', 'fileWriter']
+    dependencies: [...BASE_DEPS, 'templates', 'generator', 'fileWriter']
   },
   [ServerMode.GUIDANCE]: {
     name: ServerMode.GUIDANCE,

@@ -37,8 +37,9 @@ CORE Mode (4 tools):
   • get_hcl_config_reference
   • search_docs
 
-CONFIG Mode (1 tool):
+CONFIG Mode (2 tools):
   • build_config
+  • get_hcl_config_reference
 
 GUIDANCE Mode (2 tools):
   • diagnose_terragrunt_error
