@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { ToolHandler } from '../../src/handlers/tools.js';
 import { TerragruntDoc } from '../../src/terragrunt/docs.js';
+import { ServerMode } from '../../src/modes/config.js';
 
 // Create shared mock instances
 const mockDocsManager = {
@@ -74,8 +75,8 @@ describe('ToolHandler', () => {
     
     mockResourceHandler.searchDocumentation.mockResolvedValue(mockDocs);
     
-    // Create new instance for each test
-    toolHandler = new ToolHandler();
+    // Create new instance for each test (using FULL mode for backward compatibility)
+    toolHandler = new ToolHandler(undefined, ServerMode.FULL);
   });
 
   afterEach(() => {

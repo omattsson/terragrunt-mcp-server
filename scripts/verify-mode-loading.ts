@@ -23,6 +23,7 @@ function verifyMode(mode: ServerMode) {
   
   // Check manager loading by trying to access private properties
   const h = handler as any;
+  // Check which managers are loaded (truthy check for defined and non-null)
   const managers = {
     docsManager: !!h.docsManager,
     functionsManager: !!h.functionsManager,

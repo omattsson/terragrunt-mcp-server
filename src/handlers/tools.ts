@@ -249,7 +249,16 @@ export class ToolHandler {
             // CONFIG mode dependencies include both 'docs' and 'generator' to satisfy this.
             if (shouldLoadDependency('generator', this.mode)) {
                 if (!this.docsManager) {
-                    throw new Error(`Mode '${this.mode}' requires 'generator' dependency, which requires 'docs' dependency. Add 'docs' to mode dependencies.`);
+                    throw new Error(
+                        `Mode '${this.mode}' requires the 'generator' dependency, which in turn requires the 'docs' dependency.\n` +
+                        `To fix this, edit 'src/modes/config.ts' and ensure that the '${this.mode}' mode includes both 'generator' and 'docs' in its dependencies array.\n` +
+                        `\n` +
+                        `Example configuration:\n` +
+                        `  [ServerMode.${this.mode.toUpperCase()}]: {\n` +
+                        `    ...,\n` +
+                        `    dependencies: ['docs', 'generator', ...]\n` +
+                        `  }`
+                    );
                 }
                 this.configGenerator = new TerragruntConfigGenerator(this.docsManager, this.templateLibrary);
             }
@@ -1103,7 +1112,7 @@ export class ToolHandler {
         }
         return Object.fromEntries(
             // Filter out undefined values regardless of key
-            Object.entries(flatProperties).filter(([key, v]) => v !== undefined)
+            Object.entries(flatProperties).filter(([_key, v]) => v !== undefined)
         ) as T;
     }
 

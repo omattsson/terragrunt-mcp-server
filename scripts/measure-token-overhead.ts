@@ -27,11 +27,14 @@ interface ModeMetrics {
 /**
  * Estimate tokens from JSON size using the industry standard rule of thumb.
  * 
+ * Rule of thumb: ~4 characters per token (rough approximation)
+ * 
  * @param jsonSize - Size of JSON payload in bytes
  * @returns Estimated token count
  * 
- * Note: Uses ~4 characters per token approximation. This is a rough estimate
- * as actual tokenization depends on the specific tokenizer and content structure.
+ * Note: This is a rough estimate as actual tokenization depends on the specific
+ * tokenizer (GPT-4, Claude, etc.) and content structure. The 4 chars/token ratio
+ * is commonly used for English text but may vary with technical content and JSON.
  */
 function estimateTokens(jsonSize: number): number {
   return Math.ceil(jsonSize / 4);

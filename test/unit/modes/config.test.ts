@@ -39,7 +39,7 @@ describe('Mode Configuration System', () => {
         expect(config.description).toBeDefined();
         expect(config.tools).toBeInstanceOf(Array);
         expect(config.tools.length).toBeGreaterThan(0);
-        expect(typeof config.estimatedTokens).toBe('number');
+        expect(config.estimatedTokens).toBeTypeOf('number');
         expect(config.estimatedTokens).toBeGreaterThan(0);
         expect(config.dependencies).toBeInstanceOf(Array);
         expect(config.dependencies.length).toBeGreaterThan(0);

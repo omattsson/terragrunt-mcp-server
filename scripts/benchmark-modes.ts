@@ -68,15 +68,16 @@ async function benchmarkMode(mode: ServerMode): Promise<PerformanceMetrics> {
   const managerChecks = [
     { name: 'docsManager', check: () => !!(handler as any).docsManager },
     { name: 'functionsManager', check: () => !!(handler as any).functionsManager },
-    { name: 'commandsManager', check: () => !!(handler as any).commandsManager },
-    { name: 'solutionRetriever', check: () => !!(handler as any).solutionRetriever },
-    { name: 'comparisonsManager', check: () => !!(handler as any).comparisonsManager },
-    { name: 'bestPracticesManager', check: () => !!(handler as any).bestPracticesManager },
-    { name: 'errorPatternsManager', check: () => !!(handler as any).errorPatternsManager },
-    { name: 'cliValidator', check: () => !!(handler as any).cliValidator },
-    { name: 'generator', check: () => !!(handler as any).generator },
+    { name: 'cliCommandsManager', check: () => !!(handler as any).cliCommandsManager },
+    { name: 'errorPatternMatcher', check: () => !!(handler as any).errorPatternMatcher },
+    { name: 'blockComparisonManager', check: () => !!(handler as any).blockComparisonManager },
+    { name: 'bestPracticesAnalyzer', check: () => !!(handler as any).bestPracticesAnalyzer },
+    { name: 'configGenerator', check: () => !!(handler as any).configGenerator },
     { name: 'fileWriter', check: () => !!(handler as any).fileWriter },
     { name: 'hclBlocksManager', check: () => !!(handler as any).hclBlocksManager },
+    { name: 'templatesManager', check: () => !!(handler as any).templatesManager },
+    { name: 'templateLibrary', check: () => !!(handler as any).templateLibrary },
+    { name: 'advancedExamplesManager', check: () => !!(handler as any).advancedExamplesManager },
     { name: 'metricsManager', check: () => !!(handler as any).metricsManager },
   ];
   
