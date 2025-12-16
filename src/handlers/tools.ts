@@ -885,7 +885,7 @@ export class ToolHandler {
         page: number = 1,
         pageSize: number = 10
     ): Promise<any> {
-        const results = await this.docsManager.searchDocs(query);
+        const results = await this.docsManager!.searchDocs(query);
 
         // Apply pagination
         const { results: paginatedResults, pagination } = this.calculatePagination(
@@ -915,8 +915,8 @@ export class ToolHandler {
     }
 
     private async getTerragruntSections(): Promise<any> {
-        const sections = await this.docsManager.getAvailableSections();
-        const docs = await this.docsManager.fetchLatestDocs();
+        const sections = await this.docsManager!.getAvailableSections();
+        const docs = await this.docsManager!.fetchLatestDocs();
 
         return {
             sections: sections.map(section => ({
@@ -929,13 +929,13 @@ export class ToolHandler {
     }
 
     private async getSectionDocs(section: string, mode: 'summary' | 'full' = 'summary'): Promise<any> {
-        const docs = await this.docsManager.getDocBySection(section);
+        const docs = await this.docsManager!.getDocBySection(section);
 
         if (docs.length === 0) {
             return {
                 section,
                 error: `No documentation found for section: ${section}`,
-                availableSections: await this.docsManager.getAvailableSections()
+                availableSections: await this.docsManager!.getAvailableSections()
             };
         }
 
@@ -1113,7 +1113,7 @@ export class ToolHandler {
 
     private async getCliCommandHelp(command: string): Promise<any> {
         // First, try to get structured documentation from CLICommandsManager
-        const structuredCmd = this.cliCommandsManager.getCommand(command);
+        const structuredCmd = this.cliCommandsManager!.getCommand(command);
         
         if (structuredCmd) {
             // Return comprehensive structured documentation
@@ -1144,18 +1144,18 @@ export class ToolHandler {
                 deprecated: structuredCmd.deprecated,
                 documentationUrl: structuredCmd.documentationUrl,
                 // Include formatted markdown help
-                formattedHelp: this.cliCommandsManager.formatCommandHelp(structuredCmd)
+                formattedHelp: this.cliCommandsManager!.formatCommandHelp(structuredCmd)
             };
         }
 
         // Fallback to docs manager for commands not in structured data
-        const doc = await this.docsManager.getCliCommandHelp(command);
+        const doc = await this.docsManager!.getCliCommandHelp(command);
 
         if (!doc) {
             // Provide helpful suggestions
-            const searchResults = this.cliCommandsManager.searchCommands(command);
+            const searchResults = this.cliCommandsManager!.searchCommands(command);
             const suggestions = searchResults.slice(0, 3).map(r => r.command.name);
-            const allCommands = this.cliCommandsManager.getAllCommands().map(c => c.name);
+            const allCommands = this.cliCommandsManager!.getAllCommands().map(c => c.name);
             
             return {
                 command,
@@ -1187,7 +1187,7 @@ export class ToolHandler {
     ): Promise<any> {
         if (search) {
             // Search for matching commands
-            const results = this.cliCommandsManager.searchCommands(search);
+            const results = this.cliCommandsManager!.searchCommands(search);
             const { results: paginatedResults, pagination } = this.calculatePagination(
                 results,
                 page,
@@ -1211,7 +1211,7 @@ export class ToolHandler {
 
         if (category) {
             // Filter by category
-            const commands = this.cliCommandsManager.getCommandsByCategory(category);
+            const commands = this.cliCommandsManager!.getCommandsByCategory(category);
             const { results: paginatedResults, pagination } = this.calculatePagination(
                 commands,
                 page,
@@ -1231,8 +1231,8 @@ export class ToolHandler {
         }
 
         // Return all commands organized by category
-        const categories = this.cliCommandsManager.getCategories();
-        const allCommands = this.cliCommandsManager.getAllCommands();
+        const categories = this.cliCommandsManager!.getCategories();
+        const allCommands = this.cliCommandsManager!.getAllCommands();
         const { results: paginatedCommands, pagination } = this.calculatePagination(
             allCommands,
             page,
@@ -1268,10 +1268,10 @@ export class ToolHandler {
         
         // List all blocks (optionally filtered by category)
         if (listBlocks) {
-            const blocks = this.hclBlocksManager.listBlocks(
-                category as Parameters<typeof this.hclBlocksManager.listBlocks>[0]
+            const blocks = this.hclBlocksManager!.listBlocks(
+                category as any
             );
-            const categories = this.hclBlocksManager.getCategories();
+            const categories = this.hclBlocksManager!.getCategories();
             
             return {
                 blocks: blocks.map(block => ({
@@ -1299,7 +1299,7 @@ export class ToolHandler {
         // Get specific block documentation
         if (config) {
             // First try structured block data (preferred)
-            const block = this.hclBlocksManager.getBlock(config);
+            const block = this.hclBlocksManager!.getBlock(config);
             
             if (block) {
                 // Return comprehensive structured documentation
@@ -1307,7 +1307,7 @@ export class ToolHandler {
             }
 
             // Try search if exact match not found
-            const searchResults = this.hclBlocksManager.searchBlocks(config);
+            const searchResults = this.hclBlocksManager!.searchBlocks(config);
             if (searchResults.length > 0) {
                 // Return best match with suggestions
                 const bestMatch = searchResults[0];
@@ -1333,7 +1333,7 @@ export class ToolHandler {
             }
 
             // Fall back to scraped documentation as last resort
-            const docs = await this.docsManager.getHclConfigReference(config);
+            const docs = await this.docsManager!.getHclConfigReference(config);
             if (docs.length > 0) {
                 return {
                     config,
@@ -1356,12 +1356,12 @@ export class ToolHandler {
                 config,
                 error: `No HCL configuration documentation found for: ${config}`,
                 suggestion: 'Use listBlocks=true to see all available HCL blocks, or try one of these common blocks: terraform, remote_state, locals, inputs, include, dependency, generate',
-                availableBlocks: this.hclBlocksManager.listBlocks().map(b => b.name)
+                availableBlocks: this.hclBlocksManager!.listBlocks().map(b => b.name)
             };
         }
 
         // No parameters - return summary with categories
-        const categories = this.hclBlocksManager.getCategories();
+        const categories = this.hclBlocksManager!.getCategories();
         return {
             message: 'Use config parameter to get documentation for a specific HCL block, or listBlocks=true to see all blocks',
             categories: categories.map(cat => ({
@@ -1370,7 +1370,7 @@ export class ToolHandler {
                 description: cat.description,
                 blockCount: cat.blockCount
             })),
-            totalBlocks: this.hclBlocksManager.getBlockCount(),
+            totalBlocks: this.hclBlocksManager!.getBlockCount(),
             exampleUsage: [
                 { description: 'Get terraform block docs', params: { config: 'terraform' } },
                 { description: 'List all blocks', params: { listBlocks: true } },
@@ -1418,7 +1418,7 @@ export class ToolHandler {
             })),
             relatedBlocks: block.relatedBlocks,
             docsUrl: block.docsUrl,
-            markdown: this.hclBlocksManager.formatBlockAsMarkdown(block)
+            markdown: this.hclBlocksManager!.formatBlockAsMarkdown(block)
         };
 
         // Merge any additional properties (e.g., matchInfo, otherMatches)
@@ -1462,7 +1462,7 @@ export class ToolHandler {
     ): Promise<any> {
         // List advanced example categories
         if (listCategories) {
-            const categories = this.advancedExamplesManager.getCategories();
+            const categories = this.advancedExamplesManager!.getCategories();
             return {
                 categories: categories.map(cat => ({
                     category: cat.category,
@@ -1470,7 +1470,7 @@ export class ToolHandler {
                     description: cat.description,
                     exampleCount: cat.exampleCount
                 })),
-                totalExamples: this.advancedExamplesManager.getExampleCount(),
+                totalExamples: this.advancedExamplesManager!.getExampleCount(),
                 message: 'Use advanced=true with query or category to get curated examples'
             };
         }
@@ -1488,11 +1488,11 @@ export class ToolHandler {
             };
         }
 
-        const results = await this.docsManager.getCodeExamples(query);
+        const results = await this.docsManager!.getCodeExamples(query);
 
         if (results.length === 0) {
             // Suggest advanced examples as alternative
-            const advancedResults = this.advancedExamplesManager.searchExamples(query);
+            const advancedResults = this.advancedExamplesManager!.searchExamples(query);
             if (advancedResults.length > 0) {
                 return {
                     query,
@@ -1555,7 +1555,7 @@ export class ToolHandler {
     ): any {
         // List examples by category
         if (category && !topic) {
-            const examples = this.advancedExamplesManager.listExamples(category);
+            const examples = this.advancedExamplesManager!.listExamples(category);
             
             // Summary mode for category listing
             if (mode === 'summary') {
@@ -1595,7 +1595,7 @@ export class ToolHandler {
 
         // Search by topic
         if (topic) {
-            const searchResults = this.advancedExamplesManager.searchExamples(topic);
+            const searchResults = this.advancedExamplesManager!.searchExamples(topic);
             
             // Filter by category if provided
             const filteredResults = category
@@ -1603,7 +1603,7 @@ export class ToolHandler {
                 : searchResults;
 
             if (filteredResults.length === 0) {
-                const categories = this.advancedExamplesManager.getCategories();
+                const categories = this.advancedExamplesManager!.getCategories();
                 return {
                     topic,
                     category,
@@ -1665,7 +1665,7 @@ export class ToolHandler {
                     relatedExamples: bestMatch.relatedExamples,
                     tags: bestMatch.tags,
                     docsUrl: bestMatch.docsUrl,
-                    markdown: this.advancedExamplesManager.formatExampleAsMarkdown(bestMatch)
+                    markdown: this.advancedExamplesManager!.formatExampleAsMarkdown(bestMatch)
                 },
                 otherMatches: filteredResults.slice(1, limit).map(r => ({
                     id: r.example.id,
@@ -1679,7 +1679,7 @@ export class ToolHandler {
         }
 
         // No topic or category - return overview
-        const categories = this.advancedExamplesManager.getCategories();
+        const categories = this.advancedExamplesManager!.getCategories();
         return {
             source: 'advanced-examples',
             message: 'Provide a topic to search, or a category to browse advanced examples',
@@ -1689,7 +1689,7 @@ export class ToolHandler {
                 description: cat.description,
                 exampleCount: cat.exampleCount
             })),
-            totalExamples: this.advancedExamplesManager.getExampleCount(),
+            totalExamples: this.advancedExamplesManager!.getExampleCount(),
             exampleUsage: [
                 { description: 'Search by topic', params: { advanced: true, topic: 'before_hook' } },
                 { description: 'Browse by category', params: { advanced: true, category: 'hooks' } },
@@ -1705,7 +1705,7 @@ export class ToolHandler {
     ): Promise<any> {
         try {
             const includeExamples = mode === 'full';
-            const result = await this.bestPracticesAnalyzer.analyzeTopic(topic, level, includeExamples);
+            const result = await this.bestPracticesAnalyzer!.analyzeTopic(topic, level, includeExamples);
             
             // Handle unknown topics with intelligent suggestions
             if (result.recommendations.length === 0) {
@@ -1770,11 +1770,11 @@ export class ToolHandler {
     ): Promise<any> {
         // Ensure functions are loaded at least once per process
         if (!this.functionsLoaded) {
-            await this.functionsManager.loadFunctions();
+            await this.functionsManager!.loadFunctions();
             this.functionsLoaded = true;
         }
 
-        const fn = this.functionsManager.getFunction(functionName);
+        const fn = this.functionsManager!.getFunction(functionName);
         if (!fn) {
             const suggestions = this.getSimilarFunctionNames(functionName);
             const suggestionText = suggestions.length > 0
@@ -1826,7 +1826,7 @@ export class ToolHandler {
      * This helps provide relevant alternatives when a function name is not found.
      */
     private getSimilarFunctionNames(functionName: string): string[] {
-        const allFunctions = this.functionsManager.listFunctions();
+        const allFunctions = this.functionsManager!.listFunctions();
         const query = functionName.toLowerCase();
         const suggestions: Array<{ name: string; score: number }> = [];
 
@@ -1878,7 +1878,7 @@ export class ToolHandler {
         pageSize: number = 20
     ): Promise<any> {
         if (!this.functionsLoaded) {
-            await this.functionsManager.loadFunctions();
+            await this.functionsManager!.loadFunctions();
             this.functionsLoaded = true;
         }
 
@@ -1886,18 +1886,18 @@ export class ToolHandler {
         
         // Apply search or category filter
         if (search && search.trim()) {
-            functions = this.functionsManager.searchFunctions(search);
+            functions = this.functionsManager!.searchFunctions(search);
             // Further filter by category if provided
             if (category && category.trim()) {
                 const catFilter = category.trim().toLowerCase();
                 functions = functions.filter(f => (f.category || '').toLowerCase() === catFilter);
             }
         } else {
-            functions = this.functionsManager.listFunctions(category);
+            functions = this.functionsManager!.listFunctions(category);
         }
 
         // Get all available categories (not filtered - shows all options for discovery)
-        const categories = this.functionsManager.getAvailableCategories();
+        const categories = this.functionsManager!.getAvailableCategories();
 
         // Apply pagination
         const { results, pagination } = this.calculatePagination(
@@ -2047,8 +2047,8 @@ export class ToolHandler {
             
             // Use the appropriate template library (custom or default)
             const generator = customTemplate 
-                ? new TerragruntConfigGenerator(this.docsManager, templateLibrary)
-                : this.configGenerator;
+                ? new TerragruntConfigGenerator(this.docsManager!, templateLibrary)
+                : this.configGenerator!;
 
             const result = await generator.generateConfig({
                 useCase: useCase as UseCase,
@@ -2112,7 +2112,7 @@ export class ToolHandler {
         if (writerCheck) return writerCheck;
         
         try {
-            const result = await this.fileWriter.writeFile({
+            const result = await this.fileWriter!.writeFile({
                 content,
                 filePath,
                 overwrite,
@@ -2161,7 +2161,7 @@ export class ToolHandler {
         if (errorCheck) return errorCheck;
         
         try {
-            const diagnosis = await this.errorPatternMatcher.diagnoseError(
+            const diagnosis = await this.errorPatternMatcher!.diagnoseError(
                 errorMessage,
                 context,
                 {
@@ -2253,8 +2253,8 @@ export class ToolHandler {
                 'state_management', 'dependencies', 'ci_cd', 'security',
                 'performance', 'testing'
             ];
-            const comparisons = this.blockComparisonManager.getAvailableComparisons();
-            const patterns = this.blockComparisonManager.getAvailablePatterns();
+            const comparisons = this.blockComparisonManager!.getAvailableComparisons();
+            const patterns = this.blockComparisonManager!.getAvailablePatterns();
             
             return {
                 availableBestPracticeTopics: bestPracticeTopics,
@@ -2271,8 +2271,8 @@ export class ToolHandler {
                 'state_management', 'dependencies', 'ci_cd', 'security',
                 'performance', 'testing'
             ];
-            const comparisons = this.blockComparisonManager.getAvailableComparisons();
-            const patterns = this.blockComparisonManager.getAvailablePatterns();
+            const comparisons = this.blockComparisonManager!.getAvailableComparisons();
+            const patterns = this.blockComparisonManager!.getAvailablePatterns();
             
             return {
                 availableBestPracticeTopics: bestPracticeTopics,
@@ -2340,8 +2340,8 @@ export class ToolHandler {
     ): any {
         // List all available comparisons
         if (listComparisons) {
-            const comparisons = this.blockComparisonManager.getAvailableComparisons();
-            const patterns = this.blockComparisonManager.getAvailablePatterns();
+            const comparisons = this.blockComparisonManager!.getAvailableComparisons();
+            const patterns = this.blockComparisonManager!.getAvailablePatterns();
             return {
                 availableComparisons: comparisons,
                 availablePatternTopics: patterns,
@@ -2351,7 +2351,7 @@ export class ToolHandler {
 
         // Need at least one block to compare
         if (!block1) {
-            const comparisons = this.blockComparisonManager.getAvailableComparisons();
+            const comparisons = this.blockComparisonManager!.getAvailableComparisons();
             return {
                 error: 'Please specify blocks to compare',
                 availableComparisons: comparisons,
@@ -2363,7 +2363,7 @@ export class ToolHandler {
             };
         }
 
-        const result = this.blockComparisonManager.compareBlocks(block1, block2);
+        const result = this.blockComparisonManager!.compareBlocks(block1, block2);
 
         if (!result.found) {
             return {
@@ -2411,8 +2411,8 @@ export class ToolHandler {
     ): any {
         // List all available patterns
         if (listPatterns) {
-            const patterns = this.blockComparisonManager.getAvailablePatterns();
-            const comparisons = this.blockComparisonManager.getAvailableComparisons();
+            const patterns = this.blockComparisonManager!.getAvailablePatterns();
+            const comparisons = this.blockComparisonManager!.getAvailableComparisons();
             return {
                 availablePatternTopics: patterns,
                 relatedBlockComparisons: comparisons,
@@ -2422,7 +2422,7 @@ export class ToolHandler {
 
         // Need a scenario to provide guidance
         if (!scenario) {
-            const patterns = this.blockComparisonManager.getAvailablePatterns();
+            const patterns = this.blockComparisonManager!.getAvailablePatterns();
             return {
                 error: 'Please specify a scenario to get guidance for',
                 availablePatternTopics: patterns,
@@ -2434,7 +2434,7 @@ export class ToolHandler {
             };
         }
 
-        const result = this.blockComparisonManager.getPatternGuidance(scenario);
+        const result = this.blockComparisonManager!.getPatternGuidance(scenario);
 
         if (!result.found) {
             return {
@@ -2462,7 +2462,7 @@ export class ToolHandler {
                     cons: p.cons
                 })),
                 relatedComparisons: guidance.relatedComparisons.map(id => {
-                    const comp = this.blockComparisonManager.getComparisonById(id);
+                    const comp = this.blockComparisonManager!.getComparisonById(id);
                     return comp ? `${comp.blocks[0]} vs ${comp.blocks[1]}` : id;
                 })
             }
