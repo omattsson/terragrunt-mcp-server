@@ -11,6 +11,8 @@
     "start:observability": "node bin/terragrunt-mcp-observability",
     "measure-tokens": "tsx scripts/measure-token-overhead.ts",
     "benchmark-modes": "tsx scripts/benchmark-modes.ts",
+    "verify-modes": "tsx scripts/verify-mode-loading.ts",
+    "measure-memory": "node --expose-gc --loader tsx scripts/measure-memory.ts",
     "dev": "ts-node src/index.ts",
     "build": "tsc",
     "lint": "eslint src/**/*.ts",

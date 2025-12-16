@@ -1,0 +1,203 @@
+# Multi-Mode Architecture Verification Results
+# Generated: Tue Dec 16 09:36:09 CET 2025
+
+## Tool Loading Verification
+
+
+> terragrunt-mcp-server@0.5.0 verify-modes
+> tsx scripts/verify-mode-loading.ts
+
+🔍 Mode Loading Verification
+
+
+============================================================
+OBSERVABILITY MODE
+============================================================
+
+📦 Tools Available: 1
+  • get_server_metrics
+
+🔧 Managers Loaded: 0/12
+  ❌ docsManager
+  ❌ functionsManager
+  ❌ commandsManager
+  ❌ solutionRetriever
+  ❌ bestPracticesAnalyzer
+  ❌ configGenerator
+  ❌ fileWriter
+  ❌ hclBlocksManager
+  ❌ templatesManager
+  ❌ templateLibrary
+  ❌ advancedExamplesManager
+  ❌ blockComparisonManager
+
+============================================================
+CONFIG MODE
+============================================================
+
+📦 Tools Available: 2
+  • get_hcl_config_reference
+  • build_config
+
+🔧 Managers Loaded: 6/12
+  ✅ docsManager
+  ❌ functionsManager
+  ❌ commandsManager
+  ❌ solutionRetriever
+  ❌ bestPracticesAnalyzer
+  ✅ configGenerator
+  ✅ fileWriter
+  ✅ hclBlocksManager
+  ✅ templatesManager
+  ✅ templateLibrary
+  ❌ advancedExamplesManager
+  ❌ blockComparisonManager
+
+============================================================
+GUIDANCE MODE
+============================================================
+
+📦 Tools Available: 2
+  • get_guidance
+  • diagnose_terragrunt_error
+
+🔧 Managers Loaded: 4/12
+  ✅ docsManager
+  ❌ functionsManager
+  ❌ commandsManager
+  ✅ solutionRetriever
+  ✅ bestPracticesAnalyzer
+  ❌ configGenerator
+  ❌ fileWriter
+  ❌ hclBlocksManager
+  ❌ templatesManager
+  ❌ templateLibrary
+  ❌ advancedExamplesManager
+  ✅ blockComparisonManager
+
+============================================================
+CORE MODE
+============================================================
+
+📦 Tools Available: 3
+  • search_docs
+  • function_reference
+  • cli_reference
+
+🔧 Managers Loaded: 4/12
+  ✅ docsManager
+  ✅ functionsManager
+  ✅ commandsManager
+  ❌ solutionRetriever
+  ❌ bestPracticesAnalyzer
+  ❌ configGenerator
+  ❌ fileWriter
+  ❌ hclBlocksManager
+  ❌ templatesManager
+  ❌ templateLibrary
+  ✅ advancedExamplesManager
+  ❌ blockComparisonManager
+
+============================================================
+FULL MODE
+============================================================
+
+📦 Tools Available: 8
+  • search_docs
+  • function_reference
+  • cli_reference
+  • get_hcl_config_reference
+  • get_guidance
+  • build_config
+  • diagnose_terragrunt_error
+  • get_server_metrics
+
+🔧 Managers Loaded: 12/12
+  ✅ docsManager
+  ✅ functionsManager
+  ✅ commandsManager
+  ✅ solutionRetriever
+  ✅ bestPracticesAnalyzer
+  ✅ configGenerator
+  ✅ fileWriter
+  ✅ hclBlocksManager
+  ✅ templatesManager
+  ✅ templateLibrary
+  ✅ advancedExamplesManager
+  ✅ blockComparisonManager
+
+
+============================================================
+SUMMARY
+============================================================
+
+| Mode | Tools | Managers | Efficiency |
+|------|-------|----------|------------|
+| observability |     1 |        0 | 100% saved |
+| config       |     2 |        6 | 50% saved |
+| guidance     |     2 |        4 | 67% saved |
+| core         |     3 |        4 | 67% saved |
+| full         |     8 |       12 | 0% saved |
+
+✅ Verification complete!
+
+
+## Memory Usage Benchmark
+
+💾 Memory Usage Benchmark
+
+════════════════════════════════════════════════════════════════════════════════
+Benchmarking modes (with GC between each)...
+
+  observability   ... ✓ 0.04 MB total
+  guidance        ... ✓ 0.13 MB total
+  core            ... ✓ 0.19 MB total
+  config          ... ✓ 0.08 MB total
+  full            ... ✓ 0.2 MB total
+
+
+════════════════════════════════════════════════════════════════════════════════
+MEMORY USAGE REPORT
+════════════════════════════════════════════════════════════════════════════════
+
+┌──────────────┬───────┬──────────┬──────────┬───────────┬───────────┬────────────┐
+│ Mode         │ Tools │ Managers │ Heap(MB) │ Ext(MB)   │ Total(MB) │ Startup(ms)│
+├──────────────┼───────┼──────────┼──────────┼───────────┼───────────┼────────────┤
+│ observability │     1 │     0/12 │     0.04 │      0.00 │      0.04 │       1.01 │
+│ guidance     │     2 │     4/12 │     0.13 │      0.00 │      0.13 │       3.71 │
+│ core         │     3 │     4/12 │     0.18 │      0.01 │      0.19 │       3.96 │
+│ config       │     2 │     6/12 │     0.08 │      0.00 │      0.08 │       1.82 │
+│ full         │     8 │    12/12 │     0.19 │      0.01 │      0.20 │       3.15 │
+└──────────────┴───────┴──────────┴──────────┴───────────┴───────────┴────────────┘
+
+════════════════════════════════════════════════════════════════════════════════
+EFFICIENCY GAINS vs FULL MODE
+════════════════════════════════════════════════════════════════════════════════
+
+┌──────────────┬──────────────────┬──────────────────┬──────────────────┐
+│ Mode         │ Memory Saved (%) │ Managers Saved(%)│ Startup Gain (%) │
+├──────────────┼──────────────────┼──────────────────┼──────────────────┤
+│ observability │           +80.0% │          +100.0% │           +67.9% │
+│ guidance     │           +35.0% │           +66.7% │           -17.8% │
+│ core         │            +5.0% │           +66.7% │           -25.7% │
+│ config       │           +60.0% │           +50.0% │           +42.2% │
+└──────────────┴──────────────────┴──────────────────┴──────────────────┘
+
+════════════════════════════════════════════════════════════════════════════════
+SUMMARY
+════════════════════════════════════════════════════════════════════════════════
+
+FULL Mode Baseline:
+  Memory: 0.2 MB
+  Managers: 12/12
+  Startup: 3.15 ms
+
+Average Savings Across Specialized Modes:
+  Memory: +45.0%
+  Managers: +70.8%
+
+Most Efficient Mode:
+  OBSERVABILITY: 0.04 MB (0/12 managers)
+
+✅ Memory benchmark complete!
+
