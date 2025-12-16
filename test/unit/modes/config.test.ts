@@ -37,11 +37,11 @@ describe('Mode Configuration System', () => {
       Object.values(MODE_CONFIGS).forEach((config: ModeConfig) => {
         expect(config.name).toBeDefined();
         expect(config.description).toBeDefined();
-        expect(Array.isArray(config.tools)).toBe(true);
+        expect(config.tools).toBeInstanceOf(Array);
         expect(config.tools.length).toBeGreaterThan(0);
         expect(typeof config.estimatedTokens).toBe('number');
         expect(config.estimatedTokens).toBeGreaterThan(0);
-        expect(Array.isArray(config.dependencies)).toBe(true);
+        expect(config.dependencies).toBeInstanceOf(Array);
         expect(config.dependencies.length).toBeGreaterThan(0);
       });
     });
@@ -53,7 +53,9 @@ describe('Mode Configuration System', () => {
       });
     });
 
-    it('should have estimated tokens in ascending order: config < guidance < core < full', () => {
+    it('should have estimated tokens in ascending order: observability < config < guidance < core < full', () => {
+      expect(MODE_CONFIGS[ServerMode.OBSERVABILITY].estimatedTokens)
+        .toBeLessThan(MODE_CONFIGS[ServerMode.CONFIG].estimatedTokens);
       expect(MODE_CONFIGS[ServerMode.CONFIG].estimatedTokens)
         .toBeLessThan(MODE_CONFIGS[ServerMode.GUIDANCE].estimatedTokens);
       expect(MODE_CONFIGS[ServerMode.GUIDANCE].estimatedTokens)

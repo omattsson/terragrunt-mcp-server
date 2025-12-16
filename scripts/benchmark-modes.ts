@@ -66,18 +66,18 @@ async function benchmarkMode(mode: ServerMode): Promise<PerformanceMetrics> {
   // Get loaded managers (non-null managers)
   const loadedManagers: string[] = [];
   const managerChecks = [
-    { name: 'docsManager', check: () => (handler as any).docsManager !== null },
-    { name: 'functionsManager', check: () => (handler as any).functionsManager !== null },
-    { name: 'commandsManager', check: () => (handler as any).commandsManager !== null },
-    { name: 'solutionRetriever', check: () => (handler as any).solutionRetriever !== null },
-    { name: 'comparisonsManager', check: () => (handler as any).comparisonsManager !== null },
-    { name: 'bestPracticesManager', check: () => (handler as any).bestPracticesManager !== null },
-    { name: 'errorPatternsManager', check: () => (handler as any).errorPatternsManager !== null },
-    { name: 'cliValidator', check: () => (handler as any).cliValidator !== null },
-    { name: 'generator', check: () => (handler as any).generator !== null },
-    { name: 'fileWriter', check: () => (handler as any).fileWriter !== null },
-    { name: 'hclBlocksManager', check: () => (handler as any).hclBlocksManager !== null },
-    { name: 'metricsManager', check: () => (handler as any).metricsManager !== null },
+    { name: 'docsManager', check: () => !!(handler as any).docsManager },
+    { name: 'functionsManager', check: () => !!(handler as any).functionsManager },
+    { name: 'commandsManager', check: () => !!(handler as any).commandsManager },
+    { name: 'solutionRetriever', check: () => !!(handler as any).solutionRetriever },
+    { name: 'comparisonsManager', check: () => !!(handler as any).comparisonsManager },
+    { name: 'bestPracticesManager', check: () => !!(handler as any).bestPracticesManager },
+    { name: 'errorPatternsManager', check: () => !!(handler as any).errorPatternsManager },
+    { name: 'cliValidator', check: () => !!(handler as any).cliValidator },
+    { name: 'generator', check: () => !!(handler as any).generator },
+    { name: 'fileWriter', check: () => !!(handler as any).fileWriter },
+    { name: 'hclBlocksManager', check: () => !!(handler as any).hclBlocksManager },
+    { name: 'metricsManager', check: () => !!(handler as any).metricsManager },
   ];
   
   managerChecks.forEach(({ name, check }) => {

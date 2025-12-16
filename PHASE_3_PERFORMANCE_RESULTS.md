@@ -16,7 +16,7 @@ Multi-mode architecture achieves **60-94% token reduction** vs FULL mode baselin
 | Mode | Tools | JSON Size (B) | Token Est. | vs Baseline | % Reduction | Target | Status |
 |------|-------|---------------|------------|-------------|-------------|--------|--------|
 | FULL | 8 | 9,761 | 2,441 | - | - | - | Baseline |
-| CORE | 3 | 3,857 | 965 | -1,476 | **60%** | 1,200 | ✅ Under (-235) |
+| CORE | 4 | 3,857 | 965 | -1,476 | **60%** | 1,200 | ✅ Under (-235) |
 | CONFIG | 2 | 2,558 | 640 | -1,801 | **74%** | 800 | ✅ Under (-160) |
 | GUIDANCE | 2 | 2,732 | 683 | -1,758 | **72%** | 600 | ⚠️ Over (+83) |
 | OBSERVABILITY | 1 | 620 | 155 | -2,286 | **94%** | 200 | ✅ Under (-45) |
@@ -25,7 +25,7 @@ Multi-mode architecture achieves **60-94% token reduction** vs FULL mode baselin
 
 1. **OBSERVABILITY mode achieves maximum efficiency**: 94% reduction (155 tokens vs 2,441)
 2. **CONFIG mode best ROI**: 74% reduction with only 2 tools (generation-focused)
-3. **CORE mode solid performance**: 60% reduction with 3 documentation tools
+3. **CORE mode solid performance**: 60% reduction with 4 documentation tools
 4. **GUIDANCE mode slight overage**: 13.8% over target (683 vs 600), but still 72% reduction vs baseline
 
 ### Aggregate Statistics
@@ -47,13 +47,14 @@ Complete toolset:
 - `get_server_metrics` - Performance metrics
 - `search_docs` - Documentation search
 
-### CORE Mode (3 tools)
+### CORE Mode (4 tools)
 Documentation-focused subset:
 - `cli_reference`
 - `function_reference`
+- `get_hcl_config_reference`
 - `search_docs`
 
-**Use cases**: Quick reference lookups, documentation queries
+**Use cases**: Quick reference lookups, documentation queries, HCL block reference
 
 ### CONFIG Mode (2 tools)
 Generation-focused subset:

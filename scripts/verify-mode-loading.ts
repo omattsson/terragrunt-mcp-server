@@ -24,18 +24,18 @@ function verifyMode(mode: ServerMode) {
   // Check manager loading by trying to access private properties
   const h = handler as any;
   const managers = {
-    docsManager: h.docsManager !== undefined && h.docsManager !== null,
-    functionsManager: h.functionsManager !== undefined && h.functionsManager !== null,
-    commandsManager: h.cliCommandsManager !== undefined && h.cliCommandsManager !== null,
-    errorPatternMatcher: h.errorPatternMatcher !== undefined && h.errorPatternMatcher !== null,
-    bestPracticesAnalyzer: h.bestPracticesAnalyzer !== undefined && h.bestPracticesAnalyzer !== null,
-    configGenerator: h.configGenerator !== undefined && h.configGenerator !== null,
-    fileWriter: h.fileWriter !== undefined && h.fileWriter !== null,
-    hclBlocksManager: h.hclBlocksManager !== undefined && h.hclBlocksManager !== null,
-    templatesManager: h.templatesManager !== undefined && h.templatesManager !== null,
-    templateLibrary: h.templateLibrary !== undefined && h.templateLibrary !== null,
-    advancedExamplesManager: h.advancedExamplesManager !== undefined && h.advancedExamplesManager !== null,
-    blockComparisonManager: h.blockComparisonManager !== undefined && h.blockComparisonManager !== null,
+    docsManager: !!h.docsManager,
+    functionsManager: !!h.functionsManager,
+    commandsManager: !!h.cliCommandsManager,
+    errorPatternMatcher: !!h.errorPatternMatcher,
+    bestPracticesAnalyzer: !!h.bestPracticesAnalyzer,
+    configGenerator: !!h.configGenerator,
+    fileWriter: !!h.fileWriter,
+    hclBlocksManager: !!h.hclBlocksManager,
+    templatesManager: !!h.templatesManager,
+    templateLibrary: !!h.templateLibrary,
+    advancedExamplesManager: !!h.advancedExamplesManager,
+    blockComparisonManager: !!h.blockComparisonManager,
   };
   
   const loadedCount = Object.values(managers).filter(Boolean).length;
