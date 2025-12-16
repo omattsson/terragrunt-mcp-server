@@ -123,7 +123,7 @@ async function main() {
       r.heapUsedMB.toFixed(2).padStart(8),
       r.externalMB.toFixed(2).padStart(9),
       r.totalMB.toFixed(2).padStart(9),
-      r.startupMs.toFixed(2).padStart(10)
+      r.startupMs.toFixed(2).padStart(12)
     ];
     console.log(`│ ${row.join(' │ ')} │`);
   });

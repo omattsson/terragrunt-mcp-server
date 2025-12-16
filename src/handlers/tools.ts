@@ -244,7 +244,9 @@ export class ToolHandler {
             
             this.templateLibrary = new ConfigTemplateLibrary(this.templatesManager);
             
-            // Generator requires docs dependency
+            // NOTE: The 'generator' dependency REQUIRES 'docsManager' to be available.
+            // This dependency is implicit and enforced here via the conditional check.
+            // CONFIG mode dependencies include both 'docs' and 'generator' to satisfy this.
             if (shouldLoadDependency('generator', this.mode) && this.docsManager) {
                 this.configGenerator = new TerragruntConfigGenerator(this.docsManager, this.templateLibrary);
             }

@@ -12,8 +12,8 @@
 │ Mode            │ Tools │ JSON (B) │ Tokens Est │ Reduction  │ % Saved  │
 ├─────────────────┼───────┼──────────┼────────────┼────────────┼──────────┤
 │ full            │     8 │     9761 │       2441 │   baseline │        - │
-│ core            │     3 │     3857 │        965 │      -1476 │      60% │
-│ config          │     2 │     2558 │        640 │      -1801 │      74% │
+│ core            │     4 │     3857 │        965 │      -1476 │      60% │
+│ config          │     1 │     2558 │        640 │      -1801 │      74% │
 │ guidance        │     2 │     2732 │        683 │      -1758 │      72% │
 │ observability   │     1 │      620 │        155 │      -2286 │      94% │
 └─────────────────┴───────┴──────────┴────────────┴────────────┴──────────┘
@@ -31,14 +31,14 @@ FULL Mode (8 tools):
   • get_server_metrics
   • search_docs
 
-CORE Mode (3 tools):
+CORE Mode (4 tools):
   • cli_reference
   • function_reference
+  • get_hcl_config_reference
   • search_docs
 
-CONFIG Mode (2 tools):
+CONFIG Mode (1 tool):
   • build_config
-  • get_hcl_config_reference
 
 GUIDANCE Mode (2 tools):
   • diagnose_terragrunt_error
