@@ -253,11 +253,26 @@ Lists all available functions with filtering and search capabilities.
   "returnType": "string",
   "examples": [
     {
-      "code": "terraform {\n  source = \"git::git@github.com:foo/modules.git//app?ref=v0.0.3\"\n}\n\ninclude {\n  path = find_in_parent_folders()\n}\n\ninputs = {\n  deployment_id = path_relative_to_include()\n}",
+      "code": "inputs = { deployment_id = path_relative_to_include() }",
       "description": "Returns relative path from include location to current file"
     }
   ],
   "relatedFunctions": ["path_relative_from_include", "find_in_parent_folders"]
+}
+```
+
+**Full example usage**:
+```hcl
+terraform {
+  source = "git::git@github.com:foo/modules.git//app?ref=v0.0.3"
+}
+
+include {
+  path = find_in_parent_folders()
+}
+
+inputs = {
+  deployment_id = path_relative_to_include()
 }
 ```
 
