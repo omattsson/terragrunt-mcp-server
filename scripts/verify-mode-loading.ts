@@ -21,23 +21,8 @@ function verifyMode(mode: ServerMode) {
     console.log(`  • ${tool.name}`);
   });
   
-  // Check manager loading by trying to access private properties
-  const h = handler as any;
-  // Check which managers are loaded (truthy check for defined and non-null)
-  const managers = {
-    docsManager: !!h.docsManager,
-    functionsManager: !!h.functionsManager,
-    commandsManager: !!h.cliCommandsManager,
-    errorPatternMatcher: !!h.errorPatternMatcher,
-    bestPracticesAnalyzer: !!h.bestPracticesAnalyzer,
-    configGenerator: !!h.configGenerator,
-    fileWriter: !!h.fileWriter,
-    hclBlocksManager: !!h.hclBlocksManager,
-    templatesManager: !!h.templatesManager,
-    templateLibrary: !!h.templateLibrary,
-    advancedExamplesManager: !!h.advancedExamplesManager,
-    blockComparisonManager: !!h.blockComparisonManager,
-  };
+  // Get loaded managers information using public API
+  const managers = handler.getLoadedManagersInfo();
   
   const loadedCount = Object.values(managers).filter(Boolean).length;
   console.log(`\n🔧 Managers Loaded: ${loadedCount}/12`);

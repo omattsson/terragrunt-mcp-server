@@ -198,6 +198,26 @@ export class ToolHandler {
         if (shouldLoadDependency('docs', this.mode)) {
             this.docsManager = new TerragruntDocsManager();
         }
+
+        // Validate that docsManager is present if required by other dependencies
+        if (shouldLoadDependency('functions', this.mode) && !this.docsManager) {
+            throw new Error(
+                "Server mode misconfiguration: 'functions' dependency requires 'docs' to be enabled. " +
+                "Please enable 'docs' in the server mode configuration."
+            );
+        }
+        if (shouldLoadDependency('bestPractices', this.mode) && !this.docsManager) {
+            throw new Error(
+                "Server mode misconfiguration: 'bestPractices' dependency requires 'docs' to be enabled. " +
+                "Please enable 'docs' in the server mode configuration."
+            );
+        }
+        if (shouldLoadDependency('errorPatterns', this.mode) && !this.docsManager) {
+            throw new Error(
+                "Server mode misconfiguration: 'errorPatterns' dependency requires 'docs' to be enabled. " +
+                "Please enable 'docs' in the server mode configuration."
+            );
+        }
         
         // Functions management
         if (shouldLoadDependency('functions', this.mode) && this.docsManager) {
@@ -347,6 +367,29 @@ export class ToolHandler {
                 hasMore: page < totalPages,
                 hasPrevious: page > 1
             }
+        };
+    }
+
+    /**
+     * Get information about which managers are currently loaded.
+     * Useful for diagnostics and testing.
+     * 
+     * @returns Record of manager names to boolean indicating if loaded
+     */
+    getLoadedManagersInfo(): Record<string, boolean> {
+        return {
+            docsManager: !!this.docsManager,
+            functionsManager: !!this.functionsManager,
+            commandsManager: !!this.cliCommandsManager,
+            errorPatternMatcher: !!this.errorPatternMatcher,
+            bestPracticesAnalyzer: !!this.bestPracticesAnalyzer,
+            configGenerator: !!this.configGenerator,
+            fileWriter: !!this.fileWriter,
+            hclBlocksManager: !!this.hclBlocksManager,
+            templatesManager: !!this.templatesManager,
+            templateLibrary: !!this.templateLibrary,
+            advancedExamplesManager: !!this.advancedExamplesManager,
+            blockComparisonManager: !!this.blockComparisonManager,
         };
     }
 

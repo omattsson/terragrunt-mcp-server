@@ -307,7 +307,7 @@ describe('Multi-Mode Architecture Integration Tests', () => {
         { mode: ServerMode.GUIDANCE, dep: 'bestPractices', expected: true },
         { mode: ServerMode.GUIDANCE, dep: 'errorPatterns', expected: true },
         { mode: ServerMode.GUIDANCE, dep: 'templates', expected: false },
-        { mode: ServerMode.OBSERVABILITY, dep: 'metrics', expected: true },
+        { mode: ServerMode.OBSERVABILITY, dep: 'metrics', expected: false },
         { mode: ServerMode.OBSERVABILITY, dep: 'docs', expected: false },
         { mode: ServerMode.FULL, dep: 'docs', expected: true },
         { mode: ServerMode.FULL, dep: 'templates', expected: true },

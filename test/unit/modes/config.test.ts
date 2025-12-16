@@ -42,7 +42,10 @@ describe('Mode Configuration System', () => {
         expect(config.estimatedTokens).toBeTypeOf('number');
         expect(config.estimatedTokens).toBeGreaterThan(0);
         expect(config.dependencies).toBeInstanceOf(Array);
-        expect(config.dependencies.length).toBeGreaterThan(0);
+        // OBSERVABILITY mode has empty dependencies (metricsManager always loaded)
+        if (config.name !== ServerMode.OBSERVABILITY) {
+          expect(config.dependencies.length).toBeGreaterThan(0);
+        }
       });
     });
 
@@ -140,9 +143,9 @@ describe('Mode Configuration System', () => {
         expect(tools).toHaveLength(1);
       });
 
-      it('should have minimal dependencies', () => {
+      it('should have no dependencies', () => {
         const deps = MODE_CONFIGS[ServerMode.OBSERVABILITY].dependencies;
-        expect(deps).toContain('metrics');
+        expect(deps).toHaveLength(0);
       });
     });
   });
