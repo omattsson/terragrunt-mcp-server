@@ -35,7 +35,7 @@ Validates that the MCP server initializes correctly with proper configuration:
 ```typescript
 {
   name: 'terragrunt-mcp-server',
-  version: '1.0.0',
+  version: '0.5.0',
   capabilities: {
     tools: {}  // v0.5.0: Tool-only architecture (resources removed)
   }

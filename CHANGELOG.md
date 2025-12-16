@@ -46,7 +46,7 @@ This release represents a significant architectural improvement focused on simpl
 ### ✨ Improvements
 
 #### Developer Experience
-- **Simpler API**: 7 tools instead of 11, easier to discover and use
+- **Simpler API**: 8 tools instead of 11, easier to discover and use
 - **Unified Interfaces**: Related operations consolidated under single tool names
 - **Mode-based Operations**: Tools use `mode` or conditional parameters instead of separate tools
 - **Backward Compatible Behavior**: Same functionality, better organization

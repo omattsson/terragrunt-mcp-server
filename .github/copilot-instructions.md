@@ -128,7 +128,7 @@ Resources use `terragrunt://docs/{type}/{identifier}`:
 1. **Define in `ToolHandler.getAvailableTools()`**: Add schema with name, description, inputSchema
 2. **Implement in `ToolHandler.executeTool()`**: Add case to switch statement
 3. **Add tests**: Unit test in `test/unit/tool-handler.test.ts` + integration in `test/integration/`
-4. **Update tool count**: Adjust MCP protocol test assertion (currently expects 7 tools) if adding
+4. **Update tool count**: Adjust MCP protocol test assertion (currently expects 8 tools) if adding
 5. **Update documentation**: README.md, Available-Tools.md, and CHANGELOG.md with new tool details
 6. **Consider consolidation**: Can this be merged into an existing tool with mode parameter?
 
