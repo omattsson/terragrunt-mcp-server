@@ -1,0 +1,20 @@
+#!/usr/bin/env node
+
+/**
+ * Terragrunt MCP Server - Observability Mode
+ * 
+ * Provides metrics and monitoring tools:
+ * - get_server_metrics: Server metrics and performance data
+ * 
+ * Usage: terragrunt-mcp-observability
+ * 
+ * Token overhead: ~200 tokens (93% reduction vs full mode)
+ */
+
+// Inject --mode observability into process.argv before importing server
+process.argv.push('--mode', 'observability');
+
+import('../dist/index.js').catch((error) => {
+  console.error('Failed to start server:', error);
+  process.exit(1);
+});

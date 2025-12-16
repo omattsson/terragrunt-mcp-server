@@ -5,6 +5,10 @@
   "main": "dist/index.js",
   "scripts": {
     "start": "node dist/index.js",
+    "start:core": "node bin/terragrunt-mcp-core",
+    "start:config": "node bin/terragrunt-mcp-config",
+    "start:guidance": "node bin/terragrunt-mcp-guidance",
+    "start:observability": "node bin/terragrunt-mcp-observability",
     "dev": "ts-node src/index.ts",
     "build": "tsc",
     "lint": "eslint src/**/*.ts",
@@ -52,6 +56,13 @@
     "vitest": "^4.0.3"
   },
   "type": "module",
+  "bin": {
+    "terragrunt-mcp-server": "./dist/index.js",
+    "terragrunt-mcp-core": "./bin/terragrunt-mcp-core",
+    "terragrunt-mcp-config": "./bin/terragrunt-mcp-config",
+    "terragrunt-mcp-guidance": "./bin/terragrunt-mcp-guidance",
+    "terragrunt-mcp-observability": "./bin/terragrunt-mcp-observability"
+  },
   "keywords": [
     "terragrunt",
     "mcp",
