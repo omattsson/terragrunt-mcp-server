@@ -109,7 +109,7 @@ Stack trace:
       const duration = Date.now() - start;
 
       expect(result).toBeDefined();
-      expect(duration).toBeLessThan(150); // Increased to account for system load variability
+      expect(duration).toBeLessThan(150);
     });
 
     it('should perform multiple sequential matches in <500ms total', async () => {
