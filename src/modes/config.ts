@@ -53,7 +53,7 @@ export const MODE_CONFIGS: Record<ServerMode, ModeConfig> = {
   [ServerMode.CONFIG]: {
     name: ServerMode.CONFIG,
     description: 'Configuration generation and file writing',
-    tools: ['build_config'],
+    tools: ['build_config', 'get_hcl_config_reference'],
     estimatedTokens: 640,
     dependencies: ['docs', 'templates', 'generator', 'hcl', 'fileWriter']
   },

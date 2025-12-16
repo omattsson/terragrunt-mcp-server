@@ -58,9 +58,10 @@ describe('Multi-Mode Architecture Integration Tests', () => {
       const toolNames = tools.map(t => t.name);
       
       expect(toolNames).toContain('build_config');
+      expect(toolNames).toContain('get_hcl_config_reference');
       expect(toolNames).not.toContain('search_docs');
       expect(toolNames).not.toContain('diagnose_terragrunt_error');
-      expect(tools.length).toBe(1);
+      expect(tools.length).toBe(2);
     });
 
     it('GUIDANCE mode should expose only troubleshooting tools', () => {
@@ -273,9 +274,13 @@ describe('Multi-Mode Architecture Integration Tests', () => {
       expect(coreTools).not.toEqual(guidanceTools);
       expect(configTools).not.toEqual(guidanceTools);
       
-      // Verify no tool overlap between CORE and CONFIG
+      // Verify intentional tool sharing: get_hcl_config_reference is shared between CORE and CONFIG
       const coreConfigOverlap = coreTools.filter(t => configTools.includes(t));
-      expect(coreConfigOverlap.length).toBe(0);
+      expect(coreConfigOverlap).toEqual(['get_hcl_config_reference']);
+      
+      // Verify no overlap between CORE and GUIDANCE
+      const coreGuidanceOverlap = coreTools.filter(t => guidanceTools.includes(t));
+      expect(coreGuidanceOverlap.length).toBe(0);
     });
 
     it('multiple instances of same mode should be identical', () => {

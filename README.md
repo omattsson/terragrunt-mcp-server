@@ -201,7 +201,7 @@ The Terragrunt MCP Server supports **5 operational modes** to optimize token usa
 | Mode | Tools | Token Overhead | Memory | Managers | Use Case |
 |------|-------|----------------|---------|----------|----------|
 | **FULL** | 8 | 2,441 (baseline) | 0.20 MB | 12/12 | All features, backward compatible |
-| **CORE** | 3 | 965 (-60%) | 0.19 MB | 4/12 | Documentation & reference lookups |
+| **CORE** | 4 | 965 (-60%) | 0.19 MB | 4/12 | Documentation & reference lookups |
 | **CONFIG** | 2 | 640 (-74%) | 0.08 MB | 6/12 | Configuration generation |
 | **GUIDANCE** | 2 | 683 (-72%) | 0.13 MB | 4/12 | Troubleshooting & best practices |
 | **OBSERVABILITY** | 1 | 155 (-94%) | 0.04 MB | 0/12 | Metrics & monitoring only |

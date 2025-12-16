@@ -38,7 +38,7 @@
 
 ### CORE Mode
 **Documentation Hub - 67% manager reduction**
-- **Tools**: 3 (search_docs, function_reference, cli_reference)
+- **Tools**: 4 (search_docs, function_reference, cli_reference, get_hcl_config_reference)
 - **Managers Loaded**: 4/12 (docs, functions, cli, advancedExamples)
 - **Memory**: 0.19 MB (5% savings vs FULL)
 - **Startup**: 3.96 ms (26% slower - comprehensive docs loading)

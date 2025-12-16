@@ -77,6 +77,8 @@ describe('Mode Configuration System', () => {
         expect(deps).toContain('docs');
         expect(deps).toContain('functions');
         expect(deps).toContain('cli');
+        expect(deps).toContain('hcl');
+        expect(deps).toContain('advancedExamples');
       });
     });
 
@@ -84,7 +86,8 @@ describe('Mode Configuration System', () => {
       it('should include configuration generation tools', () => {
         const tools = MODE_CONFIGS[ServerMode.CONFIG].tools;
         expect(tools).toContain('build_config');
-        expect(tools).toHaveLength(1);
+        expect(tools).toContain('get_hcl_config_reference');
+        expect(tools).toHaveLength(2);
       });
 
       it('should have correct dependencies', () => {

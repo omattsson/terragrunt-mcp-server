@@ -27,7 +27,7 @@ function verifyMode(mode: ServerMode) {
     docsManager: h.docsManager !== undefined && h.docsManager !== null,
     functionsManager: h.functionsManager !== undefined && h.functionsManager !== null,
     commandsManager: h.cliCommandsManager !== undefined && h.cliCommandsManager !== null,
-    solutionRetriever: h.errorPatternMatcher !== undefined && h.errorPatternMatcher !== null,
+    errorPatternMatcher: h.errorPatternMatcher !== undefined && h.errorPatternMatcher !== null,
     bestPracticesAnalyzer: h.bestPracticesAnalyzer !== undefined && h.bestPracticesAnalyzer !== null,
     configGenerator: h.configGenerator !== undefined && h.configGenerator !== null,
     fileWriter: h.fileWriter !== undefined && h.fileWriter !== null,

@@ -44,7 +44,7 @@ import { HCLBlocksManager } from '../terragrunt/hcl-blocks.js';
 import { AdvancedExamplesManager } from '../terragrunt/advanced-examples.js';
 import { BlockComparisonManager } from '../terragrunt/comparisons.js';
 import { getFirstSentence } from '../terragrunt/utils.js';
-import type { HCLBlock } from '../types/hcl-blocks.js';
+import type { HCLBlock, HCLBlockCategory } from '../types/hcl-blocks.js';
 import type { AdvancedExampleCategory } from '../types/advanced-examples.js';
 import type { IMetricsManager, MetricsResponse } from '../types/metrics.js';
 import type { PaginationMetadata } from '../types/mcp.js';
@@ -1261,7 +1261,7 @@ export class ToolHandler {
 
     private async getHclConfigReference(
         config?: string,
-        category?: string,
+        category?: HCLBlockCategory,
         listBlocks?: boolean
     ): Promise<any> {
         // Check if HCLBlocksManager is available
@@ -1271,7 +1271,7 @@ export class ToolHandler {
         // List all blocks (optionally filtered by category)
         if (listBlocks) {
             const blocks = this.hclBlocksManager!.listBlocks(
-                category as any
+                category
             );
             const categories = this.hclBlocksManager!.getCategories();
             
@@ -1313,17 +1313,17 @@ export class ToolHandler {
             if (searchResults.length > 0) {
                 // Return best match with suggestions
                 const bestMatch = searchResults[0];
-                const response = this.formatBlockResponse(bestMatch.block, {
+                const additionalProps: Record<string, unknown> = {
                     matchInfo: {
                         matchType: bestMatch.matchType,
                         score: bestMatch.score,
                         searchQuery: config
                     }
-                });
+                };
 
                 // Add suggestions if there are other close matches
                 if (searchResults.length > 1) {
-                    (response as any).otherMatches = searchResults.slice(1, 4).map(r => ({
+                    additionalProps.otherMatches = searchResults.slice(1, 4).map(r => ({
                         name: r.block.name,
                         displayName: r.block.displayName,
                         score: r.score,
@@ -1331,7 +1331,7 @@ export class ToolHandler {
                     }));
                 }
 
-                return response;
+                return this.formatBlockResponse(bestMatch.block, additionalProps);
             }
 
             // Fall back to scraped documentation as last resort
