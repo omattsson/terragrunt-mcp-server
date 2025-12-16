@@ -14,28 +14,29 @@ This page provides a comprehensive overview of the Terragrunt MCP Server's archi
                       │ MCP Protocol (stdio)
                       │
 ┌─────────────────────▼───────────────────────────────────────┐
-│              Terragrunt MCP Server                           │
+│              Terragrunt MCP Server (v0.5.0)                  │
 │  ┌──────────────────────────────────────────────────────┐   │
 │  │         src/index.ts (Entry Point)                   │   │
 │  └────────────────┬─────────────────────────────────────┘   │
 │                   │                                          │
 │  ┌────────────────▼─────────────────────────────────────┐   │
 │  │          MCP Protocol Handlers                       │   │
+│  │  ┌──────────────────────────┐  ┌─────────────────┐  │   │
+│  │  │   Tool Handler (8 tools) │  │  Prompts Handler│  │   │
+│  │  │   (Tool-Only Architecture)│  │    (Future)     │  │   │
+│  │  └────────────┬─────────────┘  └─────────────────┘  │   │
+│  └───────────────┼────────────────────────────────────────┘   │
+│                  │                                          │
+│  ┌───────────────▼──────────────────────────────────────┐   │
+│  │         Manager Layer (Domain Logic)                 │   │
 │  │  ┌──────────────┐  ┌──────────────┐  ┌───────────┐  │   │
-│  │  │   Resources  │  │    Tools     │  │  Prompts  │  │   │
-│  │  │   Handler    │  │   Handler    │  │  Handler  │  │   │
-│  │  └──────┬───────┘  └──────┬───────┘  └─────┬─────┘  │   │
-│  └─────────┼──────────────────┼────────────────┼────────┘   │
-│            │                  │                │            │
-│  ┌─────────▼──────────────────▼────────────────▼────────┐   │
-│  │         TerragruntDocsManager                        │   │
-│  │  ┌───────────────────────────────────────────────┐   │   │
-│  │  │  Two-Tier Caching System                      │   │   │
-│  │  │  ┌──────────────┐     ┌──────────────────┐   │   │   │
-│  │  │  │  In-Memory   │ ←→  │  Disk Cache      │   │   │   │
-│  │  │  │  Cache (Map) │     │  (.cache/*.json) │   │   │   │
-│  │  │  └──────────────┘     └──────────────────┘   │   │   │
-│  │  └───────────────────────────────────────────────┘   │   │
+│  │  │    Docs      │  │  Functions   │  │    CLI    │  │   │
+│  │  │   Manager    │  │   Manager    │  │  Commands │  │   │
+│  │  └──────┬───────┘  └──────────────┘  └───────────┘  │   │
+│  │  ┌──────▼───────┐  ┌──────────────┐  ┌───────────┐  │   │
+│  │  │ HCL Blocks   │  │Best Practices│  │  Config   │  │   │
+│  │  │   Manager    │  │   Analyzer   │  │ Generator │  │   │
+│  │  └──────────────┘  └──────────────┘  └───────────┘  │   │
 │  └───────────────────────┬──────────────────────────────┘   │
 └──────────────────────────┼──────────────────────────────────┘
                            │
@@ -67,18 +68,24 @@ This page provides a comprehensive overview of the Terragrunt MCP Server's archi
 
 **Purpose**: Implements MCP protocol handlers for different request types
 
-#### ResourceHandler (`resources.ts`)
-
-- Exposes documentation as MCP resources
-- Provides overview, section-based, and page-based views
-- Formats content as markdown for AI consumption
-
 #### ToolHandler (`tools.ts`)
 
-- Implements 12 specialized documentation and troubleshooting tools
-- Validates input parameters
-- Executes tool-specific logic
+- **v0.5.0 Update**: Implements 8 consolidated tools (down from 11 in v0.4.x)
+- Tool-only architecture (resources removed for simplification)
+- Validates input parameters with JSON Schema
+- Executes tool-specific logic via manager layer
 - Returns structured JSON responses
+- Unified tool interfaces with mode-based routing
+
+**8 Consolidated Tools**:
+1. `search_docs` - Unified documentation search
+2. `function_reference` - Get/list built-in functions
+3. `cli_reference` - Get/list CLI commands
+4. `get_hcl_config_reference` - HCL block documentation
+5. `get_guidance` - Best practices & comparisons
+6. `build_config` - Generate/write configurations
+7. `diagnose_terragrunt_error` - Error diagnosis
+8. `get_server_metrics` - Server observability
 
 #### PromptsHandler (`prompts.ts`)
 

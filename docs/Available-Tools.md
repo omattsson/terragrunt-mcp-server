@@ -1,20 +1,21 @@
 # Available Tools
 
-The Terragrunt MCP Server provides a set of specialized tools for accessing and searching Terragrunt documentation, generating configurations, analyzing best practices, diagnosing errors, comparing blocks, and writing files. Each tool is designed for specific use cases to help you find the information you need quickly.
+The Terragrunt MCP Server provides **8 consolidated tools** for comprehensive Terragrunt assistance. Each tool is designed with unified interfaces that intelligently adapt to your needs based on provided parameters.
+
+> **Version Note**: v0.5.0 consolidated 11 separate tools into 8 (7 core + 1 observability) for improved usability. See [CHANGELOG.md](../CHANGELOG.md) for migration details.
 
 ## Tool Overview
 
-| Tool | Purpose | Best For |
-|------|---------|----------|
-| `search_docs` | Unified documentation search | All doc-related tasks (search, browse, sections, examples) |
-| `get_terragrunt_function` | Get a single function | Looking up a specific built-in function |
-| `list_terragrunt_functions` | List functions | Browsing available built-in functions |
-| `cli_reference` | CLI command reference | Command help, listing, and browsing by category |
-| `get_hcl_config_reference` | HCL config reference | Writing terragrunt.hcl files |
-| `get_guidance` | Unified guidance tool | Best practices, comparisons, and patterns |
-| `generate_terragrunt_config` | Configuration generator | Quick setup and best practices |
-| `write_terragrunt_config` | Write configs to disk | Saving generated configurations |
-| `diagnose_terragrunt_error` | Error diagnosis | Troubleshooting Terragrunt errors |
+| # | Tool | Purpose | Best For |
+|---|------|---------|----------|
+| 1 | `search_docs` | Unified documentation search | All doc-related tasks (search, browse, sections, examples) |
+| 2 | `function_reference` | Get/list built-in functions | Function lookup, discovery, and browsing |
+| 3 | `cli_reference` | Get/list CLI commands | Command help, listing, and browsing by category |
+| 4 | `get_hcl_config_reference` | HCL block documentation | Writing terragrunt.hcl files |
+| 5 | `get_guidance` | Best practices & comparisons | Learning patterns, avoiding pitfalls |
+| 6 | `build_config` | Generate/write configurations | Config creation, file management |
+| 7 | `diagnose_terragrunt_error` | Error diagnosis | Troubleshooting Terragrunt errors |
+| 8 | `get_server_metrics` | Server observability | Monitoring performance and usage |
 
 ---
 
@@ -167,7 +168,143 @@ Find code examples and patterns.
 
 ---
 
-## 2. get_terragrunt_function
+## 2. function_reference
+
+**Purpose**: Unified tool for Terragrunt built-in function documentation - get detailed function information OR list all available functions. The tool automatically detects which mode to use based on whether `function_name` is provided.
+
+### Parameters — function_reference
+
+#### Get Mode (when `function_name` provided)
+- **`function_name`** (string, required): Function name to look up (e.g., `"path_relative_to_include"`, `"get_env"`)
+- **`mode`** (string, optional): Detail level - `"summary"` or `"full"` (default: `"summary"`)
+- **`include_examples`** (boolean, optional): Include code examples (default: `true`)
+
+#### List Mode (when no `function_name`)
+- **`category`** (string, optional): Filter by category (e.g., `"path"`, `"aws"`, `"environment"`)
+- **`search`** (string, optional): Search in function names and descriptions
+- **`page`** (number, optional): Page number for pagination (default: `1`)
+- **`pageSize`** (number, optional): Results per page (default: `20`)
+
+### Modes — function_reference
+
+#### Get Mode
+Retrieves detailed documentation for a specific function including signature, parameters, return type, description, and usage examples.
+
+**Trigger**: Provide `function_name` parameter
+
+**Returns**: Complete function metadata with:
+- Function name and signature
+- Parameter details (name, type, description)
+- Return type
+- Description and usage notes
+- Code examples (when `include_examples=true`)
+- Related functions
+
+**Example Prompts**:
+```text
+"Show me documentation for path_relative_to_include"
+"What parameters does get_env accept?"
+"How do I use find_in_parent_folders?"
+```
+
+#### List Mode
+Lists all available functions with filtering and search capabilities.
+
+**Trigger**: Omit `function_name` parameter
+
+**Returns**: Array of functions with:
+- Function name and signature
+- Category
+- Short description
+- Pagination metadata
+
+**Example Prompts**:
+```text
+"List all AWS-related Terragrunt functions"
+"What built-in functions are available?"
+"Search for functions related to environment variables"
+```
+
+### Function Categories
+
+- **path**: Path manipulation functions (`path_relative_to_include`, `path_relative_from_include`, etc.)
+- **aws**: AWS-specific functions (`get_aws_account_id`, `get_aws_caller_identity_arn`, etc.)
+- **environment**: Environment variable functions (`get_env`, `get_terraform_command`, etc.)
+- **platform**: Platform detection (`get_platform`, `get_repo_root`, etc.)
+- **file**: File operations (`read_terragrunt_config`, `find_in_parent_folders`, etc.)
+- **terraform**: Terraform integration (`get_terraform_commands_that_need_vars`, etc.)
+
+### Use Cases — function_reference
+
+- **Get Mode**: Looking up specific function syntax, understanding parameters, finding usage examples
+- **List Mode**: Discovering available functions, browsing by category, finding functions by keyword
+- **Learning**: Understanding Terragrunt's built-in function ecosystem
+- **Development**: Quick reference during terragrunt.hcl file authoring
+
+### Example Response — function_reference (get mode)
+
+```json
+{
+  "name": "path_relative_to_include",
+  "signature": "path_relative_to_include() -> string",
+  "category": "path",
+  "description": "Returns the relative path between the current terragrunt.hcl file and the path specified in its include block.",
+  "parameters": [],
+  "returnType": "string",
+  "examples": [
+    {
+      "code": "inputs = { deployment_id = path_relative_to_include() }",
+      "description": "Returns relative path from include location to current file"
+    }
+  ],
+  "relatedFunctions": ["path_relative_from_include", "find_in_parent_folders"]
+}
+```
+
+**Full example usage**:
+```hcl
+terraform {
+  source = "git::git@github.com:foo/modules.git//app?ref=v0.0.3"
+}
+
+include {
+  path = find_in_parent_folders()
+}
+
+inputs = {
+  deployment_id = path_relative_to_include()
+}
+```
+
+### Example Response — function_reference (list mode)
+
+```json
+{
+  "functions": [
+    {
+      "name": "get_env",
+      "signature": "get_env(name, default) -> string",
+      "category": "environment",
+      "description": "Returns the value of the environment variable named by the key name. If no such environment variable exists, returns the default value."
+    },
+    {
+      "name": "get_aws_account_id",
+      "signature": "get_aws_account_id() -> string",
+      "category": "aws",
+      "description": "Returns the AWS account ID associated with the current set of credentials."
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "pageSize": 20,
+    "totalPages": 3,
+    "totalItems": 47,
+    "hasMore": true
+  }
+}
+```
+
+---
 
 ## 3. cli_reference
 
@@ -404,11 +541,41 @@ The tool automatically resolves common aliases:
 
 ---
 
-## 6. generate_terragrunt_config
+## 5. get_guidance
 
-**Purpose**: Generate complete `terragrunt.hcl` configurations from battle-tested templates based on your use case and cloud provider.
+**Purpose**: Unified tool for getting best practices, comparing HCL blocks, and choosing between patterns. Intelligently routes based on query content or explicit type hints.
 
-### Parameters — generate_terragrunt_config
+### Parameters — get_guidance
+
+- **`query`** (string, optional): Topic, comparison, or scenario to get guidance on
+- **`type`** (string, optional): Guidance type - `"best-practices"`, `"comparison"`, or `"pattern"`
+- **`mode`** (string, optional): Detail level - `"summary"` or `"full"` (default: `"summary"`)
+- **`level`** (string, optional): Experience level filter - `"beginner"`, `"intermediate"`, or `"advanced"`
+- **`listAll`** (boolean, optional): List all available guidance topics (default: `false`)
+
+### Use Cases — get_guidance
+
+- Learning best practices for specific topics
+- Comparing different approaches (e.g., dependency vs dependencies)
+- Understanding patterns and antipatterns
+- Getting experience-appropriate recommendations
+
+### Example Prompts — get_guidance
+
+```text
+"What are best practices for state management?"
+"Compare dependency vs dependencies blocks"
+"Show me module organization patterns"
+"What should I avoid when setting up CI/CD?"
+```
+
+---
+
+## 6. build_config
+
+**Purpose**: Unified tool for generating OR writing OR generating+writing Terragrunt configurations. Supports three operational modes with intelligent routing based on provided parameters.
+
+### Parameters — build_config
 
 - **`useCase`** (string, required): Configuration type to generate:
   - `"remote_state"` - Remote state backend configuration (S3, Azure Blob, GCS)
@@ -429,28 +596,56 @@ The tool automatically resolves common aliases:
   - **For inputs**: `environment`, `region`, or custom key-value pairs
   - **For providers**: `path`, `if_exists`, `region`, `account_id`
 
-### Use Cases — generate_terragrunt_config
+### Operational Modes — build_config
 
+#### Generate-Only Mode
+Generates configuration and returns it without writing to disk. Useful for:
+- Previewing configurations before saving
+- Learning HCL syntax and structure
+- Getting configuration templates for manual editing
+- CI/CD pipelines that need to inspect configs
+
+#### Write-Only Mode  
+Writes provided HCL content to disk. Useful for:
+- Saving manually edited configurations
+- Writing configs from external sources
+- Batch file operations
+- Automated configuration deployment
+
+#### Generate+Write Mode
+Generates and writes in one operation. Useful for:
 - Quick project setup and scaffolding
-- Learning Terragrunt HCL syntax
-- Implementing best practice configurations
-- Starting new Terragrunt modules
-- Ensuring consistent configuration patterns across teams
-- Discovering available configuration options
+- Automated environment provisioning
+- Ensuring consistent patterns across teams
+- One-command configuration deployment
 
-### Example Prompts — generate_terragrunt_config
+### Use Cases — build_config
+
+- Quick project setup and scaffolding (Generate+Write)
+- Learning Terragrunt HCL syntax (Generate-Only)
+- Implementing best practice configurations (All modes)
+- Starting new Terragrunt modules (Generate+Write)
+- Saving generated or modified configs (Write-Only)
+- Automating configuration updates (All modes)
+
+### Example Prompts — build_config
 
 ```text
+# Generate-Only
 "Generate a terragrunt config for S3 remote state in us-east-1"
-"Create an Azure backend configuration for my terraform state"
-"Show me how to configure GCS remote state with my project ID"
-"Generate a before hook to run terraform fmt"
-"Create a dependency configuration for my VPC module"
-"Show me an inputs configuration for production environment"
-"Generate an AWS provider block with account validation"
+"Show me how to configure GCS remote state"
+"Create a before hook to run terraform fmt"
+
+# Write-Only  
+"Write this configuration to /home/user/terraform/terragrunt.hcl"
+"Save this HCL to my project directory"
+
+# Generate+Write
+"Generate and save an S3 backend config to ./terragrunt.hcl"
+"Create an Azure backend configuration and write it to my project"
 ```
 
-### Example Response — generate_terragrunt_config
+### Example Response — build_config (generate mode)
 
 ```json
 {
@@ -477,7 +672,7 @@ The tool automatically resolves common aliases:
 }
 ```
 
-### Available Templates — generate_terragrunt_config
+### Available Templates — build_config
 
 The tool provides **9 templates** covering **5 use cases**:
 
@@ -491,23 +686,9 @@ The tool provides **9 templates** covering **5 use cases**:
 
 <!-- Note: The "configuration" template (Terraform version constraints) is included as part of the "inputs" use case. -->
 
----
+### Security Features — build_config (write mode)
 
-## 7. write_terragrunt_config
-
-**Purpose**: Write generated Terragrunt configurations to disk with security validation and backup support.
-
-### Parameters — write_terragrunt_config
-
-- **`content`** (string, required): The HCL configuration content to write
-- **`path`** (string, required): Absolute or relative path where the file should be written
-- **`overwrite`** (boolean, optional): Allow overwriting existing files (default: `false`)
-- **`createBackup`** (boolean, optional): Create timestamped backup before overwriting (default: `true`)
-- **`createParentDirs`** (boolean, optional): Create parent directories if they don't exist (default: `true`)
-
-### Security Features — write_terragrunt_config
-
-The tool includes comprehensive security validation:
+File writing includes comprehensive security validation:
 
 - **Path traversal prevention**: Detects and blocks `../` patterns
 - **Directory whitelisting**: Only writes to explicitly allowed directories
@@ -515,7 +696,7 @@ The tool includes comprehensive security validation:
 - **Overwrite protection**: Requires explicit permission to overwrite files
 - **Automatic backups**: Creates timestamped backups before overwriting
 
-### Configuration — write_terragrunt_config
+### Configuration — build_config (write mode)
 
 Control file writing behavior with environment variables:
 
@@ -535,29 +716,13 @@ export TERRAGRUNT_MCP_MAX_FILE_SIZE=1048576
 
 **Important**: File writing is **disabled by default** for security. You must explicitly enable it and configure allowed directories.
 
-### Use Cases — write_terragrunt_config
+### Example Usage — build_config (generate+write mode)
 
-- Saving generated configurations to disk
-- Creating new terragrunt.hcl files
-- Updating existing configurations with backups
-- Setting up multi-environment structures
-
-### Example Prompts — write_terragrunt_config
-
-```text
-"Write the configuration to terragrunt.hcl"
-"Save this to /home/user/terraform/dev/terragrunt.hcl"
-"Create a new file at ./env/prod/terragrunt.hcl with this config"
-"Update the existing file and create a backup"
-```
-
-### Example Usage — write_terragrunt_config
-
-#### Step 1: Generate configuration
+Single command to generate and write configuration:
 
 ```json
 {
-  "tool": "generate_terragrunt_config",
+  "tool": "build_config",
   "arguments": {
     "useCase": "remote_state",
     "backend": "s3",
@@ -566,26 +731,28 @@ export TERRAGRUNT_MCP_MAX_FILE_SIZE=1048576
       "region": "us-east-1",
       "key": "terraform.tfstate",
       "dynamodb_table": "terraform-locks"
-    }
+    },
+    "write": true,
+    "path": "/home/user/terraform/terragrunt.hcl"
   }
 }
 ```
 
-#### Step 2: Write to disk
+Or write-only with existing content:
 
 ```json
 {
-  "tool": "write_terragrunt_config",
+  "tool": "build_config",
   "arguments": {
-    "path": "/home/user/terraform/terragrunt.hcl",
     "content": "remote_state {\n  backend = \"s3\"\n  ...\n}",
+    "path": "/home/user/terraform/terragrunt.hcl",
     "overwrite": false,
     "createBackup": true
   }
 }
 ```
 
-### Example Response — write_terragrunt_config
+### Example Response — build_config (write mode)
 
 #### Success
 
@@ -628,7 +795,7 @@ export TERRAGRUNT_MCP_MAX_FILE_SIZE=1048576
 }
 ```
 
-### Error Types — write_terragrunt_config
+### Error Types — build_config (write mode)
 
 | Error Type | Description | Solution |
 |------------|-------------|----------|
@@ -639,147 +806,22 @@ export TERRAGRUNT_MCP_MAX_FILE_SIZE=1048576
 | `PERMISSION_DENIED` | No write permission | Check file/directory permissions |
 | `MAX_SIZE_EXCEEDED` | File too large | Increase `TERRAGRUNT_MCP_MAX_FILE_SIZE` |
 
-### Best Practices — write_terragrunt_config
+### Best Practices — build_config
 
-1. **Always use absolute paths** or paths relative to workspace root
-2. **Enable backups** when overwriting important files
-3. **Test with non-critical directories** first
-4. **Review security settings** before enabling in production
-5. **Keep allowed directories minimal** for security
-6. **Check error messages** for detailed troubleshooting
+1. **Generate-only mode**: Use for previewing and learning before committing to disk
+2. **Always use absolute paths** when writing files
+3. **Enable backups** when overwriting important files (`createBackup: true`)
+4. **Test with non-critical directories** first
+5. **Review security settings** before enabling file writing in production
+6. **Keep allowed directories minimal** for security
+7. **Use generate+write mode** for streamlined workflows
+8. **Check error messages** for detailed troubleshooting
 
 See [File Writing Guide](File-Writing-Guide.md) for detailed security configuration and examples.
 
 ---
 
-## 8. get_guidance
-
-**Purpose**: Unified tool for getting best practices, comparing HCL blocks, and choosing between patterns. Intelligently routes based on query content or explicit type hints. Consolidates functionality of three previous tools into one streamlined interface.
-
-### Parameters — get_guidance
-
-- **`query`** (string, optional): What to get guidance on - a topic, comparison, or scenario
-  - Best practice topics: `state_management`, `security`, `performance`, `dependencies`, `ci_cd`, `testing`, `module_organization`, `project_structure`, `environment_config`
-  - Comparison queries: `"dependency vs dependencies"`, `"inputs vs locals"`, `"generate vs terraform.source"`
-  - Pattern scenarios: `"managing dependencies"`, `"configuration inheritance"`, `"backend setup"`
-- **`type`** (string, optional): Explicit routing hint - `best-practices`, `comparison`, or `pattern`
-- **`mode`** (string, optional): Detail level for best practices - `summary` (default) or `full`
-- **`level`** (string, optional): Experience level filter for best practices - `beginner`, `intermediate`, or `advanced`
-- **`listAll`** (boolean, optional): List all available guidance options
-
-### Intelligent Routing
-
-The tool automatically detects the type of guidance based on your query:
-
-1. **Comparison keywords** (`vs`, `versus`, `compared to`) → Block comparisons
-2. **Known topics** (`security`, `performance`, etc.) → Best practices
-3. **Scenarios** → Pattern guidance
-4. **Explicit `type` parameter** → Forces specific routing
-
-### Use Cases — get_guidance
-
-**Best Practices:**
-- Learning recommended patterns for a topic
-- Understanding antipatterns and what to avoid
-- Getting experience-appropriate recommendations
-- Discovering real-world examples
-
-**Comparisons:**
-- Understanding differences between similar constructs
-- Deciding which block to use for your use case
-- Learning about common mistakes
-
-**Patterns:**
-- Making architectural decisions
-- Choosing between different approaches
-- Understanding trade-offs between patterns
-
-### Example Prompts — get_guidance
-
-```text
-"What are the best practices for state management?"
-"Compare dependency vs dependencies"
-"How should I manage dependencies between modules?"
-"Show me security best practices for beginners"
-"What's the difference between inputs and locals?"
-"Help me choose a pattern for configuration inheritance"
-```
-
-### Example Usage — get_guidance (Best Practices)
-
-```json
-{
-  "tool": "get_guidance",
-  "arguments": {
-    "query": "state_management",
-    "type": "best-practices",
-    "mode": "full",
-    "level": "beginner"
-  }
-}
-```
-
-### Example Usage — get_guidance (Comparison)
-
-```json
-{
-  "tool": "get_guidance",
-  "arguments": {
-    "query": "dependency vs dependencies"
-  }
-}
-```
-
-### Example Response — get_guidance (Best Practices)
-
-```json
-{
-  "query": "state_management",
-  "recommendations": [
-    {
-      "practice": "Always use remote state for production environments",
-      "priority": "critical",
-      "experienceLevel": "beginner",
-      "category": "state_management",
-      "rationale": "Remote state ensures your infrastructure state is safely backed up and can be shared across teams",
-      "examples": ["remote_state {\n  backend = \"s3\"\n  ..."],
-      "antipatterns": ["Don't use local state for multi-user environments"],
-      "tradeoffs": ["Centralized state may increase latency"],
-      "relatedDocs": ["https://terragrunt.gruntwork.io/docs/..."]
-    }
-  ],
-  "summary": "Best practices for state_management include using remote state backends, enabling encryption and versioning, and implementing state locking to prevent concurrent modifications...",
-  "commonPitfalls": [
-    "Storing sensitive data directly in state files",
-    "Not configuring state locking for multi-user environments"
-  ],
-  "experienceNotes": {
-    "beginner": ["Start with S3 backend and basic encryption"],
-    "intermediate": ["Implement state locking with DynamoDB"],
-    "advanced": ["Consider state backend optimization for enterprise scale"]
-  },
-  "realWorldExamples": [
-    "S3 backend with encryption and versioning enabled",
-    "State locking configuration to prevent concurrent modifications"
-  ]
-}
-```
-
-### Best Practices — get_guidance
-
-1. **Use natural language** - Tool understands queries like "dependency vs dependencies"
-2. **Let routing auto-detect** - Usually don't need explicit `type` parameter
-3. **Filter by experience level** - Use `level` for appropriate recommendations
-4. **Start with summary mode** - Use `mode: 'summary'` for quick insights, `full` for details
-5. **List available guidance** - Use `listAll: true` to see all options
-6. **Combine with other tools** - Use with `search_docs` for implementation
-
-
-
-<!-- Note: The "configuration" template (Terraform version constraints) is included as part of the "inputs" use case. -->
----
-
-## 9. diagnose_terragrunt_error
+## 7. diagnose_terragrunt_error
 
 **Purpose**: Diagnose Terragrunt error messages and get actionable solutions, debugging steps, and relevant documentation links.
 
@@ -994,6 +1036,62 @@ When `enrichWithDocs: true`, you get additional documentation-sourced solutions:
 4. **Start broad, then narrow**: Use search first, then dive deeper with specific tools
 5. **Check multiple sources**: Code examples + CLI help + config reference = complete understanding
 6. **For errors, provide context**: Include the full error message and relevant context for better diagnosis
+
+---
+
+## 8. get_server_metrics
+
+**Purpose**: Get server performance metrics and usage statistics for monitoring and observability.
+
+### Parameters — get_server_metrics
+
+- **`filter`** (string, optional): Filter pattern to match specific metrics
+- **`format`** (string, optional): Output format - `"json"` or `"text"` (default: `"json"`)
+- **`reset`** (boolean, optional): Reset metrics after retrieval (default: `false`)
+
+### Use Cases — get_server_metrics
+
+- Monitoring server performance
+- Analyzing tool usage patterns
+- Debugging performance issues
+- Tracking response times and sizes
+- Understanding which tools are most used
+
+### Example Prompts — get_server_metrics
+
+```text
+"Show me server metrics"
+"What tools are being used the most?"
+"Get performance statistics"
+"Show metrics in text format"
+```
+
+### Example Response — get_server_metrics
+
+```json
+{
+  "uptime": "2h 34m 18s",
+  "totalCalls": 156,
+  "tools": {
+    "search_docs": {
+      "calls": 45,
+      "avgResponseTime": "125ms",
+      "avgBytes": 2456,
+      "minBytes": 512,
+      "maxBytes": 8192
+    },
+    "function_reference": {
+      "calls": 32,
+      "avgResponseTime": "85ms",
+      "avgBytes": 1234,
+      "minBytes": 256,
+      "maxBytes": 4096
+    }
+  },
+  "cacheHitRate": "87.5%",
+  "errors": 3
+}
+```
 
 ---
 
