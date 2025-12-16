@@ -13,7 +13,7 @@ describe('Multi-Mode Architecture Integration Tests', () => {
   
   describe('Mode Configuration Integrity', () => {
     it('should have valid configuration for all modes', () => {
-      const modes = [ServerMode.FULL, ServerMode.CORE, ServerMode.CONFIG, ServerMode.GUIDANCE, ServerMode.OBSERVABILITY];
+      const modes = Object.values(ServerMode);
       
       modes.forEach(mode => {
         const config = getModeConfig(mode);
@@ -46,9 +46,10 @@ describe('Multi-Mode Architecture Integration Tests', () => {
       expect(toolNames).toContain('search_docs');
       expect(toolNames).toContain('cli_reference');
       expect(toolNames).toContain('function_reference');
+      expect(toolNames).toContain('get_hcl_config_reference');
       expect(toolNames).not.toContain('build_config');
       expect(toolNames).not.toContain('diagnose_terragrunt_error');
-      expect(tools.length).toBe(3);
+      expect(tools.length).toBe(4);
     });
 
     it('CONFIG mode should expose only configuration tools', () => {
@@ -57,10 +58,9 @@ describe('Multi-Mode Architecture Integration Tests', () => {
       const toolNames = tools.map(t => t.name);
       
       expect(toolNames).toContain('build_config');
-      expect(toolNames).toContain('get_hcl_config_reference');
       expect(toolNames).not.toContain('search_docs');
       expect(toolNames).not.toContain('diagnose_terragrunt_error');
-      expect(tools.length).toBe(2);
+      expect(tools.length).toBe(1);
     });
 
     it('GUIDANCE mode should expose only troubleshooting tools', () => {

@@ -56,7 +56,7 @@ async function benchmarkMode(mode: ServerMode): Promise<PerformanceMetrics> {
   const startTime = performance.now();
   
   // Initialize handler (triggers lazy loading)
-  const handler = new ToolHandler(mode);
+  const handler = new ToolHandler(undefined, mode);
   const tools = handler.getAvailableTools();
   
   const initTime = performance.now() - startTime;

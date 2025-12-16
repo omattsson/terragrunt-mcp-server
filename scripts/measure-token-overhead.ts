@@ -36,7 +36,7 @@ function estimateTokens(jsonSize: number): number {
  * Get available tools for a specific mode
  */
 function getToolsForMode(mode: ServerMode): any[] {
-  const handler = new ToolHandler(mode);
+  const handler = new ToolHandler(undefined, mode);
   const allTools = handler.getAvailableTools();
   
   // Filter tools based on mode configuration
