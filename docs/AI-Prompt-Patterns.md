@@ -249,18 +249,17 @@ AI: build_config(useCase="remote_state", backend="s3", options={...})
 #### ✅ Efficient Pattern
 ```text
 User: "Generate an S3 backend config"
-AI: [Step 1] build_config(listTemplates=true, useCase="remote_state")
-    [See available backend templates and their variables]
+AI: [Step 1] search_docs(mode="search", query="S3 backend configuration", detailLevel="summary")
+    [Identify required parameters: bucket, region, key]
 AI: [Step 2] build_config(useCase="remote_state", backend="s3", 
-            options={bucket:"my-bucket", region:"us-east-1", ...})
+            options={bucket:"my-bucket", region:"us-east-1", key:"terraform.tfstate"})
 ```
 **Benefits**:
-- Template listing shows required/optional variables
-- Tier information guides complexity choice
+- Documentation search identifies required parameters
+- Direct generation with validated inputs
 - Reduces validation errors
 
-**Token Savings**: ~300 tokens by avoiding failed attempts
-
+**Token Savings**: ~200 tokens by researching requirements first
 ---
 
 ### Pattern 9: diagnose_terragrunt_error - Context Enrichment
@@ -383,8 +382,8 @@ Summary provided to user with key concepts, examples, and recommendations.
 2. get_hcl_config_reference(config="<block_name>")
    → Get specific block syntax
 
-3. build_config(listTemplates=true, useCase="<use_case>")
-   → See available templates
+3. search_docs(mode="search", query="<use_case> configuration")
+   → Research required parameters and options
 
 4. build_config(useCase="<use_case>", ..., options={...})
    → Generate configuration
@@ -398,8 +397,8 @@ Summary provided to user with key concepts, examples, and recommendations.
 User: "Create a terragrunt.hcl with S3 backend"
 
 AI:
-Step 1: build_config(listTemplates=true, useCase="remote_state")
-Result: S3 template requires: bucket, region, key
+Step 1: search_docs(mode="search", query="S3 backend configuration", detailLevel="summary")
+Result: S3 backend requires: bucket, region, key parameters
 
 Step 2: build_config(
           useCase="remote_state",
@@ -705,14 +704,10 @@ Step 1 [CORE mode - terragrunt-docs]:
   → Learn about remote state
 
 Step 2 [CONFIG mode - terragrunt-config]:
-  build_config(listTemplates=true, useCase="remote_state")
-  → See S3 template variables
-
-Step 3 [CONFIG mode - terragrunt-config]:
   build_config(useCase="remote_state", backend="s3", options={...})
-  → Generate configuration
+  → Generate S3 backend configuration
 
-Step 4 [GUIDANCE mode - terragrunt-troubleshoot]:
+Step 3 [GUIDANCE mode - terragrunt-troubleshoot]:
   get_guidance(type="best-practices", topic="remote_state")
   → Validate approach
 ```
@@ -911,14 +906,14 @@ Don't use FULL mode when specialized mode suffices.
 
 | Task Type | Optimal Mode | Token Overhead |
 |-----------|--------------|----------------|
-| Reading documentation | CORE | 155 |
-| Looking up functions | CORE | 155 |
-| Looking up CLI commands | CORE | 155 |
-| Generating configs | CONFIG | 435 |
-| Getting HCL syntax | CORE or CONFIG | 155 or 435 |
-| Troubleshooting errors | GUIDANCE | 589 |
-| Getting best practices | GUIDANCE | 589 |
-| Viewing metrics | OBSERVABILITY | 244 |
+| Reading documentation | CORE | 965 |
+| Looking up functions | CORE | 965 |
+| Looking up CLI commands | CORE | 965 |
+| Generating configs | CONFIG | 640 |
+| Getting HCL syntax | CORE or CONFIG | 965 or 640 |
+| Troubleshooting errors | GUIDANCE | 683 |
+| Getting best practices | GUIDANCE | 683 |
+| Viewing metrics | OBSERVABILITY | 155 |
 | Mixed tasks | FULL or multiple instances | 2,441 or sum |
 
 ---
@@ -929,8 +924,8 @@ When generating configs, validate inputs first.
 
 **Pattern**:
 ```javascript
-// Step 1: See what's required
-build_config(listTemplates=true, useCase="remote_state")
+// Step 1: Research requirements
+search_docs(mode="search", query="remote state configuration")
 
 // Step 2: Validate against best practices
 get_guidance(type="best-practices", topic="remote_state")
@@ -1179,7 +1174,6 @@ search_docs(mode="examples", advanced=true, limit=3)
 | Compare approaches | `get_guidance` | `type="comparison"`, `topic="A vs B"` |
 | Get pattern guidance | `get_guidance` | `type="pattern"`, `scenario="..."` |
 | Generate config | `build_config` | `useCase="..."`, `options={...}` |
-| List templates | `build_config` | `listTemplates=true` |
 | Diagnose error | `diagnose_terragrunt_error` | `error_message`, `command`, `filePath`, etc. |
 | View metrics | `get_server_metrics` | (no parameters) |
 
@@ -1193,13 +1187,13 @@ User Request
     ├─ Documentation lookup? ──→ CORE mode (965 tokens)
     │   └─ Tools: search_docs, function_reference, cli_reference, get_hcl_config_reference
     │
-    ├─ Generate configuration? ──→ CONFIG mode (435 tokens)
+    ├─ Generate configuration? ──→ CONFIG mode (640 tokens)
     │   └─ Tools: build_config, get_hcl_config_reference
     │
-    ├─ Fix error / get advice? ──→ GUIDANCE mode (589 tokens)
+    ├─ Fix error / get advice? ──→ GUIDANCE mode (683 tokens)
     │   └─ Tools: get_guidance, diagnose_terragrunt_error
     │
-    ├─ View metrics? ──→ OBSERVABILITY mode (244 tokens)
+    ├─ View metrics? ──→ OBSERVABILITY mode (155 tokens)
     │   └─ Tools: get_server_metrics
     │
     └─ Multiple of above? ──→ FULL mode (2,441 tokens) OR multiple instances
@@ -1226,7 +1220,7 @@ User Request
 
 #### Pattern: Generate Config
 ```
-1. build_config(listTemplates=true, useCase="X")
+1. search_docs(mode="search", query="X configuration requirements")
 2. build_config(useCase="X", options={...})
 ```
 
