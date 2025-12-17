@@ -22,7 +22,7 @@ interface DocMetadata {
   title: string;
   url: string;
   section: string;
-  lastModified?: Date;
+  lastUpdated?: string;
 }
 ```
 
@@ -33,7 +33,7 @@ Full document content (`TerragruntDoc` with `content` field) is loaded lazily wh
 Three cache structures manage lazy loading:
 
 - **`contentCache: Map<string, string>`** - Stores loaded document content
-- **`loadingPromises: Map<string, Promise<void>>`** - Deduplicates concurrent load requests
+- **`loadingPromises: Map<string, Promise<string>>`** - Deduplicates concurrent load requests
 - **`loadedDocs: Set<string>`** - Tracks which documents have been loaded
 
 ### Promise Deduplication
@@ -220,14 +220,14 @@ const stats = docsManager.getCacheStats();
 console.log(stats.lazyLoading);
 // {
 //   enabled: true,
-//   warmupStrategy: "minimal",
-//   loadedDocs: 3,
-//   totalDocs: 85,
-//   loadedDocsRatio: "3.5%",
-//   contentCacheSize: 3,
-//   metadataCacheSize: 85,
-//   pendingLoads: 0,
-//   memoryEstimateMB: 0.42
+//   startupTimeMs: 123.45,
+//   metadataOnlyLoadTime: 67.89,
+//   warmupTime: 92.34,
+//   initialMemoryMB: 45.67,
+//   metadataCount: 85,
+//   docsLoadedLazily: 3,
+//   averageDocLoadTimeMs: 15.2,
+//   warmupStrategy: "minimal"
 // }
 ```
 
@@ -314,14 +314,14 @@ Available in `getCacheStats()`:
 ```typescript
 interface LazyLoadingMetrics {
   enabled: boolean;              // Lazy loading mode status
-  warmupStrategy: string;        // Current warmup strategy
-  loadedDocs: number;            // Documents currently loaded
-  totalDocs: number;             // Total documents available
-  loadedDocsRatio: string;       // Percentage loaded (e.g., "3.5%")
-  contentCacheSize: number;      // Number of docs with cached content
-  metadataCacheSize: number;     // Number of docs with metadata
-  pendingLoads: number;          // Documents currently being loaded
-  memoryEstimateMB: number;      // Estimated memory usage
+  startupTimeMs: number;         // Total startup time in milliseconds
+  metadataOnlyLoadTime?: number; // Time to load metadata in milliseconds
+  warmupTime?: number;           // Time spent warming up cache in milliseconds
+  initialMemoryMB: number;       // Initial memory usage estimate
+  metadataCount: number;         // Number of documents with metadata loaded
+  docsLoadedLazily: number;      // Number of documents loaded on-demand
+  averageDocLoadTimeMs: number;  // Average time to load a document
+  warmupStrategy: string;        // Current warmup strategy (none/minimal/common/full)
 }
 ```
 
@@ -332,9 +332,10 @@ const stats = docsManager.getCacheStats();
 
 console.log(`Lazy Loading: ${stats.lazyLoading.enabled ? 'ON' : 'OFF'}`);
 console.log(`Strategy: ${stats.lazyLoading.warmupStrategy}`);
-console.log(`Loaded: ${stats.lazyLoading.loadedDocs}/${stats.lazyLoading.totalDocs}`);
-console.log(`Ratio: ${stats.lazyLoading.loadedDocsRatio}`);
-console.log(`Memory: ${stats.lazyLoading.memoryEstimateMB.toFixed(2)} MB`);
+console.log(`Metadata: ${stats.lazyLoading.metadataCount} docs`);
+console.log(`Loaded: ${stats.lazyLoading.docsLoadedLazily} docs`);
+console.log(`Avg Load Time: ${stats.lazyLoading.averageDocLoadTimeMs.toFixed(2)}ms`);
+console.log(`Memory: ${stats.lazyLoading.initialMemoryMB.toFixed(2)} MB`);
 ```
 
 ## Troubleshooting

@@ -21,6 +21,12 @@ export interface TerragruntDoc extends DocMetadata {
   content: string;
 }
 
+interface IndexedMetadata extends DocMetadata {
+  titleLower: string;
+  sectionLower: string;
+  urlLower: string;
+}
+
 interface IndexedDoc extends TerragruntDoc {
   titleLower: string;
   contentLower: string;
@@ -160,7 +166,7 @@ export class TerragruntDocsManager {
   getCacheStats(): CacheStats {
     return {
       ...this.stats,
-      cacheSize: this.docsCache.size,
+      cacheSize: this.lazyLoadingEnabled ? this.metadataCache.size : this.docsCache.size,
       memoryUsage: process.memoryUsage().heapUsed,
       lastRefresh: this.lastFetchTime,
       lazyLoading: this.lazyLoadingMetrics,
@@ -375,8 +381,9 @@ export class TerragruntDocsManager {
       const docs: TerragruntDoc[] = JSON.parse(docsContent);
 
       if (this.lazyLoadingEnabled) {
-        // Lazy loading mode: load metadata only initially
+        // Lazy loading mode: load metadata and populate contentCache with existing content
         this.metadataCache.clear();
+        this.contentCache.clear();
         docs.forEach(doc => {
           const docMetadata: DocMetadata = {
             title: doc.title,
@@ -385,12 +392,18 @@ export class TerragruntDocsManager {
             lastUpdated: doc.lastUpdated
           };
           this.metadataCache.set(doc.url, docMetadata);
+          
+          // Populate contentCache if document has content
+          if (doc.content) {
+            this.contentCache.set(doc.url, doc.content);
+            this.loadedDocs.add(doc.url);
+          }
         });
         
         this.lastFetchTime = new Date(metadata.lastFetchTime);
         this.stats.hits++;
         
-        console.log(`Loaded metadata for ${docs.length} docs from disk cache (lazy mode, age: ${Math.round(cacheAge / 1000 / 60)} minutes)`);
+        console.log(`Loaded metadata for ${docs.length} docs from disk cache (${this.contentCache.size} with content, lazy mode, age: ${Math.round(cacheAge / 1000 / 60)} minutes)`);
         
         // Perform warmup if configured
         await this.warmupCache(this.warmupStrategy);
@@ -530,6 +543,11 @@ export class TerragruntDocsManager {
         this.lazyLoadingMetrics.metadataOnlyLoadTime = endTime - (this.startTime || 0);
         
         console.log(`Lazy loaded metadata for ${this.metadataCache.size} docs in ${this.lazyLoadingMetrics.metadataOnlyLoadTime.toFixed(2)}ms`);
+        
+        // Validate that we got some metadata
+        if (this.metadataCache.size === 0) {
+          throw new Error('Failed to fetch any documentation metadata');
+        }
         
         // Perform warmup if configured
         await this.warmupCache(this.warmupStrategy);
@@ -838,11 +856,20 @@ export class TerragruntDocsManager {
         break;
     }
 
-    await Promise.all(docsToLoad.map(url => this.loadDocContent(url)));
+    const results = await Promise.allSettled(
+      docsToLoad.map(url => this.loadDocContent(url))
+    );
+
+    const successful = results.filter(result => result.status === 'fulfilled').length;
+    const failed = results.length - successful;
     
     const duration = performance.now() - startTime;
     this.lazyLoadingMetrics.warmupTime = duration;
-    console.log(`Warmed up ${docsToLoad.length} docs in ${duration.toFixed(2)}ms with strategy '${strategy}'`);
+    console.log(
+      `Warmed up ${successful}/${docsToLoad.length} docs` +
+      (failed ? ` (${failed} failed)` : '') +
+      ` in ${duration.toFixed(2)}ms with strategy '${strategy}'`
+    );
   }
 
   /**
