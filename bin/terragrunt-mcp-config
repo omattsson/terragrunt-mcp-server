@@ -1,0 +1,21 @@
+#!/usr/bin/env node
+
+/**
+ * Terragrunt MCP Server - Config Mode
+ * 
+ * Provides configuration generation tools:
+ * - build_config: Generate/write Terragrunt configs
+ * - get_hcl_config_reference: HCL block documentation
+ * 
+ * Usage: terragrunt-mcp-config
+ * 
+ * Token overhead: ~800 tokens (73% reduction vs full mode)
+ */
+
+// Inject --mode config into process.argv before importing server
+process.argv.push('--mode', 'config');
+
+import('../dist/index.js').catch((error) => {
+  console.error('Failed to start server:', error);
+  process.exit(1);
+});

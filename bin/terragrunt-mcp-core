@@ -1,0 +1,22 @@
+#!/usr/bin/env node
+
+/**
+ * Terragrunt MCP Server - Core Mode
+ * 
+ * Provides essential documentation search and reference tools:
+ * - search_docs: Search documentation
+ * - cli_reference: CLI command reference
+ * - function_reference: Built-in function reference
+ * 
+ * Usage: terragrunt-mcp-core
+ * 
+ * Token overhead: ~1,200 tokens (60% reduction vs full mode)
+ */
+
+// Inject --mode core into process.argv before importing server
+process.argv.push('--mode', 'core');
+
+import('../dist/index.js').catch((error) => {
+  console.error('Failed to start server:', error);
+  process.exit(1);
+});

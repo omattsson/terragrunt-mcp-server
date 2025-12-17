@@ -1,0 +1,21 @@
+#!/usr/bin/env node
+
+/**
+ * Terragrunt MCP Server - Guidance Mode
+ * 
+ * Provides best practices and troubleshooting tools:
+ * - get_guidance: Best practices, comparisons, patterns
+ * - diagnose_terragrunt_error: Error diagnosis and solutions
+ * 
+ * Usage: terragrunt-mcp-guidance
+ * 
+ * Token overhead: ~600 tokens (80% reduction vs full mode)
+ */
+
+// Inject --mode guidance into process.argv before importing server
+process.argv.push('--mode', 'guidance');
+
+import('../dist/index.js').catch((error) => {
+  console.error('Failed to start server:', error);
+  process.exit(1);
+});

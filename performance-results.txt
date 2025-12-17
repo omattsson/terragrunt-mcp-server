@@ -1,0 +1,74 @@
+
+> terragrunt-mcp-server@0.5.0 measure-tokens
+> tsx scripts/measure-token-overhead.ts
+
+🔍 Measuring Token Overhead per Mode
+
+════════════════════════════════════════════════════════════════════════════════
+
+📊 Token Overhead Summary
+
+┌─────────────────┬───────┬──────────┬────────────┬────────────┬──────────┐
+│ Mode            │ Tools │ JSON (B) │ Tokens Est │ Reduction  │ % Saved  │
+├─────────────────┼───────┼──────────┼────────────┼────────────┼──────────┤
+│ full            │     8 │     9761 │       2441 │   baseline │        - │
+│ core            │     4 │     3857 │        965 │      -1476 │      60% │
+│ config          │     2 │     2558 │        640 │      -1801 │      74% │
+│ guidance        │     2 │     2732 │        683 │      -1758 │      72% │
+│ observability   │     1 │      620 │        155 │      -2286 │      94% │
+└─────────────────┴───────┴──────────┴────────────┴────────────┴──────────┘
+
+🔧 Tool Distribution by Mode
+
+
+FULL Mode (8 tools):
+  • build_config
+  • cli_reference
+  • diagnose_terragrunt_error
+  • function_reference
+  • get_guidance
+  • get_hcl_config_reference
+  • get_server_metrics
+  • search_docs
+
+CORE Mode (4 tools):
+  • cli_reference
+  • function_reference
+  • get_hcl_config_reference
+  • search_docs
+
+CONFIG Mode (2 tools):
+  • build_config
+  • get_hcl_config_reference
+
+GUIDANCE Mode (2 tools):
+  • diagnose_terragrunt_error
+  • get_guidance
+
+OBSERVABILITY Mode (1 tools):
+  • get_server_metrics
+
+🎯 Target vs Actual Comparison
+
+┌─────────────────┬────────────┬────────────┬──────────┐
+│ Mode            │ Target     │ Actual     │ Status   │
+├─────────────────┼────────────┼────────────┼──────────┤
+│ core            │       1200 │        965 │ ✅ PASS   │
+│                 │            │     (-235) │          │
+│ config          │        800 │        640 │ ✅ PASS   │
+│                 │            │     (-160) │          │
+│ guidance        │        600 │        683 │ ❌ OVER   │
+│                 │            │      (+83) │          │
+│ observability   │        200 │        155 │ ✅ PASS   │
+│                 │            │      (-45) │          │
+└─────────────────┴────────────┴────────────┴──────────┘
+
+📈 Summary Statistics
+
+Total Token Savings Across All Modes: 7321 tokens
+Average Reduction per Mode: 1830 tokens
+Maximum Reduction: 94% (observability)
+Minimum Reduction: 60% (core)
+
+✅ Token overhead measurement complete!
+

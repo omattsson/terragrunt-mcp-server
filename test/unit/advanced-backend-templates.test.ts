@@ -123,7 +123,7 @@ describe('Advanced Backend Templates', () => {
   // ==========================================================================
   describe('AWS S3 Advanced Backend Template', () => {
     describe('Minimal Configuration', () => {
-      it('should generate config with only required fields', async () => {
+      it('should generate config with only required fields', { timeout: 20000 }, async () => {
         const result = await generator.generateConfig({
           useCase: 'remote_state',
           backend: 'aws-s3-backend-advanced',

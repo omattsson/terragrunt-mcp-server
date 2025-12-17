@@ -4,12 +4,14 @@
 
 import { describe, it, expect, beforeEach } from 'vitest';
 import { ToolHandler } from '../../src/handlers/tools.js';
+import { ServerMode } from '../../src/modes/config.js';
 
 describe('Custom Template API Integration', () => {
   let toolHandler: ToolHandler;
 
   beforeEach(() => {
-    toolHandler = new ToolHandler();
+    // Use CONFIG mode which includes all config generation dependencies
+    toolHandler = new ToolHandler(undefined, ServerMode.CONFIG);
   });
 
   it('should generate config with custom template via API', async () => {

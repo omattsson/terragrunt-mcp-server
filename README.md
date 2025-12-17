@@ -6,6 +6,8 @@ A Model Context Protocol (MCP) server that provides comprehensive Terragrunt doc
 
 This MCP server enables AI assistants to access and search the complete Terragrunt documentation, providing intelligent assistance for working with Terragrunt configurations, CLI commands, and HCL syntax. It features a robust caching system with network resilience and multiple fallback mechanisms.
 
+**New:** Multi-mode architecture with **60-94% token overhead reduction** for optimized AI assistant integration. Choose the mode that fits your workflow: CORE (docs), CONFIG (generation), GUIDANCE (troubleshooting), OBSERVABILITY (metrics), or FULL (all tools).
+
 ## Features
 
 ### 📚 Documentation Access
@@ -190,6 +192,63 @@ For complete tool documentation and examples, see [Available Tools](docs/Availab
 - Section-based documentation collections
 - All content accessible through VS Code and Copilot
 
+## Server Modes
+
+The Terragrunt MCP Server supports **5 operational modes** to optimize token usage and reduce overhead for specific workflows. Each mode loads only the tools and dependencies needed for its use case.
+
+### Mode Overview
+
+| Mode | Tools | Token Overhead | Memory | Managers | Use Case |
+|------|-------|----------------|---------|----------|----------|
+| **FULL** | 8 | 2,441 (baseline) | 0.20 MB | 12/12 | All features, backward compatible |
+| **CORE** | 4 | 965 (-60%) | 0.19 MB | 4/12 | Documentation & reference lookups |
+| **CONFIG** | 2 | 640 (-74%) | 0.08 MB | 6/12 | Configuration generation |
+| **GUIDANCE** | 2 | 683 (-72%) | 0.13 MB | 4/12 | Troubleshooting & best practices |
+| **OBSERVABILITY** | 1 | 155 (-94%) | 0.04 MB | 0/12 | Metrics & monitoring only |
+
+### Quick Mode Selection
+
+**Use CORE mode when:**
+- Looking up documentation quickly
+- Exploring CLI commands and functions
+- Learning Terragrunt basics
+- Need reference information
+
+**Use CONFIG mode when:**
+- Generating Terragrunt configurations
+- Working with HCL templates
+- CI/CD automation pipelines
+- Template-based workflows
+
+**Use GUIDANCE mode when:**
+- Debugging errors
+- Getting best practices advice
+- Troubleshooting deployments
+- Learning patterns and comparisons
+
+**Use OBSERVABILITY mode when:**
+- Monitoring server performance
+- Tracking usage metrics
+- Minimal deployment footprint
+- Metrics-only workflows
+
+**Use FULL mode when:**
+- Need multiple tool categories
+- Exploratory workflows
+- Backward compatibility required
+- Uncertain which tools needed
+
+### Mode Performance
+
+**Verified performance metrics:**
+- **Token reduction**: 60-94% vs FULL mode
+- **Memory savings**: 5-80% vs baseline
+- **Manager efficiency**: 50-100% reduction
+- **Startup time**: 1-4ms (negligible)
+- **Lazy loading**: Confirmed working
+
+See [MODE_PERFORMANCE_VERIFIED.md](MODE_PERFORMANCE_VERIFIED.md) for detailed benchmarks.
+
 ## Installation
 
 ### Option 1: Using Docker (Recommended)
@@ -228,8 +287,7 @@ See the [Docker Deployment Guide](DOCKER.md) for detailed instructions.
 
 #### Using Docker Hub Image (Recommended)
 
-Add this to your VS Code `settings.json`:
-
+**FULL mode (all tools, default):**
 ```json
 {
   "mcp.servers": {
@@ -247,14 +305,72 @@ Add this to your VS Code `settings.json`:
 }
 ```
 
+**Specialized modes (optimized for specific use cases):**
+```json
+{
+  "mcp.servers": {
+    "terragrunt-docs": {
+      "command": "docker",
+      "args": [
+        "run", "-i", "--rm",
+        "-v", "mcp-cache:/app/.cache",
+        "olofdevopsninja/terragrunt-mcp-server:latest",
+        "--mode", "core"
+      ]
+    },
+    "terragrunt-config": {
+      "command": "docker",
+      "args": [
+        "run", "-i", "--rm",
+        "-v", "mcp-cache:/app/.cache",
+        "olofdevopsninja/terragrunt-mcp-server:latest",
+        "--mode", "config"
+      ]
+    }
+  }
+}
+```
+
 #### Using Local Build
 
+**FULL mode:**
 ```json
 {
   "mcp.servers": {
     "terragrunt": {
       "command": "node",
       "args": ["dist/index.js"],
+      "cwd": "/absolute/path/to/terragrunt-mcp-server"
+    }
+  }
+}
+```
+
+**Specialized modes using CLI wrappers:**
+```json
+{
+  "mcp.servers": {
+    "terragrunt-docs": {
+      "command": "node",
+      "args": ["bin/terragrunt-mcp-core"],
+      "cwd": "/absolute/path/to/terragrunt-mcp-server"
+    },
+    "terragrunt-config": {
+      "command": "node",
+      "args": ["bin/terragrunt-mcp-config"],
+      "cwd": "/absolute/path/to/terragrunt-mcp-server"
+    }
+  }
+}
+```
+
+**Alternative: Direct mode flag:**
+```json
+{
+  "mcp.servers": {
+    "terragrunt-core": {
+      "command": "node",
+      "args": ["dist/index.js", "--mode", "core"],
       "cwd": "/absolute/path/to/terragrunt-mcp-server"
     }
   }

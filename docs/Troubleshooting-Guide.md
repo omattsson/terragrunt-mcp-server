@@ -6,6 +6,8 @@ This guide provides comprehensive information about the `diagnose_terragrunt_err
 
 The Terragrunt MCP Server includes a powerful error diagnosis system that can analyze error messages and provide actionable solutions. It uses pattern matching against a database of **66 known error patterns** across **7 categories** to identify issues and suggest fixes.
 
+**Mode Availability:** Error diagnosis is available in **GUIDANCE** and **FULL** modes only. If you need troubleshooting capabilities, ensure you're using one of these modes. See [Mode Selection](#mode-specific-troubleshooting) below.
+
 ## How Error Pattern Matching Works
 
 ### Pattern Database
@@ -442,9 +444,116 @@ If `enrichmentSuccessful: false`:
 2. **Check cache**: Clear cache if documentation is stale
 3. **Use basic diagnosis**: Results still useful without enrichment
 
+## Mode-Specific Troubleshooting
+
+### Troubleshooting Tool Availability
+
+The `diagnose_terragrunt_error` and `get_guidance` tools are available in specific modes:
+
+| Mode | diagnose_terragrunt_error | get_guidance | Best Practices | Error Patterns |
+|------|---------------------------|--------------|----------------|----------------|
+| **GUIDANCE** | ✅ Yes | ✅ Yes | ✅ Loaded | ✅ Loaded |
+| **FULL** | ✅ Yes | ✅ Yes | ✅ Loaded | ✅ Loaded |
+| **CORE** | ❌ No | ❌ No | ❌ Not loaded | ❌ Not loaded |
+| **CONFIG** | ❌ No | ❌ No | ❌ Not loaded | ❌ Not loaded |
+| **OBSERVABILITY** | ❌ No | ❌ No | ❌ Not loaded | ❌ Not loaded |
+
+### Switching to GUIDANCE Mode
+
+If you encounter an error "Tool not available" when trying to diagnose errors:
+
+**Option 1: Add GUIDANCE mode instance**
+```json
+{
+  "mcp.servers": {
+    "terragrunt-debug": {
+      "command": "node",
+      "args": ["bin/terragrunt-mcp-guidance"],
+      "cwd": "/path/to/terragrunt-mcp-server"
+    }
+  }
+}
+```
+
+**Option 2: Switch to FULL mode**
+```json
+{
+  "mcp.servers": {
+    "terragrunt": {
+      "command": "node",
+      "args": ["dist/index.js"],  // No --mode flag = FULL
+      "cwd": "/path/to/terragrunt-mcp-server"
+    }
+  }
+}
+```
+
+**Option 3: Use --mode flag**
+```json
+{
+  "mcp.servers": {
+    "terragrunt": {
+      "command": "node",
+      "args": ["dist/index.js", "--mode", "guidance"],
+      "cwd": "/path/to/terragrunt-mcp-server"
+    }
+  }
+}
+```
+
+### Mode-Specific Performance
+
+GUIDANCE mode loads only troubleshooting-related dependencies:
+- **Managers loaded**: 4/12 (docs, bestPractices, errorPatterns, comparisons)
+- **Memory footprint**: 0.13 MB (35% savings vs FULL)
+- **Token overhead**: 683 tokens (72% reduction vs FULL)
+- **Startup time**: ~3.7ms
+
+This makes GUIDANCE mode optimal for dedicated troubleshooting sessions while reducing overhead compared to FULL mode.
+
+### Troubleshooting Mode Issues
+
+**Problem:** "Tool diagnose_terragrunt_error not found"
+
+**Solution:** Server is running in a mode without troubleshooting tools. Check mode with:
+```bash
+# Check server logs in VS Code Output panel
+# Look for: "[Server] Starting in <mode> mode"
+```
+
+**Problem:** Mode change not taking effect
+
+**Solution:**
+1. Verify VS Code `settings.json` saved correctly
+2. Restart VS Code completely (not just reload)
+3. Check Output panel for mode confirmation
+4. Try using CLI wrapper instead of --mode flag
+
+**Problem:** Need both documentation AND troubleshooting
+
+**Solution:** Run multiple server instances:
+```json
+{
+  "mcp.servers": {
+    "terragrunt-docs": {
+      "command": "node",
+      "args": ["bin/terragrunt-mcp-core"],
+      "cwd": "/path/to/terragrunt-mcp-server"
+    },
+    "terragrunt-debug": {
+      "command": "node",
+      "args": ["bin/terragrunt-mcp-guidance"],
+      "cwd": "/path/to/terragrunt-mcp-server"
+    }
+  }
+}
+```
+
 ## Further Reading
 
+- [Migration Guide](MIGRATION_GUIDE.md) - Mode migration and configuration
 - [Available Tools](Available-Tools.md) - Complete tool reference
 - [Architecture Overview](Architecture-Overview.md) - Technical architecture details
+- [Mode Performance](../MODE_PERFORMANCE_VERIFIED.md) - Detailed mode benchmarks
 - [Edge Cases Testing](Edge-Cases-Testing.md) - Edge case handling
 - [Performance Testing](Performance-Testing.md) - Performance benchmarks

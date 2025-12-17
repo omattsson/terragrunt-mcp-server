@@ -44,11 +44,12 @@ import { HCLBlocksManager } from '../terragrunt/hcl-blocks.js';
 import { AdvancedExamplesManager } from '../terragrunt/advanced-examples.js';
 import { BlockComparisonManager } from '../terragrunt/comparisons.js';
 import { getFirstSentence } from '../terragrunt/utils.js';
-import type { HCLBlock } from '../types/hcl-blocks.js';
+import type { HCLBlock, HCLBlockCategory } from '../types/hcl-blocks.js';
 import type { AdvancedExampleCategory } from '../types/advanced-examples.js';
 import type { IMetricsManager, MetricsResponse } from '../types/metrics.js';
 import type { PaginationMetadata } from '../types/mcp.js';
 import { NullMetricsManager } from '../terragrunt/metrics.js';
+import { ServerMode, shouldLoadDependency, shouldEnableTool } from '../modes/config.js';
 
 export interface Tool {
     name: string;
@@ -164,48 +165,134 @@ interface BuildConfigArgs {
 }
 
 export class ToolHandler {
-    private docsManager: TerragruntDocsManager;
-    private functionsManager: TerragruntFunctionsManager;
-    private bestPracticesAnalyzer: BestPracticesAnalyzer;
-    private errorPatternMatcher: ErrorPatternMatcher;
-    private cliCommandsManager: CLICommandsManager;
-    private hclBlocksManager: HCLBlocksManager;
-    private advancedExamplesManager: AdvancedExamplesManager;
-    private blockComparisonManager: BlockComparisonManager;
+    private mode: ServerMode;
+    private docsManager?: TerragruntDocsManager;
+    private functionsManager?: TerragruntFunctionsManager;
+    private bestPracticesAnalyzer?: BestPracticesAnalyzer;
+    private errorPatternMatcher?: ErrorPatternMatcher;
+    private cliCommandsManager?: CLICommandsManager;
+    private hclBlocksManager?: HCLBlocksManager;
+    private advancedExamplesManager?: AdvancedExamplesManager;
+    private blockComparisonManager?: BlockComparisonManager;
     private functionsLoaded: boolean = false;
-    private templatesManager: TemplatesManager;
-    private templateLibrary: ConfigTemplateLibrary;
-    private configGenerator: TerragruntConfigGenerator;
-    private fileWriter: FileWriter;
+    private templatesManager?: TemplatesManager;
+    private templateLibrary?: ConfigTemplateLibrary;
+    private configGenerator?: TerragruntConfigGenerator;
+    private fileWriter?: FileWriter;
     private metricsManager: IMetricsManager;
 
-    constructor(metricsManager?: IMetricsManager) {
+    constructor(metricsManager?: IMetricsManager, mode: ServerMode = ServerMode.FULL) {
+        this.mode = mode;
         this.metricsManager = metricsManager || new NullMetricsManager();
-        this.docsManager = new TerragruntDocsManager();
-        this.functionsManager = new TerragruntFunctionsManager(this.docsManager);
-        this.bestPracticesAnalyzer = new BestPracticesAnalyzer(this.docsManager);
-        this.errorPatternMatcher = new ErrorPatternMatcher(this.docsManager);
-        this.cliCommandsManager = new CLICommandsManager();
-        this.hclBlocksManager = new HCLBlocksManager();
-        this.advancedExamplesManager = new AdvancedExamplesManager();
-        this.blockComparisonManager = new BlockComparisonManager();
         
-        // Initialize templates manager with builtin and filesystem loaders
-        this.templatesManager = new TemplatesManager([
-            new BuiltinTemplateLoader(),
-            new FilesystemTemplateLoader()  // Defaults to ~/.terragrunt-mcp/templates/
-        ]);
+        // Initialize managers based on mode
+        this.initializeManagers();
+    }
+    
+    /**
+     * Lazy initialization of managers based on server mode.
+     * Only instantiates managers needed for the current mode to reduce memory footprint.
+     */
+    private initializeManagers(): void {
+        // DocsManager is required by multiple dependencies
+        if (shouldLoadDependency('docs', this.mode)) {
+            this.docsManager = new TerragruntDocsManager();
+        }
+
+        // Validate that docsManager is present if required by other dependencies
+        if (shouldLoadDependency('functions', this.mode) && !this.docsManager) {
+            throw new Error(
+                "Server mode misconfiguration: 'functions' dependency requires 'docs' to be enabled. " +
+                "Please enable 'docs' in the server mode configuration."
+            );
+        }
+        if (shouldLoadDependency('bestPractices', this.mode) && !this.docsManager) {
+            throw new Error(
+                "Server mode misconfiguration: 'bestPractices' dependency requires 'docs' to be enabled. " +
+                "Please enable 'docs' in the server mode configuration."
+            );
+        }
+        if (shouldLoadDependency('errorPatterns', this.mode) && !this.docsManager) {
+            throw new Error(
+                "Server mode misconfiguration: 'errorPatterns' dependency requires 'docs' to be enabled. " +
+                "Please enable 'docs' in the server mode configuration."
+            );
+        }
         
-        this.templateLibrary = new ConfigTemplateLibrary(this.templatesManager);
-        this.configGenerator = new TerragruntConfigGenerator(this.docsManager, this.templateLibrary);
+        // Functions management
+        if (shouldLoadDependency('functions', this.mode)) {
+            this.functionsManager = new TerragruntFunctionsManager(this.docsManager!);
+        }
         
-        // Initialize file writer (can be configured via environment or config file)
-        this.fileWriter = new FileWriter({
-            enabled: process.env.TERRAGRUNT_MCP_FILE_WRITE_ENABLED !== 'false',
-            allowedDirectories: this.parseAllowedDirectories(),
-            autoBackup: process.env.TERRAGRUNT_MCP_AUTO_BACKUP !== 'false',
-            maxFileSize: parseInt(process.env.TERRAGRUNT_MCP_MAX_FILE_SIZE || '1048576', 10) || 1048576
-        });
+        // Best practices and guidance
+        if (shouldLoadDependency('bestPractices', this.mode)) {
+            this.bestPracticesAnalyzer = new BestPracticesAnalyzer(this.docsManager!);
+        }
+        
+        // Error diagnosis
+        if (shouldLoadDependency('errorPatterns', this.mode)) {
+            this.errorPatternMatcher = new ErrorPatternMatcher(this.docsManager!);
+        }
+        
+        // CLI commands
+        if (shouldLoadDependency('cli', this.mode)) {
+            this.cliCommandsManager = new CLICommandsManager();
+        }
+        
+        // HCL blocks
+        if (shouldLoadDependency('hcl', this.mode)) {
+            this.hclBlocksManager = new HCLBlocksManager();
+        }
+        
+        // Advanced examples
+        if (shouldLoadDependency('advancedExamples', this.mode)) {
+            this.advancedExamplesManager = new AdvancedExamplesManager();
+        }
+        
+        // Block comparisons
+        if (shouldLoadDependency('comparisons', this.mode)) {
+            this.blockComparisonManager = new BlockComparisonManager();
+        }
+        
+        // Configuration generation subsystem
+        if (shouldLoadDependency('templates', this.mode)) {
+            // Initialize templates manager with builtin and filesystem loaders
+            this.templatesManager = new TemplatesManager([
+                new BuiltinTemplateLoader(),
+                new FilesystemTemplateLoader()  // Defaults to ~/.terragrunt-mcp/templates/
+            ]);
+            
+            this.templateLibrary = new ConfigTemplateLibrary(this.templatesManager);
+            
+            // NOTE: The 'generator' dependency REQUIRES 'docsManager' to be available.
+            // This dependency is implicit and enforced here via the conditional check.
+            // CONFIG mode dependencies include both 'docs' and 'generator' to satisfy this.
+            if (shouldLoadDependency('generator', this.mode)) {
+                if (!this.docsManager) {
+                    throw new Error(
+                        `Mode '${this.mode}' requires the 'generator' dependency, which in turn requires the 'docs' dependency.\n` +
+                        `To fix this, edit 'src/modes/config.ts' and ensure that the '${this.mode}' mode includes both 'generator' and 'docs' in its dependencies array.\n` +
+                        `\n` +
+                        `Example configuration:\n` +
+                        `  [ServerMode.${this.mode.toUpperCase()}]: {\n` +
+                        `    ...,\n` +
+                        `    dependencies: ['docs', 'generator', ...]\n` +
+                        `  }`
+                    );
+                }
+                this.configGenerator = new TerragruntConfigGenerator(this.docsManager, this.templateLibrary);
+            }
+        }
+        
+        // File writer (independent of templates but often used together)
+        if (shouldLoadDependency('fileWriter', this.mode)) {
+            this.fileWriter = new FileWriter({
+                enabled: process.env.TERRAGRUNT_MCP_FILE_WRITE_ENABLED !== 'false',
+                allowedDirectories: this.parseAllowedDirectories(),
+                autoBackup: process.env.TERRAGRUNT_MCP_AUTO_BACKUP !== 'false',
+                maxFileSize: parseInt(process.env.TERRAGRUNT_MCP_MAX_FILE_SIZE || '1048576', 10) || 1048576
+            });
+        }
     }
     
     /**
@@ -218,6 +305,25 @@ export class ToolHandler {
         }
         // Default to current working directory
         return [process.cwd()];
+    }
+    
+    /**
+     * Check if a manager is available. Returns the manager if available, or an error response.
+     * This pattern eliminates the need for non-null assertions throughout the code.
+     * 
+     * @example
+     * const docsManager = this.checkManager(this.docsManager, 'DocsManager');
+     * if ('error' in docsManager) return docsManager;
+     * // docsManager is now typed as non-null
+     */
+    private checkManager<T>(manager: T | undefined, managerName: string): T | { error: string; errorType: string } {
+        if (!manager) {
+            return {
+                error: `${managerName} is not available in ${this.mode} mode. This tool is disabled.`,
+                errorType: 'MODE_RESTRICTION'
+            };
+        }
+        return manager;
     }
 
     /**
@@ -264,8 +370,31 @@ export class ToolHandler {
         };
     }
 
+    /**
+     * Get information about which managers are currently loaded.
+     * Useful for diagnostics and testing.
+     * 
+     * @returns Record of manager names to boolean indicating if loaded
+     */
+    getLoadedManagersInfo(): Record<string, boolean> {
+        return {
+            docsManager: !!this.docsManager,
+            functionsManager: !!this.functionsManager,
+            commandsManager: !!this.cliCommandsManager,
+            errorPatternMatcher: !!this.errorPatternMatcher,
+            bestPracticesAnalyzer: !!this.bestPracticesAnalyzer,
+            configGenerator: !!this.configGenerator,
+            fileWriter: !!this.fileWriter,
+            hclBlocksManager: !!this.hclBlocksManager,
+            templatesManager: !!this.templatesManager,
+            templateLibrary: !!this.templateLibrary,
+            advancedExamplesManager: !!this.advancedExamplesManager,
+            blockComparisonManager: !!this.blockComparisonManager,
+        };
+    }
+
     getAvailableTools(): Tool[] {
-        return [
+        const allTools = [
             {
                 name: 'search_docs',
                 description: 'Search docs, list sections, or find code examples',
@@ -613,6 +742,9 @@ export class ToolHandler {
                 }
             }
         ];
+        
+        // Filter tools based on server mode
+        return allTools.filter(tool => shouldEnableTool(tool.name, this.mode));
     }
 
     async executeTool(name: string, args?: any): Promise<any> {
@@ -815,7 +947,8 @@ export class ToolHandler {
         page: number = 1,
         pageSize: number = 10
     ): Promise<any> {
-        const results = await this.docsManager.searchDocs(query);
+        // docsManager validated by caller (searchDocs)
+        const results = await this.docsManager!.searchDocs(query);
 
         // Apply pagination
         const { results: paginatedResults, pagination } = this.calculatePagination(
@@ -845,8 +978,8 @@ export class ToolHandler {
     }
 
     private async getTerragruntSections(): Promise<any> {
-        const sections = await this.docsManager.getAvailableSections();
-        const docs = await this.docsManager.fetchLatestDocs();
+        const sections = await this.docsManager!.getAvailableSections();
+        const docs = await this.docsManager!.fetchLatestDocs();
 
         return {
             sections: sections.map(section => ({
@@ -859,13 +992,13 @@ export class ToolHandler {
     }
 
     private async getSectionDocs(section: string, mode: 'summary' | 'full' = 'summary'): Promise<any> {
-        const docs = await this.docsManager.getDocBySection(section);
+        const docs = await this.docsManager!.getDocBySection(section);
 
         if (docs.length === 0) {
             return {
                 section,
                 error: `No documentation found for section: ${section}`,
-                availableSections: await this.docsManager.getAvailableSections()
+                availableSections: await this.docsManager!.getAvailableSections()
             };
         }
 
@@ -902,6 +1035,10 @@ export class ToolHandler {
      * Routes to appropriate method based on mode parameter
      */
     private async searchDocs(args: SearchDocsArgs): Promise<any> {
+        // Check if DocsManager is available
+        const docsManager = this.checkManager(this.docsManager, 'DocsManager');
+        if ('error' in docsManager) return docsManager;
+        
         const mode = args?.mode ?? 'search';
 
         switch (mode) {
@@ -932,6 +1069,9 @@ export class ToolHandler {
 
             case 'examples':
                 // Search for code examples
+                const advancedExamplesManager = this.checkManager(this.advancedExamplesManager, 'AdvancedExamplesManager');
+                if ('error' in advancedExamplesManager) return advancedExamplesManager;
+                
                 return await this.getCodeExamples(
                     args?.query,
                     args?.detailLevel ?? 'summary',
@@ -957,6 +1097,10 @@ export class ToolHandler {
      *   surprising slice behavior (e.g., negative pages).
      */
     private async cliReference(args: CLIReferenceArgs): Promise<any> {
+        // Check if CLICommandsManager is available
+        const cliCommandsManager = this.checkManager(this.cliCommandsManager, 'CLICommandsManager');
+        if ('error' in cliCommandsManager) return cliCommandsManager;
+        
         // Normalize empty/whitespace command strings to list mode.
         const command = typeof args?.command === 'string' ? args.command.trim() : undefined;
 
@@ -979,6 +1123,10 @@ export class ToolHandler {
      * - Pagination: `page` and `pageSize` are normalized to positive integers.
      */
     private async functionReference(args: FunctionReferenceArgs): Promise<any> {
+        // Check if FunctionsManager is available
+        const functionsManager = this.checkManager(this.functionsManager, 'FunctionsManager');
+        if ('error' in functionsManager) return functionsManager;
+        
         // Normalize empty/whitespace function_name strings to list mode.
         const functionName = typeof args?.function_name === 'string' ? args.function_name.trim() : undefined;
 
@@ -1013,7 +1161,7 @@ export class ToolHandler {
         }
         return Object.fromEntries(
             // Filter out undefined values regardless of key
-            Object.entries(flatProperties).filter(([key, v]) => v !== undefined)
+            Object.entries(flatProperties).filter(([_key, v]) => v !== undefined)
         ) as T;
     }
 
@@ -1028,7 +1176,7 @@ export class ToolHandler {
 
     private async getCliCommandHelp(command: string): Promise<any> {
         // First, try to get structured documentation from CLICommandsManager
-        const structuredCmd = this.cliCommandsManager.getCommand(command);
+        const structuredCmd = this.cliCommandsManager!.getCommand(command);
         
         if (structuredCmd) {
             // Return comprehensive structured documentation
@@ -1059,18 +1207,18 @@ export class ToolHandler {
                 deprecated: structuredCmd.deprecated,
                 documentationUrl: structuredCmd.documentationUrl,
                 // Include formatted markdown help
-                formattedHelp: this.cliCommandsManager.formatCommandHelp(structuredCmd)
+                formattedHelp: this.cliCommandsManager!.formatCommandHelp(structuredCmd)
             };
         }
 
         // Fallback to docs manager for commands not in structured data
-        const doc = await this.docsManager.getCliCommandHelp(command);
+        const doc = await this.docsManager!.getCliCommandHelp(command);
 
         if (!doc) {
             // Provide helpful suggestions
-            const searchResults = this.cliCommandsManager.searchCommands(command);
+            const searchResults = this.cliCommandsManager!.searchCommands(command);
             const suggestions = searchResults.slice(0, 3).map(r => r.command.name);
-            const allCommands = this.cliCommandsManager.getAllCommands().map(c => c.name);
+            const allCommands = this.cliCommandsManager!.getAllCommands().map(c => c.name);
             
             return {
                 command,
@@ -1102,7 +1250,7 @@ export class ToolHandler {
     ): Promise<any> {
         if (search) {
             // Search for matching commands
-            const results = this.cliCommandsManager.searchCommands(search);
+            const results = this.cliCommandsManager!.searchCommands(search);
             const { results: paginatedResults, pagination } = this.calculatePagination(
                 results,
                 page,
@@ -1126,7 +1274,7 @@ export class ToolHandler {
 
         if (category) {
             // Filter by category
-            const commands = this.cliCommandsManager.getCommandsByCategory(category);
+            const commands = this.cliCommandsManager!.getCommandsByCategory(category);
             const { results: paginatedResults, pagination } = this.calculatePagination(
                 commands,
                 page,
@@ -1146,8 +1294,8 @@ export class ToolHandler {
         }
 
         // Return all commands organized by category
-        const categories = this.cliCommandsManager.getCategories();
-        const allCommands = this.cliCommandsManager.getAllCommands();
+        const categories = this.cliCommandsManager!.getCategories();
+        const allCommands = this.cliCommandsManager!.getAllCommands();
         const { results: paginatedCommands, pagination } = this.calculatePagination(
             allCommands,
             page,
@@ -1174,15 +1322,19 @@ export class ToolHandler {
 
     private async getHclConfigReference(
         config?: string,
-        category?: string,
+        category?: HCLBlockCategory,
         listBlocks?: boolean
     ): Promise<any> {
+        // Check if HCLBlocksManager is available
+        const hclBlocksManager = this.checkManager(this.hclBlocksManager, 'HCLBlocksManager');
+        if ('error' in hclBlocksManager) return hclBlocksManager;
+        
         // List all blocks (optionally filtered by category)
         if (listBlocks) {
-            const blocks = this.hclBlocksManager.listBlocks(
-                category as Parameters<typeof this.hclBlocksManager.listBlocks>[0]
+            const blocks = this.hclBlocksManager!.listBlocks(
+                category
             );
-            const categories = this.hclBlocksManager.getCategories();
+            const categories = this.hclBlocksManager!.getCategories();
             
             return {
                 blocks: blocks.map(block => ({
@@ -1210,7 +1362,7 @@ export class ToolHandler {
         // Get specific block documentation
         if (config) {
             // First try structured block data (preferred)
-            const block = this.hclBlocksManager.getBlock(config);
+            const block = this.hclBlocksManager!.getBlock(config);
             
             if (block) {
                 // Return comprehensive structured documentation
@@ -1218,21 +1370,21 @@ export class ToolHandler {
             }
 
             // Try search if exact match not found
-            const searchResults = this.hclBlocksManager.searchBlocks(config);
+            const searchResults = this.hclBlocksManager!.searchBlocks(config);
             if (searchResults.length > 0) {
                 // Return best match with suggestions
                 const bestMatch = searchResults[0];
-                const response = this.formatBlockResponse(bestMatch.block, {
+                const additionalProps: Record<string, unknown> = {
                     matchInfo: {
                         matchType: bestMatch.matchType,
                         score: bestMatch.score,
                         searchQuery: config
                     }
-                });
+                };
 
                 // Add suggestions if there are other close matches
                 if (searchResults.length > 1) {
-                    (response as any).otherMatches = searchResults.slice(1, 4).map(r => ({
+                    additionalProps.otherMatches = searchResults.slice(1, 4).map(r => ({
                         name: r.block.name,
                         displayName: r.block.displayName,
                         score: r.score,
@@ -1240,11 +1392,11 @@ export class ToolHandler {
                     }));
                 }
 
-                return response;
+                return this.formatBlockResponse(bestMatch.block, additionalProps);
             }
 
             // Fall back to scraped documentation as last resort
-            const docs = await this.docsManager.getHclConfigReference(config);
+            const docs = await this.docsManager!.getHclConfigReference(config);
             if (docs.length > 0) {
                 return {
                     config,
@@ -1267,12 +1419,12 @@ export class ToolHandler {
                 config,
                 error: `No HCL configuration documentation found for: ${config}`,
                 suggestion: 'Use listBlocks=true to see all available HCL blocks, or try one of these common blocks: terraform, remote_state, locals, inputs, include, dependency, generate',
-                availableBlocks: this.hclBlocksManager.listBlocks().map(b => b.name)
+                availableBlocks: this.hclBlocksManager!.listBlocks().map(b => b.name)
             };
         }
 
         // No parameters - return summary with categories
-        const categories = this.hclBlocksManager.getCategories();
+        const categories = this.hclBlocksManager!.getCategories();
         return {
             message: 'Use config parameter to get documentation for a specific HCL block, or listBlocks=true to see all blocks',
             categories: categories.map(cat => ({
@@ -1281,7 +1433,7 @@ export class ToolHandler {
                 description: cat.description,
                 blockCount: cat.blockCount
             })),
-            totalBlocks: this.hclBlocksManager.getBlockCount(),
+            totalBlocks: this.hclBlocksManager!.getBlockCount(),
             exampleUsage: [
                 { description: 'Get terraform block docs', params: { config: 'terraform' } },
                 { description: 'List all blocks', params: { listBlocks: true } },
@@ -1329,7 +1481,7 @@ export class ToolHandler {
             })),
             relatedBlocks: block.relatedBlocks,
             docsUrl: block.docsUrl,
-            markdown: this.hclBlocksManager.formatBlockAsMarkdown(block)
+            markdown: this.hclBlocksManager!.formatBlockAsMarkdown(block)
         };
 
         // Merge any additional properties (e.g., matchInfo, otherMatches)
@@ -1373,7 +1525,7 @@ export class ToolHandler {
     ): Promise<any> {
         // List advanced example categories
         if (listCategories) {
-            const categories = this.advancedExamplesManager.getCategories();
+            const categories = this.advancedExamplesManager!.getCategories();
             return {
                 categories: categories.map(cat => ({
                     category: cat.category,
@@ -1381,7 +1533,7 @@ export class ToolHandler {
                     description: cat.description,
                     exampleCount: cat.exampleCount
                 })),
-                totalExamples: this.advancedExamplesManager.getExampleCount(),
+                totalExamples: this.advancedExamplesManager!.getExampleCount(),
                 message: 'Use advanced=true with query or category to get curated examples'
             };
         }
@@ -1399,11 +1551,11 @@ export class ToolHandler {
             };
         }
 
-        const results = await this.docsManager.getCodeExamples(query);
+        const results = await this.docsManager!.getCodeExamples(query);
 
         if (results.length === 0) {
             // Suggest advanced examples as alternative
-            const advancedResults = this.advancedExamplesManager.searchExamples(query);
+            const advancedResults = this.advancedExamplesManager!.searchExamples(query);
             if (advancedResults.length > 0) {
                 return {
                     query,
@@ -1466,7 +1618,7 @@ export class ToolHandler {
     ): any {
         // List examples by category
         if (category && !topic) {
-            const examples = this.advancedExamplesManager.listExamples(category);
+            const examples = this.advancedExamplesManager!.listExamples(category);
             
             // Summary mode for category listing
             if (mode === 'summary') {
@@ -1506,7 +1658,7 @@ export class ToolHandler {
 
         // Search by topic
         if (topic) {
-            const searchResults = this.advancedExamplesManager.searchExamples(topic);
+            const searchResults = this.advancedExamplesManager!.searchExamples(topic);
             
             // Filter by category if provided
             const filteredResults = category
@@ -1514,7 +1666,7 @@ export class ToolHandler {
                 : searchResults;
 
             if (filteredResults.length === 0) {
-                const categories = this.advancedExamplesManager.getCategories();
+                const categories = this.advancedExamplesManager!.getCategories();
                 return {
                     topic,
                     category,
@@ -1576,7 +1728,7 @@ export class ToolHandler {
                     relatedExamples: bestMatch.relatedExamples,
                     tags: bestMatch.tags,
                     docsUrl: bestMatch.docsUrl,
-                    markdown: this.advancedExamplesManager.formatExampleAsMarkdown(bestMatch)
+                    markdown: this.advancedExamplesManager!.formatExampleAsMarkdown(bestMatch)
                 },
                 otherMatches: filteredResults.slice(1, limit).map(r => ({
                     id: r.example.id,
@@ -1590,7 +1742,7 @@ export class ToolHandler {
         }
 
         // No topic or category - return overview
-        const categories = this.advancedExamplesManager.getCategories();
+        const categories = this.advancedExamplesManager!.getCategories();
         return {
             source: 'advanced-examples',
             message: 'Provide a topic to search, or a category to browse advanced examples',
@@ -1600,7 +1752,7 @@ export class ToolHandler {
                 description: cat.description,
                 exampleCount: cat.exampleCount
             })),
-            totalExamples: this.advancedExamplesManager.getExampleCount(),
+            totalExamples: this.advancedExamplesManager!.getExampleCount(),
             exampleUsage: [
                 { description: 'Search by topic', params: { advanced: true, topic: 'before_hook' } },
                 { description: 'Browse by category', params: { advanced: true, category: 'hooks' } },
@@ -1616,7 +1768,7 @@ export class ToolHandler {
     ): Promise<any> {
         try {
             const includeExamples = mode === 'full';
-            const result = await this.bestPracticesAnalyzer.analyzeTopic(topic, level, includeExamples);
+            const result = await this.bestPracticesAnalyzer!.analyzeTopic(topic, level, includeExamples);
             
             // Handle unknown topics with intelligent suggestions
             if (result.recommendations.length === 0) {
@@ -1681,11 +1833,11 @@ export class ToolHandler {
     ): Promise<any> {
         // Ensure functions are loaded at least once per process
         if (!this.functionsLoaded) {
-            await this.functionsManager.loadFunctions();
+            await this.functionsManager!.loadFunctions();
             this.functionsLoaded = true;
         }
 
-        const fn = this.functionsManager.getFunction(functionName);
+        const fn = this.functionsManager!.getFunction(functionName);
         if (!fn) {
             const suggestions = this.getSimilarFunctionNames(functionName);
             const suggestionText = suggestions.length > 0
@@ -1737,7 +1889,7 @@ export class ToolHandler {
      * This helps provide relevant alternatives when a function name is not found.
      */
     private getSimilarFunctionNames(functionName: string): string[] {
-        const allFunctions = this.functionsManager.listFunctions();
+        const allFunctions = this.functionsManager!.listFunctions();
         const query = functionName.toLowerCase();
         const suggestions: Array<{ name: string; score: number }> = [];
 
@@ -1789,7 +1941,7 @@ export class ToolHandler {
         pageSize: number = 20
     ): Promise<any> {
         if (!this.functionsLoaded) {
-            await this.functionsManager.loadFunctions();
+            await this.functionsManager!.loadFunctions();
             this.functionsLoaded = true;
         }
 
@@ -1797,18 +1949,18 @@ export class ToolHandler {
         
         // Apply search or category filter
         if (search && search.trim()) {
-            functions = this.functionsManager.searchFunctions(search);
+            functions = this.functionsManager!.searchFunctions(search);
             // Further filter by category if provided
             if (category && category.trim()) {
                 const catFilter = category.trim().toLowerCase();
                 functions = functions.filter(f => (f.category || '').toLowerCase() === catFilter);
             }
         } else {
-            functions = this.functionsManager.listFunctions(category);
+            functions = this.functionsManager!.listFunctions(category);
         }
 
         // Get all available categories (not filtered - shows all options for discovery)
-        const categories = this.functionsManager.getAvailableCategories();
+        const categories = this.functionsManager!.getAvailableCategories();
 
         // Apply pagination
         const { results, pagination } = this.calculatePagination(
@@ -1871,6 +2023,16 @@ export class ToolHandler {
         createBackup: boolean = true,
         createParentDirs: boolean = true
     ): Promise<any> {
+        // Check if ConfigGenerator is available
+        const configGenerator = this.checkManager(this.configGenerator, 'ConfigGenerator');
+        if ('error' in configGenerator) return configGenerator;
+        
+        // Check if FileWriter is available when write is requested
+        if (write) {
+            const fileWriter = this.checkManager(this.fileWriter, 'FileWriter');
+            if ('error' in fileWriter) return fileWriter;
+        }
+        
         try {
             // Generate the configuration with correct parameter order (useCase, backend, tier, options)
             const generateResult = await this.generateTerragruntConfig(
@@ -1948,8 +2110,8 @@ export class ToolHandler {
             
             // Use the appropriate template library (custom or default)
             const generator = customTemplate 
-                ? new TerragruntConfigGenerator(this.docsManager, templateLibrary)
-                : this.configGenerator;
+                ? new TerragruntConfigGenerator(this.docsManager!, templateLibrary)
+                : this.configGenerator!;
 
             const result = await generator.generateConfig({
                 useCase: useCase as UseCase,
@@ -2008,8 +2170,12 @@ export class ToolHandler {
         createBackup: boolean,
         createParentDirs: boolean
     ): Promise<any> {
+        // Check if FileWriter is available
+        const fileWriter = this.checkManager(this.fileWriter, 'FileWriter');
+        if ('error' in fileWriter) return fileWriter;
+        
         try {
-            const result = await this.fileWriter.writeFile({
+            const result = await fileWriter.writeFile({
                 content,
                 filePath,
                 overwrite,
@@ -2053,8 +2219,12 @@ export class ToolHandler {
             includeDestructiveCommands?: boolean;
         }
     ): Promise<any> {
+        // Check if ErrorPatternMatcher is available
+        const errorPatternMatcher = this.checkManager(this.errorPatternMatcher, 'ErrorPatternMatcher');
+        if ('error' in errorPatternMatcher) return errorPatternMatcher;
+        
         try {
-            const diagnosis = await this.errorPatternMatcher.diagnoseError(
+            const diagnosis = await errorPatternMatcher.diagnoseError(
                 errorMessage,
                 context,
                 {
@@ -2131,6 +2301,14 @@ export class ToolHandler {
         level?: 'beginner' | 'intermediate' | 'advanced',
         listAll: boolean = false
     ): Promise<any> {
+        // Check if BestPracticesAnalyzer is available
+        const bestPracticesAnalyzer = this.checkManager(this.bestPracticesAnalyzer, 'BestPracticesAnalyzer');
+        if ('error' in bestPracticesAnalyzer) return bestPracticesAnalyzer;
+        
+        // Check if BlockComparisonManager is available
+        const blockComparisonManager = this.checkManager(this.blockComparisonManager, 'BlockComparisonManager');
+        if ('error' in blockComparisonManager) return blockComparisonManager;
+        
         // List all available guidance
         if (listAll) {
             const bestPracticeTopics = [
@@ -2138,8 +2316,8 @@ export class ToolHandler {
                 'state_management', 'dependencies', 'ci_cd', 'security',
                 'performance', 'testing'
             ];
-            const comparisons = this.blockComparisonManager.getAvailableComparisons();
-            const patterns = this.blockComparisonManager.getAvailablePatterns();
+            const comparisons = this.blockComparisonManager!.getAvailableComparisons();
+            const patterns = this.blockComparisonManager!.getAvailablePatterns();
             
             return {
                 availableBestPracticeTopics: bestPracticeTopics,
@@ -2156,8 +2334,8 @@ export class ToolHandler {
                 'state_management', 'dependencies', 'ci_cd', 'security',
                 'performance', 'testing'
             ];
-            const comparisons = this.blockComparisonManager.getAvailableComparisons();
-            const patterns = this.blockComparisonManager.getAvailablePatterns();
+            const comparisons = this.blockComparisonManager!.getAvailableComparisons();
+            const patterns = this.blockComparisonManager!.getAvailablePatterns();
             
             return {
                 availableBestPracticeTopics: bestPracticeTopics,
@@ -2225,8 +2403,8 @@ export class ToolHandler {
     ): any {
         // List all available comparisons
         if (listComparisons) {
-            const comparisons = this.blockComparisonManager.getAvailableComparisons();
-            const patterns = this.blockComparisonManager.getAvailablePatterns();
+            const comparisons = this.blockComparisonManager!.getAvailableComparisons();
+            const patterns = this.blockComparisonManager!.getAvailablePatterns();
             return {
                 availableComparisons: comparisons,
                 availablePatternTopics: patterns,
@@ -2236,7 +2414,7 @@ export class ToolHandler {
 
         // Need at least one block to compare
         if (!block1) {
-            const comparisons = this.blockComparisonManager.getAvailableComparisons();
+            const comparisons = this.blockComparisonManager!.getAvailableComparisons();
             return {
                 error: 'Please specify blocks to compare',
                 availableComparisons: comparisons,
@@ -2248,7 +2426,7 @@ export class ToolHandler {
             };
         }
 
-        const result = this.blockComparisonManager.compareBlocks(block1, block2);
+        const result = this.blockComparisonManager!.compareBlocks(block1, block2);
 
         if (!result.found) {
             return {
@@ -2296,8 +2474,8 @@ export class ToolHandler {
     ): any {
         // List all available patterns
         if (listPatterns) {
-            const patterns = this.blockComparisonManager.getAvailablePatterns();
-            const comparisons = this.blockComparisonManager.getAvailableComparisons();
+            const patterns = this.blockComparisonManager!.getAvailablePatterns();
+            const comparisons = this.blockComparisonManager!.getAvailableComparisons();
             return {
                 availablePatternTopics: patterns,
                 relatedBlockComparisons: comparisons,
@@ -2307,7 +2485,7 @@ export class ToolHandler {
 
         // Need a scenario to provide guidance
         if (!scenario) {
-            const patterns = this.blockComparisonManager.getAvailablePatterns();
+            const patterns = this.blockComparisonManager!.getAvailablePatterns();
             return {
                 error: 'Please specify a scenario to get guidance for',
                 availablePatternTopics: patterns,
@@ -2319,7 +2497,7 @@ export class ToolHandler {
             };
         }
 
-        const result = this.blockComparisonManager.getPatternGuidance(scenario);
+        const result = this.blockComparisonManager!.getPatternGuidance(scenario);
 
         if (!result.found) {
             return {
@@ -2347,7 +2525,7 @@ export class ToolHandler {
                     cons: p.cons
                 })),
                 relatedComparisons: guidance.relatedComparisons.map(id => {
-                    const comp = this.blockComparisonManager.getComparisonById(id);
+                    const comp = this.blockComparisonManager!.getComparisonById(id);
                     return comp ? `${comp.blocks[0]} vs ${comp.blocks[1]}` : id;
                 })
             }

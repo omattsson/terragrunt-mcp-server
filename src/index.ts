@@ -18,16 +18,26 @@ import {
 } from '@modelcontextprotocol/sdk/types.js';
 import { ToolHandler } from './handlers/tools.js';
 import { MetricsManager } from './terragrunt/metrics.js';
+import { parseModeFromArgs, ServerMode } from './modes/config.js';
 
 class TerragruntMCPServer {
     private server: Server;
     private toolHandler: ToolHandler;
     private metricsManager: MetricsManager;
+    private mode: ServerMode;
 
     constructor() {
+        // Parse server mode from CLI arguments (defaults to FULL for backward compatibility)
+        this.mode = parseModeFromArgs(process.argv);
+        
+        // Update server name to indicate mode (useful for debugging/monitoring)
+        const serverName = this.mode === ServerMode.FULL 
+            ? 'terragrunt-mcp-server'
+            : `terragrunt-mcp-server-${this.mode}`;
+        
         this.server = new Server(
             {
-                name: 'terragrunt-mcp-server',
+                name: serverName,
                 version: '0.5.0',
             },
             {
@@ -37,11 +47,14 @@ class TerragruntMCPServer {
             }
         );
 
-        // Create shared metrics manager
+        // Create shared metrics manager and tool handler with mode
         this.metricsManager = new MetricsManager();
-        this.toolHandler = new ToolHandler(this.metricsManager);
+        this.toolHandler = new ToolHandler(this.metricsManager, this.mode);
 
         this.setupHandlers();
+        
+        // Log mode configuration on startup
+        console.error(`[Server] Starting in ${this.mode} mode`);
     }
 
     private setupHandlers() {
