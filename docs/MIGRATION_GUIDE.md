@@ -2,7 +2,9 @@
 
 ## Overview
 
-Version 0.5.1+ introduces a multi-mode architecture that reduces token overhead by 60-94% while maintaining full backward compatibility. This guide helps you migrate to the optimal mode for your workflow.
+Version 0.5.0+ introduces a multi-mode architecture that reduces token overhead by 60-94% while maintaining full backward compatibility. This guide helps you migrate to the optimal mode for your workflow.
+
+> **For AI Assistants**: See [AI Prompt Patterns Guide](AI-Prompt-Patterns.md) for optimal tool usage strategies with multi-mode architecture.
 
 ## What Changed
 
