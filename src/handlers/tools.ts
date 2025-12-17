@@ -220,18 +220,18 @@ export class ToolHandler {
         }
         
         // Functions management
-        if (shouldLoadDependency('functions', this.mode) && this.docsManager) {
-            this.functionsManager = new TerragruntFunctionsManager(this.docsManager);
+        if (shouldLoadDependency('functions', this.mode)) {
+            this.functionsManager = new TerragruntFunctionsManager(this.docsManager!);
         }
         
         // Best practices and guidance
-        if (shouldLoadDependency('bestPractices', this.mode) && this.docsManager) {
-            this.bestPracticesAnalyzer = new BestPracticesAnalyzer(this.docsManager);
+        if (shouldLoadDependency('bestPractices', this.mode)) {
+            this.bestPracticesAnalyzer = new BestPracticesAnalyzer(this.docsManager!);
         }
         
         // Error diagnosis
-        if (shouldLoadDependency('errorPatterns', this.mode) && this.docsManager) {
-            this.errorPatternMatcher = new ErrorPatternMatcher(this.docsManager);
+        if (shouldLoadDependency('errorPatterns', this.mode)) {
+            this.errorPatternMatcher = new ErrorPatternMatcher(this.docsManager!);
         }
         
         // CLI commands

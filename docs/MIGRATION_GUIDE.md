@@ -406,7 +406,7 @@ npm run measure-memory
 ```
 
 Expected results by mode:
-- CORE: 965 tokens, 4 managers, 0.19 MB
+- CORE: 965 tokens, 5 managers, 0.19 MB
 - CONFIG: 640 tokens, 6 managers, 0.08 MB
 - GUIDANCE: 683 tokens, 4 managers, 0.13 MB
 - OBSERVABILITY: 155 tokens, 0 managers, 0.04 MB

@@ -58,6 +58,7 @@ export const MODE_CONFIGS: Record<ServerMode, ModeConfig> = {
     description: 'Essential documentation search and reference tools',
     tools: ['search_docs', 'cli_reference', 'function_reference', 'get_hcl_config_reference'],
     estimatedTokens: 965,
+    // Note: 'hcl' dependency included via BASE_DEPS spread, enabling get_hcl_config_reference tool
     dependencies: [...BASE_DEPS, 'functions', 'cli', 'advancedExamples']
   },
   [ServerMode.CONFIG]: {
