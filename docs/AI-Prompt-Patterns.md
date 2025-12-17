@@ -2,7 +2,7 @@
 
 > **Audience**: AI assistants (Claude, GPT, Gemini, etc.) and their users  
 > **Purpose**: Optimize tool usage for maximum effectiveness and minimal token waste  
-> **Version**: Compatible with v0.5.1+ multi-mode architecture
+> **Version**: Compatible with v0.5.0+ multi-mode architecture
 
 ## Table of Contents
 
@@ -22,7 +22,7 @@ The Terragrunt MCP Server provides 8 consolidated tools with mode-based paramete
 
 ### Why Prompt Patterns Matter
 
-- **Token Efficiency**: FULL mode uses 2,441 tokens; CORE mode uses only 155 tokens (94% reduction)
+- **Token Efficiency**: FULL mode uses 2,441 tokens; CORE mode uses 965 tokens (60% reduction)
 - **Response Speed**: Fewer tools = faster AI processing
 - **Clarity**: Well-structured prompts lead to better tool selection
 - **Cache Optimization**: Consistent patterns improve MCP caching
@@ -279,15 +279,11 @@ AI: diagnose_terragrunt_error(error_message="Error: module not found")
 User: "I'm getting 'Error: module not found' when running terragrunt apply"
 AI: diagnose_terragrunt_error(
       error_message="Error: module not found",
-      context={
-        command: "terragrunt apply",
-        filePath: "prod/us-east-1/app/terragrunt.hcl",
-        backend: "s3"
-      },
-      options={
-        enrichWithDocs: true,
-        minConfidence: 0.5
-      }
+      command="terragrunt apply",
+      filePath="prod/us-east-1/app/terragrunt.hcl",
+      backend="s3",
+      enrichWithDocs=true,
+      minConfidence=0.5
     )
 ```
 **Benefits**:
@@ -433,14 +429,14 @@ AI provides: Generated config + best practice notes
 
 **Sequence**:
 ```
-1. diagnose_terragrunt_error(error_message="<error>", context={...})
+1. diagnose_terragrunt_error(error_message="<error>", command="...", filePath="...", backend="...")
    → Get initial diagnosis and solutions
 
 2. search_docs(mode="search", query="<error_topic>")
    → Find related documentation
 
-3. get_guidance(type="troubleshooting", topic="<error_type>")
-   → Get troubleshooting guidance
+3. get_guidance(type="best-practices", topic="<error_type>")
+   → Get best practices guidance for avoiding this error
 
 4. [If config issue] get_hcl_config_reference(config="<block>")
    → Verify correct syntax
@@ -455,15 +451,15 @@ User: "Error: Could not load plugin"
 AI:
 Step 1: diagnose_terragrunt_error(
           error_message="Could not load plugin",
-          context={command: "terragrunt init"},
-          options={enrichWithDocs: true}
+          command="terragrunt init",
+          enrichWithDocs=true
         )
 Result: Likely provider version issue, need to check terraform block
 
 Step 2: get_hcl_config_reference(config="terraform")
 Result: Got terraform block syntax
 
-Step 3: get_guidance(type="troubleshooting", topic="provider_errors")
+Step 3: get_guidance(type="best-practices", topic="provider_configuration")
 Result: Common provider error solutions
 
 AI provides: Diagnosis + corrected terraform block + explanation
@@ -562,10 +558,10 @@ The multi-mode architecture provides 5 operational modes:
 
 | Mode | Tools | Token Overhead | Best For |
 |------|-------|----------------|----------|
-| **CORE** | search_docs, function_reference, cli_reference, get_hcl_config_reference | 155 | Documentation lookup, learning |
-| **CONFIG** | build_config, get_hcl_config_reference | 435 | Configuration generation |
-| **GUIDANCE** | get_guidance, diagnose_terragrunt_error | 589 | Troubleshooting, best practices |
-| **OBSERVABILITY** | get_server_metrics | 244 | Monitoring, metrics |
+| **CORE** | search_docs, function_reference, cli_reference, get_hcl_config_reference | 965 | Documentation lookup, learning |
+| **CONFIG** | build_config, get_hcl_config_reference | 640 | Configuration generation |
+| **GUIDANCE** | get_guidance, diagnose_terragrunt_error | 683 | Troubleshooting, best practices |
+| **OBSERVABILITY** | get_server_metrics | 155 | Monitoring, metrics |
 | **FULL** | All 8 tools | 2,441 | Mixed workflows, backward compatibility |
 
 ---
@@ -590,7 +586,7 @@ The multi-mode architecture provides 5 operational modes:
 ```
 
 **Benefits**:
-- 94% token reduction vs FULL mode (155 vs 2,441 tokens)
+- 60% token reduction vs FULL mode (965 vs 2,441 tokens)
 - Faster AI processing
 - Simpler mental model
 
@@ -633,8 +629,9 @@ The multi-mode architecture provides 5 operational modes:
 
 **Benefits**:
 - Each instance optimized for its role
-- Total token overhead still lower than FULL mode (155 + 435 + 589 = 1,179 vs 2,441)
+- Total token overhead: 965 + 640 + 683 = 2,288 tokens (6% reduction vs FULL mode's 2,441)
 - AI can select appropriate server per task
+- Primary benefit is server specialization and reduced memory per instance, not token reduction
 
 **AI Selection Logic**:
 ```text
@@ -720,7 +717,7 @@ Step 4 [GUIDANCE mode - terragrunt-troubleshoot]:
   → Validate approach
 ```
 
-**Token Efficiency**: Using 3 specialized servers (155 + 435 + 589 = 1,179 tokens) vs FULL mode (2,441 tokens) = **52% reduction**
+**Token Efficiency**: Using 3 specialized servers (965 + 640 + 683 = 2,288 tokens) vs FULL mode (2,441 tokens) = **6% reduction**. Primary benefit is reduced memory footprint and server specialization rather than token reduction.
 
 ---
 
@@ -766,7 +763,7 @@ Step 4 [CONFIG mode - terragrunt-config]:
 CORE       CONFIG      GUIDANCE    OBSERVABILITY      FULL
    │           │            │              │             │
    v           v            v              v             v
- 155        435 tok      589 tok        244 tok      2,441 tok
+ 965        640 tok      683 tok        155 tok      2,441 tok
 tokens                                                        
    │           │            │              │             │
    │           │            │              │             │
@@ -871,18 +868,14 @@ More context = better diagnosis = fewer follow-up queries.
 **Always provide when available**:
 ```javascript
 diagnose_terragrunt_error(
-  error_message: "<full error text>",
-  context: {
-    command: "terragrunt apply",      // What command was run
-    filePath: "prod/app/terragrunt.hcl",  // Where
-    backend: "s3",                    // Backend type
-    module: "app",                    // Module name
-    version: "v0.45.0"               // Terragrunt version
-  },
-  options: {
-    enrichWithDocs: true,             // Get solution links
-    minConfidence: 0.5                // Confidence threshold
-  }
+  error_message="<full error text>",
+  command="terragrunt apply",      // What command was run
+  filePath="prod/app/terragrunt.hcl",  // Where
+  backend="s3",                    // Backend type
+  module="app",                    // Module name
+  version="v0.45.0",               // Terragrunt version
+  enrichWithDocs=true,             // Get solution links
+  minConfidence=0.5                // Confidence threshold
 )
 ```
 
@@ -1063,7 +1056,7 @@ User: "Search for dependency docs"
 
 **Problem**: Loading 8 tools when only need 1.
 
-**Fix**: Use CORE mode (155 tokens) for documentation tasks.
+**Fix**: Use CORE mode (965 tokens, 60% reduction) for documentation tasks.
 
 ---
 
@@ -1080,7 +1073,9 @@ diagnose_terragrunt_error(error_message="Error occurred")
 ```javascript
 diagnose_terragrunt_error(
   error_message="<full error>",
-  context={command, filePath, backend, ...}
+  command="terragrunt apply",
+  filePath="path/to/terragrunt.hcl",
+  backend="s3"
 )
 ```
 
@@ -1185,7 +1180,7 @@ search_docs(mode="examples", advanced=true, limit=3)
 | Get pattern guidance | `get_guidance` | `type="pattern"`, `scenario="..."` |
 | Generate config | `build_config` | `useCase="..."`, `options={...}` |
 | List templates | `build_config` | `listTemplates=true` |
-| Diagnose error | `diagnose_terragrunt_error` | `error_message`, `context={...}` |
+| Diagnose error | `diagnose_terragrunt_error` | `error_message`, `command`, `filePath`, etc. |
 | View metrics | `get_server_metrics` | (no parameters) |
 
 ---
@@ -1195,7 +1190,7 @@ search_docs(mode="examples", advanced=true, limit=3)
 ```
 User Request
     │
-    ├─ Documentation lookup? ──→ CORE mode (155 tokens)
+    ├─ Documentation lookup? ──→ CORE mode (965 tokens)
     │   └─ Tools: search_docs, function_reference, cli_reference, get_hcl_config_reference
     │
     ├─ Generate configuration? ──→ CONFIG mode (435 tokens)
@@ -1237,9 +1232,9 @@ User Request
 
 #### Pattern: Troubleshoot Error
 ```
-1. diagnose_terragrunt_error(error_message="...", context={...})
+1. diagnose_terragrunt_error(error_message="...", command="...", filePath="...")
 2. search_docs(mode="search", query="<error_topic>")
-3. get_guidance(type="troubleshooting", topic="<error_type>")
+3. get_guidance(type="best-practices", topic="<error_type>")
 ```
 
 #### Pattern: Function Discovery
@@ -1255,15 +1250,15 @@ User Request
 | Strategy | Token Overhead | Savings vs FULL |
 |----------|----------------|-----------------|
 | FULL mode (default) | 2,441 | 0% (baseline) |
-| CORE mode only | 155 | **94%** |
-| CONFIG mode only | 435 | **82%** |
-| GUIDANCE mode only | 589 | **76%** |
-| OBSERVABILITY mode only | 244 | **90%** |
-| Multi-instance (all 4) | 1,179 | **52%** |
+| CORE mode only | 965 | **60%** |
+| CONFIG mode only | 640 | **74%** |
+| GUIDANCE mode only | 683 | **72%** |
+| OBSERVABILITY mode only | 155 | **94%** |
+| Multi-instance (all 4) | 2,288 | **6%** |
 | Use `detailLevel="summary"` | Additional 60-90% response reduction |
 | Use pagination/limits | Additional 50-80% response reduction |
 
-**Combined optimizations** (e.g., CORE mode + summary mode + limits) can achieve **95-98% total token reduction** vs naive FULL mode with full details.
+**Combined optimizations** (e.g., OBSERVABILITY mode + summary mode + limits) can achieve **95-98% total token reduction** vs naive FULL mode with full details.
 
 ---
 
@@ -1277,7 +1272,7 @@ Effective AI assistant usage with the Terragrunt MCP Server requires:
 4. **Context inclusion** - More context = better results = fewer iterations
 5. **Token awareness** - Minimize overhead through smart parameter choices
 
-By following these patterns, AI assistants can provide more accurate, efficient, and helpful responses while consuming 52-98% fewer tokens than naive approaches.
+By following these patterns, AI assistants can provide more accurate, efficient, and helpful responses while consuming 60-94% fewer tokens than naive approaches through mode selection alone, with up to 98% reduction when combined with other optimizations.
 
 ---
 
@@ -1291,4 +1286,4 @@ By following these patterns, AI assistants can provide more accurate, efficient,
 ---
 
 *Last Updated: 2025-12-17*  
-*Compatible with: v0.5.1+ multi-mode architecture*
+*Compatible with: v0.5.0+ multi-mode architecture*
