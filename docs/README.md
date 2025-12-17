@@ -16,7 +16,8 @@ A Model Context Protocol (MCP) server that provides comprehensive Terragrunt doc
 
 ### Features & Tools
 
-- [Available Tools](Available-Tools.md) - Complete reference for all 11 tools
+- [Available Tools](Available-Tools.md) - Complete reference for all 8 tools
+- [AI Prompt Patterns](AI-Prompt-Patterns.md) - Optimize AI assistant tool usage for maximum efficiency
 - [Best Practices Guide](Best-Practices-Guide.md) - Comprehensive guide to Terragrunt best practices
 - [Configuration Generator](Configuration-Generator.md) - Generate Terragrunt configurations
 - [Advanced Backend Templates](Advanced-Backend-Templates.md) - Enterprise backend configurations with KMS, cross-account, MSI

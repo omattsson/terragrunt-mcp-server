@@ -4,6 +4,8 @@ The Terragrunt MCP Server provides **8 consolidated tools** for comprehensive Te
 
 > **Version Note**: v0.5.0 consolidated 11 separate tools into 8 (7 core + 1 observability) for improved usability. See [CHANGELOG.md](../CHANGELOG.md) for migration details.
 
+> **AI Assistants**: For optimal prompt patterns and token efficiency tips, see [AI Prompt Patterns Guide](AI-Prompt-Patterns.md).
+
 ## Tool Overview
 
 | # | Tool | Purpose | Best For |
