@@ -10,12 +10,15 @@ import { LRUCache } from 'lru-cache';
 const gzipAsync = promisify(gzip);
 const gunzipAsync = promisify(gunzip);
 
-export interface TerragruntDoc {
+export interface DocMetadata {
   title: string;
   url: string;
-  content: string;
   section: string;
   lastUpdated?: string;
+}
+
+export interface TerragruntDoc extends DocMetadata {
+  content: string;
 }
 
 interface IndexedDoc extends TerragruntDoc {
@@ -24,10 +27,24 @@ interface IndexedDoc extends TerragruntDoc {
   sectionLower: string;
 }
 
+type WarmupStrategy = 'none' | 'minimal' | 'common' | 'full';
+
 interface CacheMetadata {
   lastFetchTime: string;
   docsCount: number;
   compressed?: boolean;
+}
+
+interface LazyLoadingMetrics {
+  enabled: boolean;
+  startupTimeMs: number;
+  metadataOnlyLoadTime?: number;
+  warmupTime?: number;
+  initialMemoryMB: number;
+  metadataCount: number;
+  docsLoadedLazily: number;
+  averageDocLoadTimeMs: number;
+  warmupStrategy: WarmupStrategy;
 }
 
 interface CacheStats {
@@ -38,6 +55,8 @@ interface CacheStats {
   lastRefresh: Date | null;
   cacheSize: number;
   memoryUsage: number;
+  lazyLoading?: LazyLoadingMetrics;
+  loadedDocsRatio?: number;
 }
 
 interface RetryConfig {
@@ -59,6 +78,17 @@ export class TerragruntDocsManager {
   private readonly metadataFile: string;
   private readonly fixtureFile: string;
   private readonly useCompression: boolean;
+  
+  // Lazy loading state
+  private readonly lazyLoadingEnabled: boolean;
+  private readonly warmupStrategy: WarmupStrategy;
+  private metadataCache: Map<string, DocMetadata> = new Map();
+  private contentCache: Map<string, string> = new Map();
+  private loadingPromises: Map<string, Promise<string>> = new Map();
+  private loadedDocs: Set<string> = new Set();
+  private lazyLoadingMetrics: LazyLoadingMetrics;
+  private readonly startTime: number;
+  
   private stats: CacheStats = {
     hits: 0,
     misses: 0,
@@ -76,6 +106,9 @@ export class TerragruntDocsManager {
   };
 
   constructor() {
+    this.startTime = performance.now();
+    const initialMemory = process.memoryUsage().heapUsed / 1024 / 1024;
+    
     // Get the directory where this file is located
     const __filename = fileURLToPath(import.meta.url);
     const __dirname = path.dirname(__filename);
@@ -92,11 +125,26 @@ export class TerragruntDocsManager {
     // Enable compression by default (can disable with env var)
     this.useCompression = process.env.TERRAGRUNT_CACHE_COMPRESSION !== 'false';
     
+    // Lazy loading configuration
+    this.lazyLoadingEnabled = process.env.TERRAGRUNT_LAZY_LOADING !== 'false';
+    this.warmupStrategy = (process.env.TERRAGRUNT_WARMUP_STRATEGY as WarmupStrategy) || 'minimal';
+    
     // Store cache in project root under .cache/terragrunt-docs
     this.cacheDir = path.join(__dirname, '..', '..', '.cache', 'terragrunt-docs');
     this.cacheFile = path.join(this.cacheDir, this.useCompression ? 'docs-cache.json.gz' : 'docs-cache.json');
     this.metadataFile = path.join(this.cacheDir, 'metadata.json');
     this.fixtureFile = path.join(__dirname, '..', '..', 'fixtures', 'terragrunt-docs-fixture.json');
+    
+    // Initialize lazy loading metrics
+    this.lazyLoadingMetrics = {
+      enabled: this.lazyLoadingEnabled,
+      startupTimeMs: 0,
+      initialMemoryMB: initialMemory,
+      metadataCount: 0,
+      docsLoadedLazily: 0,
+      averageDocLoadTimeMs: 0,
+      warmupStrategy: this.warmupStrategy
+    };
     
     // Initialize LRU cache for search results (max 100 searches, 5 min TTL)
     this.searchCache = new LRUCache<string, TerragruntDoc[]>({
@@ -114,7 +162,11 @@ export class TerragruntDocsManager {
       ...this.stats,
       cacheSize: this.docsCache.size,
       memoryUsage: process.memoryUsage().heapUsed,
-      lastRefresh: this.lastFetchTime
+      lastRefresh: this.lastFetchTime,
+      lazyLoading: this.lazyLoadingMetrics,
+      loadedDocsRatio: this.metadataCache.size > 0 
+        ? this.loadedDocs.size / this.metadataCache.size 
+        : 0
     };
   }
 
@@ -322,20 +374,43 @@ export class TerragruntDocsManager {
       
       const docs: TerragruntDoc[] = JSON.parse(docsContent);
 
-      // Populate in-memory cache and build search index
-      this.docsCache.clear();
-      this.indexedDocs = docs.map(doc => ({
-        ...doc,
-        titleLower: doc.title.toLowerCase(),
-        contentLower: doc.content.toLowerCase(),
-        sectionLower: doc.section.toLowerCase()
-      }));
-      
-      docs.forEach(doc => this.docsCache.set(doc.url, doc));
-      this.lastFetchTime = new Date(metadata.lastFetchTime);
-      this.stats.hits++;
+      if (this.lazyLoadingEnabled) {
+        // Lazy loading mode: load metadata only initially
+        this.metadataCache.clear();
+        docs.forEach(doc => {
+          const docMetadata: DocMetadata = {
+            title: doc.title,
+            url: doc.url,
+            section: doc.section,
+            lastUpdated: doc.lastUpdated
+          };
+          this.metadataCache.set(doc.url, docMetadata);
+        });
+        
+        this.lastFetchTime = new Date(metadata.lastFetchTime);
+        this.stats.hits++;
+        
+        console.log(`Loaded metadata for ${docs.length} docs from disk cache (lazy mode, age: ${Math.round(cacheAge / 1000 / 60)} minutes)`);
+        
+        // Perform warmup if configured
+        await this.warmupCache(this.warmupStrategy);
+      } else {
+        // Traditional mode: load full content and build search index
+        this.docsCache.clear();
+        this.indexedDocs = docs.map(doc => ({
+          ...doc,
+          titleLower: doc.title.toLowerCase(),
+          contentLower: doc.content.toLowerCase(),
+          sectionLower: doc.section.toLowerCase()
+        }));
+        
+        docs.forEach(doc => this.docsCache.set(doc.url, doc));
+        this.lastFetchTime = new Date(metadata.lastFetchTime);
+        this.stats.hits++;
 
-      console.log(`Loaded ${docs.length} docs from disk cache (age: ${Math.round(cacheAge / 1000 / 60)} minutes)`);
+        console.log(`Loaded ${docs.length} docs from disk cache (age: ${Math.round(cacheAge / 1000 / 60)} minutes)`);
+      }
+      
       return true;
     } catch (error) {
       console.error('Failed to load cache from disk:', error);
@@ -348,7 +423,19 @@ export class TerragruntDocsManager {
     try {
       await this.ensureCacheDir();
 
-      const docs = Array.from(this.docsCache.values());
+      let docs: TerragruntDoc[];
+      
+      if (this.lazyLoadingEnabled && this.metadataCache.size > 0) {
+        // Lazy loading mode: combine metadata with loaded content
+        docs = Array.from(this.metadataCache.values()).map(meta => {
+          const content = this.contentCache.get(meta.url) || '';
+          return { ...meta, content };
+        });
+      } else {
+        // Traditional mode
+        docs = Array.from(this.docsCache.values());
+      }
+
       const metadata: CacheMetadata = {
         lastFetchTime: this.lastFetchTime?.toISOString() || new Date().toISOString(),
         docsCount: docs.length,
@@ -421,33 +508,60 @@ export class TerragruntDocsManager {
       );
       
       this.docsCache.clear();
+      this.metadataCache.clear();
+      this.contentCache.clear();
 
-      // Fetch each page with retry logic
-      for (const page of docPages) {
-        try {
-          const doc = await this.retryWithBackoff(
-            () => this.fetchDocumentPage(page),
-            `Fetching ${page.url}`
-          );
-          if (doc) {
-            this.docsCache.set(doc.url, doc);
-          }
-        } catch {
-          console.warn(`Skipping page ${page.url} after retries failed`);
+      if (this.lazyLoadingEnabled) {
+        // Lazy loading mode: only fetch metadata
+        for (const page of docPages) {
+          const metadata: DocMetadata = {
+            title: page.title,
+            url: page.url,
+            section: page.section,
+            lastUpdated: new Date().toISOString()
+          };
+          this.metadataCache.set(page.url, metadata);
         }
-      }
 
-      if (this.docsCache.size === 0) {
-        throw new Error('No documentation pages were successfully fetched');
-      }
+        this.lastFetchTime = new Date();
+        this.stats.lastRefresh = this.lastFetchTime;
+        
+        const endTime = performance.now();
+        this.lazyLoadingMetrics.metadataOnlyLoadTime = endTime - (this.startTime || 0);
+        
+        console.log(`Lazy loaded metadata for ${this.metadataCache.size} docs in ${this.lazyLoadingMetrics.metadataOnlyLoadTime.toFixed(2)}ms`);
+        
+        // Perform warmup if configured
+        await this.warmupCache(this.warmupStrategy);
+        
+      } else {
+        // Traditional mode: fetch full content
+        for (const page of docPages) {
+          try {
+            const doc = await this.retryWithBackoff(
+              () => this.fetchDocumentPage(page),
+              `Fetching ${page.url}`
+            );
+            if (doc) {
+              this.docsCache.set(doc.url, doc);
+            }
+          } catch {
+            console.warn(`Skipping page ${page.url} after retries failed`);
+          }
+        }
 
-      this.lastFetchTime = new Date();
-      this.stats.lastRefresh = this.lastFetchTime;
-      
-      // Build search index from fetched docs
-      this.buildSearchIndex();
-      
-      console.log(`Cached ${this.docsCache.size} documentation pages`);
+        if (this.docsCache.size === 0) {
+          throw new Error('No documentation pages were successfully fetched');
+        }
+
+        this.lastFetchTime = new Date();
+        this.stats.lastRefresh = this.lastFetchTime;
+        
+        // Build search index from fetched docs
+        this.buildSearchIndex();
+        
+        console.log(`Cached ${this.docsCache.size} documentation pages`);
+      }
       
       // Save to disk after successful fetch
       await this.saveCacheToDisk();
@@ -592,6 +706,146 @@ export class TerragruntDocsManager {
   }
 
   /**
+   * Lazy load full content for a specific document by URL.
+   * Implements promise deduplication to avoid concurrent fetches of the same document.
+   */
+  private async loadDocContent(url: string): Promise<TerragruntDoc> {
+    // Check if already loaded
+    const cachedContent = this.contentCache.get(url);
+    if (cachedContent) {
+      const metadata = this.metadataCache.get(url);
+      if (metadata) {
+        return { ...metadata, content: cachedContent };
+      }
+    }
+
+    // Check if already loading (deduplication)
+    const existingPromise = this.loadingPromises.get(url);
+    if (existingPromise) {
+      const content = await existingPromise;
+      const metadata = this.metadataCache.get(url);
+      return metadata ? { ...metadata, content } : this.createEmptyDoc(url);
+    }
+
+    // Start new load
+    const loadPromise = this.fetchSingleDocContent(url);
+    this.loadingPromises.set(url, loadPromise);
+
+    try {
+      const content = await loadPromise;
+      this.contentCache.set(url, content);
+      this.loadedDocs.add(url);
+      this.lazyLoadingMetrics.docsLoadedLazily++;
+      
+      const metadata = this.metadataCache.get(url);
+      return metadata ? { ...metadata, content } : this.createEmptyDoc(url);
+    } finally {
+      this.loadingPromises.delete(url);
+    }
+  }
+
+  /**
+   * Fetch content for a single document (metadata must exist)
+   */
+  private async fetchSingleDocContent(url: string): Promise<string> {
+    try {
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const html = await response.text();
+      const $ = cheerio.load(html);
+
+      let content = '';
+      const contentSelectors = ['.content', '.markdown', 'main', '.post-content', '.doc-content', 'article'];
+
+      for (const selector of contentSelectors) {
+        const element = $(selector).first();
+        if (element.length > 0) {
+          content = element.text().trim();
+          break;
+        }
+      }
+
+      if (!content) {
+        $('body nav, body .sidebar, body .menu, body .header, body .footer').remove();
+        content = $('body').text().trim();
+      }
+
+      return this.cleanContent(content);
+    } catch (error) {
+      console.error(`Failed to lazy load content for ${url}:`, error);
+      return '';
+    }
+  }
+
+  /**
+   * Create empty doc with minimal metadata
+   */
+  private createEmptyDoc(url: string): TerragruntDoc {
+    return {
+      title: 'Unknown',
+      url,
+      content: '',
+      section: 'unknown',
+      lastUpdated: new Date().toISOString()
+    };
+  }
+
+  /**
+   * Get list of common sections to warmup for 'common' strategy
+   */
+  private getCommonSections(): string[] {
+    return [
+      'getting-started',
+      'features/keep-your-terraform-code-dry',
+      'features/keep-your-remote-state-configuration-dry',
+      'features/keep-your-cli-flags-dry',
+      'features/execute-terraform-commands-on-multiple-modules-at-once',
+      'reference/config-blocks-and-attributes'
+    ];
+  }
+
+  /**
+   * Warmup cache based on configured strategy
+   */
+  private async warmupCache(strategy: WarmupStrategy): Promise<void> {
+    if (strategy === 'none') {
+      return;
+    }
+
+    const startTime = performance.now();
+    let docsToLoad: string[] = [];
+
+    switch (strategy) {
+      case 'minimal':
+        // Load just the first few docs
+        docsToLoad = Array.from(this.metadataCache.keys()).slice(0, 3);
+        break;
+      
+      case 'common':
+        // Load common sections
+        const commonSections = this.getCommonSections();
+        docsToLoad = Array.from(this.metadataCache.values())
+          .filter(meta => commonSections.some(section => meta.url.includes(section)))
+          .map(meta => meta.url);
+        break;
+      
+      case 'full':
+        // Load everything
+        docsToLoad = Array.from(this.metadataCache.keys());
+        break;
+    }
+
+    await Promise.all(docsToLoad.map(url => this.loadDocContent(url)));
+    
+    const duration = performance.now() - startTime;
+    this.lazyLoadingMetrics.warmupTime = duration;
+    console.log(`Warmed up ${docsToLoad.length} docs in ${duration.toFixed(2)}ms with strategy '${strategy}'`);
+  }
+
+  /**
    * Build search index from cached docs.
    * Pre-computes lowercase strings to avoid repeated .toLowerCase() calls during searches.
    */
@@ -622,42 +876,83 @@ export class TerragruntDocsManager {
     // Ensure docs are loaded
     await this.fetchLatestDocs();
     
-    // Use indexed search if available, otherwise build index
-    if (this.indexedDocs.length === 0 && this.docsCache.size > 0) {
-      this.buildSearchIndex();
-    }
-    
     const lowercaseQuery = query.toLowerCase();
 
-    // Search using pre-computed lowercase strings
-    const results = this.indexedDocs.filter(doc =>
-      doc.titleLower.includes(lowercaseQuery) ||
-      doc.contentLower.includes(lowercaseQuery) ||
-      doc.sectionLower.includes(lowercaseQuery)
-    ).sort((a, b) => {
-      // Prioritize title matches
-      const aTitle = a.titleLower.includes(lowercaseQuery);
-      const bTitle = b.titleLower.includes(lowercaseQuery);
-      if (aTitle && !bTitle) return -1;
-      if (!aTitle && bTitle) return 1;
+    if (this.lazyLoadingEnabled && this.metadataCache.size > 0) {
+      // Lazy loading mode: search metadata first, then load content for matches
+      const metadataMatches: DocMetadata[] = [];
+      
+      for (const metadata of this.metadataCache.values()) {
+        if (
+          metadata.title.toLowerCase().includes(lowercaseQuery) ||
+          metadata.section.toLowerCase().includes(lowercaseQuery) ||
+          metadata.url.toLowerCase().includes(lowercaseQuery)
+        ) {
+          metadataMatches.push(metadata);
+        }
+      }
 
-      // Then prioritize section matches
-      const aSection = a.sectionLower.includes(lowercaseQuery);
-      const bSection = b.sectionLower.includes(lowercaseQuery);
-      if (aSection && !bSection) return -1;
-      if (!aSection && bSection) return 1;
+      // Lazy load content for matched documents
+      const results = await Promise.all(
+        metadataMatches.map(meta => this.loadDocContent(meta.url))
+      );
 
-      return 0;
-    }) as TerragruntDoc[];
-    
-    // Cache the results
-    this.searchCache.set(query, results);
-    
-    const duration = performance.now() - startTime;
-    this.stats.totalSearchTime += duration;
-    this.stats.searches++;
-    
-    return results;
+      // Sort results
+      results.sort((a, b) => {
+        const aTitle = a.title.toLowerCase().includes(lowercaseQuery);
+        const bTitle = b.title.toLowerCase().includes(lowercaseQuery);
+        if (aTitle && !bTitle) return -1;
+        if (!aTitle && bTitle) return 1;
+
+        const aSection = a.section.toLowerCase().includes(lowercaseQuery);
+        const bSection = b.section.toLowerCase().includes(lowercaseQuery);
+        if (aSection && !bSection) return -1;
+        if (!aSection && bSection) return 1;
+
+        return 0;
+      });
+
+      // Cache the results
+      this.searchCache.set(query, results);
+      
+      const duration = performance.now() - startTime;
+      this.stats.totalSearchTime += duration;
+      this.stats.searches++;
+      
+      return results;
+    } else {
+      // Traditional mode: use indexed search
+      if (this.indexedDocs.length === 0 && this.docsCache.size > 0) {
+        this.buildSearchIndex();
+      }
+      
+      const results = this.indexedDocs.filter(doc =>
+        doc.titleLower.includes(lowercaseQuery) ||
+        doc.contentLower.includes(lowercaseQuery) ||
+        doc.sectionLower.includes(lowercaseQuery)
+      ).sort((a, b) => {
+        const aTitle = a.titleLower.includes(lowercaseQuery);
+        const bTitle = b.titleLower.includes(lowercaseQuery);
+        if (aTitle && !bTitle) return -1;
+        if (!aTitle && bTitle) return 1;
+
+        const aSection = a.sectionLower.includes(lowercaseQuery);
+        const bSection = b.sectionLower.includes(lowercaseQuery);
+        if (aSection && !bSection) return -1;
+        if (!aSection && bSection) return 1;
+
+        return 0;
+      }) as TerragruntDoc[];
+      
+      // Cache the results
+      this.searchCache.set(query, results);
+      
+      const duration = performance.now() - startTime;
+      this.stats.totalSearchTime += duration;
+      this.stats.searches++;
+      
+      return results;
+    }
   }
 
   async getDocBySection(section: string): Promise<TerragruntDoc[]> {
