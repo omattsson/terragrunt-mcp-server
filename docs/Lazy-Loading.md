@@ -132,15 +132,10 @@ export TERRAGRUNT_WARMUP_STRATEGY=none
 #### `minimal` - Essential Documents (Default)
 
 **Characteristics:**
-- Preloads 3-5 most commonly accessed documents
+- Preloads a small subset of documents (the first 3 entries from the metadata cache)
 - ~90ms warmup time
 - Low memory overhead
-- Fast startup with commonly needed content ready
-
-**Documents preloaded:**
-- Getting Started Guide
-- Core Features Overview
-- Common Configuration Reference
+- Fast startup with some documentation content ready
 
 **Best for:**
 - Interactive development (default choice)
@@ -234,14 +229,14 @@ console.log(stats.lazyLoading);
 ### Warmup Timing
 
 ```typescript
-// Warmup happens automatically at startup
+// Warmup happens automatically at startup.
 // Log output shows timing:
 // "Warmed up 3 docs in 92.34ms with strategy 'minimal'"
-
-// Manual warmup (advanced use case):
-// To "warm" specific docs, trigger normal lookups via your public APIs
-// (for example, search or "get doc" operations). Those accesses will
-// load the content and populate the cache lazily.
+//
+// The cache is then populated incrementally as clients perform normal
+// lookups via your public APIs (for example, search or "get doc"
+// operations). Those accesses will load the content and populate
+// the cache lazily.
 ```
 
 ## Performance Characteristics

@@ -228,6 +228,53 @@ describe('Lazy Loading', () => {
       
       expect(manager.loadingPromises.has(url)).toBe(false);
     });
+
+    it('should return empty doc when metadata does not exist', async () => {
+      const manager = new TerragruntDocsManager() as any;
+      const url = 'https://example.com/nonexistent';
+      
+      manager.fetchSingleDocContent = vi.fn(async () => 'Test content');
+
+      const result = await manager.loadDocContent(url);
+      
+      expect(result.title).toBe('Unknown');
+      expect(result.content).toBe('');
+      expect(result.url).toBe(url);
+    });
+
+    it('should handle fetchSingleDocContent returning empty string', async () => {
+      const manager = new TerragruntDocsManager() as any;
+      const url = 'https://example.com/doc';
+      const metadata = {
+        title: 'Test Doc',
+        url,
+        section: 'test',
+        lastUpdated: new Date().toISOString()
+      };
+
+      manager.metadataCache.set(url, metadata);
+      manager.fetchSingleDocContent = vi.fn(async () => ''); // Empty string on error
+
+      const result = await manager.loadDocContent(url);
+      
+      expect(result.content).toBe('');
+      expect(manager.contentCache.get(url)).toBe('');
+      expect(manager.lazyLoadingMetrics.docsLoadedLazily).toBeGreaterThanOrEqual(1);
+    });
+
+    it('should handle inconsistent state where content exists but metadata does not', async () => {
+      const manager = new TerragruntDocsManager() as any;
+      const url = 'https://example.com/doc';
+      
+      // Simulate inconsistent state: content cached but no metadata
+      manager.contentCache.set(url, 'Cached content');
+
+      const result = await manager.loadDocContent(url);
+      
+      expect(result.title).toBe('Unknown');
+      expect(result.content).toBe('');
+      expect(result.url).toBe(url);
+    });
   });
 
   describe('getCommonSections', () => {
@@ -321,6 +368,29 @@ describe('Lazy Loading', () => {
 
       await manager.warmupCache('minimal');
       
+      expect(manager.lazyLoadingMetrics.warmupTime).toBeGreaterThan(0);
+    });
+
+    it('should continue warmup even when some loads fail', async () => {
+      const manager = new TerragruntDocsManager() as any;
+      manager.metadataCache.set('doc1', { url: 'doc1', title: 'Doc 1', section: 'test' });
+      manager.metadataCache.set('doc2', { url: 'doc2', title: 'Doc 2', section: 'test' });
+      manager.metadataCache.set('doc3', { url: 'doc3', title: 'Doc 3', section: 'test' });
+      
+      // Mock loadDocContent to fail on second call but succeed on others
+      let callCount = 0;
+      manager.loadDocContent = vi.fn(async () => {
+        callCount++;
+        if (callCount === 2) {
+          throw new Error('Load failed');
+        }
+        return { content: 'test' };
+      });
+
+      // Should not throw, uses Promise.allSettled
+      await expect(manager.warmupCache('minimal')).resolves.not.toThrow();
+      
+      expect(manager.loadDocContent).toHaveBeenCalledTimes(3);
       expect(manager.lazyLoadingMetrics.warmupTime).toBeGreaterThan(0);
     });
   });
@@ -491,21 +561,20 @@ describe('Lazy Loading', () => {
   });
 
   describe('Disk Cache with Lazy Loading', () => {
-    it('should populate metadata cache when loading from disk in lazy mode', async () => {
+    // Note: Disk cache integration is tested in integration tests.
+    // Full unit testing would require extensive fs/promises mocking.
+    // These basic checks verify the methods exist and are callable.
+    
+    it('should have loadCacheFromDisk method', () => {
       const manager = new TerragruntDocsManager() as any;
-      manager.lazyLoadingEnabled = true;
-      
-      // This would need proper mocking of fs operations
-      // Just checking the structure exists
       expect(manager.loadCacheFromDisk).toBeDefined();
+      expect(typeof manager.loadCacheFromDisk).toBe('function');
     });
 
-    it('should save combined metadata and content to disk', async () => {
+    it('should have saveCacheToDisk method', () => {
       const manager = new TerragruntDocsManager() as any;
-      manager.lazyLoadingEnabled = true;
-      
-      // This would need proper mocking of fs operations
       expect(manager.saveCacheToDisk).toBeDefined();
+      expect(typeof manager.saveCacheToDisk).toBe('function');
     });
   });
 

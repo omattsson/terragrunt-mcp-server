@@ -200,7 +200,7 @@ export class TerragruntDocsManager {
       lazyLoading: updatedMetrics,
       loadedDocsRatio: this.lazyLoadingEnabled
         ? (this.metadataCache.size > 0 ? this.loadedDocs.size / this.metadataCache.size : 0)
-        : (this.docsCache.size > 0 ? this.docsCache.size / this.docsCache.size : 1)
+        : (this.docsCache.size > 0 ? 1 : 0)
     };
   }
 
@@ -839,6 +839,13 @@ export class TerragruntDocsManager {
       const html = await response.text();
       const $ = cheerio.load(html);
 
+      // Remove navigation elements for consistency with fetchDocumentPage
+      $('nav').remove();
+      $('.sidebar').remove();
+      $('.menu').remove();
+      $('header').remove();
+      $('footer').remove();
+
       return this.extractHtmlContent($);
     } catch (error) {
       console.error(`Failed to lazy load content for ${url}:`, error);
@@ -901,12 +908,6 @@ export class TerragruntDocsManager {
       case 'full':
         // Load everything
         docsToLoad = Array.from(this.metadataCache.keys());
-        break;
-      
-      default:
-        console.warn(`Invalid warmup strategy '${strategy}', falling back to 'minimal'`);
-        // Fall through to minimal strategy
-        docsToLoad = Array.from(this.metadataCache.keys()).slice(0, 3);
         break;
     }
 

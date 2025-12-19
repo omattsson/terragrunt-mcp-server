@@ -15,7 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Memory Optimization**: 60-80% reduction in initial memory footprint with lazy loading enabled
 - **Warmup Strategies**: Four configurable strategies for preloading commonly used documents:
   - `none`: Zero preloading, minimal memory (best for CI/CD)
-  - `minimal`: 3-5 essential docs, ~90ms warmup (default, best for development)
+  - `minimal`: first 3 docs, ~90ms warmup (default, best for development)
   - `common`: 8-12 frequently used docs, ~200ms warmup (best for regular use)
   - `full`: All ~85 docs, ~1.5s warmup (best for offline/intensive workflows)
 - **Promise Deduplication**: Concurrent requests for same document share single loading promise, preventing duplicate network calls
