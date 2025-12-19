@@ -536,7 +536,7 @@ npm test -- test/unit/lazy-loading.test.ts --coverage
 
 To add a new warmup strategy:
 
-1. Add strategy to `WarmupStrategy` type in `src/types/lazy-loading.ts`
+1. Add strategy to `WarmupStrategy` type in `src/terragrunt/docs.ts`
 2. Implement logic in `warmupCache()` method in `src/terragrunt/docs.ts`
 3. Add tests in `test/unit/lazy-loading.test.ts`
 4. Update documentation in this file

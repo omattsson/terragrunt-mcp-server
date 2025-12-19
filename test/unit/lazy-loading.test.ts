@@ -38,6 +38,21 @@ describe('Lazy Loading', () => {
       const manager = new TerragruntDocsManager() as any;
       expect(manager.warmupStrategy).toBe('common');
     });
+
+    it('should fall back to minimal for invalid warmup strategy', () => {
+      // Mock console.warn to verify warning is logged
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      
+      process.env.TERRAGRUNT_WARMUP_STRATEGY = 'invalid-strategy';
+      const manager = new TerragruntDocsManager() as any;
+      
+      expect(manager.warmupStrategy).toBe('minimal');
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Invalid TERRAGRUNT_WARMUP_STRATEGY value "invalid-strategy"')
+      );
+      
+      warnSpy.mockRestore();
+    });
   });
 
   describe('Metadata Cache', () => {

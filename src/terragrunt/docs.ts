@@ -135,17 +135,24 @@ export class TerragruntDocsManager {
     
     // Lazy loading configuration
     this.lazyLoadingEnabled = process.env.TERRAGRUNT_LAZY_LOADING !== 'false';
-    this.warmupStrategy = (process.env.TERRAGRUNT_WARMUP_STRATEGY as WarmupStrategy) || 'minimal';
     
     // Validate warmup strategy to avoid silent misconfiguration
+    const rawWarmupStrategy = process.env.TERRAGRUNT_WARMUP_STRATEGY;
     const validWarmupStrategies: WarmupStrategy[] = ['none', 'minimal', 'common', 'full'];
-    if (!validWarmupStrategies.includes(this.warmupStrategy)) {
-      console.warn(
-        `Invalid TERRAGRUNT_WARMUP_STRATEGY value "${process.env.TERRAGRUNT_WARMUP_STRATEGY}". ` +
-        `Falling back to "minimal". Valid values are: ${validWarmupStrategies.join(', ')}.`
-      );
-      this.warmupStrategy = 'minimal';
+    let warmupStrategy: WarmupStrategy = 'minimal';
+
+    if (rawWarmupStrategy) {
+      if (validWarmupStrategies.includes(rawWarmupStrategy as WarmupStrategy)) {
+        warmupStrategy = rawWarmupStrategy as WarmupStrategy;
+      } else {
+        console.warn(
+          `Invalid TERRAGRUNT_WARMUP_STRATEGY value "${rawWarmupStrategy}". ` +
+          `Falling back to "minimal". Valid values are: ${validWarmupStrategies.join(', ')}.`
+        );
+      }
     }
+
+    this.warmupStrategy = warmupStrategy;
     
     // Store cache in project root under .cache/terragrunt-docs
     this.cacheDir = path.join(__dirname, '..', '..', '.cache', 'terragrunt-docs');
@@ -801,8 +808,12 @@ export class TerragruntDocsManager {
       
       this.contentCache.set(url, content);
       this.loadedDocs.add(url);
-      this.lazyLoadingMetrics.docsLoadedLazily++;
-      this.totalDocLoadTimeMs += loadDuration;
+      
+      // Only track metrics for successful loads (non-empty content)
+      if (content) {
+        this.lazyLoadingMetrics.docsLoadedLazily++;
+        this.totalDocLoadTimeMs += loadDuration;
+      }
       
       const metadata = this.metadataCache.get(url);
       return metadata ? { ...metadata, content } : this.createEmptyDoc(url);
