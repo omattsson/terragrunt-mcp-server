@@ -374,6 +374,9 @@ describe('Lazy Loading', () => {
         lastUpdated: new Date().toISOString()
       });
       
+      // Build indexed metadata for search
+      manager.buildMetadataIndex();
+      
       // Mock loadDocContent
       manager.loadDocContent = vi.fn().mockResolvedValue({
         url: 'https://example.com/test',
@@ -415,6 +418,9 @@ describe('Lazy Loading', () => {
         section: 'other',
       });
       
+      // Build indexed metadata for search
+      manager.buildMetadataIndex();
+      
       manager.loadDocContent = vi.fn().mockImplementation((url: string) => {
         const meta = manager.metadataCache.get(url);
         return Promise.resolve({ ...meta, content: 'content' });
@@ -452,6 +458,9 @@ describe('Lazy Loading', () => {
         title: 'Other Doc',
         section: 'other',
       });
+      
+      // Build indexed metadata for search
+      manager.buildMetadataIndex();
       
       manager.loadDocContent = vi.fn().mockImplementation((url: string) => {
         const meta = manager.metadataCache.get(url);

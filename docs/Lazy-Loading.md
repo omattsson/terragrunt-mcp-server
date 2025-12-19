@@ -403,9 +403,10 @@ export TERRAGRUNT_WARMUP_STRATEGY=minimal
 
 **Verification:**
 ```typescript
-// Check pending loads
+// Inspect lazy loading stats
 const stats = docsManager.getCacheStats();
-console.log(`Pending loads: ${stats.lazyLoading.pendingLoads}`);
+console.log(`Docs loaded lazily: ${stats.lazyLoading.docsLoadedLazily}`);
+console.log(`Metadata count: ${stats.lazyLoading.metadataCount}`);
 ```
 
 ## Best Practices
@@ -430,8 +431,9 @@ console.log(`Pending loads: ${stats.lazyLoading.pendingLoads}`);
 // Regular monitoring
 setInterval(() => {
   const stats = docsManager.getCacheStats();
-  console.log(`Loaded: ${stats.lazyLoading.loadedDocs}/${stats.lazyLoading.totalDocs}`);
-  console.log(`Memory: ${stats.lazyLoading.memoryEstimateMB.toFixed(2)} MB`);
+  console.log(`Loaded: ${stats.lazyLoading.docsLoadedLazily}/${stats.lazyLoading.metadataCount}`);
+  console.log(`Memory: ${stats.lazyLoading.initialMemoryMB.toFixed(2)} MB`);
+  console.log(`Loaded docs ratio: ${stats.loadedDocsRatio.toFixed(2)}`);
 }, 60000); // Every minute
 ```
 
