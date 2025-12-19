@@ -841,12 +841,8 @@ export class TerragruntDocsManager {
       const html = await response.text();
       const $ = cheerio.load(html);
 
-      // Remove navigation elements for consistency with fetchDocumentPage
-      $('nav').remove();
-      $('.sidebar').remove();
-      $('.menu').remove();
-      $('header').remove();
-      $('footer').remove();
+      // Remove navigation and other non-content elements (consistent with fetchDocumentPage)
+      $('nav, .sidebar, .menu, .header, .footer, script, style').remove();
 
       return this.extractHtmlContent($);
     } catch (error) {
@@ -911,6 +907,10 @@ export class TerragruntDocsManager {
         // Load everything
         docsToLoad = Array.from(this.metadataCache.keys());
         break;
+      
+      default:
+        console.warn(`Unexpected warmup strategy: ${strategy}, skipping warmup`);
+        return;
     }
 
     const results = await Promise.allSettled(

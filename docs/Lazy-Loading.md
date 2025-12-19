@@ -157,10 +157,10 @@ export TERRAGRUNT_WARMUP_STRATEGY=minimal  # Default
 - Most frequent queries served from cache
 
 **Documents preloaded:**
-- All minimal strategy docs
+- Getting started and DRY-pattern guides
 - CLI reference pages
 - Built-in functions reference
-- Configuration block documentation
+- Selected configuration block documentation
 
 **Best for:**
 - Regular Terragrunt development
