@@ -263,6 +263,12 @@ console.log(stats.lazyLoading);
 
 ### Search Performance
 
+**Search Scope in Lazy Loading Mode:**
+- Searches **metadata fields only**: title, section, and URL
+- Does **not** search document content (even if already loaded in cache)
+- For content-based searches, use `full` warmup strategy or traditional mode
+- This trade-off keeps search fast by avoiding content loading
+
 **First search (cold cache):**
 - Metadata search: ~5-10ms
 - Content loading: ~50-100ms per doc (network latency)

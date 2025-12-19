@@ -790,6 +790,7 @@ export class TerragruntDocsManager {
         return { ...metadata, content: cachedContent };
       } else {
         // Inconsistent state: have content but no metadata
+        console.warn(`[LazyLoading] Inconsistent state: content exists for ${url} but metadata is missing`);
         return this.createEmptyDoc(url);
       }
     }
@@ -812,12 +813,13 @@ export class TerragruntDocsManager {
       const loadDuration = performance.now() - loadStartTime;
       
       this.contentCache.set(url, content);
-      this.loadedDocs.add(url);
-      
-      // Track metrics for all completed load attempts
-      this.lazyLoadingMetrics.docsLoadedLazily++;
-      this.totalDocLoadTimeMs += loadDuration;
 
+      // Track metrics and loaded state only for successful loads (non-empty content)
+      if (content) {
+        this.loadedDocs.add(url);
+        this.lazyLoadingMetrics.docsLoadedLazily++;
+        this.totalDocLoadTimeMs += loadDuration;
+      }
       // Return document with metadata
       const metadata = this.metadataCache.get(url);
       return metadata ? { ...metadata, content } : this.createEmptyDoc(url);
@@ -893,7 +895,7 @@ export class TerragruntDocsManager {
 
     switch (strategy) {
       case 'minimal':
-        // Load just the first few docs
+        // Load the first 3 docs
         docsToLoad = Array.from(this.metadataCache.keys()).slice(0, 3);
         break;
       

@@ -255,11 +255,14 @@ describe('Lazy Loading', () => {
       manager.metadataCache.set(url, metadata);
       manager.fetchSingleDocContent = vi.fn(async () => ''); // Empty string on error
 
+      const initialCount = manager.lazyLoadingMetrics.docsLoadedLazily;
       const result = await manager.loadDocContent(url);
       
+      // Empty content means failed load - should not increment metrics or loadedDocs
       expect(result.content).toBe('');
       expect(manager.contentCache.get(url)).toBe('');
-      expect(manager.lazyLoadingMetrics.docsLoadedLazily).toBeGreaterThanOrEqual(1);
+      expect(manager.lazyLoadingMetrics.docsLoadedLazily).toBe(initialCount);
+      expect(manager.loadedDocs.has(url)).toBe(false);
     });
 
     it('should handle inconsistent state where content exists but metadata does not', async () => {
@@ -274,6 +277,28 @@ describe('Lazy Loading', () => {
       expect(result.title).toBe('Unknown');
       expect(result.content).toBe('');
       expect(result.url).toBe(url);
+    });
+
+    it('should load content when metadata exists but content not yet loaded', async () => {
+      const manager = new TerragruntDocsManager() as any;
+      const url = 'https://example.com/doc';
+      const metadata = {
+        title: 'Test Doc',
+        url,
+        section: 'test',
+        lastUpdated: new Date().toISOString()
+      };
+
+      // Normal lazy loading scenario: metadata exists, content not yet cached
+      manager.metadataCache.set(url, metadata);
+      manager.fetchSingleDocContent = vi.fn(async () => 'Fetched content');
+
+      const result = await manager.loadDocContent(url);
+      
+      expect(result.title).toBe('Test Doc');
+      expect(result.content).toBe('Fetched content');
+      expect(manager.fetchSingleDocContent).toHaveBeenCalledWith(url);
+      expect(manager.contentCache.get(url)).toBe('Fetched content');
     });
   });
 
@@ -388,7 +413,7 @@ describe('Lazy Loading', () => {
       });
 
       // Should not throw, uses Promise.allSettled
-      await expect(manager.warmupCache('minimal')).resolves.not.toThrow();
+      await manager.warmupCache('minimal');
       
       expect(manager.loadDocContent).toHaveBeenCalledTimes(3);
       expect(manager.lazyLoadingMetrics.warmupTime).toBeGreaterThan(0);
