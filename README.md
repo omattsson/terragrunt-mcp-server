@@ -18,7 +18,7 @@ This MCP server enables AI assistants to access and search the complete Terragru
 - **Warmup Strategies**: Preload commonly used docs (none/minimal/common/full strategies)
 - **Network Resilience**: Retry mechanism with exponential backoff (3 retries, up to 10s delay)
 - **Multiple Fallbacks**: Network → Disk cache → Stale cache → Local fixture (for offline/CI use)
-- **Fast Search**: Full-text search across all cached documentation with promise deduplication
+- **Fast Search**: Metadata-first search (title/section/URL) with lazy loading, full-text when loaded, promise deduplication
 - **Organized Sections**: Browse documentation by categories (getting-started, reference, features, etc.)
 - **Persistent Cache**: Cache survives server restarts (stored in `.cache/terragrunt-docs/`)
 
