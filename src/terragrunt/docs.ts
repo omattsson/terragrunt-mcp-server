@@ -198,9 +198,9 @@ export class TerragruntDocsManager {
       memoryUsage: process.memoryUsage().heapUsed,
       lastRefresh: this.lastFetchTime,
       lazyLoading: updatedMetrics,
-      loadedDocsRatio: this.metadataCache.size > 0 
-        ? this.loadedDocs.size / this.metadataCache.size 
-        : 0
+      loadedDocsRatio: this.lazyLoadingEnabled
+        ? (this.metadataCache.size > 0 ? this.loadedDocs.size / this.metadataCache.size : 0)
+        : (this.docsCache.size > 0 ? this.docsCache.size / this.docsCache.size : 1)
     };
   }
 
@@ -412,6 +412,7 @@ export class TerragruntDocsManager {
         // Lazy loading mode: load metadata and populate contentCache with existing content
         this.metadataCache.clear();
         this.contentCache.clear();
+        this.loadedDocs.clear();
         docs.forEach(doc => {
           const docMetadata: DocMetadata = {
             title: doc.title,
@@ -558,6 +559,7 @@ export class TerragruntDocsManager {
       this.docsCache.clear();
       this.metadataCache.clear();
       this.contentCache.clear();
+      this.loadedDocs.clear();
 
       const refreshStartTime = performance.now();
       
@@ -786,6 +788,9 @@ export class TerragruntDocsManager {
       const metadata = this.metadataCache.get(url);
       if (metadata) {
         return { ...metadata, content: cachedContent };
+      } else {
+        // Inconsistent state: have content but no metadata
+        return this.createEmptyDoc(url);
       }
     }
 
@@ -809,12 +814,11 @@ export class TerragruntDocsManager {
       this.contentCache.set(url, content);
       this.loadedDocs.add(url);
       
-      // Only track metrics for successful loads (non-empty content)
-      if (content) {
-        this.lazyLoadingMetrics.docsLoadedLazily++;
-        this.totalDocLoadTimeMs += loadDuration;
-      }
-      
+      // Track metrics for all completed load attempts
+      this.lazyLoadingMetrics.docsLoadedLazily++;
+      this.totalDocLoadTimeMs += loadDuration;
+
+      // Return document with metadata
       const metadata = this.metadataCache.get(url);
       return metadata ? { ...metadata, content } : this.createEmptyDoc(url);
     } finally {
@@ -901,6 +905,7 @@ export class TerragruntDocsManager {
       
       default:
         console.warn(`Invalid warmup strategy '${strategy}', falling back to 'minimal'`);
+        // Fall through to minimal strategy
         docsToLoad = Array.from(this.metadataCache.keys()).slice(0, 3);
         break;
     }
@@ -976,25 +981,30 @@ export class TerragruntDocsManager {
         indexed.urlLower.includes(lowercaseQuery)
       );
 
-      // Lazy load content for matched documents
-      const results = await Promise.all(
-        metadataMatches.map(meta => this.loadDocContent(meta.url))
+      // Lazy load content for matched documents, keeping metadata paired
+      const resultsWithMeta = await Promise.all(
+        metadataMatches.map(async meta => ({
+          meta,
+          doc: await this.loadDocContent(meta.url),
+        }))
       );
 
-      // Sort results
-      results.sort((a, b) => {
-        const aTitle = a.title.toLowerCase().includes(lowercaseQuery);
-        const bTitle = b.title.toLowerCase().includes(lowercaseQuery);
+      // Sort results using pre-computed lowercase fields from indexed metadata
+      resultsWithMeta.sort((a, b) => {
+        const aTitle = a.meta.titleLower.includes(lowercaseQuery);
+        const bTitle = b.meta.titleLower.includes(lowercaseQuery);
         if (aTitle && !bTitle) return -1;
         if (!aTitle && bTitle) return 1;
 
-        const aSection = a.section.toLowerCase().includes(lowercaseQuery);
-        const bSection = b.section.toLowerCase().includes(lowercaseQuery);
+        const aSection = a.meta.sectionLower.includes(lowercaseQuery);
+        const bSection = b.meta.sectionLower.includes(lowercaseQuery);
         if (aSection && !bSection) return -1;
         if (!aSection && bSection) return 1;
 
         return 0;
       });
+
+      const results = resultsWithMeta.map(entry => entry.doc);
 
       // Cache the results
       this.searchCache.set(query, results);

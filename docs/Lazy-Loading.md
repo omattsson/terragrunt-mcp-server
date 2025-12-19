@@ -238,8 +238,10 @@ console.log(stats.lazyLoading);
 // Log output shows timing:
 // "Warmed up 3 docs in 92.34ms with strategy 'minimal'"
 
-// Manual warmup (advanced use case)
-await docsManager.warmupCache();
+// Manual warmup (advanced use case):
+// To "warm" specific docs, trigger normal lookups via your public APIs
+// (for example, search or "get doc" operations). Those accesses will
+// load the content and populate the cache lazily.
 ```
 
 ## Performance Characteristics
@@ -440,12 +442,13 @@ setInterval(() => {
 ### 3. Optimize Search Patterns
 
 ```typescript
-// ✅ GOOD: Search metadata first, load content only for results
-const results = await docsManager.searchDocs("remote state", 10);
-// Only top 10 results have content loaded
+// ✅ GOOD: Search metadata first, then work with a limited subset of results
+const allResults = await docsManager.searchDocs("remote state");
+const top10 = allResults.slice(0, 10);
+// Only top 10 results are processed
 
 // ❌ AVOID: Searching and loading all docs
-const allDocs = await docsManager.getAllDocs();
+const allDocs = await docsManager.fetchLatestDocs();
 const filtered = allDocs.filter(doc => doc.content.includes("remote state"));
 // Loads all 85 docs unnecessarily
 ```
@@ -453,12 +456,14 @@ const filtered = allDocs.filter(doc => doc.content.includes("remote state"));
 ### 4. Leverage Disk Cache
 
 ```typescript
-// Save cache after loading important documents
-await docsManager.warmupCache(); // Load common docs
-await docsManager.saveCacheToDisk(); // Save for next startup
+// First startup: fetch docs (will populate in-memory and disk cache)
+const manager = new TerragruntDocsManager();
+await manager.fetchLatestDocs();
 
-// Next startup will load from disk cache (fast)
-await docsManager.loadCacheFromDisk();
+// Next startup: create a new manager and fetch docs again.
+// It will automatically prefer the disk cache when valid, falling back to network if needed.
+const nextStartupManager = new TerragruntDocsManager();
+await nextStartupManager.fetchLatestDocs();
 ```
 
 ### 5. Test Both Modes

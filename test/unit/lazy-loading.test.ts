@@ -231,7 +231,7 @@ describe('Lazy Loading', () => {
   });
 
   describe('getCommonSections', () => {
-    it('should return list of common section URLs', () => {
+    it('should return list of common section paths', () => {
       const manager = new TerragruntDocsManager() as any;
       const commonSections = manager.getCommonSections();
       
