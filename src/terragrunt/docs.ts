@@ -837,7 +837,8 @@ export class TerragruntDocsManager {
   }
 
   /**
-   * Fetch content for a single document (metadata must exist)
+   * Fetch HTML content for a single document by URL.
+   * Note: metadata is handled separately by the caller and may be missing.
    */
   private async fetchSingleDocContent(url: string): Promise<string> {
     try {
@@ -985,7 +986,8 @@ export class TerragruntDocsManager {
     const lowercaseQuery = query.toLowerCase();
 
     if (this.lazyLoadingEnabled && this.indexedMetadata.length > 0) {
-      // Lazy loading mode: search indexed metadata (pre-computed lowercase fields)
+      // Lazy loading mode: search indexed metadata (pre-computed lowercase fields),
+      // then load full content on-demand for matched documents
       const metadataMatches = this.indexedMetadata.filter(indexed =>
         indexed.titleLower.includes(lowercaseQuery) ||
         indexed.sectionLower.includes(lowercaseQuery) ||

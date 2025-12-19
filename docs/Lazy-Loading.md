@@ -132,7 +132,7 @@ export TERRAGRUNT_WARMUP_STRATEGY=none
 #### `minimal` - Essential Documents (Default)
 
 **Characteristics:**
-- Preloads a small subset of documents (the first 3 entries from the metadata cache)
+- Preloads a small subset of documents (3 arbitrary documents from the metadata cache)
 - ~90ms warmup time
 - Low memory overhead
 - Fast startup with some documentation content ready
@@ -265,9 +265,9 @@ console.log(stats.lazyLoading);
 
 **Search Scope in Lazy Loading Mode:**
 - Searches **metadata fields only**: title, section, and URL
-- Does **not** search document content (even if already loaded in cache)
-- For content-based searches, use `full` warmup strategy or traditional mode
-- This trade-off keeps search fast by avoiding content loading
+- Does **not** search within document content; content is only loaded **after** metadata matches are found (and may come from cache)
+- For content-based searching (matching text inside documents), use the `full` warmup strategy or traditional mode
+- This trade-off keeps search fast by limiting matching to lightweight metadata while loading content only for matched documents
 
 **First search (cold cache):**
 - Metadata search: ~5-10ms

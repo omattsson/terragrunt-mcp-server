@@ -272,6 +272,9 @@ describe('Lazy Loading', () => {
       const manager = new TerragruntDocsManager() as any;
       const url = 'https://example.com/doc';
       
+      // Spy on console.warn to verify warning is logged
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      
       // Simulate inconsistent state: content cached but no metadata
       manager.contentCache.set(url, 'Cached content');
 
@@ -280,6 +283,11 @@ describe('Lazy Loading', () => {
       expect(result.title).toBe('Unknown');
       expect(result.content).toBe('');
       expect(result.url).toBe(url);
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Inconsistent state: content exists')
+      );
+      
+      warnSpy.mockRestore();
     });
 
     it('should load content when metadata exists but content not yet loaded', async () => {
