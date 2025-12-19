@@ -133,8 +133,8 @@ export class TerragruntDocsManager {
     // Enable compression by default (can disable with env var)
     this.useCompression = process.env.TERRAGRUNT_CACHE_COMPRESSION !== 'false';
     
-    // Lazy loading configuration
-    this.lazyLoadingEnabled = process.env.TERRAGRUNT_LAZY_LOADING !== 'false';
+    // Lazy loading configuration (opt-in)
+    this.lazyLoadingEnabled = process.env.TERRAGRUNT_LAZY_LOADING === 'true';
     
     // Validate warmup strategy to avoid silent misconfiguration
     const rawWarmupStrategy = process.env.TERRAGRUNT_WARMUP_STRATEGY;
@@ -515,10 +515,13 @@ export class TerragruntDocsManager {
 
   async fetchLatestDocs(): Promise<TerragruntDoc[]> {
     // Try loading from disk cache first if in-memory cache is empty
-    if (this.docsCache.size === 0) {
+    const cacheSize = this.lazyLoadingEnabled ? this.metadataCache.size : this.docsCache.size;
+    if (cacheSize === 0) {
       const loaded = await this.loadCacheFromDisk();
       if (loaded && !this.shouldRefreshCache()) {
-        return Array.from(this.docsCache.values());
+        return this.lazyLoadingEnabled 
+          ? Array.from(this.metadataCache.values()).map(meta => ({ ...meta, content: this.contentCache.get(meta.url) || '' }))
+          : Array.from(this.docsCache.values());
       }
     }
 
@@ -529,16 +532,21 @@ export class TerragruntDocsManager {
       } catch (error) {
         console.error('All documentation fetch methods failed:', error);
         // If we have any docs in cache (even stale), return them
-        if (this.docsCache.size > 0) {
+        const hasStaleCache = this.lazyLoadingEnabled ? this.metadataCache.size > 0 : this.docsCache.size > 0;
+        if (hasStaleCache) {
           console.log('Returning stale cached docs');
-          return Array.from(this.docsCache.values());
+          return this.lazyLoadingEnabled
+            ? Array.from(this.metadataCache.values()).map(meta => ({ ...meta, content: this.contentCache.get(meta.url) || '' }))
+            : Array.from(this.docsCache.values());
         }
         // Last resort: try fixture
         await this.loadFixture();
       }
     }
     
-    return Array.from(this.docsCache.values());
+    return this.lazyLoadingEnabled
+      ? Array.from(this.metadataCache.values()).map(meta => ({ ...meta, content: this.contentCache.get(meta.url) || '' }))
+      : Array.from(this.docsCache.values());
   }
 
   private shouldRefreshCache(): boolean {

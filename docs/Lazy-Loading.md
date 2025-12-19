@@ -104,7 +104,7 @@ Configure lazy loading in your MCP settings (`mcp-config.json` or VS Code settin
 | Strategy | Docs Loaded | Startup Time | Memory | Use Case |
 |----------|-------------|--------------|---------|----------|
 | **none** | 0 | ~0ms | Minimal | CI/CD, batch processing |
-| **minimal** | 3-5 | ~90ms | Low | Quick lookups, testing |
+| **minimal** | 3 | ~90ms | Low | Quick lookups, testing |
 | **common** | 8-12 | ~200ms | Moderate | General development |
 | **full** | All (~85) | ~1.5s | High | Offline mode, intensive workflows |
 
@@ -245,7 +245,7 @@ console.log(stats.lazyLoading);
 
 **With lazy loading enabled (minimal strategy):**
 - **Metadata**: ~50KB (85 docs × ~600 bytes)
-- **Content cache**: ~400KB (3-5 preloaded docs)
+- **Content cache**: ~400KB (3 preloaded docs)
 - **Total startup**: ~450KB (~80% reduction vs full loading)
 
 **Without lazy loading:**
@@ -286,20 +286,20 @@ console.log(stats.lazyLoading);
 Lazy loading integrates with the existing disk cache system:
 
 - **Metadata saved**: `{url, title, section}` for all docs
-- **Content saved**: Full `{url, title, section, content}` for loaded docs only
-- **Partial cache**: When lazy loading enabled, cache may contain metadata-only entries
-- **Full cache**: When all docs loaded, cache contains complete content
+- **Content saved**: `{url, title, section, content}` for all docs, with `content` populated only for loaded docs (empty string for others)
+- **Partial cache**: When lazy loading is enabled, many docs may have metadata + empty `content`
+- **Full cache**: When all docs have been loaded at least once, cache contains complete content for every doc
 
 ### Cache Persistence
 
 ```typescript
 // Save cache with lazy loading metadata
 await docsManager.saveCacheToDisk();
-// Saves: metadata for all docs + content for loaded docs
+// Saves: metadata for all docs + non-empty content for loaded docs (empty string for not-yet-loaded docs)
 
 // Load cache in lazy mode
 await docsManager.loadCacheFromDisk();
-// Loads: metadata for all docs, content loaded on-demand
+// Loads: metadata for all docs; content is immediately available for previously loaded docs, and fetched on-demand for others
 ```
 
 ### Cache Expiry

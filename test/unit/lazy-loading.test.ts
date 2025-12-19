@@ -15,16 +15,16 @@ describe('Lazy Loading', () => {
   });
 
   describe('Configuration', () => {
-    it('should enable lazy loading by default', () => {
+    it('should disable lazy loading by default (opt-in)', () => {
       delete process.env.TERRAGRUNT_LAZY_LOADING;
       const manager = new TerragruntDocsManager() as any;
-      expect(manager.lazyLoadingEnabled).toBe(true);
+      expect(manager.lazyLoadingEnabled).toBe(false);
     });
 
-    it('should disable lazy loading when env var is false', () => {
-      process.env.TERRAGRUNT_LAZY_LOADING = 'false';
+    it('should enable lazy loading when env var is true', () => {
+      process.env.TERRAGRUNT_LAZY_LOADING = 'true';
       const manager = new TerragruntDocsManager() as any;
-      expect(manager.lazyLoadingEnabled).toBe(false);
+      expect(manager.lazyLoadingEnabled).toBe(true);
     });
 
     it('should use minimal warmup strategy by default', () => {
@@ -79,17 +79,20 @@ describe('Lazy Loading', () => {
 
   describe('Lazy Loading Metrics', () => {
     it('should initialize metrics with enabled flag', () => {
+      process.env.TERRAGRUNT_LAZY_LOADING = 'true';
       const manager = new TerragruntDocsManager() as any;
       expect(manager.lazyLoadingMetrics.enabled).toBe(true);
     });
 
     it('should track warmup strategy in metrics', () => {
+      process.env.TERRAGRUNT_LAZY_LOADING = 'true';
       process.env.TERRAGRUNT_WARMUP_STRATEGY = 'full';
       const manager = new TerragruntDocsManager() as any;
       expect(manager.lazyLoadingMetrics.warmupStrategy).toBe('full');
     });
 
     it('should initialize docsLoadedLazily counter to zero', () => {
+      process.env.TERRAGRUNT_LAZY_LOADING = 'true';
       const manager = new TerragruntDocsManager() as any;
       expect(manager.lazyLoadingMetrics.docsLoadedLazily).toBe(0);
     });
@@ -422,6 +425,7 @@ describe('Lazy Loading', () => {
 
   describe('getCacheStats with Lazy Loading', () => {
     it('should include lazy loading metrics in stats', () => {
+      process.env.TERRAGRUNT_LAZY_LOADING = 'true';
       const manager = new TerragruntDocsManager() as any;
       const stats = manager.getCacheStats();
       
@@ -430,6 +434,7 @@ describe('Lazy Loading', () => {
     });
 
     it('should calculate loadedDocsRatio correctly', () => {
+      process.env.TERRAGRUNT_LAZY_LOADING = 'true';
       const manager = new TerragruntDocsManager() as any;
       manager.metadataCache.set('doc1', { url: 'doc1', title: 'Doc 1', section: 'test' });
       manager.metadataCache.set('doc2', { url: 'doc2', title: 'Doc 2', section: 'test' });
@@ -441,6 +446,7 @@ describe('Lazy Loading', () => {
     });
 
     it('should return 0 loadedDocsRatio when no metadata', () => {
+      process.env.TERRAGRUNT_LAZY_LOADING = 'true';
       const manager = new TerragruntDocsManager() as any;
       const stats = manager.getCacheStats();
       
@@ -448,6 +454,7 @@ describe('Lazy Loading', () => {
     });
 
     it('should include all lazy loading metrics fields', () => {
+      process.env.TERRAGRUNT_LAZY_LOADING = 'true';
       const manager = new TerragruntDocsManager() as any;
       const stats = manager.getCacheStats();
       
