@@ -55,7 +55,7 @@ This prevents duplicate network requests and race conditions.
 **Controls lazy loading mode:**
 
 ```bash
-# Enable lazy loading (default)
+# Enable lazy loading (opt-in; disabled by default)
 export TERRAGRUNT_LAZY_LOADING=true
 
 # Disable lazy loading (load all docs immediately)

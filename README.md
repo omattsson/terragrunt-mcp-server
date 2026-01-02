@@ -13,7 +13,7 @@ This MCP server enables AI assistants to access and search the complete Terragru
 ### 📚 Documentation Access
 
 - **Live Documentation**: Automatically fetches the latest Terragrunt documentation from the official website
-- **Lazy Loading**: Metadata-first loading with on-demand content fetching (60-80% memory reduction)
+- **Lazy Loading**: Metadata-first loading with on-demand content fetching (60-80% memory reduction, opt-in via `TERRAGRUNT_LAZY_LOADING=true`)
 - **Smart Caching**: Two-tier caching system (in-memory + disk) with 24-hour refresh cycle
 - **Warmup Strategies**: Preload commonly used docs (none/minimal/common/full strategies)
 - **Network Resilience**: Retry mechanism with exponential backoff (3 retries, up to 10s delay)

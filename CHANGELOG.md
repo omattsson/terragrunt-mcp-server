@@ -21,7 +21,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Promise Deduplication**: Concurrent requests for same document share single loading promise, preventing duplicate network calls
 - **Cache Integration**: Seamless integration with existing disk cache system
 - **Lazy Loading Metrics**: Enhanced `getCacheStats()` with lazy loading statistics:
-  - Enabled flag, startup time, metadata-only load time, warmup time, initial memory (MB), metadata count, docs loaded lazily, average doc load time, loaded docs ratio, and warmup strategy
+  - Enabled flag, startup time, metadata-only load time, warmup time, initial memory (MB), metadata count, docs loaded lazily, average doc load time, and warmup strategy
+  - Additional cache stat: loaded docs ratio (`loadedDocsRatio`)
 - **Configuration**: Control via `TERRAGRUNT_LAZY_LOADING` and `TERRAGRUNT_WARMUP_STRATEGY` environment variables
 - **Comprehensive Documentation**: New [Lazy Loading Guide](docs/Lazy-Loading.md) with usage examples, performance characteristics, and troubleshooting
 

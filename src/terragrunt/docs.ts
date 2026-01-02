@@ -360,9 +360,11 @@ export class TerragruntDocsManager {
   }
 
   private async loadCacheFromDisk(): Promise<boolean> {
+    // Keep track of the chosen cache file so we can clean it up if it is corrupt.
+    let cacheFileToLoad = this.cacheFile;
+
     try {
       // Try loading compressed cache first if compression is enabled
-      let cacheFileToLoad = this.cacheFile;
       let cacheExists = await fs.access(cacheFileToLoad).then(() => true).catch(() => false);
       
       // Fallback to uncompressed if compressed doesn't exist
@@ -463,8 +465,43 @@ export class TerragruntDocsManager {
       return true;
     } catch (error) {
       console.error('Failed to load cache from disk:', error);
+
+      // If the cache file is corrupt/partial (common during concurrent writes),
+      // remove it so the next attempt can recover cleanly.
+      if (error instanceof SyntaxError || (error instanceof Error && /Unexpected end of JSON input/i.test(error.message))) {
+        await Promise.all([
+          fs.unlink(cacheFileToLoad).catch(() => undefined),
+          // Also try removing the alternative cache file path if it exists
+          this.useCompression
+            ? fs.unlink(this.cacheFile.replace('.gz', '')).catch(() => undefined)
+            : fs.unlink(`${this.cacheFile}.gz`).catch(() => undefined),
+          fs.unlink(this.metadataFile).catch(() => undefined)
+        ]);
+      }
+
       this.stats.misses++;
       return false;
+    }
+  }
+
+  private async atomicWriteFile(filePath: string, data: string | Buffer, encoding: BufferEncoding = 'utf-8'): Promise<void> {
+    const dir = path.dirname(filePath);
+    const base = path.basename(filePath);
+    const tmpPath = path.join(
+      dir,
+      `${base}.tmp-${process.pid}-${Date.now()}-${Math.random().toString(16).slice(2)}`
+    );
+
+    try {
+      if (typeof data === 'string') {
+        await fs.writeFile(tmpPath, data, encoding);
+      } else {
+        await fs.writeFile(tmpPath, data);
+      }
+      await fs.rename(tmpPath, filePath);
+    } catch (err) {
+      await fs.unlink(tmpPath).catch(() => undefined);
+      throw err;
     }
   }
 
@@ -492,20 +529,18 @@ export class TerragruntDocsManager {
       };
 
       const jsonData = JSON.stringify(docs, null, 2);
+      const metadataJson = JSON.stringify(metadata, null, 2);
       
       // Compress if enabled
       if (this.useCompression) {
         const compressed = await gzipAsync(jsonData);
-        await Promise.all([
-          fs.writeFile(this.cacheFile, compressed),
-          fs.writeFile(this.metadataFile, JSON.stringify(metadata, null, 2), 'utf-8')
-        ]);
+        // Write cache atomically to avoid partial reads during parallel operations/tests.
+        await this.atomicWriteFile(this.cacheFile, Buffer.from(compressed));
+        await this.atomicWriteFile(this.metadataFile, metadataJson, 'utf-8');
         console.log(`Saved ${docs.length} docs to disk cache (compressed: ${jsonData.length} → ${compressed.length} bytes, ${Math.round(compressed.length / jsonData.length * 100)}%)`);
       } else {
-        await Promise.all([
-          fs.writeFile(this.cacheFile, jsonData, 'utf-8'),
-          fs.writeFile(this.metadataFile, JSON.stringify(metadata, null, 2), 'utf-8')
-        ]);
+        await this.atomicWriteFile(this.cacheFile, jsonData, 'utf-8');
+        await this.atomicWriteFile(this.metadataFile, metadataJson, 'utf-8');
         console.log(`Saved ${docs.length} docs to disk cache`);
       }
     } catch (error) {

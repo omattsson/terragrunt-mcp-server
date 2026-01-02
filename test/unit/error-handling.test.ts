@@ -11,12 +11,16 @@ vi.mock('fs/promises', () => ({
   default: {
     readFile: vi.fn(),
     writeFile: vi.fn(),
+    rename: vi.fn(async () => undefined),
+    unlink: vi.fn(async () => undefined),
     mkdir: vi.fn(),
     access: vi.fn(),
     stat: vi.fn()
   },
   readFile: vi.fn(),
   writeFile: vi.fn(),
+  rename: vi.fn(async () => undefined),
+  unlink: vi.fn(async () => undefined),
   mkdir: vi.fn(),
   access: vi.fn(),
   stat: vi.fn()
@@ -51,6 +55,8 @@ describe('Error Handling - Network Failures', () => {
     mockFs = {
       readFile: fsModule.readFile as any,
       writeFile: fsModule.writeFile as any,
+      rename: fsModule.rename as any,
+      unlink: fsModule.unlink as any,
       mkdir: fsModule.mkdir as any,
       access: fsModule.access as any,
       stat: fsModule.stat as any
