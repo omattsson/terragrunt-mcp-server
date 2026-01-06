@@ -27,6 +27,7 @@
  * - generate_terragrunt_config + write_terragrunt_config → build_config
  */
 
+import { performance } from 'perf_hooks';
 import { TerragruntDocsManager } from '../terragrunt/docs.js';
 import { TerragruntFunctionsManager } from '../terragrunt/functions.js';
 import { BestPracticesAnalyzer } from '../terragrunt/best-practices.js';
@@ -748,21 +749,32 @@ export class ToolHandler {
     }
 
     async executeTool(name: string, args?: any): Promise<any> {
+        const startTime = performance.now();
+        
         try {
             const result = await this.executeToolInternal(name, args);
+            const latencyMs = Math.round(performance.now() - startTime);
             
             // Log metrics (skip for get_server_metrics to avoid recursion)
             if (name !== 'get_server_metrics') {
-                this.metricsManager.logResponse('tool', name, result);
+                this.metricsManager.logResponse('tool', name, result, latencyMs);
             }
             
             return result;
         } catch (error) {
+            const latencyMs = Math.round(performance.now() - startTime);
+            
             console.error(`Error executing tool ${name}:`, error);
+            
+            // Log error metrics
+            if (name !== 'get_server_metrics' && error instanceof Error) {
+                this.metricsManager.logError('tool', name, error);
+            }
+            
             const errorResult = {
                 error: error instanceof Error ? error.message : 'Unknown error occurred'
             };
-            this.metricsManager.logResponse('tool', name, errorResult);
+            this.metricsManager.logResponse('tool', name, errorResult, latencyMs);
             throw error;
         }
     }
@@ -2542,6 +2554,23 @@ export class ToolHandler {
     ): MetricsResponse {
         const stats = this.metricsManager.getStats(filter);
         
+        // Get cache metrics from DocsManager if available
+        const cacheStats = this.docsManager?.getCacheStats();
+        let cacheMetrics;
+        if (cacheStats) {
+            const totalRequests = cacheStats.hits + cacheStats.misses;
+            cacheMetrics = {
+                hits: cacheStats.hits,
+                misses: cacheStats.misses,
+                hitRate: totalRequests > 0 ? cacheStats.hits / totalRequests : 0,
+                totalRequests,
+                lastRefresh: cacheStats.lastRefresh || undefined,
+                cacheAge: cacheStats.lastRefresh 
+                    ? Math.round((Date.now() - cacheStats.lastRefresh.getTime()) / 1000 / 60)
+                    : undefined
+            };
+        }
+        
         if (format === 'text') {
             const text = this.metricsManager.getSummaryText();
             if (reset) {
@@ -2550,7 +2579,8 @@ export class ToolHandler {
             return {
                 format: 'text',
                 summary: text,
-                reset: reset
+                reset: reset,
+                cacheMetrics
             };
         }
         
@@ -2560,9 +2590,12 @@ export class ToolHandler {
             metrics: stats,
             totalCalls: this.metricsManager.getTotalCalls(),
             totalBytes: this.metricsManager.getTotalBytes(),
+            totalErrors: this.metricsManager.getTotalErrors(),
+            avgLatencyMs: this.metricsManager.getAverageLatency(),
             operationCount: Object.keys(stats).length,
             filter: filter || 'none',
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
+            cacheMetrics
         };
         
         if (reset) {

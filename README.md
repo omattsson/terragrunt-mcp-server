@@ -185,6 +185,32 @@ Diagnose Terragrunt error messages and get actionable solutions, debugging steps
 
 See the [Troubleshooting Guide](docs/Troubleshooting-Guide.md) for detailed usage examples and best practices.
 
+#### 8. **`get_server_metrics`** - Server Metrics and Monitoring
+
+Retrieve comprehensive performance metrics for the MCP server, including tool execution times, cache statistics, and error tracking.
+
+- **Parameters**:
+  - `format` (string, optional): Output format - "json" or "text" (default: "json")
+  - `filter` (string, optional): Filter metrics by tool name prefix
+  - `reset` (boolean, optional): Reset metrics after retrieval (default: false)
+- **Returns**: Performance metrics including:
+  - Tool execution counts and timings (min/max/avg latency)
+  - Error rates and error types by tool
+  - Cache hit/miss ratios and efficiency
+  - Memory and performance trends
+- **Use cases**: Performance monitoring, debugging slow operations, capacity planning, identifying optimization opportunities
+
+**Example prompts:**
+
+```text
+"Show me server metrics in text format"
+"Get metrics for all 'get_' tools only"
+"What's the cache hit rate and average latency?"
+"Show me metrics and reset them after"
+```
+
+See the [Metrics Collection Guide](docs/Metrics-Collection-Guide.md) for detailed usage, reporting, and export options.
+
 ---
 
 For complete tool documentation and examples, see [Available Tools](docs/Available-Tools.md).

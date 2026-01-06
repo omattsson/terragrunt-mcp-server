@@ -1,4 +1,4 @@
 node_modules
 dist
 .cache
-coverage
+coverage.mcp-metrics

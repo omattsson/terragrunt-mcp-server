@@ -117,11 +117,11 @@ describe('MetricsManager', () => {
       manager.logResponse('tool', 'test', { data: 'hello' });
       
       const summary = manager.getSummaryText();
-      expect(summary).toContain('Response Size Metrics:');
+      expect(summary).toContain('Performance & Response Metrics:');
       expect(summary).toContain('tool:test:');
       expect(summary).toContain('Calls: 1');
-      expect(summary).toContain('Avg:');
-      expect(summary).toContain('bytes');
+      expect(summary).toContain('Avg');
+      expect(summary).toContain('B'); // bytes
     });
 
     it('should show message when no metrics', () => {
@@ -191,6 +191,215 @@ describe('MetricsManager', () => {
       
       const stats = manager.getStats();
       expect(stats['tool:large'].totalBytes).toBeGreaterThan(100000);
+    });
+  });
+
+  describe('latency tracking', () => {
+    it('should track latency when provided', () => {
+      manager.logResponse('tool', 'test', { data: 'hello' }, 150);
+      
+      const stats = manager.getStats();
+      expect(stats['tool:test'].totalLatencyMs).toBe(150);
+      expect(stats['tool:test'].minLatencyMs).toBe(150);
+      expect(stats['tool:test'].maxLatencyMs).toBe(150);
+      expect(stats['tool:test'].avgLatencyMs).toBe(150);
+    });
+
+    it('should handle latency of 0', () => {
+      manager.logResponse('tool', 'test', { data: 'hello' }, 0);
+      
+      const stats = manager.getStats();
+      expect(stats['tool:test'].totalLatencyMs).toBe(0);
+      expect(stats['tool:test'].avgLatencyMs).toBe(0);
+    });
+
+    it('should track min and max latency across multiple calls', () => {
+      manager.logResponse('tool', 'test', { data: 'a' }, 50);
+      manager.logResponse('tool', 'test', { data: 'b' }, 200);
+      manager.logResponse('tool', 'test', { data: 'c' }, 100);
+      
+      const stats = manager.getStats();
+      expect(stats['tool:test'].minLatencyMs).toBe(50);
+      expect(stats['tool:test'].maxLatencyMs).toBe(200);
+      expect(stats['tool:test'].avgLatencyMs).toBe(Math.round((50 + 200 + 100) / 3));
+    });
+
+    it('should calculate average latency correctly', () => {
+      manager.logResponse('tool', 'test', { data: 'a' }, 100);
+      manager.logResponse('tool', 'test', { data: 'b' }, 200);
+      manager.logResponse('tool', 'test', { data: 'c' }, 300);
+      
+      const stats = manager.getStats();
+      expect(stats['tool:test'].avgLatencyMs).toBe(200);
+    });
+
+    it('should work without latency parameter (backward compatibility)', () => {
+      manager.logResponse('tool', 'test', { data: 'hello' });
+      
+      const stats = manager.getStats();
+      expect(stats['tool:test'].totalLatencyMs).toBe(0);
+      expect(stats['tool:test'].avgLatencyMs).toBe(0);
+    });
+  });
+
+  describe('error tracking', () => {
+    it('should track errors', () => {
+      const error = new Error('Test error');
+      manager.logError('tool', 'failing_tool', error);
+      
+      const stats = manager.getStats();
+      expect(stats['tool:failing_tool'].errors).toBe(1);
+      expect(stats['tool:failing_tool'].lastError).toBeDefined();
+      expect(stats['tool:failing_tool'].lastError?.message).toBe('Test error');
+    });
+
+    it('should increment error count on multiple errors', () => {
+      manager.logError('tool', 'test', new Error('Error 1'));
+      manager.logError('tool', 'test', new Error('Error 2'));
+      manager.logError('tool', 'test', new Error('Error 3'));
+      
+      const stats = manager.getStats();
+      expect(stats['tool:test'].errors).toBe(3);
+      expect(stats['tool:test'].lastError?.message).toBe('Error 3');
+    });
+
+    it('should calculate error rate correctly', () => {
+      manager.logResponse('tool', 'test', { data: 'success' });
+      manager.logResponse('tool', 'test', { data: 'success' });
+      manager.logError('tool', 'test', new Error('Failed'));
+      
+      const stats = manager.getStats();
+      expect(stats['tool:test'].calls).toBe(2);
+      expect(stats['tool:test'].errors).toBe(1);
+      expect(stats['tool:test'].errorRate).toBeCloseTo(1 / 3, 2);
+    });
+
+    it('should handle errors before any successful calls', () => {
+      manager.logError('tool', 'test', new Error('Failed on first try'));
+      
+      const stats = manager.getStats();
+      expect(stats['tool:test'].errors).toBe(1);
+      expect(stats['tool:test'].calls).toBe(0);
+      expect(stats['tool:test'].errorRate).toBe(1);
+    });
+
+    it('should preserve error timestamp', () => {
+      const before = new Date();
+      manager.logError('tool', 'test', new Error('Test error'));
+      const after = new Date();
+      
+      const stats = manager.getStats();
+      expect(stats['tool:test'].lastError?.timestamp).toBeDefined();
+      expect(stats['tool:test'].lastError!.timestamp.getTime()).toBeGreaterThanOrEqual(before.getTime());
+      expect(stats['tool:test'].lastError!.timestamp.getTime()).toBeLessThanOrEqual(after.getTime());
+    });
+  });
+
+  describe('getTotalErrors', () => {
+    it('should return total errors across all operations', () => {
+      manager.logError('tool', 'test1', new Error('Error 1'));
+      manager.logError('tool', 'test1', new Error('Error 2'));
+      manager.logError('tool', 'test2', new Error('Error 3'));
+      manager.logError('resource', 'test3', new Error('Error 4'));
+      
+      expect(manager.getTotalErrors()).toBe(4);
+    });
+
+    it('should return 0 when no errors', () => {
+      manager.logResponse('tool', 'test', { data: 'success' });
+      expect(manager.getTotalErrors()).toBe(0);
+    });
+
+    it('should not count successful responses as errors', () => {
+      manager.logResponse('tool', 'test', { data: 'success' });
+      manager.logResponse('tool', 'test', { data: 'success' });
+      manager.logError('tool', 'test', new Error('Failed'));
+      
+      expect(manager.getTotalErrors()).toBe(1);
+    });
+  });
+
+  describe('getAverageLatency', () => {
+    it('should calculate average latency across all operations', () => {
+      manager.logResponse('tool', 'test1', { data: 'a' }, 100);
+      manager.logResponse('tool', 'test1', { data: 'b' }, 200);
+      manager.logResponse('tool', 'test2', { data: 'c' }, 300);
+      
+      expect(manager.getAverageLatency()).toBe(200);
+    });
+
+    it('should return 0 when no calls', () => {
+      expect(manager.getAverageLatency()).toBe(0);
+    });
+
+    it('should handle mixed operations with and without latency', () => {
+      manager.logResponse('tool', 'test1', { data: 'a' }, 100);
+      manager.logResponse('tool', 'test2', { data: 'b' }); // No latency
+      manager.logResponse('tool', 'test3', { data: 'c' }, 200);
+      
+      expect(manager.getAverageLatency()).toBe(100); // (100 + 0 + 200) / 3
+    });
+  });
+
+  describe('getSummaryText with enhanced metrics', () => {
+    it('should include latency information', () => {
+      manager.logResponse('tool', 'test', { data: 'hello' }, 150);
+      
+      const summary = manager.getSummaryText();
+      expect(summary).toContain('Performance & Response Metrics:');
+      expect(summary).toContain('Latency:');
+      expect(summary).toContain('150ms');
+    });
+
+    it('should include error information', () => {
+      manager.logResponse('tool', 'test', { data: 'success' });
+      manager.logError('tool', 'test', new Error('Test error'));
+      
+      const summary = manager.getSummaryText();
+      expect(summary).toContain('Errors: 1');
+      expect(summary).toContain('Last Error: Test error');
+    });
+
+    it('should show error rate as percentage', () => {
+      manager.logResponse('tool', 'test', { data: 'success' });
+      manager.logResponse('tool', 'test', { data: 'success' });
+      manager.logError('tool', 'test', new Error('Failed'));
+      
+      const summary = manager.getSummaryText();
+      expect(summary).toContain('33.3%'); // 1 error out of 3 total operations
+    });
+
+    it('should not show last error section if no errors', () => {
+      manager.logResponse('tool', 'test', { data: 'success' }, 100);
+      
+      const summary = manager.getSummaryText();
+      expect(summary).toContain('Errors: 0');
+      expect(summary).not.toContain('Last Error:');
+    });
+  });
+
+  describe('mixed scenarios', () => {
+    it('should handle successful and failed calls together', () => {
+      manager.logResponse('tool', 'test', { data: 'success1' }, 100);
+      manager.logError('tool', 'test', new Error('Failed'));
+      manager.logResponse('tool', 'test', { data: 'success2' }, 200);
+      manager.logError('tool', 'test', new Error('Failed again'));
+      
+      const stats = manager.getStats();
+      expect(stats['tool:test'].calls).toBe(2);
+      expect(stats['tool:test'].errors).toBe(2);
+      expect(stats['tool:test'].errorRate).toBe(0.5);
+      expect(stats['tool:test'].avgLatencyMs).toBe(150);
+    });
+
+    it('should maintain accurate metrics across different tools', () => {
+      manager.logResponse('tool', 'fast', { data: 'a' }, 50);
+      manager.logResponse('tool', 'slow', { data: 'b' }, 500);
+      manager.logError('tool', 'buggy', new Error('Failed'));
+      
+      expect(manager.getTotalCalls()).toBe(2);
+      expect(manager.getTotalErrors()).toBe(1);
+      expect(manager.getAverageLatency()).toBe(275); // (50 + 500 + 0) / 2 calls
     });
   });
 });
