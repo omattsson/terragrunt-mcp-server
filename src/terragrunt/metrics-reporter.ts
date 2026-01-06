@@ -6,11 +6,8 @@ import {
   IMetricsReporter,
   MetricsReport,
   ReportConfig,
-  ReportFormat,
   ReportPeriod,
   TrendData,
-  MetricsSnapshot,
-  MetricsSummary,
 } from '../types/metrics.js';
 import { MetricsPersistence } from './metrics-persistence.js';
 import { MetricsManager } from './metrics.js';
@@ -255,7 +252,7 @@ export class MetricsReporter implements IMetricsReporter {
     summary: any,
     topOperations: any[],
     trends?: TrendData[],
-    history?: any
+    _history?: any
   ): string {
     const lines: string[] = [];
 
@@ -319,7 +316,7 @@ export class MetricsReporter implements IMetricsReporter {
     summary: any,
     topOperations: any[],
     trends?: TrendData[],
-    history?: any
+    _history?: any
   ): string {
     const lines: string[] = [];
 

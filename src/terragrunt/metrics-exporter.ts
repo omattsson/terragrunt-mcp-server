@@ -4,10 +4,7 @@
 
 import {
   ExportConfig,
-  ExportFormat,
   MetricsExportBundle,
-  MetricsSnapshot,
-  MetricsSummary,
   MetricsPrivacyConfig,
   IMetricsExporter,
 } from '../types/metrics.js';
@@ -222,7 +219,7 @@ export class MetricsExporter implements IMetricsExporter {
           weekly: await reporter.generateWeeklySummary(),
           monthly: await reporter.generateMonthlySummary(),
         };
-      } catch (error) {
+      } catch {
         // Reporter might not be available
         data.reports = null;
       }
