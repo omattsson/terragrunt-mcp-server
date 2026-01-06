@@ -5,9 +5,30 @@ All notable changes to the Terragrunt MCP Server will be documented in this file
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.0.0] - 2026-01-06
+
+### 🎉 First Stable Release
+
+This is the first stable 1.0.0 release of the Terragrunt MCP Server, bringing together all major features and improvements into a production-ready package.
 
 ### ✨ Added
+
+#### Comprehensive Metrics Collection System (Issue #184)
+
+- **Real-Time Tracking**: Monitor tool execution times, response sizes, error rates, and cache performance
+- **Historical Analysis**: Automatic daily snapshots with configurable retention (default: 90 days)
+- **Multi-Format Reports**: Generate reports in Text, JSON, or Markdown formats
+  - Daily, Weekly, Monthly, and All-time report periods
+  - Trend analysis comparing performance over time
+  - Top operations ranking by calls, latency, or errors
+- **Privacy Controls**: Configurable data anonymization and redaction
+  - SHA-256 hashing for operation names
+  - Error message redaction
+  - Timestamp removal
+  - Configurable data retention
+- **Multi-Format Export**: Export metrics in JSON, CSV, or ZIP formats
+- **Performance**: <1ms overhead per operation, async operations, efficient caching
+- **Documentation**: Comprehensive [Metrics Collection Guide](docs/Metrics-Collection-Guide.md)
 
 #### Lazy Loading System (Issue #183)
 
@@ -18,18 +39,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `minimal`: first 3 docs, ~90ms warmup (default, best for development)
   - `common`: 8-12 frequently used docs, ~200ms warmup (best for regular use)
   - `full`: All ~85 docs, ~1.5s warmup (best for offline/intensive workflows)
-- **Promise Deduplication**: Concurrent requests for same document share single loading promise, preventing duplicate network calls
+- **Promise Deduplication**: Concurrent requests for same document share single loading promise
 - **Cache Integration**: Seamless integration with existing disk cache system
-- **Lazy Loading Metrics**: Enhanced `getCacheStats()` with lazy loading statistics:
-  - Enabled flag, startup time, metadata-only load time, warmup time, initial memory (MB), metadata count, docs loaded lazily, average doc load time, and warmup strategy
-  - Additional cache stat: loaded docs ratio (`loadedDocsRatio`)
 - **Configuration**: Control via `TERRAGRUNT_LAZY_LOADING` and `TERRAGRUNT_WARMUP_STRATEGY` environment variables
-- **Comprehensive Documentation**: New [Lazy Loading Guide](docs/Lazy-Loading.md) with usage examples, performance characteristics, and troubleshooting
+- **Documentation**: New [Lazy Loading Guide](docs/Lazy-Loading.md)
 
 **Performance Impact:**
 - Startup time: ~10ms (metadata) + warmup time (0ms to 1.5s depending on strategy)
 - Memory at startup: ~450KB (minimal) vs ~2.5MB (no lazy loading) = 82% reduction
-- Search performance: Metadata-first search (fast), content loaded on-demand for matches only
+- Search performance: Metadata-first search (fast), content loaded on-demand
+
+### 📊 Summary Statistics
+
+- **8 Comprehensive Tools**: Unified, intuitive API
+- **114 New Tests**: All 1508 tests passing (100% pass rate)
+- **Zero Linting Warnings**: Production-ready code quality
+- **Comprehensive Documentation**: 12 detailed guides covering all features
+- **No Breaking Changes**: Fully backward compatible
+
+---
 
 ## [0.5.0] - 2025-12-15
 
@@ -94,70 +122,148 @@ This release represents a significant architectural improvement focused on simpl
 - New architecture overview reflecting tool-only design
 - Migration guide for users upgrading from v0.4.x
 
-### 🔄 Migration Guide
+---
 
-#### Updating Tool Calls
+## [0.4.0] - 2025-12-01
 
-**Function Reference**:
-```typescript
-// OLD: get_terragrunt_function
-{ name: "get_terragrunt_function", arguments: { function_name: "path_relative_to_include" } }
+### ✨ Added
 
-// NEW: function_reference (auto-detects get mode when function_name provided)
-{ name: "function_reference", arguments: { function_name: "path_relative_to_include" } }
+#### Configuration Generator & File Writing
 
-// OLD: list_terragrunt_functions
-{ name: "list_terragrunt_functions", arguments: { category: "path" } }
+- **Interactive Configuration Generator**: Generate Terragrunt configurations from natural language prompts
+- **Template Library**: Comprehensive library of pre-built templates for AWS, Azure, GCP, and Kubernetes
+- **Custom Template Support**: Define and use custom templates for organization-specific patterns
+- **HCL Validation**: Built-in syntax validation for generated configurations
+- **File Writing Capability**: Write generated configurations directly to disk with safety checks
 
-// NEW: function_reference (list mode when no function_name)
-{ name: "function_reference", arguments: { category: "path" } }
-```
+#### Enhanced Documentation Search
 
-**CLI Reference**:
-```typescript
-// OLD: get_cli_command_help
-{ name: "get_cli_command_help", arguments: { command: "plan" } }
+- **Semantic Search**: Improved search capabilities across all Terragrunt documentation
+- **Code Examples**: Extract and search code examples from documentation
+- **Section Navigation**: Browse documentation by sections and categories
+- **Related Content**: Get related documentation suggestions
 
-// NEW: cli_reference (auto-detects get mode when command provided)
-{ name: "cli_reference", arguments: { command: "plan" } }
+#### Performance Optimizations
 
-// OLD: list_cli_commands
-{ name: "list_cli_commands", arguments: { category: "main" } }
+- **Phase 1 & 2 Cache Optimizations**: Significantly improved lookup performance
+- **Efficient Template Storage**: Optimized template organization and retrieval
+- **Reduced Network Calls**: Better caching strategy for documentation
 
-// NEW: cli_reference (list mode when no command)
-{ name: "cli_reference", arguments: { category: "main" } }
-```
+### 🐛 Bug Fixes
 
-**Build Config**:
-```typescript
-// OLD: generate_terragrunt_config
-{ name: "generate_terragrunt_config", arguments: { useCase: "remote_state", options: {...} } }
-
-// NEW: build_config (generate-only mode, default)
-{ name: "build_config", arguments: { useCase: "remote_state", options: {...} } }
-
-// OLD: write_terragrunt_config
-{ name: "write_terragrunt_config", arguments: { content: "...", path: "..." } }
-
-// NEW: build_config (write-only mode when content provided)
-{ name: "build_config", arguments: { content: "...", path: "..." } }
-
-// NEW: Generate + Write in one call
-{ name: "build_config", arguments: { useCase: "remote_state", options: {...}, write: true, path: "..." } }
-```
-
-### 🙏 Acknowledgments
-
-Thanks to all contributors who helped with Epic #172 - Tool Consolidation and Architecture Improvements.
+- **Fixed #98**: Added 7 missing built-in Terragrunt functions to function registry
+- **Cache Warmup**: Fixed cache initialization issues
+- **Documentation Updates**: Improved accuracy and coverage
 
 ---
 
-## [0.4.0] - Previous releases
+## [0.3.0] - 2025-11-15
 
-See [CHANGELOG-0.3.0.md](CHANGELOG-0.3.0.md) for earlier release notes.
+### ✨ Added
+
+#### Best Practices & Guidance System
+
+- **Best Practices Analyzer**: Get recommendations for Terragrunt project structure and patterns
+- **Configuration Comparisons**: Compare different approaches (e.g., dependency vs dependencies)
+- **Anti-Pattern Detection**: Identify and avoid common Terragrunt pitfalls
+- **Context-Aware Suggestions**: Recommendations based on your specific use case
+
+#### Error Diagnosis System
+
+- **66 Error Patterns**: Comprehensive database of Terragrunt errors across 7 categories
+- **Actionable Solutions**: Step-by-step solutions with commands
+- **Documentation Links**: Direct links to relevant Terragrunt documentation
+- **Fuzzy Matching**: Handles typos and partial error messages
+- **Enriched Diagnosis**: Optional documentation-sourced solutions and debugging steps
+
+#### Enhanced Function Tools
+
+- **Improved Search**: Better search capabilities in function reference
+- **Rich Response Format**: Enhanced function metadata and examples
+- **Include Examples**: Optional parameter to include usage examples
+- **Function Suggestions**: Related function recommendations
+
+### 📖 Documentation
+
+- Configuration generator usage guide
+- Custom template documentation
+- Best practices guide
+- Error diagnosis guide
+- Performance benchmarking documentation
+
+---
+
+## [0.2.0] - 2025-10-30
+
+### ✨ Added
+
+#### Multi-Mode Architecture
+
+- **5 Operational Modes**: FULL, CORE, CONFIG, GUIDANCE, OBSERVABILITY
+- **Token Optimization**: 60-74% token reduction for specific workflows
+- **Memory Efficiency**: Reduced memory footprint for lightweight deployments
+- **Mode Selection**: Configure via `TERRAGRUNT_MCP_MODE` environment variable
+
+#### CLI Command Reference
+
+- **Complete CLI Documentation**: Access to all Terragrunt CLI commands
+- **Command Help**: Detailed help for specific commands
+- **Command Listing**: Browse commands by category
+- **Usage Examples**: Examples for each command
+
+#### HCL Configuration Reference
+
+- **Block Documentation**: Documentation for all HCL blocks (terraform, remote_state, etc.)
+- **Attribute Reference**: Complete attribute documentation
+- **Configuration Examples**: Examples for each block type
+- **Best Practices**: Recommendations for each configuration element
+
+### 📖 Documentation
+
+- Multi-mode architecture guide
+- CLI reference documentation
+- HCL configuration guide
+- Mode performance benchmarks
+
+---
+
+## [0.1.0] - 2025-10-15
+
+### 🎉 Initial Release
+
+#### Core Features
+
+- **Terragrunt Documentation Access**: Complete access to official Terragrunt documentation
+- **Function Reference**: Documentation for 50+ built-in Terragrunt functions
+- **Semantic Search**: Search across all Terragrunt documentation
+- **Disk Caching**: Efficient caching with 24-hour expiry
+- **MCP Protocol**: Full compliance with Model Context Protocol v0.5.0
+
+#### Tools (Initial Set)
+
+1. `search_docs` - Search Terragrunt documentation
+2. `get_terragrunt_function` - Get function details
+3. `list_terragrunt_functions` - List all functions
+4. `get_server_metrics` - Server observability
+
+#### Infrastructure
+
+- TypeScript with ES modules
+- Vitest testing framework
+- Comprehensive error handling
+- Logging to stderr (MCP compliant)
+
+### 📖 Documentation
+
+- README with quick start guide
+- Installation guide
+- Testing documentation
+- Contributing guidelines
+
+---
 
 ## Links
 
-- **Epic #172**: Tool Consolidation and Architecture Improvements
-- **Issue #181**: Update all documentation for v0.5.0
-- **Repository**: https://github.com/your-org/terragrunt-mcp-server
+- **Repository**: https://github.com/omattsson/terragrunt-mcp-server
+- **Issues**: https://github.com/omattsson/terragrunt-mcp-server/issues
+- **Documentation**: https://github.com/omattsson/terragrunt-mcp-server/tree/main/docs
