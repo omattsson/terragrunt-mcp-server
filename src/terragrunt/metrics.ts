@@ -5,9 +5,10 @@
  * Logs to stderr and maintains in-memory statistics.
  */
 
-import { MetricsSummary, MetricType, IMetricsManager, MetricsSnapshot, CacheMetrics, MetricsReport, ReportConfig } from '../types/metrics.js';
+import { MetricsSummary, MetricType, IMetricsManager, MetricsSnapshot, CacheMetrics, MetricsReport, ReportConfig, ExportConfig, MetricsExportBundle, MetricsPrivacyConfig } from '../types/metrics.js';
 import { MetricsPersistence } from './metrics-persistence.js';
 import { MetricsReporter } from './metrics-reporter.js';
+import { MetricsExporter } from './metrics-exporter.js';
 
 // Re-export for convenience
 export type { IMetricsManager };
@@ -34,12 +35,14 @@ export class MetricsManager implements IMetricsManager {
   private metrics = new Map<string, InternalMetricData>();
   private persistence: MetricsPersistence;
   private reporter: MetricsReporter;
+  private exporter: MetricsExporter;
   private lastSnapshotDate?: string;
   private cacheMetrics?: CacheMetrics;
 
   constructor(persistence?: MetricsPersistence) {
     this.persistence = persistence || new MetricsPersistence();
     this.reporter = new MetricsReporter(this, this.persistence);
+    this.exporter = new MetricsExporter(this, this.persistence);
   }
 
   /**
@@ -353,6 +356,60 @@ export class MetricsManager implements IMetricsManager {
    */
   async generateMonthlySummary(): Promise<MetricsReport> {
     return await this.reporter.generateMonthlySummary();
+  }
+
+  /**
+   * Get exporter for direct access
+   */
+  getExporter(): MetricsExporter {
+    return this.exporter;
+  }
+
+  /**
+   * Export metrics with configuration
+   */
+  async exportMetrics(config: ExportConfig): Promise<MetricsExportBundle> {
+    return await this.exporter.exportMetrics(config);
+  }
+
+  /**
+   * Update privacy configuration for exports
+   */
+  updatePrivacyConfig(config: Partial<MetricsPrivacyConfig>): void {
+    this.exporter.updatePrivacyConfig(config);
+  }
+
+  /**
+   * Get current privacy configuration
+   */
+  getPrivacyConfig(): MetricsPrivacyConfig {
+    return this.exporter.getPrivacyConfig();
+  }
+
+  /**
+   * Quick export to JSON with privacy mode
+   */
+  async exportToJSON(privacyMode: boolean = false): Promise<string> {
+    return await this.exporter.exportToJSON({
+      format: 'json',
+      includeSnapshots: true,
+      includeReports: false,
+      includeRawMetrics: true,
+      privacyMode,
+    });
+  }
+
+  /**
+   * Quick export to CSV with privacy mode
+   */
+  async exportToCSV(privacyMode: boolean = false): Promise<string> {
+    return await this.exporter.exportToCSV({
+      format: 'csv',
+      includeSnapshots: true,
+      includeReports: false,
+      includeRawMetrics: true,
+      privacyMode,
+    });
   }
 }
 

@@ -191,3 +191,64 @@ export interface IMetricsReporter {
     errorRate: number;
   }>>;
 }
+
+/**
+ * Privacy configuration for metrics
+ */
+export interface MetricsPrivacyConfig {
+  enabled: boolean;
+  anonymizeOperations: boolean; // Hash operation names
+  redactErrorMessages: boolean; // Remove error details
+  includeTimestamps: boolean; // Include exact timestamps
+  dataRetentionDays: number; // Auto-delete old data
+}
+
+/**
+ * Export format for metrics bundles
+ */
+export type ExportFormat = 'json' | 'csv' | 'zip';
+
+/**
+ * Export configuration
+ */
+export interface ExportConfig {
+  format: ExportFormat;
+  includeSnapshots: boolean;
+  includeReports: boolean;
+  includeRawMetrics: boolean;
+  dateRange?: {
+    start: string;
+    end: string;
+  };
+  privacyMode: boolean; // Apply privacy filters
+}
+
+/**
+ * Exported metrics bundle
+ */
+export interface MetricsExportBundle {
+  exportedAt: string;
+  format: ExportFormat;
+  privacyMode: boolean;
+  content: string | Buffer;
+  metadata: {
+    snapshotCount: number;
+    dateRange: {
+      start: string;
+      end: string;
+    };
+    totalCalls: number;
+    totalErrors: number;
+  };
+}
+
+/**
+ * Interface for metrics export operations
+ */
+export interface IMetricsExporter {
+  exportMetrics(config: ExportConfig): Promise<MetricsExportBundle>;
+  exportToJSON(config: ExportConfig): Promise<string>;
+  exportToCSV(config: ExportConfig): Promise<string>;
+  exportToZip(config: ExportConfig): Promise<Buffer>;
+  applyPrivacyFilters(data: any): any;
+}
