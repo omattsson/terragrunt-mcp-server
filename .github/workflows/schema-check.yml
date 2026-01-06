@@ -35,7 +35,7 @@ jobs:
         id: check
         run: |
           set +e  # Don't exit on error
-          npm run check-schema-drift > drift-report.json 2> drift-log.txt
+          npx tsx scripts/check-schema-drift.ts > drift-report.json 2> drift-log.txt
           EXIT_CODE=$?
           set -e
           
