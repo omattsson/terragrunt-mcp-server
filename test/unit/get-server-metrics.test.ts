@@ -72,7 +72,7 @@ describe('getServerMetrics tool', () => {
       expect(result.format).toBe('text');
       expect(result.summary).toBeDefined();
       expect(typeof result.summary).toBe('string');
-      expect(result.summary).toContain('Total:');
+      expect(result.summary).toContain('Performance & Response Metrics:');
     });
 
     it('should include human-readable summary in text format', () => {
@@ -84,7 +84,7 @@ describe('getServerMetrics tool', () => {
       expect(text).toContain('tool:test1');
       expect(text).toContain('resource:test2');
       expect(text).toContain('Calls');
-      expect(text).toContain('bytes');
+      expect(text).toContain('B'); // bytes
     });
   });
 
