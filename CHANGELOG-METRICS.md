@@ -172,9 +172,9 @@ const manager = new MetricsManager(persistence);
 ### Files Changed
 
 **New Files:**
-- `src/terragrunt/metrics-persistence.ts` (458 lines)
-- `src/terragrunt/metrics-reporter.ts` (442 lines)
-- `src/terragrunt/metrics-exporter.ts` (440 lines)
+- `src/terragrunt/metrics-persistence.ts` (311 lines)
+- `src/terragrunt/metrics-reporter.ts` (460 lines)
+- `src/terragrunt/metrics-exporter.ts` (438 lines)
 - `test/unit/metrics-persistence.test.ts` (261 lines)
 - `test/unit/metrics-reporter.test.ts` (547 lines)
 - `test/unit/metrics-exporter.test.ts` (455 lines)
