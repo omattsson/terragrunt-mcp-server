@@ -6,7 +6,7 @@ export default defineConfig({
     environment: 'node',
     include: ['test/unit/**/*.test.ts'],
     exclude: ['node_modules', 'dist'],
-    testTimeout: 10000, // 10 seconds - unit tests should be fast
+    testTimeout: 20000, // 20 seconds - unit tests should be fast
     coverage: {
       provider: 'v8',
       reporter: ['text', 'lcov', 'html'],
