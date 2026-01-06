@@ -5,8 +5,9 @@
  * Logs to stderr and maintains in-memory statistics.
  */
 
-import { MetricsSummary, MetricType, IMetricsManager, MetricsSnapshot, CacheMetrics } from '../types/metrics.js';
+import { MetricsSummary, MetricType, IMetricsManager, MetricsSnapshot, CacheMetrics, MetricsReport, ReportConfig } from '../types/metrics.js';
 import { MetricsPersistence } from './metrics-persistence.js';
+import { MetricsReporter } from './metrics-reporter.js';
 
 // Re-export for convenience
 export type { IMetricsManager };
@@ -32,11 +33,13 @@ interface InternalMetricData {
 export class MetricsManager implements IMetricsManager {
   private metrics = new Map<string, InternalMetricData>();
   private persistence: MetricsPersistence;
+  private reporter: MetricsReporter;
   private lastSnapshotDate?: string;
   private cacheMetrics?: CacheMetrics;
 
   constructor(persistence?: MetricsPersistence) {
     this.persistence = persistence || new MetricsPersistence();
+    this.reporter = new MetricsReporter(this, this.persistence);
   }
 
   /**
@@ -315,6 +318,41 @@ export class MetricsManager implements IMetricsManager {
    */
   getPersistence(): MetricsPersistence {
     return this.persistence;
+  }
+
+  /**
+   * Get reporter for direct access
+   */
+  getReporter(): MetricsReporter {
+    return this.reporter;
+  }
+
+  /**
+   * Generate a comprehensive metrics report
+   */
+  async generateReport(config?: Partial<ReportConfig>): Promise<MetricsReport> {
+    return await this.reporter.generateReport(config);
+  }
+
+  /**
+   * Generate daily summary report
+   */
+  async generateDailySummary(): Promise<MetricsReport> {
+    return await this.reporter.generateDailySummary();
+  }
+
+  /**
+   * Generate weekly summary report
+   */
+  async generateWeeklySummary(): Promise<MetricsReport> {
+    return await this.reporter.generateWeeklySummary();
+  }
+
+  /**
+   * Generate monthly summary report
+   */
+  async generateMonthlySummary(): Promise<MetricsReport> {
+    return await this.reporter.generateMonthlySummary();
   }
 }
 

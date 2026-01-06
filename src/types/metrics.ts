@@ -113,3 +113,81 @@ export interface IMetricsPersistence {
   getConfig(): Promise<MetricsPersistenceConfig>;
   updateConfig(config: Partial<MetricsPersistenceConfig>): Promise<void>;
 }
+
+/**
+ * Report output format
+ */
+export type ReportFormat = 'text' | 'json' | 'markdown';
+
+/**
+ * Report time period
+ */
+export type ReportPeriod = 'daily' | 'weekly' | 'monthly' | 'all';
+
+/**
+ * Report configuration
+ */
+export interface ReportConfig {
+  format: ReportFormat;
+  period: ReportPeriod;
+  includeHistory: boolean;
+  includeTrends: boolean;
+  topOperations: number; // Number of top operations to include
+}
+
+/**
+ * Trend analysis data
+ */
+export interface TrendData {
+  operation: string;
+  callsChange: number; // Percentage change
+  latencyChange: number; // Percentage change
+  errorRateChange: number; // Percentage change
+  trend: 'improving' | 'degrading' | 'stable';
+}
+
+/**
+ * Generated report
+ */
+export interface MetricsReport {
+  title: string;
+  generatedAt: string;
+  period: ReportPeriod;
+  format: ReportFormat;
+  content: string;
+  summary: {
+    totalCalls: number;
+    totalErrors: number;
+    avgLatency: number;
+    totalBytes: number;
+    operationCount: number;
+    dateRange?: {
+      start: string;
+      end: string;
+    };
+  };
+  trends?: TrendData[];
+  topOperations?: Array<{
+    operation: string;
+    calls: number;
+    avgLatency: number;
+    errorRate: number;
+  }>;
+}
+
+/**
+ * Interface for metrics reporting operations
+ */
+export interface IMetricsReporter {
+  generateReport(config: Partial<ReportConfig>): Promise<MetricsReport>;
+  generateDailySummary(): Promise<MetricsReport>;
+  generateWeeklySummary(): Promise<MetricsReport>;
+  generateMonthlySummary(): Promise<MetricsReport>;
+  compareSnapshots(date1: string, date2: string): Promise<TrendData[]>;
+  getTopOperations(limit: number, sortBy: 'calls' | 'latency' | 'errors'): Promise<Array<{
+    operation: string;
+    calls: number;
+    avgLatency: number;
+    errorRate: number;
+  }>>;
+}
