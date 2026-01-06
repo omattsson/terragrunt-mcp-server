@@ -65,3 +65,51 @@ export interface IMetricsManager {
 }
 
 export type MetricType = 'tool' | 'resource';
+
+/**
+ * Configuration for metrics persistence
+ */
+export interface MetricsPersistenceConfig {
+  enabled: boolean;
+  directory: string;
+  retentionDays: number;
+  autoSnapshot: boolean;
+}
+
+/**
+ * Snapshot of metrics at a point in time
+ */
+export interface MetricsSnapshot {
+  timestamp: string;
+  date: string; // YYYY-MM-DD format
+  metrics: MetricsSummary;
+  totalCalls: number;
+  totalBytes: number;
+  totalErrors: number;
+  avgLatencyMs: number;
+  cacheMetrics?: CacheMetrics;
+}
+
+/**
+ * Historical metrics summary
+ */
+export interface MetricsHistory {
+  snapshots: MetricsSnapshot[];
+  firstSnapshot: string;
+  lastSnapshot: string;
+  totalSnapshots: number;
+}
+
+/**
+ * Interface for metrics persistence operations
+ */
+export interface IMetricsPersistence {
+  saveSnapshot(snapshot: MetricsSnapshot): Promise<void>;
+  loadSnapshot(date: string): Promise<MetricsSnapshot | null>;
+  getHistory(days?: number): Promise<MetricsHistory>;
+  cleanup(retentionDays: number): Promise<number>;
+  saveSummary(summary: MetricsSummary): Promise<void>;
+  loadSummary(): Promise<MetricsSummary | null>;
+  getConfig(): Promise<MetricsPersistenceConfig>;
+  updateConfig(config: Partial<MetricsPersistenceConfig>): Promise<void>;
+}

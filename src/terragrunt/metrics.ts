@@ -5,7 +5,8 @@
  * Logs to stderr and maintains in-memory statistics.
  */
 
-import { MetricsSummary, MetricType, IMetricsManager } from '../types/metrics.js';
+import { MetricsSummary, MetricType, IMetricsManager, MetricsSnapshot, CacheMetrics } from '../types/metrics.js';
+import { MetricsPersistence } from './metrics-persistence.js';
 
 // Re-export for convenience
 export type { IMetricsManager };
@@ -30,6 +31,13 @@ interface InternalMetricData {
 
 export class MetricsManager implements IMetricsManager {
   private metrics = new Map<string, InternalMetricData>();
+  private persistence: MetricsPersistence;
+  private lastSnapshotDate?: string;
+  private cacheMetrics?: CacheMetrics;
+
+  constructor(persistence?: MetricsPersistence) {
+    this.persistence = persistence || new MetricsPersistence();
+  }
 
   /**
    * Log a response and update metrics
@@ -235,6 +243,78 @@ export class MetricsManager implements IMetricsManager {
       totalLatency += data.totalLatencyMs;
     }
     return Math.round(totalLatency / totalCalls);
+  }
+
+  /**
+   * Set cache metrics for inclusion in snapshots
+   */
+  setCacheMetrics(cacheMetrics: CacheMetrics): void {
+    this.cacheMetrics = cacheMetrics;
+  }
+
+  /**
+   * Create a snapshot of current metrics
+   */
+  async createSnapshot(): Promise<MetricsSnapshot> {
+    const now = new Date();
+    const dateStr = now.toISOString().split('T')[0];
+
+    const snapshot: MetricsSnapshot = {
+      timestamp: now.toISOString(),
+      date: dateStr,
+      metrics: this.getStats(),
+      totalCalls: this.getTotalCalls(),
+      totalBytes: this.getTotalBytes(),
+      totalErrors: this.getTotalErrors(),
+      avgLatencyMs: this.getAverageLatency(),
+      cacheMetrics: this.cacheMetrics,
+    };
+
+    // Save to disk if auto-snapshot is enabled
+    const config = await this.persistence.getConfig();
+    if (config.autoSnapshot && dateStr !== this.lastSnapshotDate) {
+      await this.persistence.saveSnapshot(snapshot);
+      this.lastSnapshotDate = dateStr;
+    }
+
+    return snapshot;
+  }
+
+  /**
+   * Save current metrics summary to disk
+   */
+  async saveSummary(): Promise<void> {
+    const summary = this.getStats();
+    await this.persistence.saveSummary(summary);
+  }
+
+  /**
+   * Load metrics summary from disk
+   */
+  async loadSummary(): Promise<MetricsSummary | null> {
+    return await this.persistence.loadSummary();
+  }
+
+  /**
+   * Get historical metrics
+   */
+  async getHistory(days?: number): Promise<any> {
+    return await this.persistence.getHistory(days);
+  }
+
+  /**
+   * Clean up old snapshots
+   */
+  async cleanupOldSnapshots(): Promise<number> {
+    const config = await this.persistence.getConfig();
+    return await this.persistence.cleanup(config.retentionDays);
+  }
+
+  /**
+   * Get persistence layer for direct access
+   */
+  getPersistence(): MetricsPersistence {
+    return this.persistence;
   }
 }
 
