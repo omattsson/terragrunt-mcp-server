@@ -27,6 +27,7 @@ A Model Context Protocol (MCP) server that provides comprehensive Terragrunt doc
 - [CLI Validation](CLI-Validation.md) - Optional Terragrunt CLI validation for accurate syntax checking
 - [Architecture Overview](Architecture-Overview.md) - Understanding the caching and MCP implementation
 - [Caching System](Caching-System.md) - Deep dive into the two-tier caching mechanism
+- [Lazy Loading](Lazy-Loading.md) - Metadata-first loading with on-demand content fetching (60-80% memory reduction)
 
 ### Deployment
 
