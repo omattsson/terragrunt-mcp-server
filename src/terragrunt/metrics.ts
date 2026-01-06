@@ -1,7 +1,7 @@
 /**
- * MetricsManager - Tracks response sizes and call frequencies
+ * MetricsManager - Tracks response sizes, call frequencies, latency, and errors
  * 
- * Provides lightweight metrics collection for token optimization efforts.
+ * Provides comprehensive metrics collection for performance monitoring and optimization.
  * Logs to stderr and maintains in-memory statistics.
  */
 
@@ -16,6 +16,16 @@ interface InternalMetricData {
   minBytes: number;
   maxBytes: number;
   lastCallTime: Date;
+  // Performance metrics
+  totalLatencyMs: number;
+  minLatencyMs: number;
+  maxLatencyMs: number;
+  // Error tracking
+  errors: number;
+  lastError?: {
+    timestamp: Date;
+    message: string;
+  };
 }
 
 export class MetricsManager implements IMetricsManager {
@@ -26,13 +36,20 @@ export class MetricsManager implements IMetricsManager {
    * @param type - 'tool' or 'resource'
    * @param name - Name of the tool or resource
    * @param response - The response object to measure
+   * @param latencyMs - Optional execution time in milliseconds
    */
-  logResponse(type: MetricType, name: string, response: any): void {
+  logResponse(type: MetricType, name: string, response: any, latencyMs?: number): void {
     const size = JSON.stringify(response).length;
     const key = `${type}:${name}`;
+    const latency = latencyMs ?? 0;
 
     // Log to stderr (doesn't interfere with MCP protocol on stdout)
-    console.error(`[METRICS] ${key} size=${size} bytes time=${new Date().toISOString()}`);
+    const logParts = [`[METRICS] ${key} size=${size} bytes`];
+    if (latencyMs !== undefined) {
+      logParts.push(`latency=${latency}ms`);
+    }
+    logParts.push(`time=${new Date().toISOString()}`);
+    console.error(logParts.join(' '));
 
     // Update in-memory stats
     const existing = this.metrics.get(key);
@@ -43,6 +60,11 @@ export class MetricsManager implements IMetricsManager {
         minBytes: Math.min(existing.minBytes, size),
         maxBytes: Math.max(existing.maxBytes, size),
         lastCallTime: new Date(),
+        totalLatencyMs: existing.totalLatencyMs + latency,
+        minLatencyMs: Math.min(existing.minLatencyMs, latency),
+        maxLatencyMs: Math.max(existing.maxLatencyMs, latency),
+        errors: existing.errors,
+        lastError: existing.lastError,
       });
     } else {
       this.metrics.set(key, {
@@ -51,6 +73,51 @@ export class MetricsManager implements IMetricsManager {
         minBytes: size,
         maxBytes: size,
         lastCallTime: new Date(),
+        totalLatencyMs: latency,
+        minLatencyMs: latency,
+        maxLatencyMs: latency,
+        errors: 0,
+      });
+    }
+  }
+
+  /**
+   * Log an error for a specific operation
+   * @param type - 'tool' or 'resource'
+   * @param name - Name of the tool or resource
+   * @param error - The error that occurred
+   */
+  logError(type: MetricType, name: string, error: Error): void {
+    const key = `${type}:${name}`;
+    
+    console.error(`[METRICS] ${key} ERROR: ${error.message} time=${new Date().toISOString()}`);
+
+    const existing = this.metrics.get(key);
+    if (existing) {
+      this.metrics.set(key, {
+        ...existing,
+        errors: existing.errors + 1,
+        lastError: {
+          timestamp: new Date(),
+          message: error.message,
+        },
+      });
+    } else {
+      // Create initial entry with error
+      this.metrics.set(key, {
+        calls: 0,
+        totalBytes: 0,
+        minBytes: 0,
+        maxBytes: 0,
+        lastCallTime: new Date(),
+        totalLatencyMs: 0,
+        minLatencyMs: 0,
+        maxLatencyMs: 0,
+        errors: 1,
+        lastError: {
+          timestamp: new Date(),
+          message: error.message,
+        },
       });
     }
   }
@@ -65,9 +132,17 @@ export class MetricsManager implements IMetricsManager {
 
     for (const [key, data] of this.metrics.entries()) {
       if (!nameFilter || key.includes(nameFilter)) {
+        const avgBytes = data.calls > 0 ? Math.round(data.totalBytes / data.calls) : 0;
+        const avgLatencyMs = data.calls > 0 ? Math.round(data.totalLatencyMs / data.calls) : 0;
+        const errorRate = (data.calls + data.errors) > 0 
+          ? data.errors / (data.calls + data.errors) 
+          : 0;
+
         summary[key] = {
           ...data,
-          avgBytes: Math.round(data.totalBytes / data.calls),
+          avgBytes,
+          avgLatencyMs,
+          errorRate,
         };
       }
     }
@@ -88,7 +163,7 @@ export class MetricsManager implements IMetricsManager {
    */
   getSummaryText(): string {
     const stats = this.getStats();
-    const lines: string[] = ['Response Size Metrics:', ''];
+    const lines: string[] = ['Performance & Response Metrics:', ''];
 
     if (Object.keys(stats).length === 0) {
       lines.push('No metrics collected yet.');
@@ -102,12 +177,13 @@ export class MetricsManager implements IMetricsManager {
 
     for (const [key, data] of sorted) {
       lines.push(`${key}:`);
-      lines.push(`  Calls: ${data.calls}`);
-      lines.push(`  Avg: ${data.avgBytes} bytes`);
-      lines.push(`  Min: ${data.minBytes} bytes`);
-      lines.push(`  Max: ${data.maxBytes} bytes`);
-      lines.push(`  Total: ${data.totalBytes} bytes`);
-      lines.push(`  Last: ${data.lastCallTime.toISOString()}`);
+      lines.push(`  Calls: ${data.calls} | Errors: ${data.errors} (${(data.errorRate * 100).toFixed(1)}%)`);
+      lines.push(`  Response Size: Avg ${data.avgBytes}B | Min ${data.minBytes}B | Max ${data.maxBytes}B`);
+      lines.push(`  Latency: Avg ${data.avgLatencyMs}ms | Min ${data.minLatencyMs}ms | Max ${data.maxLatencyMs}ms`);
+      if (data.lastError) {
+        lines.push(`  Last Error: ${data.lastError.message} at ${data.lastError.timestamp.toISOString()}`);
+      }
+      lines.push(`  Last Call: ${data.lastCallTime.toISOString()}`);
       lines.push('');
     }
 
@@ -135,13 +211,42 @@ export class MetricsManager implements IMetricsManager {
     }
     return total;
   }
+
+  /**
+   * Get total errors across all operations
+   */
+  getTotalErrors(): number {
+    let total = 0;
+    for (const data of this.metrics.values()) {
+      total += data.errors;
+    }
+    return total;
+  }
+
+  /**
+   * Get average latency across all operations
+   */
+  getAverageLatency(): number {
+    const totalCalls = this.getTotalCalls();
+    if (totalCalls === 0) return 0;
+
+    let totalLatency = 0;
+    for (const data of this.metrics.values()) {
+      totalLatency += data.totalLatencyMs;
+    }
+    return Math.round(totalLatency / totalCalls);
+  }
 }
 
 /**
  * Null object implementation of IMetricsManager for cases where metrics are disabled
  */
 export class NullMetricsManager implements IMetricsManager {
-  logResponse(_type: MetricType, _operation: string, _response: any): void {
+  logResponse(_type: MetricType, _operation: string, _response: any, _latencyMs?: number): void {
+    // No-op
+  }
+
+  logError(_type: MetricType, _operation: string, _error: Error): void {
     // No-op
   }
 
@@ -154,6 +259,14 @@ export class NullMetricsManager implements IMetricsManager {
   }
 
   getTotalBytes(): number {
+    return 0;
+  }
+
+  getTotalErrors(): number {
+    return 0;
+  }
+
+  getAverageLatency(): number {
     return 0;
   }
 
