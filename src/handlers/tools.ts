@@ -2554,6 +2554,23 @@ export class ToolHandler {
     ): MetricsResponse {
         const stats = this.metricsManager.getStats(filter);
         
+        // Get cache metrics from DocsManager if available
+        const cacheStats = this.docsManager?.getCacheStats();
+        let cacheMetrics;
+        if (cacheStats) {
+            const totalRequests = cacheStats.hits + cacheStats.misses;
+            cacheMetrics = {
+                hits: cacheStats.hits,
+                misses: cacheStats.misses,
+                hitRate: totalRequests > 0 ? cacheStats.hits / totalRequests : 0,
+                totalRequests,
+                lastRefresh: cacheStats.lastRefresh || undefined,
+                cacheAge: cacheStats.lastRefresh 
+                    ? Math.round((Date.now() - cacheStats.lastRefresh.getTime()) / 1000 / 60)
+                    : undefined
+            };
+        }
+        
         if (format === 'text') {
             const text = this.metricsManager.getSummaryText();
             if (reset) {
@@ -2562,7 +2579,8 @@ export class ToolHandler {
             return {
                 format: 'text',
                 summary: text,
-                reset: reset
+                reset: reset,
+                cacheMetrics
             };
         }
         
@@ -2576,7 +2594,8 @@ export class ToolHandler {
             avgLatencyMs: this.metricsManager.getAverageLatency(),
             operationCount: Object.keys(stats).length,
             filter: filter || 'none',
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
+            cacheMetrics
         };
         
         if (reset) {
