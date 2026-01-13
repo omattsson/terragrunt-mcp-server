@@ -173,7 +173,6 @@ const azureMissingAttributes: Partial<SchemaAttribute>[] = [
 
 // Attributes to mark as deprecated
 const s3DeprecatedAttributes = ['dynamodb_table', 'force_path_style'];
-const awsS3CompleteDeprecatedAttributes = ['dynamodb_endpoint', 'dynamodb_table', 'iam_endpoint', 'shared_credentials_file', 'sts_endpoint', 'endpoint', 'force_path_style'];
 
 async function updateSchema(schemaPath: string, missingAttrs: Partial<SchemaAttribute>[], deprecatedAttrs: string[]) {
   console.log(`\nUpdating ${path.basename(schemaPath)}...`);
