@@ -6,8 +6,8 @@
   "provider": "aws",
   "backend": "s3",
   "terraformDocsUrl": "https://developer.hashicorp.com/terraform/language/backend/s3",
-  "version": "1.0.0",
-  "lastUpdated": "2024-12-03",
+  "version": "1.1.0",
+  "lastUpdated": "2026-01-13",
   "attributes": [
     {
       "name": "bucket",
@@ -31,14 +31,32 @@
       "description": "AWS region of the S3 bucket. If not specified, the region will be determined from the AWS_REGION or AWS_DEFAULT_REGION environment variables.",
       "example": "us-east-1",
       "validValues": [
-        "us-east-1", "us-east-2", "us-west-1", "us-west-2",
-        "af-south-1", "ap-east-1", "ap-south-1", "ap-south-2",
-        "ap-northeast-1", "ap-northeast-2", "ap-northeast-3",
-        "ap-southeast-1", "ap-southeast-2", "ap-southeast-3", "ap-southeast-4",
-        "ca-central-1", "eu-central-1", "eu-central-2",
-        "eu-west-1", "eu-west-2", "eu-west-3",
-        "eu-north-1", "eu-south-1", "eu-south-2",
-        "me-central-1", "me-south-1",
+        "us-east-1",
+        "us-east-2",
+        "us-west-1",
+        "us-west-2",
+        "af-south-1",
+        "ap-east-1",
+        "ap-south-1",
+        "ap-south-2",
+        "ap-northeast-1",
+        "ap-northeast-2",
+        "ap-northeast-3",
+        "ap-southeast-1",
+        "ap-southeast-2",
+        "ap-southeast-3",
+        "ap-southeast-4",
+        "ca-central-1",
+        "eu-central-1",
+        "eu-central-2",
+        "eu-west-1",
+        "eu-west-2",
+        "eu-west-3",
+        "eu-north-1",
+        "eu-south-1",
+        "eu-south-2",
+        "me-central-1",
+        "me-south-1",
         "sa-east-1"
       ]
     },
@@ -54,8 +72,9 @@
       "name": "dynamodb_table",
       "type": "string",
       "required": false,
-      "description": "Name of DynamoDB table used for state locking and consistency. The table must have a partition key named LockID with type String. If not configured, state locking will be disabled.",
-      "example": "terraform-locks"
+      "description": "(Deprecated) Name of DynamoDB table used for state locking and consistency. The table must have a partition key named LockID with type String. If not configured, state locking will be disabled.",
+      "example": "terraform-locks",
+      "deprecated": true
     },
     {
       "name": "kms_key_id",
@@ -63,7 +82,9 @@
       "required": false,
       "description": "Amazon Resource Name (ARN) of a KMS Key to use for encrypting the state. Requires encrypt to be true.",
       "example": "arn:aws:kms:us-east-1:123456789012:key/12345678-1234-1234-1234-123456789012",
-      "requiredWith": ["encrypt"],
+      "requiredWith": [
+        "encrypt"
+      ],
       "pattern": "^arn:aws:kms:[a-z0-9-]+:[0-9]{12}:key/[a-f0-9-]+$"
     },
     {
@@ -73,7 +94,15 @@
       "description": "Canned ACL to be applied to the state file.",
       "deprecated": true,
       "deprecatedMessage": "Use bucket policies instead of canned ACLs. AWS recommends disabling ACLs for most use cases.",
-      "validValues": ["private", "public-read", "public-read-write", "authenticated-read", "aws-exec-read", "bucket-owner-read", "bucket-owner-full-control"]
+      "validValues": [
+        "private",
+        "public-read",
+        "public-read-write",
+        "authenticated-read",
+        "aws-exec-read",
+        "bucket-owner-read",
+        "bucket-owner-full-control"
+      ]
     },
     {
       "name": "workspace_key_prefix",
@@ -98,7 +127,9 @@
       "required": false,
       "description": "Enable path-style S3 URLs. Replaces the deprecated force_path_style argument.",
       "defaultValue": false,
-      "conflictsWith": ["force_path_style"]
+      "conflictsWith": [
+        "force_path_style"
+      ]
     },
     {
       "name": "profile",
@@ -113,7 +144,9 @@
       "required": false,
       "description": "AWS access key ID. Use of static credentials is discouraged; prefer IAM roles, environment variables, or AWS CLI profiles.",
       "sensitive": true,
-      "requiredWith": ["secret_key"]
+      "requiredWith": [
+        "secret_key"
+      ]
     },
     {
       "name": "secret_key",
@@ -121,7 +154,9 @@
       "required": false,
       "description": "AWS secret access key. Use of static credentials is discouraged; prefer IAM roles, environment variables, or AWS CLI profiles.",
       "sensitive": true,
-      "requiredWith": ["access_key"]
+      "requiredWith": [
+        "access_key"
+      ]
     },
     {
       "name": "token",
@@ -193,7 +228,9 @@
       "required": false,
       "description": "The base64-encoded 256-bit encryption key to use for server-side encryption with customer-provided keys (SSE-C).",
       "sensitive": true,
-      "conflictsWith": ["kms_key_id"]
+      "conflictsWith": [
+        "kms_key_id"
+      ]
     },
     {
       "name": "max_retries",
@@ -253,6 +290,135 @@
       "type": "list",
       "required": false,
       "description": "Set of assume role session tag keys to pass to subsequent sessions."
+    },
+    {
+      "name": "use_lockfile",
+      "type": "boolean",
+      "required": false,
+      "description": "Whether to use a lockfile for locking the state file. Defaults to false.",
+      "defaultValue": false
+    },
+    {
+      "name": "allowed_account_ids",
+      "type": "list",
+      "required": false,
+      "description": "List of allowed AWS account IDs to prevent potential destruction of a live environment. Conflicts with forbidden_account_ids."
+    },
+    {
+      "name": "forbidden_account_ids",
+      "type": "list",
+      "required": false,
+      "description": "List of forbidden AWS account IDs to prevent potential destruction of a live environment. Conflicts with allowed_account_ids."
+    },
+    {
+      "name": "custom_ca_bundle",
+      "type": "string",
+      "required": false,
+      "description": "File containing custom root and intermediate certificates. Can also be set using the AWS_CA_BUNDLE environment variable."
+    },
+    {
+      "name": "ec2_metadata_service_endpoint",
+      "type": "string",
+      "required": false,
+      "description": "Custom endpoint URL for the EC2 Instance Metadata Service (IMDS) API. Can also be set with the AWS_EC2_METADATA_SERVICE_ENDPOINT environment variable."
+    },
+    {
+      "name": "ec2_metadata_service_endpoint_mode",
+      "type": "string",
+      "required": false,
+      "description": "Mode to use in communicating with the metadata service. Valid values are IPv4 and IPv6. Can also be set with the AWS_EC2_METADATA_SERVICE_ENDPOINT_MODE environment variable.",
+      "validValues": [
+        "IPv4",
+        "IPv6"
+      ]
+    },
+    {
+      "name": "http_proxy",
+      "type": "string",
+      "required": false,
+      "description": "URL of a proxy to use for HTTP requests when accessing the AWS API. Can also be set using the HTTP_PROXY or http_proxy environment variables."
+    },
+    {
+      "name": "https_proxy",
+      "type": "string",
+      "required": false,
+      "description": "URL of a proxy to use for HTTPS requests when accessing the AWS API. Can also be set using the HTTPS_PROXY or https_proxy environment variables."
+    },
+    {
+      "name": "insecure",
+      "type": "boolean",
+      "required": false,
+      "description": "Whether to explicitly allow the backend to perform \"insecure\" SSL requests. If omitted, the default value is false.",
+      "defaultValue": false
+    },
+    {
+      "name": "no_proxy",
+      "type": "string",
+      "required": false,
+      "description": "Comma-separated list of hosts that should not use HTTP or HTTPS proxies."
+    },
+    {
+      "name": "retry_mode",
+      "type": "string",
+      "required": false,
+      "description": "Specifies how retries are attempted. Valid values are standard and adaptive. Can also be configured using the AWS_RETRY_MODE environment variable.",
+      "validValues": [
+        "standard",
+        "adaptive"
+      ]
+    },
+    {
+      "name": "sts_region",
+      "type": "string",
+      "required": false,
+      "description": "AWS region for STS. If unset, AWS will use the same region for STS as other non-STS operations."
+    },
+    {
+      "name": "use_dualstack_endpoint",
+      "type": "boolean",
+      "required": false,
+      "description": "Force the backend to resolve endpoints with DualStack capability. Can also be set with the AWS_USE_DUALSTACK_ENDPOINT environment variable."
+    },
+    {
+      "name": "use_fips_endpoint",
+      "type": "boolean",
+      "required": false,
+      "description": "Force the backend to resolve endpoints with FIPS capability. Can also be set with the AWS_USE_FIPS_ENDPOINT environment variable."
+    },
+    {
+      "name": "dynamodb_endpoint",
+      "type": "string",
+      "required": false,
+      "deprecated": true,
+      "description": "(Deprecated) Custom endpoint URL for the AWS DynamoDB API. Use endpoints.dynamodb instead."
+    },
+    {
+      "name": "iam_endpoint",
+      "type": "string",
+      "required": false,
+      "deprecated": true,
+      "description": "(Deprecated) Custom endpoint URL for the AWS IAM API. Use endpoints.iam instead."
+    },
+    {
+      "name": "sts_endpoint",
+      "type": "string",
+      "required": false,
+      "deprecated": true,
+      "description": "(Deprecated) Custom endpoint URL for the AWS STS API. Use endpoints.sts instead."
+    },
+    {
+      "name": "endpoint",
+      "type": "string",
+      "required": false,
+      "deprecated": true,
+      "description": "(Deprecated) Custom endpoint URL for the AWS S3 API. Use endpoints.s3 instead."
+    },
+    {
+      "name": "shared_credentials_file",
+      "type": "string",
+      "required": false,
+      "deprecated": true,
+      "description": "(Deprecated, use shared_credentials_files instead) Path to the AWS shared credentials file. Defaults to ~/.aws/credentials."
     }
   ]
 }
