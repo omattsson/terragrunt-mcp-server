@@ -206,8 +206,10 @@ async function updateSchema(schemaPath: string, missingAttrs: Partial<SchemaAttr
   }
   
   // Update metadata
-  // Note: Version is set to 1.1.0 for this specific schema drift fix.
-  // For future updates, consider implementing version increment logic or making this configurable.
+  // NOTE: This is a one-time utility script for PR #211 to update schemas based on
+  // drift detection findings. The version is intentionally set to 1.1.0 for this update.
+  // This script is not intended for repeated use - schema updates should normally be done
+  // manually or through a more sophisticated version management system.
   schema.version = '1.1.0';
   schema.lastUpdated = new Date().toISOString().split('T')[0];
   
