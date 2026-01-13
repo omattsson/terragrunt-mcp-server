@@ -37,7 +37,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added regional/endpoint options: `sts_region`, `use_dualstack_endpoint`, `use_fips_endpoint`
   - Added retry configuration: `retry_mode`
   - Added state locking: `use_lockfile` (new S3-native locking mechanism)
-  - Marked deprecated attributes: `dynamodb_table`, `force_path_style`, `dynamodb_endpoint`, `iam_endpoint`, `sts_endpoint`, `endpoint`, `shared_credentials_file`
+  - Newly marked deprecated attribute: `dynamodb_table`; confirmed existing deprecations for: `force_path_style`, `dynamodb_endpoint`, `iam_endpoint`, `sts_endpoint`, `endpoint`, `shared_credentials_file`
   - Drift reduced: 32 missing → 13 missing (60% improvement)
   
 - **azure-blob.json (v1.1.0)**: Updated Azure backend schema
