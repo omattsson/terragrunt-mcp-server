@@ -111,6 +111,16 @@ export class BackendDocsScraper {
     
     const attributes: AttributeInfo[] = [];
     
+    // Extraction strategy overview:
+    // - We apply three independent parsing strategies against the same document:
+    //   1) Anchor IDs (modern docs structure)
+    //   2) Definition lists / bullet lists around configuration sections
+    //   3) Legacy tables format used by some older backend docs
+    // - All strategies run for each page; their results are merged and deduplicated
+    //   so that a given attribute only appears once in the final attributes array.
+    // - Strategy 3 (tables) exists primarily as a fallback for legacy docs that have
+    //   not yet been migrated to the newer anchor- or list-based formats.
+    
     // Strategy 1: Extract attributes from anchor IDs (modern HashiCorp docs structure)
     // The new docs use <a id="attribute_name"> elements to mark each attribute
     $('a[id]').each((_, anchor) => {

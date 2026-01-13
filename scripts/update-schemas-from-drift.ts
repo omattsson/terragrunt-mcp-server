@@ -206,6 +206,8 @@ async function updateSchema(schemaPath: string, missingAttrs: Partial<SchemaAttr
   }
   
   // Update metadata
+  // Note: Version is set to 1.1.0 for this specific schema drift fix.
+  // For future updates, consider implementing version increment logic or making this configurable.
   schema.version = '1.1.0';
   schema.lastUpdated = new Date().toISOString().split('T')[0];
   

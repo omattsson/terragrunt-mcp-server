@@ -9,6 +9,10 @@ describe('BackendDocsScraper', () => {
   const scraper = new BackendDocsScraper();
 
   describe('scrapeBackendAttributes', () => {
+    // Note: These tests make live HTTP requests to HashiCorp documentation.
+    // This is intentional for integration testing to ensure the parser works with real docs.
+    // For more reliable CI/CD, consider adding parallel fixture-based tests in the future.
+    
     it('should extract attributes from S3 backend documentation', async () => {
       const url = 'https://developer.hashicorp.com/terraform/language/settings/backends/s3';
       const attributes = await scraper.scrapeBackendAttributes(url);
@@ -70,9 +74,8 @@ describe('BackendDocsScraper', () => {
       
       // dynamodb_table should be marked as deprecated
       const dynamoDbTable = attributes.find(a => a.name === 'dynamodb_table');
-      if (dynamoDbTable) {
-        expect(dynamoDbTable.deprecated).toBe(true);
-      }
+      expect(dynamoDbTable).toBeDefined();
+      expect(dynamoDbTable?.deprecated).toBe(true);
     }, 30000);
 
     it('should not include example attributes', async () => {
