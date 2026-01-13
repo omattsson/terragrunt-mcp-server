@@ -11,7 +11,11 @@ describe('BackendDocsScraper', () => {
   describe('scrapeBackendAttributes', () => {
     // Note: These tests make live HTTP requests to HashiCorp documentation.
     // This is intentional for integration testing to ensure the parser works with real docs.
-    // For more reliable CI/CD, consider adding parallel fixture-based tests in the future.
+    // TODO: For more reliable CI/CD, add parallel fixture-based tests:
+    //   1. Capture representative HTML snapshots from HashiCorp docs
+    //   2. Create test/fixtures/backend-docs/*.html files
+    //   3. Add unit tests that parse fixtures instead of making network calls
+    //   4. Keep these live tests for periodic validation of real doc structure
     
     it('should extract attributes from S3 backend documentation', async () => {
       const url = 'https://developer.hashicorp.com/terraform/language/settings/backends/s3';
@@ -92,11 +96,12 @@ describe('BackendDocsScraper', () => {
       
       const attrNames = attributes.map(a => a.name.toLowerCase());
       
-      // Should not include common example attribute names
+      // Should not include common example attribute names that appear in docs
       expect(attrNames).not.toContain('my_bucket');
       expect(attrNames).not.toContain('example');
-      expect(attrNames).not.toContain('foo');
-      expect(attrNames).not.toContain('bar');
+      // Verify no attributes starting with example prefixes got through
+      const examplePrefixes = attrNames.filter(n => n.startsWith('my_') || n.startsWith('example_') || n.startsWith('test_'));
+      expect(examplePrefixes).toHaveLength(0);
     }, 30000);
 
     it('should extract descriptions for attributes', async () => {

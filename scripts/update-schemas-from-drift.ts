@@ -198,10 +198,16 @@ async function updateSchema(schemaPath: string, missingAttrs: Partial<SchemaAttr
   let addedCount = 0;
   
   for (const missingAttr of missingAttrs) {
-    if (!existingNames.has(missingAttr.name!)) {
+    const name = missingAttr.name;
+    if (!name) {
+      console.warn('  ⚠️  Skipping attribute without a name in drift data:', missingAttr);
+      continue;
+    }
+
+    if (!existingNames.has(name)) {
       schema.attributes.push(missingAttr as SchemaAttribute);
       addedCount++;
-      console.log(`  ✓ Added ${missingAttr.name}${missingAttr.deprecated ? ' (deprecated)' : ''}`);
+      console.log(`  ✓ Added ${name}${missingAttr.deprecated ? ' (deprecated)' : ''}`);
     }
   }
   
