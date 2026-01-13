@@ -177,7 +177,7 @@ export class BackendDocsScraper {
           
           const liText = $(li).text();
           const description = liText
-            .replace(this.escapeRegExp(name), '')
+            .replace(new RegExp(this.escapeRegExp(name), 'i'), '')
             .replace(/^\s*[-:]\s*/, '')
             .replace(/^\s*\(Optional\)\s*/i, '')
             .replace(/^\s*\(Required\)\s*/i, '')
