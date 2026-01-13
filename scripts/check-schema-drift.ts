@@ -89,6 +89,13 @@ export class BackendDocsScraper {
   private readonly retryDelayMs = 1000;
 
   /**
+   * Escapes special regex characters in a string to be used in RegExp constructor
+   */
+  private escapeRegExp(str: string): string {
+    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+
+  /**
    * Check if attribute name looks like an example value
    */
   private isLikelyExampleAttribute(name: string): boolean {
@@ -138,7 +145,7 @@ export class BackendDocsScraper {
           // Extract description (text after the attribute name)
           // Remove the attribute name itself and common prefixes
           let description = liText
-            .replace(new RegExp(`^${id}`, 'i'), '')
+            .replace(new RegExp(`^${this.escapeRegExp(id)}`, 'i'), '')
             .replace(/^\s*[-:]\s*/, '')
             .replace(/^\s*\(Optional\)\s*/i, '')
             .replace(/^\s*\(Required\)\s*/i, '')
@@ -170,7 +177,7 @@ export class BackendDocsScraper {
           
           const liText = $(li).text();
           const description = liText
-            .replace(name, '')
+            .replace(this.escapeRegExp(name), '')
             .replace(/^\s*[-:]\s*/, '')
             .replace(/^\s*\(Optional\)\s*/i, '')
             .replace(/^\s*\(Required\)\s*/i, '')
