@@ -5,6 +5,45 @@ All notable changes to the Terragrunt MCP Server will be documented in this file
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### 🐛 Fixed
+
+#### Schema Drift Detection Parser (Issue #210)
+
+- **Updated HTML Parsing**: Fixed drift detection script to work with modern HashiCorp documentation site structure
+  - Updated CSS selectors to match React-based HTML components
+  - Added extraction from anchor ID elements (`<a id="attribute_name">`)
+  - Improved attribute name and description parsing from nested React components
+- **Sanity Checks**: Added validation to warn when core backend attributes are missing (indicates parsing failure)
+  - S3: Validates `bucket`, `key`, `region` are found
+  - Azure: Validates `storage_account_name`, `container_name`, `key` are found
+  - GCS: Validates `bucket`, `prefix` are found
+- **Test Coverage**: Added comprehensive integration tests for schema drift scraper
+  - Tests all three backends (S3, Azure, GCS)
+  - Validates core attributes are detected
+  - Checks deprecated attribute marking
+  - Ensures example attributes are excluded
+- **Results**: Script now correctly identifies 58 S3, 32 Azure, and 9 GCS attributes (previously 0 for all)
+
+### 🔄 Changed
+
+#### Backend Schema Updates (Issue #210)
+
+- **s3.json (v1.1.0)**: Updated essential S3 backend schema with 19 new attributes
+  - Added security attributes: `allowed_account_ids`, `forbidden_account_ids`, `custom_ca_bundle`, `insecure`
+  - Added proxy support: `http_proxy`, `https_proxy`, `no_proxy`
+  - Added EC2 metadata service configuration: `ec2_metadata_service_endpoint`, `ec2_metadata_service_endpoint_mode`
+  - Added regional/endpoint options: `sts_region`, `use_dualstack_endpoint`, `use_fips_endpoint`
+  - Added retry configuration: `retry_mode`
+  - Added state locking: `use_lockfile` (new S3-native locking mechanism)
+  - Newly marked deprecated attribute: `dynamodb_table`; confirmed existing deprecations for: `force_path_style`, `dynamodb_endpoint`, `iam_endpoint`, `sts_endpoint`, `endpoint`, `shared_credentials_file`
+  - Drift reduced: 32 missing → 13 missing (60% improvement)
+  
+- **azure-blob.json (v1.1.0)**: Updated Azure backend schema
+  - Added `use_microsoft_graph` for Microsoft Graph authorization
+  - Note: Some remaining drift items are parser artifacts from incomplete attribute descriptions in documentation
+
 ## [1.0.0] - 2026-01-06
 
 ### 🎉 First Stable Release

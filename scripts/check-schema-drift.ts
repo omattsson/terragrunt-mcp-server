@@ -89,6 +89,13 @@ export class BackendDocsScraper {
   private readonly retryDelayMs = 1000;
 
   /**
+   * Escapes special regex characters in a string to be used in RegExp constructor
+   */
+  private escapeRegExp(str: string): string {
+    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+
+  /**
    * Check if attribute name looks like an example value
    */
   private isLikelyExampleAttribute(name: string): boolean {
@@ -111,74 +118,88 @@ export class BackendDocsScraper {
     
     const attributes: AttributeInfo[] = [];
     
-    // Strategy 1: Look for "Configuration" or "Arguments" section with proper attribute list parsing
-    const configSection = $('#configuration, #arguments, #argument-reference, [id*="configuration"]').first();
+    // Extraction strategy overview:
+    // - We apply three independent parsing strategies against the same document:
+    //   1) Anchor IDs (modern docs structure)
+    //   2) Definition lists / bullet lists around configuration sections
+    //   3) Legacy tables format used by some older backend docs
+    // - All strategies run for each page; their results are merged and deduplicated
+    //   so that a given attribute only appears once in the final attributes array.
+    // - Strategy 3 (tables) exists primarily as a fallback for legacy docs that have
+    //   not yet been migrated to the newer anchor- or list-based formats.
     
-    if (configSection.length > 0) {
-      // Find list items that contain attribute definitions (optimized to traverse siblings once)
-      let currentElem = configSection.parent().next();
+    // Strategy 1: Extract attributes from anchor IDs (modern HashiCorp docs structure)
+    // The new docs use <a id="attribute_name"> elements to mark each attribute
+    $('a[id]').each((_, anchor) => {
+      const id = $(anchor).attr('id');
+      if (!id) return;
       
-      while (currentElem.length > 0) {
-        // Stop at next major heading
-        if (currentElem.is('h1, h2')) break;
+      // Valid attribute name pattern
+      if (/^[a-z_][a-z0-9_]*$/i.test(id) && !this.isLikelyExampleAttribute(id)) {
+        // Find the parent list item or containing element
+        const listItem = $(anchor).closest('li');
         
-        // Look for list items (ul/ol li) that define parameters
-        currentElem.find('li').each((_, li) => {
+        if (listItem.length > 0) {
+          const liText = listItem.text();
+          
+          // Extract description (text after the attribute name)
+          // Remove the attribute name itself and common prefixes
+          let description = liText
+            .replace(new RegExp(`^${this.escapeRegExp(id)}`, 'i'), '')
+            .replace(/^\s*[-:]\s*/, '')
+            .replace(/^\s*\(Optional\)\s*/i, '')
+            .replace(/^\s*\(Required\)\s*/i, '')
+            .trim()
+            .substring(0, 200);
+          
+          // Check if marked as deprecated
+          const deprecated = liText.toLowerCase().includes('deprecated') || 
+                            liText.toLowerCase().includes('legacy');
+          
+          attributes.push({
+            name: id,
+            description: description || undefined,
+            deprecated
+          });
+        }
+      }
+    });
+    
+    // Strategy 2: Look for list items with code elements (fallback for different structures)
+    $('.mdx-lists_listItem__nkqhg, li').each((_, li) => {
+      const codeElem = $(li).find('code').first();
+      if (codeElem.length > 0) {
+        const name = codeElem.text().trim();
+        
+        // Valid attribute name pattern, not an example
+        if (/^[a-z_][a-z0-9_]*$/i.test(name) && 
+            !this.isLikelyExampleAttribute(name)) {
+          
           const liText = $(li).text();
+          const description = liText
+            .replace(new RegExp(this.escapeRegExp(name), 'i'), '')
+            .replace(/^\s*[-:]\s*/, '')
+            .replace(/^\s*\(Optional\)\s*/i, '')
+            .replace(/^\s*\(Required\)\s*/i, '')
+            .trim()
+            .substring(0, 200);
           
-          // Look for patterns like "attribute_name - description" or "attribute_name: description"
-          const match = liText.match(/^([a-z_][a-z0-9_]*)\s*[-:]\s*(.+)/i);
+          const deprecated = liText.toLowerCase().includes('deprecated') ||
+                            liText.toLowerCase().includes('legacy');
           
-          if (match) {
-            const name = match[1].trim();
-            const description = match[2].trim().substring(0, 200);
-            
-            // Skip example values that might look like attributes
-            if (this.isLikelyExampleAttribute(name)) {
-              return;
-            }
-            
-            // Check if marked as deprecated
-            const deprecated = liText.toLowerCase().includes('deprecated') || 
-                              liText.toLowerCase().includes('legacy');
-            
+          // Only add if not already captured by Strategy 1
+          if (!attributes.some(a => a.name === name)) {
             attributes.push({
               name,
               description: description || undefined,
               deprecated
             });
-          } else {
-            // Also try to find code elements at the start of list items
-            const firstCode = $(li).find('code').first();
-            if (firstCode.length > 0) {
-              const name = firstCode.text().trim();
-              
-              // Valid attribute name pattern, not an example
-              if (/^[a-z_][a-z0-9_]*$/i.test(name) && 
-                  !this.isLikelyExampleAttribute(name)) {
-                
-                const description = $(li).text()
-                  .replace(name, '')
-                  .trim()
-                  .substring(0, 200);
-                
-                const deprecated = $(li).text().toLowerCase().includes('deprecated');
-                
-                attributes.push({
-                  name,
-                  description: description || undefined,
-                  deprecated
-                });
-              }
-            }
           }
-        });
-        
-        currentElem = currentElem.next();
+        }
       }
-    }
+    });
     
-    // Strategy 2: Look for parameter tables (common in HashiCorp docs)
+    // Strategy 3: Look for parameter tables (legacy docs format)
     $('table').each((_, table) => {
       const headers = $(table).find('th').map((_, th) => $(th).text().toLowerCase()).get();
       
@@ -190,21 +211,21 @@ export class BackendDocsScraper {
             const nameCell = cells.first();
             const name = nameCell.find('code').text().trim() || nameCell.text().trim();
             
-            // Exclude example attributes (e.g., "foo", "bar") that appear in documentation only for illustration.
-            // Including these would cause false positives in drift detection, as they do not exist in real schemas.
             if (/^[a-z_][a-z0-9_]*$/i.test(name) && !this.isLikelyExampleAttribute(name)) {
-              // Only get description if there's a second column
               const description = cells.length > 1 
                 ? cells.eq(1).text().trim().substring(0, 200) 
                 : '';
               const rowText = $(row).text().toLowerCase();
               const deprecated = rowText.includes('deprecated') || rowText.includes('legacy');
               
-              attributes.push({
-                name,
-                description: description || undefined,
-                deprecated
-              });
+              // Only add if not already captured by previous strategies
+              if (!attributes.some(a => a.name === name)) {
+                attributes.push({
+                  name,
+                  description: description || undefined,
+                  deprecated
+                });
+              }
             }
           }
         });
@@ -232,7 +253,36 @@ export class BackendDocsScraper {
     const result = Array.from(uniqueAttrs.values());
     console.error(`Found ${result.length} attributes in documentation`);
     
+    // Sanity check: warn if core attributes are missing (indicates parsing failure)
+    this.validateCoreAttributes(result, url);
+    
     return result;
+  }
+
+  /**
+   * Validate that core attributes are found (sanity check for parsing accuracy)
+   */
+  private validateCoreAttributes(attributes: AttributeInfo[], url: string): void {
+    const attrNames = new Set(attributes.map(a => a.name));
+    
+    // Define expected core attributes per backend type
+    const coreAttributes: Record<string, string[]> = {
+      's3': ['bucket', 'key', 'region'],
+      'azurerm': ['storage_account_name', 'container_name', 'key'],
+      'gcs': ['bucket', 'prefix']
+    };
+    
+    // Determine backend type from URL
+    for (const [backend, required] of Object.entries(coreAttributes)) {
+      if (url.includes(`/${backend}`) || url.endsWith(`/${backend}`)) {
+        const missing = required.filter(attr => !attrNames.has(attr));
+        if (missing.length > 0) {
+          console.error(`⚠️  WARNING: Core attributes missing for ${backend} backend: ${missing.join(', ')}`);
+          console.error(`    This likely indicates a parsing failure. Manual verification recommended.`);
+        }
+        break;
+      }
+    }
   }
 
   /**
