@@ -2,7 +2,7 @@
 
 ## Architecture
 
-MCP server providing Terragrunt documentation to AI assistants via VS Code. Tool-only architecture (v1.0+).
+MCP server providing Terragrunt documentation to AI assistants via VS Code. Tool-only architecture (v1.0.0+).
 
 ```
 src/
@@ -69,7 +69,7 @@ npm run start:guidance     # Best practices/troubleshooting
 1. Add schema in `ToolHandler.getAvailableTools()` (name, description, inputSchema)
 2. Add case in `ToolHandler.executeTool()` switch statement
 3. Add unit test in `test/unit/tool-handler.test.ts`
-4. Update tool count in MCP protocol tests (currently expects 8)
+4. Update tool count in MCP protocol tests to match the current number of tools in FULL mode
 5. Consider: can this merge into existing tool with `mode` parameter?
 
 ## Adding a New Manager
@@ -82,7 +82,7 @@ npm run start:guidance     # Best practices/troubleshooting
 
 ## Performance: Lazy Loading
 
-Enable for large doc sets (60-80% memory reduction):
+Enable for large doc sets (60-80% initial memory footprint reduction):
 ```bash
 TERRAGRUNT_LAZY_LOADING=true npm start
 ```
@@ -98,13 +98,14 @@ Warmup strategies (`TERRAGRUNT_WARMUP_STRATEGY`):
 Backend schemas (`schemas/backends/*.json`) track Terraform backend attributes. Detect drift from upstream docs:
 ```bash
 npm run check-schema-drift              # Compare schemas against HashiCorp docs
-npm run update-schemas-from-drift       # Auto-update schemas with new attributes
 ```
 
 When adding backend attributes:
 1. Run drift detection to identify missing attributes
-2. Update schema JSON with new attributes (include `deprecated: true` if applicable)
+2. Manually review and update schema JSON with new attributes (include `deprecated: true` if applicable)
 3. Bump schema version in the JSON file
+
+**Note**: Schema updates require human review - never auto-update without validating attribute semantics.
 
 ## Debugging
 
