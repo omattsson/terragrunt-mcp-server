@@ -398,7 +398,7 @@ export class ToolHandler {
         const allTools = [
             {
                 name: 'search_docs',
-                description: 'Search docs, list sections, or find code examples',
+                description: 'Search Terragrunt documentation for HCL blocks, CLI commands, functions, and IaC patterns. Modes: search, list sections, get section content, or find code examples.',
                 inputSchema: {
                     type: 'object',
                     properties: {
@@ -458,7 +458,7 @@ export class ToolHandler {
             },
             {
                 name: 'function_reference',
-                description: 'Get function details or list all functions',
+                description: 'Get Terragrunt built-in function details (find_in_parent_folders, dependency, read_terragrunt_config, etc.) or list all available functions by category.',
                 inputSchema: {
                     type: 'object',
                     properties: {
@@ -501,7 +501,7 @@ export class ToolHandler {
             },
             {
                 name: 'cli_reference',
-                description: 'Get CLI command help or list commands',
+                description: 'Get Terragrunt CLI command help (terragrunt run-all, plan, apply, init, validate, etc.) or list commands by category.',
                 inputSchema: {
                     type: 'object',
                     properties: {
@@ -534,7 +534,7 @@ export class ToolHandler {
             },
             {
                 name: 'get_hcl_config_reference',
-                description: 'Get HCL block docs with syntax and examples',
+                description: 'Get Terragrunt HCL block documentation with syntax and examples. Blocks: remote_state, dependency, dependencies, generate, terraform, inputs, include, locals.',
                 inputSchema: {
                     type: 'object',
                     properties: {
@@ -558,7 +558,7 @@ export class ToolHandler {
             },
             {
                 name: 'get_guidance',
-                description: 'Get best practices, comparisons, or patterns',
+                description: 'Get Terragrunt best practices, block comparisons (dependency vs dependencies), or DRY patterns for infrastructure-as-code organization.',
                 inputSchema: {
                     type: 'object',
                     properties: {
@@ -593,7 +593,7 @@ export class ToolHandler {
             },
             {
                 name: 'build_config',
-                description: 'Generate or write Terragrunt configuration',
+                description: 'Generate or write Terragrunt HCL configuration files (terragrunt.hcl). Use cases: remote_state backends (S3, GCS, Azure), provider generation, dependency blocks, hooks, and inputs.',
                 inputSchema: {
                     type: 'object',
                     properties: {
@@ -656,7 +656,7 @@ export class ToolHandler {
             },
             {
                 name: 'diagnose_terragrunt_error',
-                description: 'Diagnose Terragrunt errors with solutions',
+                description: 'Diagnose Terragrunt and Terraform error messages with root cause analysis and solutions. Handles dependency cycles, state lock errors, provider issues, and HCL syntax problems.',
                 inputSchema: {
                     type: 'object',
                     properties: {
@@ -719,7 +719,7 @@ export class ToolHandler {
             },
             {
                 name: 'get_server_metrics',
-                description: 'Get server metrics',
+                description: 'Get Terragrunt MCP server metrics: cache hit rates, tool invocation counts, response times, and memory usage for observability.',
                 inputSchema: {
                     type: 'object',
                     properties: {
