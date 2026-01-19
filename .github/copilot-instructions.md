@@ -176,3 +176,53 @@ When parsing documentation content:
 - Always consider impact on caching, error handling, and MCP compliance
 - Write unit tests for new logic, then integration tests for end-to-end verification
 - Review regex patterns carefully to avoid over/under-matching
+
+---
+
+# User Tool Selection Guide
+
+> **For End Users**: Copy this section to your workspace's `.github/copilot-instructions.md` to help Copilot automatically select Terragrunt MCP tools.
+
+## When to Use Terragrunt MCP Tools
+
+Copilot should use the **Terragrunt MCP server tools** when the user's question involves:
+
+### Keyword Triggers
+- **File patterns**: `terragrunt.hcl`, `*.hcl` files, `root.hcl`, `common.hcl`
+- **HCL blocks**: `remote_state`, `dependency`, `dependencies`, `generate`, `terraform`, `inputs`, `include`, `locals`
+- **Functions**: `find_in_parent_folders()`, `read_terragrunt_config()`, `path_relative_to_include()`, `get_env()`, `run_cmd()`
+- **CLI commands**: `terragrunt run-all`, `terragrunt plan`, `terragrunt apply`, `terragrunt init`, `terragrunt validate`
+- **Concepts**: DRY infrastructure, Terraform wrapper, multi-environment, mono-repo structure
+
+### Tool Selection Matrix
+
+| User Intent | Recommended Tool | Example Query |
+|-------------|------------------|---------------|
+| Search documentation | `search_docs` | "How does terragrunt handle dependencies?" |
+| Understand a function | `function_reference` | "What does find_in_parent_folders do?" |
+| Get CLI help | `cli_reference` | "How do I use terragrunt run-all?" |
+| HCL block syntax | `get_hcl_config_reference` | "Show me remote_state block syntax" |
+| Best practices | `get_guidance` | "What's the best way to organize Terragrunt?" |
+| Generate config | `build_config` | "Create a terragrunt.hcl for S3 backend" |
+| Debug errors | `diagnose_terragrunt_error` | "Why am I getting a dependency cycle error?" |
+| Get server metrics | `get_server_metrics` | "Show me server performance metrics" |
+
+### Multi-Tool Workflows
+
+For complex questions, combine tools:
+1. **Setup help**: `get_hcl_config_reference` → `build_config` → `get_guidance`
+2. **Debugging**: `diagnose_terragrunt_error` → `search_docs` → `cli_reference`
+3. **Learning**: `search_docs` → `function_reference` → `get_guidance`
+
+## Server Mode Selection
+
+The MCP server supports different modes for token efficiency:
+
+| Mode | Tools | Use Case |
+|------|-------|----------|
+| `full` | All 8 tools | General Terragrunt assistance |
+| `core` | search_docs, cli_reference, function_reference, get_hcl_config_reference | Documentation lookup only |
+| `config` | build_config, get_hcl_config_reference | Configuration generation focus |
+| `guidance` | get_guidance, diagnose_terragrunt_error | Best practices and troubleshooting |
+
+Configure via environment variable: `TERRAGRUNT_MCP_MODE=core`

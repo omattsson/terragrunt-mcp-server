@@ -148,10 +148,94 @@ chmod +x dist/index.js
 - MCP uses stdio, not ports, so this shouldn't happen
 - If you see port errors, check for other MCP servers running
 
+## Advanced Configuration
+
+### Server Mode Selection
+
+The server supports different modes to optimize token usage:
+
+| Mode | Tools | Token Cost | Use Case |
+|------|-------|------------|----------|
+| `full` | All 8 tools | ~2,400 tokens | General assistance |
+| `core` | 4 docs tools | ~965 tokens | Documentation lookup |
+| `config` | 2 config tools | ~640 tokens | Config generation |
+| `guidance` | 2 guidance tools | ~680 tokens | Best practices |
+
+Configure via environment variable in `settings.json`:
+
+```json
+{
+  "mcp.servers": {
+    "terragrunt": {
+      "command": "node",
+      "args": ["/path/to/terragrunt-mcp-server/dist/index.js"],
+      "env": {
+        "TERRAGRUNT_MCP_MODE": "core"
+      }
+    }
+  }
+}
+```
+
+### Multi-Server Configuration (Mode Aliases)
+
+Register multiple server entries for different workflows. This gives Copilot more descriptive server names:
+
+```json
+{
+  "mcp.servers": {
+    "terragrunt": {
+      "command": "node",
+      "args": ["/path/to/terragrunt-mcp-server/dist/index.js"],
+      "env": { "TERRAGRUNT_MCP_MODE": "full" }
+    },
+    "terragrunt-docs": {
+      "command": "node",
+      "args": ["/path/to/terragrunt-mcp-server/dist/index.js"],
+      "env": { "TERRAGRUNT_MCP_MODE": "core" }
+    },
+    "terragrunt-config": {
+      "command": "node",
+      "args": ["/path/to/terragrunt-mcp-server/dist/index.js"],
+      "env": { "TERRAGRUNT_MCP_MODE": "config" }
+    }
+  }
+}
+```
+
+### MCP Server Sampling Settings
+
+For consistent Copilot behavior, configure model allowlists:
+
+```json
+{
+  "chat.mcp.serverSampling": {
+    "terragrunt": {
+      "enabled": true,
+      "allowedModels": ["gpt-4", "gpt-4-turbo", "claude-3-opus", "claude-3-sonnet"]
+    }
+  }
+}
+```
+
+### Environment Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `TERRAGRUNT_MCP_MODE` | Server mode (full, core, config, guidance, observability) | `full` |
+| `TERRAGRUNT_MCP_FILE_WRITE_ENABLED` | Enable file writing | `true` |
+| `TERRAGRUNT_MCP_AUTO_BACKUP` | Auto-backup before overwrite | `true` |
+| `TERRAGRUNT_MCP_ALLOWED_DIRS` | Comma-separated allowed write paths | Current directory |
+| `TERRAGRUNT_MCP_MAX_FILE_SIZE` | Max file size in bytes | `1048576` (1MB) |
+
+## Copilot Tool Selection
+
+For optimal tool discovery, add the User Tool Selection Guide from `.github/copilot-instructions.md` to your workspace's Copilot instructions. This helps Copilot automatically choose Terragrunt MCP tools for relevant questions.
+
 ## Next Steps
 
 - [Quick Start Tutorial](Quick-Start-Tutorial) - Learn how to use the server
-- [Available Tools](Available-Tools) - Explore the 6 documentation tools
+- [Available Tools](Available-Tools) - Explore the 8 documentation tools
 - [Configuration](Configuration) - Advanced configuration options
 
 ## Getting Help

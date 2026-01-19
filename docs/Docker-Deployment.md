@@ -197,7 +197,64 @@ Configure VS Code `settings.json`:
 }
 ```
 
-### Option 2: Shell Script Wrapper
+### Option 2: Mode-Based Server Aliases
+
+Register multiple Docker containers with different server modes for token efficiency and descriptive naming:
+
+```json
+{
+  "mcp.servers": {
+    "terragrunt": {
+      "command": "docker",
+      "args": [
+        "run", "-i", "--rm",
+        "-e", "TERRAGRUNT_MCP_MODE=full",
+        "-v", "${workspaceFolder}/.cache:/app/.cache",
+        "terragrunt-mcp-server:latest"
+      ]
+    },
+    "terragrunt-docs": {
+      "command": "docker",
+      "args": [
+        "run", "-i", "--rm",
+        "-e", "TERRAGRUNT_MCP_MODE=core",
+        "-v", "${workspaceFolder}/.cache:/app/.cache",
+        "terragrunt-mcp-server:latest"
+      ]
+    },
+    "terragrunt-config": {
+      "command": "docker",
+      "args": [
+        "run", "-i", "--rm",
+        "-e", "TERRAGRUNT_MCP_MODE=config",
+        "-v", "${workspaceFolder}/.cache:/app/.cache",
+        "terragrunt-mcp-server:latest"
+      ]
+    },
+    "terragrunt-guidance": {
+      "command": "docker",
+      "args": [
+        "run", "-i", "--rm",
+        "-e", "TERRAGRUNT_MCP_MODE=guidance",
+        "-v", "${workspaceFolder}/.cache:/app/.cache",
+        "terragrunt-mcp-server:latest"
+      ]
+    }
+  }
+}
+```
+
+**Available Modes:**
+
+| Mode | Tools | Token Cost | Description |
+|------|-------|------------|-------------|
+| `full` | 8 tools | ~2,400 | All tools for general assistance |
+| `core` | 4 tools | ~965 | Documentation lookup (search_docs, cli_reference, function_reference, get_hcl_config_reference) |
+| `config` | 2 tools | ~640 | Configuration generation (build_config, get_hcl_config_reference) |
+| `guidance` | 2 tools | ~680 | Best practices and troubleshooting (get_guidance, diagnose_terragrunt_error) |
+| `observability` | 1 tool | ~155 | Server metrics only (get_server_metrics) |
+
+### Option 3: Shell Script Wrapper
 
 Create `scripts/docker-mcp.sh`:
 
@@ -223,7 +280,68 @@ Configure VS Code:
 }
 ```
 
-### Option 3: Docker Compose
+### Option 4: Docker Compose with Modes
+
+Create multiple services in `docker-compose.yml` for different modes:
+
+```yaml
+version: '3.8'
+
+services:
+  terragrunt-mcp-full:
+    image: terragrunt-mcp-server:latest
+    container_name: terragrunt-mcp-full
+    stdin_open: true
+    environment:
+      - TERRAGRUNT_MCP_MODE=full
+    volumes:
+      - ./.cache:/app/.cache
+
+  terragrunt-mcp-docs:
+    image: terragrunt-mcp-server:latest
+    container_name: terragrunt-mcp-docs
+    stdin_open: true
+    environment:
+      - TERRAGRUNT_MCP_MODE=core
+    volumes:
+      - ./.cache:/app/.cache
+
+  terragrunt-mcp-config:
+    image: terragrunt-mcp-server:latest
+    container_name: terragrunt-mcp-config
+    stdin_open: true
+    environment:
+      - TERRAGRUNT_MCP_MODE=config
+    volumes:
+      - ./.cache:/app/.cache
+```
+
+Start services separately:
+
+```bash
+docker-compose up -d terragrunt-mcp-docs
+```
+
+Then configure VS Code to use the specific service:
+
+```json
+{
+  "mcp.servers": {
+    "terragrunt-docs": {
+      "command": "docker-compose",
+      "args": [
+        "exec",
+        "-T",
+        "terragrunt-mcp-docs",
+        "node",
+        "dist/index.js"
+      ]
+    }
+  }
+}
+```
+
+### Option 5: Docker Compose (Single Service)
 
 Start service separately:
 

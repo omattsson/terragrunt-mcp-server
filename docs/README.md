@@ -13,6 +13,7 @@ A Model Context Protocol (MCP) server that provides comprehensive Terragrunt doc
 - [Installation Guide](Installation-Guide) - Get up and running quickly
 - [Quick Start Tutorial](Quick-Start-Tutorial) - Your first steps with the MCP server
 - [Configuration](Configuration) - Configure VS Code and MCP settings
+- [Copilot Instructions Template](Copilot-Instructions-Template.md) - Copy to your workspace for automatic tool selection
 
 ### Features & Tools
 

@@ -8,5 +8,32 @@
       "cwd": ".",
       "env": {}
     }
+  },
+  "_examples": {
+    "_comment": "Copy and uncomment any of these entries to mcpServers above for mode-based server aliases",
+    "terragrunt-docs": {
+      "command": "node",
+      "args": ["dist/index.js"],
+      "cwd": ".",
+      "env": { "TERRAGRUNT_MCP_MODE": "core" }
+    },
+    "terragrunt-config": {
+      "command": "node",
+      "args": ["dist/index.js"],
+      "cwd": ".",
+      "env": { "TERRAGRUNT_MCP_MODE": "config" }
+    },
+    "terragrunt-guidance": {
+      "command": "node",
+      "args": ["dist/index.js"],
+      "cwd": ".",
+      "env": { "TERRAGRUNT_MCP_MODE": "guidance" }
+    },
+    "terragrunt-observability": {
+      "command": "node",
+      "args": ["dist/index.js"],
+      "cwd": ".",
+      "env": { "TERRAGRUNT_MCP_MODE": "observability" }
+    }
   }
 }
