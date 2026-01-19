@@ -205,6 +205,7 @@ Copilot should use the **Terragrunt MCP server tools** when the user's question 
 | Best practices | `get_guidance` | "What's the best way to organize Terragrunt?" |
 | Generate config | `build_config` | "Create a terragrunt.hcl for S3 backend" |
 | Debug errors | `diagnose_terragrunt_error` | "Why am I getting a dependency cycle error?" |
+| Get server metrics | `get_server_metrics` | "Show me server performance metrics" |
 
 ### Multi-Tool Workflows
 

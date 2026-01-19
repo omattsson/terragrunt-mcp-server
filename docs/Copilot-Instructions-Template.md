@@ -29,6 +29,7 @@ Recognize these patterns and use Terragrunt MCP tools:
 | Best practices | `get_guidance` | "What's the best way to organize Terragrunt?" |
 | Generate config | `build_config` | "Create a terragrunt.hcl for S3 backend" |
 | Debug errors | `diagnose_terragrunt_error` | "Why am I getting a dependency cycle error?" |
+| Get server metrics | `get_server_metrics` | "Show me MCP server cache hit rates and tool usage" |
 
 ### Multi-Tool Workflows
 
@@ -47,6 +48,7 @@ For complex questions, combine tools in sequence:
 - **get_guidance**: Get best practices, block comparisons (e.g., dependency vs dependencies), or DRY patterns
 - **build_config**: Generate Terragrunt HCL configuration files for remote_state backends, provider generation, dependency blocks, hooks, and inputs
 - **diagnose_terragrunt_error**: Diagnose error messages including dependency cycles, state lock errors, provider issues, and HCL syntax problems
+- **get_server_metrics**: Get Terragrunt MCP server metrics including cache hit rates, tool invocation counts, response times, and memory usage for observability
 
 ---
 
