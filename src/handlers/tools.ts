@@ -50,7 +50,7 @@ import type { AdvancedExampleCategory } from '../types/advanced-examples.js';
 import type { IMetricsManager, MetricsResponse } from '../types/metrics.js';
 import type { PaginationMetadata } from '../types/mcp.js';
 import { NullMetricsManager } from '../terragrunt/metrics.js';
-import { ServerMode, MODE_CONFIGS, shouldLoadDependency, shouldEnableTool } from '../modes/config.js';
+import { ServerMode, MODE_CONFIGS, shouldLoadDependency, shouldEnableTool, DependencyType } from '../modes/config.js';
 
 export interface Tool {
     name: string;
@@ -317,15 +317,32 @@ export class ToolHandler {
      * if ('error' in docsManager) return docsManager;
      * // docsManager is now typed as non-null
      */
+    // Explicit mapping from manager names to their DependencyType(s)
+    // Used by checkManager() to accurately suggest which modes enable a given manager
+    private static readonly MANAGER_DEPENDENCY_MAP: Record<string, DependencyType[]> = {
+        'DocsManager': ['docs'],
+        'FunctionsManager': ['functions'],
+        'CLICommandsManager': ['cli'],
+        'TemplatesManager': ['templates'],
+        'ConfigGenerator': ['generator'],
+        'HCLBlocksManager': ['hcl'],
+        'FileWriter': ['fileWriter'],
+        'BestPracticesAnalyzer': ['bestPractices'],
+        'ErrorPatternMatcher': ['errorPatterns'],
+        'BlockComparisonManager': ['comparisons'],
+        'AdvancedExamplesManager': ['advancedExamples'],
+        'MetricsManager': ['metrics']
+    };
+
     private checkManager<T>(manager: T | undefined, managerName: string): T | { error: string; errorType: string; availableIn?: string[] } {
         if (!manager) {
             // Find which modes enable this manager's tools so the AI can self-correct
-            const managerNameLower = managerName.toLowerCase();
+            const deps = ToolHandler.MANAGER_DEPENDENCY_MAP[managerName] ?? [];
             const availableIn = Object.values(MODE_CONFIGS)
                 .filter(cfg =>
                     cfg.name !== this.mode &&
                     (cfg.dependencies.includes('all') ||
-                        cfg.dependencies.some(d => managerNameLower.includes(d.toLowerCase())))
+                        deps.some(dep => cfg.dependencies.includes(dep)))
                 )
                 .map(cfg => cfg.name);
             return {
@@ -372,14 +389,21 @@ export class ToolHandler {
             effectivePageSize = MAX_PAGE_SIZE;
             pageSizeWarning = `pageSize capped from ${pageSize} to ${MAX_PAGE_SIZE} to prevent oversized responses.`;
         }
+
+        // Clamp page to valid range (>= 1)
+        const effectivePage = Math.max(1, page);
+        const pageWarning = page < 1 ? `Invalid page (${page}). Clamped to 1.` : undefined;
         
         const totalPages = Math.ceil(totalItems / effectivePageSize) || 1;
-        const startIndex = (page - 1) * effectivePageSize;
+        const startIndex = (effectivePage - 1) * effectivePageSize;
         const endIndex = startIndex + effectivePageSize;
 
-        // Omit verbose pagination metadata when all results fit in a single page
-        // Still respect the page parameter — if page > 1 on a single-page result, return empty
-        if (totalItems <= effectivePageSize && page <= 1) {
+        // Build combined warning if needed
+        const warnings = [pageSizeWarning, pageWarning].filter(Boolean);
+        const warning = warnings.length > 0 ? warnings.join(' ') : undefined;
+
+        // Single-page fast path — all results fit on one page
+        if (totalItems <= effectivePageSize && effectivePage === 1) {
             return {
                 results: items,
                 pagination: {
@@ -389,7 +413,7 @@ export class ToolHandler {
                     totalItems,
                     hasMore: false,
                     hasPrevious: false,
-                    ...(pageSizeWarning ? { warning: pageSizeWarning } : {})
+                    ...(warning ? { warning } : {})
                 }
             };
         }
@@ -397,13 +421,14 @@ export class ToolHandler {
         return {
             results: items.slice(startIndex, endIndex),
             pagination: {
-                page,
+                page: effectivePage,
                 pageSize: effectivePageSize,
                 totalPages,
                 totalItems,
-                hasMore: page < totalPages,
-                hasPrevious: page > 1,
-                ...(pageSizeWarning ? { warning: pageSizeWarning } : {})
+                hasMore: effectivePage < totalPages,
+                hasPrevious: effectivePage > 1 && effectivePage <= totalPages,
+                ...(warning ? { warning } : {}),
+                ...(effectivePage > totalPages ? { warning: `Page ${effectivePage} exceeds totalPages (${totalPages}). No results.${warning ? ' ' + warning : ''}` } : {})
             }
         };
     }
@@ -1051,7 +1076,7 @@ export class ToolHandler {
                 .filter(s => {
                     const sl = s.toLowerCase();
                     return sl.includes(sectionLower) || sectionLower.includes(sl) ||
-                        // Simple edit-distance check: shared prefix of 3+ chars
+                        // Simple heuristic: suggest if there is a shared prefix of 3+ characters
                         (sectionLower.length >= 3 && sl.startsWith(sectionLower.substring(0, 3)));
                 })
                 .slice(0, 3);
