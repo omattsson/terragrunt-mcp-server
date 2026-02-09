@@ -2,121 +2,84 @@
 
 ## Architecture
 
-MCP server providing Terragrunt documentation to AI assistants via VS Code. Tool-only architecture (v1.0.0+).
+MCP server (stdio transport) providing Terragrunt documentation to AI assistants. Tool-only architecture — 8 tools in FULL mode, subsetted via 5 server modes (`FULL`, `CORE`, `CONFIG`, `GUIDANCE`, `OBSERVABILITY`).
 
 ```
-src/
-├── index.ts          # Server entry point (stdio transport)
-├── handlers/tools.ts # 8 consolidated tools (search_docs, function_reference, cli_reference, etc.)
-├── modes/config.ts   # Server modes: FULL, CORE, CONFIG, GUIDANCE, OBSERVABILITY
-└── terragrunt/       # Domain managers (DocsManager, FunctionsManager, etc.)
+src/index.ts              # Entry point — TerragruntMCPServer class, stdio transport
+src/handlers/tools.ts     # ToolHandler: all 8 tool schemas + executeTool() switch (~2600 lines)
+src/modes/config.ts       # ServerMode enum, MODE_CONFIGS (tool lists + dependency lists per mode)
+src/terragrunt/           # Domain managers — each owns one concern (docs, functions, CLI, etc.)
+src/types/                # Shared interfaces (hcl-blocks, templates, metrics, mcp)
 ```
 
-### ES Module Critical Rule
-All imports MUST use `.js` extensions (TypeScript compiles to `.js`):
+**Manager wiring:** `ToolHandler.initializeManagers()` conditionally instantiates managers based on `shouldLoadDependency(dep, mode)`. Managers that need doc access take `TerragruntDocsManager` as a constructor param. Mode configs in `src/modes/config.ts` declare which dependencies each mode needs.
+
+**ES Module critical rule:** This project uses `"type": "module"`. All imports MUST use `.js` extensions:
 ```typescript
-import { ToolHandler } from './handlers/tools.js';  // ✓ Correct
-import { ToolHandler } from './handlers/tools';     // ✗ Runtime error
+import { ToolHandler } from './handlers/tools.js';  // ✓
+import { ToolHandler } from './handlers/tools';     // ✗ Runtime crash
 ```
 
 ## Key Patterns
 
-### Multi-tier Cache (DocsManager)
-Fallback chain: In-memory → Disk (`.cache/terragrunt-docs/`) → Network (cheerio scraping) → Fixture (`fixtures/terragrunt-docs-fixture.json`)
+**Multi-tier cache (DocsManager `src/terragrunt/docs.ts`):** In-memory `Map` → LRU search cache → Disk `.cache/terragrunt-docs/` (gzip-compressed) → Network (cheerio scraping from terragrunt.gruntwork.io) → Fixture fallback (`fixtures/terragrunt-docs-fixture.json`).
 
-### Parameter Extraction (FunctionsManager)
-Two-pass approach with context enrichment:
+**Case-insensitive lookups:** Managers use `private normalizeKey(name: string): string` with `Map<string, T>` for cache keys. Follow this pattern in any new manager (see `src/terragrunt/functions.ts`, `src/terragrunt/best-practices.ts`).
+
+**MCP error handling — never throw:** Always return valid MCP responses with error info in the payload:
 ```typescript
-let parameters = parseParams(paramsRaw);
-const ctxParams = parseParamsFromContext(ctx);
-if (ctxParams.length > parameters.length) {
-  parameters = ctxParams;  // Prefer richer context
-}
+try { return { data: await operation() }; }
+catch (error) { console.error('...', error); return { data: [], error: 'message' }; }
 ```
 
-### MCP Error Handling
-Never throw to MCP layer - always return valid responses:
-```typescript
-try {
-  return { data: await operation() };
-} catch (error) {
-  console.error('Handler failed:', error);
-  return { data: [], error: 'Fallback response' };
-}
-```
+**Template loading priority:** `TemplatesManager` (`src/terragrunt/templates/index.ts`) loads from multiple loaders sorted by priority (builtin=10, schema=15, filesystem=50, custom API=100). Higher priority overrides lower.
 
-## Development Commands
+## Development
 
 ```bash
-# Build & Lint
-npm run build              # TypeScript compile (required before testing)
-npm run lint:fix           # ESLint v9 flat config
-
-# Testing (always build first)
-npm run test:unit          # Vitest unit tests (test/unit/*.test.ts)
-npm run test:integration:all  # Node-run integration (test/server-test.js + more)
-npm run test:all           # Full suite
+npm run build                # Required before any testing (tsc → dist/)
+npm run test:unit            # Vitest unit tests (test/unit/*.test.ts)
+npm run test:all             # Unit + all integration tests
 npm test -- test/unit/functions-manager.test.ts  # Single file
-
-# Server modes
-npm run start:core         # Docs/reference tools only (60% token reduction)
-npm run start:config       # Config generation focus
-npm run start:guidance     # Best practices/troubleshooting
+npm run lint:fix             # ESLint v9 flat config
 ```
+
+**Testing conventions:** Tests use Vitest with `vi.mock()` for manager dependencies. Test files in `test/unit/` mirror source names (e.g., `functions-manager.test.ts` tests `src/terragrunt/functions.ts`). Always mock `TerragruntDocsManager` — it does network I/O. See `test/unit/tool-handler.test.ts` for the canonical mocking pattern.
+
+**Integration tests** run against the compiled output: `node test/server-test.js` sends raw JSON-RPC over stdio. Build first.
 
 ## Adding a New Tool
 
-1. Add schema in `ToolHandler.getAvailableTools()` (name, description, inputSchema)
-2. Add case in `ToolHandler.executeTool()` switch statement
-3. Add unit test in `test/unit/tool-handler.test.ts`
-4. Update tool count in MCP protocol tests to match the current number of tools in FULL mode
-5. Consider: can this merge into existing tool with `mode` parameter?
+1. Add tool schema in `ToolHandler.getAvailableTools()` — name, description, inputSchema
+2. Add case in `ToolHandler.executeTool()` switch
+3. Add to the appropriate mode's `tools` array in `src/modes/config.ts` (and add its dependency type)
+4. Add unit test in `test/unit/tool-handler.test.ts`
+5. Update tool count assertions in MCP protocol tests
+6. Prefer merging into an existing tool with a `mode` parameter over creating a new tool
 
 ## Adding a New Manager
 
-1. Create in `src/terragrunt/` with constructor dependency injection
-2. Accept `TerragruntDocsManager` in constructor for doc access
-3. Use `Map<string, T>` with `normalizeKey()` for case-insensitive caching
-4. Implement lazy `loadData()` called on first use
-5. Wire to `ToolHandler` constructor
-
-## Performance: Lazy Loading
-
-Enable for large doc sets (60-80% initial memory footprint reduction):
-```bash
-TERRAGRUNT_LAZY_LOADING=true npm start
-```
-
-Warmup strategies (`TERRAGRUNT_WARMUP_STRATEGY`):
-- `none`: Load metadata only, fetch content on demand
-- `minimal`: Preload getting-started docs
-- `common`: Preload frequently accessed sections
-- `full`: Preload everything (default behavior without lazy loading)
+1. Create in `src/terragrunt/` — accept `TerragruntDocsManager` in constructor if doc access is needed
+2. Use `Map<string, T>` + `normalizeKey()` for case-insensitive caching
+3. Implement lazy `loadData()` called on first use
+4. Add dependency type to `DependencyType` union in `src/modes/config.ts`
+5. Wire instantiation in `ToolHandler.initializeManagers()` behind `shouldLoadDependency()` guard
 
 ## Schema Drift Detection
 
-Backend schemas (`schemas/backends/*.json`) track Terraform backend attributes. Detect drift from upstream docs:
+Backend schemas (`schemas/backends/*.json`) track Terraform backend attributes:
 ```bash
-npm run check-schema-drift              # Compare schemas against HashiCorp docs
+npm run check-schema-drift   # Compare against HashiCorp docs
 ```
-
-When adding backend attributes:
-1. Run drift detection to identify missing attributes
-2. Manually review and update schema JSON with new attributes (include `deprecated: true` if applicable)
-3. Bump schema version in the JSON file
-
-**Note**: Schema updates require human review - never auto-update without validating attribute semantics.
+Schema updates require human review — never auto-update. Include `deprecated: true` for removed attributes and bump the schema version.
 
 ## Debugging
 
 ```bash
-./test-mcp.sh                           # Raw JSON-RPC protocol test
-rm -rf .cache/terragrunt-docs/          # Clear cache to force refresh
-cat .cache/terragrunt-docs/metadata.json  # Check last fetch time
+./test-mcp.sh                              # Raw JSON-RPC protocol test
+rm -rf .cache/terragrunt-docs/             # Force cache refresh
+TERRAGRUNT_LAZY_LOADING=true npm start     # Reduce memory footprint 60-80%
 ```
-
 Server logs to stderr (visible in VS Code Output panel).
-
----
 
 **End-user tool selection guide**: See [docs/Copilot-Instructions-Template.md](../docs/Copilot-Instructions-Template.md)

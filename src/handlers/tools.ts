@@ -50,7 +50,7 @@ import type { AdvancedExampleCategory } from '../types/advanced-examples.js';
 import type { IMetricsManager, MetricsResponse } from '../types/metrics.js';
 import type { PaginationMetadata } from '../types/mcp.js';
 import { NullMetricsManager } from '../terragrunt/metrics.js';
-import { ServerMode, shouldLoadDependency, shouldEnableTool } from '../modes/config.js';
+import { ServerMode, MODE_CONFIGS, shouldLoadDependency, shouldEnableTool } from '../modes/config.js';
 
 export interface Tool {
     name: string;
@@ -317,11 +317,16 @@ export class ToolHandler {
      * if ('error' in docsManager) return docsManager;
      * // docsManager is now typed as non-null
      */
-    private checkManager<T>(manager: T | undefined, managerName: string): T | { error: string; errorType: string } {
+    private checkManager<T>(manager: T | undefined, managerName: string): T | { error: string; errorType: string; availableIn?: string[] } {
         if (!manager) {
+            // Find which modes enable this manager's tools so the AI can self-correct
+            const availableIn = Object.values(MODE_CONFIGS)
+                .filter(cfg => cfg.name !== this.mode && cfg.dependencies.includes('all') || cfg.dependencies.some(d => managerName.toLowerCase().includes(d)))
+                .map(cfg => cfg.name);
             return {
-                error: `${managerName} is not available in ${this.mode} mode. This tool is disabled.`,
-                errorType: 'MODE_RESTRICTION'
+                error: `${managerName} is not available in ${this.mode} mode. This tool is disabled.${availableIn.length > 0 ? ` Available in: ${availableIn.join(', ')} modes.` : ''}`,
+                errorType: 'MODE_RESTRICTION',
+                availableIn: availableIn.length > 0 ? availableIn : undefined
             };
         }
         return manager;
@@ -353,20 +358,41 @@ export class ToolHandler {
                 }
             };
         }
+
+        // Cap pageSize to prevent oversized responses that blow context windows
+        const MAX_PAGE_SIZE = 50;
+        let effectivePageSize = pageSize;
+        let pageSizeWarning: string | undefined;
+        if (pageSize > MAX_PAGE_SIZE) {
+            effectivePageSize = MAX_PAGE_SIZE;
+            pageSizeWarning = `pageSize capped from ${pageSize} to ${MAX_PAGE_SIZE} to prevent oversized responses.`;
+        }
         
-        const totalPages = Math.ceil(totalItems / pageSize) || 1;
-        const startIndex = (page - 1) * pageSize;
-        const endIndex = startIndex + pageSize;
+        const totalPages = Math.ceil(totalItems / effectivePageSize) || 1;
+        const startIndex = (page - 1) * effectivePageSize;
+        const endIndex = startIndex + effectivePageSize;
+
+        // Omit verbose pagination metadata when all results fit in a single page
+        if (totalItems <= effectivePageSize) {
+            return {
+                results: items,
+                pagination: {
+                    totalItems,
+                    ...(pageSizeWarning ? { warning: pageSizeWarning } : {})
+                } as PaginationMetadata
+            };
+        }
 
         return {
             results: items.slice(startIndex, endIndex),
             pagination: {
                 page,
-                pageSize,
+                pageSize: effectivePageSize,
                 totalPages,
                 totalItems,
                 hasMore: page < totalPages,
-                hasPrevious: page > 1
+                hasPrevious: page > 1,
+                ...(pageSizeWarning ? { warning: pageSizeWarning } : {})
             }
         };
     }
@@ -405,7 +431,7 @@ export class ToolHandler {
                         mode: {
                             type: 'string',
                             enum: ['search', 'list', 'section', 'examples'],
-                            description: 'Operation mode',
+                            description: 'search: full-text query | list: browse sections | section: get content by name | examples: code samples',
                             default: 'search'
                         },
                         query: {
@@ -705,8 +731,8 @@ export class ToolHandler {
                         },
                         enrichWithDocs: {
                             type: 'boolean',
-                            description: 'Enrich with docs',
-                            default: false
+                            description: 'Include debugging steps and documentation links in response',
+                            default: true
                         },
                         includeDestructiveCommands: {
                             type: 'boolean',
@@ -867,10 +893,10 @@ export class ToolHandler {
                     
                     // Handle generate mode (with optional write)
                     if (!args?.useCase) {
-                        return { error: 'useCase parameter is required (or provide content for write-only mode)' };
+                        return { error: 'useCase is required. Valid values: remote_state, provider_generation, dependencies, hooks, inputs. Or provide content for write-only mode.' };
                     }
                     if (!args?.options) {
-                        return { error: 'options parameter is required' };
+                        return { error: 'options parameter is required for the selected useCase. Pass template variables as key-value pairs (e.g., for remote_state: { bucket, region, key }).' };
                     }
                     
                     // Validate write mode parameters early
@@ -925,7 +951,7 @@ export class ToolHandler {
                         maxMatches: args.maxMatches,
                         minConfidence: args.minConfidence,
                         enableFuzzyMatching: args.enableFuzzyMatching,
-                        enrichWithDocs: args.enrichWithDocs,
+                        enrichWithDocs: args.enrichWithDocs ?? true,
                         includeDestructiveCommands: args.includeDestructiveCommands
                     });
                     return await this.diagnoseTerragruntError(
@@ -1007,10 +1033,22 @@ export class ToolHandler {
         const docs = await this.docsManager!.getDocBySection(section);
 
         if (docs.length === 0) {
+            const availableSections = await this.docsManager!.getAvailableSections();
+            // Fuzzy match section name against available sections
+            const sectionLower = section.toLowerCase();
+            const suggestions = availableSections
+                .filter(s => {
+                    const sl = s.toLowerCase();
+                    return sl.includes(sectionLower) || sectionLower.includes(sl) ||
+                        // Simple edit-distance check: shared prefix of 3+ chars
+                        (sectionLower.length >= 3 && sl.startsWith(sectionLower.substring(0, 3)));
+                })
+                .slice(0, 3);
             return {
                 section,
                 error: `No documentation found for section: ${section}`,
-                availableSections: await this.docsManager!.getAvailableSections()
+                ...(suggestions.length > 0 ? { suggestion: `Did you mean: ${suggestions.join(', ')}?` } : {}),
+                availableSections
             };
         }
 
@@ -1057,7 +1095,7 @@ export class ToolHandler {
             case 'search':
                 // Semantic search across all docs
                 if (!args?.query) {
-                    return { error: 'query parameter is required for search mode' };
+                    return { error: 'query parameter is required for search mode. Use mode="list" to browse available sections first.' };
                 }
                 return await this.searchTerragruntDocs(
                     args.query,

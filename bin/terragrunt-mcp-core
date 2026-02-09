@@ -7,10 +7,11 @@
  * - search_docs: Search documentation
  * - cli_reference: CLI command reference
  * - function_reference: Built-in function reference
+ * - get_hcl_config_reference: HCL block documentation
  * 
  * Usage: terragrunt-mcp-core
  * 
- * Token overhead: ~1,200 tokens (60% reduction vs full mode)
+ * Token overhead: ~965 tokens (60% reduction vs full mode)
  */
 
 // Inject --mode core into process.argv before importing server

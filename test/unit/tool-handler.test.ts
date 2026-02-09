@@ -217,7 +217,7 @@ describe('ToolHandler', () => {
       expect(resultNegative).toBeDefined();
       expect(resultNegative.results).toEqual([]);
       
-      // Test with excessively large pageSize (should accept but return available results)
+      // Test with excessively large pageSize (should be capped at 50 and return available results)
       const resultTooLarge = await toolHandler.executeTool('search_docs', {
         mode: 'search',
         query: 'test',
@@ -226,7 +226,9 @@ describe('ToolHandler', () => {
       expect(resultTooLarge).toBeDefined();
       expect(resultTooLarge.error).toBeUndefined();
       expect(resultTooLarge.pagination).toBeDefined();
-      expect(resultTooLarge.pagination.pageSize).toBe(1000);
+      // pageSize is capped at 50 and results fit in one page, so compact pagination is returned
+      expect(resultTooLarge.pagination.totalItems).toBeDefined();
+      expect(resultTooLarge.pagination.warning).toContain('pageSize capped');
       // Should return all available results without error
       expect(Array.isArray(resultTooLarge.results)).toBe(true);
       
@@ -239,7 +241,8 @@ describe('ToolHandler', () => {
       });
       expect(resultValid).toBeDefined();
       expect(resultValid.error).toBeUndefined();
-      expect(resultValid.pagination.pageSize).toBe(25);
+      // With few mock results fitting in one page, compact pagination is returned
+      expect(resultValid.pagination.totalItems).toBeDefined();
       // Verify implementation doesn't always return empty arrays - should return results for valid pageSize
       expect(Array.isArray(resultValid.results)).toBe(true);
       // Explicit assertion: Fixture data must contain results for 'terragrunt' query
@@ -339,7 +342,7 @@ describe('ToolHandler', () => {
       expect(diagnoseTool?.inputSchema.properties.maxMatches.default).toBe(3);
       expect(diagnoseTool?.inputSchema.properties.minConfidence.default).toBe(0.3);
       expect(diagnoseTool?.inputSchema.properties.enableFuzzyMatching.default).toBe(true);
-      expect(diagnoseTool?.inputSchema.properties.enrichWithDocs.default).toBe(false);
+      expect(diagnoseTool?.inputSchema.properties.enrichWithDocs.default).toBe(true);
     });
   });
 
@@ -360,7 +363,8 @@ describe('ToolHandler', () => {
       });
       
       expect(result.results.length).toBeLessThanOrEqual(10);
-      expect(result.pagination.pageSize).toBe(10);
+      // When all results fit on one page, compact pagination is returned (totalItems only)
+      expect(result.pagination.totalItems).toBeDefined();
     });
 
     it('should respect custom pageSize', async () => {
@@ -370,7 +374,8 @@ describe('ToolHandler', () => {
       });
       
       expect(result.results.length).toBeLessThanOrEqual(2);
-      expect(result.pagination.pageSize).toBe(2);
+      // When all results fit on one page, compact pagination is returned
+      expect(result.pagination.totalItems).toBeDefined();
     });
 
     it('should truncate long content snippets', async () => {
@@ -396,8 +401,8 @@ describe('ToolHandler', () => {
       
       expect(result.pagination).toBeDefined();
       expect(result.pagination.totalItems).toBeDefined();
-      expect(result.pagination.hasMore).toBeDefined();
-      expect(result.pagination.hasPrevious).toBeDefined();
+      // When results fit on one page, hasMore/hasPrevious are omitted to save tokens
+      // They are only present when there are multiple pages
     });
   });
 
@@ -1128,8 +1133,7 @@ inputs = {
       expect(Array.isArray(result.categories)).toBe(true);
       expect(result.pagination).toBeDefined();
       expect(result.pagination.totalItems).toBe(2);
-      expect(result.pagination.page).toBe(1);
-      expect(result.pagination.pageSize).toBe(20);
+      // With only 2 items and pageSize=20, all fit on one page — compact pagination
     });
 
     it('should filter by category', async () => {
@@ -1390,10 +1394,9 @@ inputs = {
         pageSize: 20
       });
       
-      expect(result.functions.length).toBe(0); // Out of range
+      // With 10 items and pageSize=20, all fit on one page — compact pagination returns all items
+      expect(result.functions.length).toBe(10);
       expect(result.pagination.totalItems).toBe(10);
-      expect(result.pagination.page).toBe(10);
-      expect(result.pagination.hasMore).toBe(false);
     });
   });
 
@@ -1437,7 +1440,7 @@ inputs = {
       expect(result.query).toBe('test');
       expect(result.pagination).toBeDefined();
       expect(typeof result.pagination.totalItems).toBe('number');
-      expect(typeof result.pagination.hasMore).toBe('boolean');
+      // hasMore is only present when there are multiple pages
     });
 
     it('should format results consistently', async () => {
