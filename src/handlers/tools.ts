@@ -320,8 +320,13 @@ export class ToolHandler {
     private checkManager<T>(manager: T | undefined, managerName: string): T | { error: string; errorType: string; availableIn?: string[] } {
         if (!manager) {
             // Find which modes enable this manager's tools so the AI can self-correct
+            const managerNameLower = managerName.toLowerCase();
             const availableIn = Object.values(MODE_CONFIGS)
-                .filter(cfg => cfg.name !== this.mode && cfg.dependencies.includes('all') || cfg.dependencies.some(d => managerName.toLowerCase().includes(d)))
+                .filter(cfg =>
+                    cfg.name !== this.mode &&
+                    (cfg.dependencies.includes('all') ||
+                        cfg.dependencies.some(d => managerNameLower.includes(d.toLowerCase())))
+                )
                 .map(cfg => cfg.name);
             return {
                 error: `${managerName} is not available in ${this.mode} mode. This tool is disabled.${availableIn.length > 0 ? ` Available in: ${availableIn.join(', ')} modes.` : ''}`,
@@ -373,13 +378,19 @@ export class ToolHandler {
         const endIndex = startIndex + effectivePageSize;
 
         // Omit verbose pagination metadata when all results fit in a single page
-        if (totalItems <= effectivePageSize) {
+        // Still respect the page parameter — if page > 1 on a single-page result, return empty
+        if (totalItems <= effectivePageSize && page <= 1) {
             return {
                 results: items,
                 pagination: {
+                    page: 1,
+                    pageSize: effectivePageSize,
+                    totalPages: 1,
                     totalItems,
+                    hasMore: false,
+                    hasPrevious: false,
                     ...(pageSizeWarning ? { warning: pageSizeWarning } : {})
-                } as PaginationMetadata
+                }
             };
         }
 

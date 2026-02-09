@@ -226,8 +226,9 @@ describe('ToolHandler', () => {
       expect(resultTooLarge).toBeDefined();
       expect(resultTooLarge.error).toBeUndefined();
       expect(resultTooLarge.pagination).toBeDefined();
-      // pageSize is capped at 50 and results fit in one page, so compact pagination is returned
+      // pageSize is capped at 50 and results fit in one page, so full pagination is returned
       expect(resultTooLarge.pagination.totalItems).toBeDefined();
+      expect(resultTooLarge.pagination.pageSize).toBe(50);
       expect(resultTooLarge.pagination.warning).toContain('pageSize capped');
       // Should return all available results without error
       expect(Array.isArray(resultTooLarge.results)).toBe(true);
@@ -241,8 +242,9 @@ describe('ToolHandler', () => {
       });
       expect(resultValid).toBeDefined();
       expect(resultValid.error).toBeUndefined();
-      // With few mock results fitting in one page, compact pagination is returned
+      // With few mock results fitting in one page, full pagination is returned
       expect(resultValid.pagination.totalItems).toBeDefined();
+      expect(resultValid.pagination.pageSize).toBe(25);
       // Verify implementation doesn't always return empty arrays - should return results for valid pageSize
       expect(Array.isArray(resultValid.results)).toBe(true);
       // Explicit assertion: Fixture data must contain results for 'terragrunt' query
@@ -363,8 +365,7 @@ describe('ToolHandler', () => {
       });
       
       expect(result.results.length).toBeLessThanOrEqual(10);
-      // When all results fit on one page, compact pagination is returned (totalItems only)
-      expect(result.pagination.totalItems).toBeDefined();
+      expect(result.pagination.pageSize).toBe(10);
     });
 
     it('should respect custom pageSize', async () => {
@@ -374,8 +375,7 @@ describe('ToolHandler', () => {
       });
       
       expect(result.results.length).toBeLessThanOrEqual(2);
-      // When all results fit on one page, compact pagination is returned
-      expect(result.pagination.totalItems).toBeDefined();
+      expect(result.pagination.pageSize).toBe(2);
     });
 
     it('should truncate long content snippets', async () => {
@@ -401,8 +401,8 @@ describe('ToolHandler', () => {
       
       expect(result.pagination).toBeDefined();
       expect(result.pagination.totalItems).toBeDefined();
-      // When results fit on one page, hasMore/hasPrevious are omitted to save tokens
-      // They are only present when there are multiple pages
+      expect(result.pagination.hasMore).toBeDefined();
+      expect(result.pagination.hasPrevious).toBeDefined();
     });
   });
 
@@ -1133,7 +1133,8 @@ inputs = {
       expect(Array.isArray(result.categories)).toBe(true);
       expect(result.pagination).toBeDefined();
       expect(result.pagination.totalItems).toBe(2);
-      // With only 2 items and pageSize=20, all fit on one page — compact pagination
+      expect(result.pagination.page).toBe(1);
+      expect(result.pagination.pageSize).toBe(20);
     });
 
     it('should filter by category', async () => {
@@ -1394,9 +1395,11 @@ inputs = {
         pageSize: 20
       });
       
-      // With 10 items and pageSize=20, all fit on one page — compact pagination returns all items
-      expect(result.functions.length).toBe(10);
+      // With 10 items and pageSize=20, all fit on one page but page=10 is out of range
+      expect(result.functions.length).toBe(0); // Out of range
       expect(result.pagination.totalItems).toBe(10);
+      expect(result.pagination.page).toBe(10);
+      expect(result.pagination.hasMore).toBe(false);
     });
   });
 
@@ -1440,7 +1443,7 @@ inputs = {
       expect(result.query).toBe('test');
       expect(result.pagination).toBeDefined();
       expect(typeof result.pagination.totalItems).toBe('number');
-      // hasMore is only present when there are multiple pages
+      expect(typeof result.pagination.hasMore).toBe('boolean');
     });
 
     it('should format results consistently', async () => {
