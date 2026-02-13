@@ -948,4 +948,162 @@ describe('TerragruntDocsManager', () => {
       expect(docs[1].title).toBe('Next Section');
     });
   });
+
+  describe('fetchFromLlmsTxt', () => {
+    let manager: TerragruntDocsManager;
+    const sampleMarkdown = [
+      '# Install',
+      '',
+      'Install instructions here.',
+      '',
+      '# Quick Start',
+      '',
+      'Quick start guide.',
+    ].join('\n');
+
+    beforeEach(() => {
+      manager = new TerragruntDocsManager();
+      vi.clearAllMocks();
+      delete process.env.TERRAGRUNT_LLMS_SOURCE;
+    });
+
+    afterAll(() => {
+      delete process.env.TERRAGRUNT_LLMS_SOURCE;
+    });
+
+    it('should fetch and parse llms.txt into TerragruntDoc[]', async () => {
+      const fetchMock = await import('node-fetch');
+      (fetchMock.default as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        ok: true,
+        text: () => Promise.resolve(sampleMarkdown),
+      });
+
+      const docs = await manager.fetchFromLlmsTxt();
+
+      expect(docs).toHaveLength(2);
+      expect(docs[0].title).toBe('Install');
+      expect(docs[0].section).toBe('getting-started');
+      expect(docs[1].title).toBe('Quick Start');
+      expect(docs[1].section).toBe('getting-started');
+
+      expect(fetchMock.default).toHaveBeenCalledWith('https://terragrunt.gruntwork.io/llms-small.txt');
+    });
+
+    it('should use TERRAGRUNT_LLMS_SOURCE env var to override URL', async () => {
+      process.env.TERRAGRUNT_LLMS_SOURCE = 'https://example.com/llms-full.txt';
+
+      const fetchMock = await import('node-fetch');
+      (fetchMock.default as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        ok: true,
+        text: () => Promise.resolve(sampleMarkdown),
+      });
+
+      const docs = await manager.fetchFromLlmsTxt();
+
+      expect(docs).toHaveLength(2);
+      expect(fetchMock.default).toHaveBeenCalledWith('https://example.com/llms-full.txt');
+    });
+
+    it('should return empty array on total fetch failure without throwing', async () => {
+      // Speed up retries for testing
+      (manager as any).retryConfig = {
+        maxRetries: 3,
+        initialDelayMs: 1,
+        maxDelayMs: 5,
+        backoffMultiplier: 2,
+      };
+
+      const fetchMock = await import('node-fetch');
+      (fetchMock.default as unknown as ReturnType<typeof vi.fn>).mockRejectedValue(
+        new Error('Network error')
+      );
+
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+      const docs = await manager.fetchFromLlmsTxt();
+
+      expect(docs).toEqual([]);
+      expect(consoleSpy).toHaveBeenCalled();
+      consoleSpy.mockRestore();
+      warnSpy.mockRestore();
+      logSpy.mockRestore();
+    });
+
+    it('should return empty array on HTTP error without throwing', async () => {
+      // Speed up retries for testing
+      (manager as any).retryConfig = {
+        maxRetries: 3,
+        initialDelayMs: 1,
+        maxDelayMs: 5,
+        backoffMultiplier: 2,
+      };
+
+      const fetchMock = await import('node-fetch');
+      (fetchMock.default as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
+        ok: false,
+        status: 404,
+        statusText: 'Not Found',
+      });
+
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+      const docs = await manager.fetchFromLlmsTxt();
+
+      expect(docs).toEqual([]);
+      expect(consoleSpy).toHaveBeenCalled();
+      consoleSpy.mockRestore();
+      warnSpy.mockRestore();
+      logSpy.mockRestore();
+    });
+
+    it('should return empty array when response body is empty', async () => {
+      const fetchMock = await import('node-fetch');
+      (fetchMock.default as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        ok: true,
+        text: () => Promise.resolve(''),
+      });
+
+      const docs = await manager.fetchFromLlmsTxt();
+
+      expect(docs).toEqual([]);
+    });
+
+    it('should retry on transient failure then succeed', async () => {
+      const fetchMock = await import('node-fetch');
+      const mockFn = fetchMock.default as unknown as ReturnType<typeof vi.fn>;
+
+      // Fail twice, then succeed
+      mockFn
+        .mockRejectedValueOnce(new Error('Temporary failure'))
+        .mockRejectedValueOnce(new Error('Temporary failure'))
+        .mockResolvedValueOnce({
+          ok: true,
+          text: () => Promise.resolve(sampleMarkdown),
+        });
+
+      // Suppress retry warnings
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+      // Speed up retries for testing
+      (manager as any).retryConfig = {
+        maxRetries: 3,
+        initialDelayMs: 1,
+        maxDelayMs: 5,
+        backoffMultiplier: 2,
+      };
+
+      const docs = await manager.fetchFromLlmsTxt();
+
+      expect(docs).toHaveLength(2);
+      expect(mockFn).toHaveBeenCalledTimes(3);
+
+      warnSpy.mockRestore();
+      logSpy.mockRestore();
+    });
+  });
 });

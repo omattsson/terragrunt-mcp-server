@@ -1258,6 +1258,31 @@ export class TerragruntDocsManager {
   }
 
   /**
+   * Fetch and parse the llms.txt endpoint into TerragruntDoc[].
+   * Uses TERRAGRUNT_LLMS_SOURCE env var to override the default URL.
+   * Never throws — returns empty array and logs on failure.
+   */
+  async fetchFromLlmsTxt(): Promise<TerragruntDoc[]> {
+    const defaultUrl = `${this.baseUrl}/llms-small.txt`;
+    const url = process.env.TERRAGRUNT_LLMS_SOURCE || defaultUrl;
+
+    try {
+      const markdown = await this.retryWithBackoff(async () => {
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status} ${response.statusText}`);
+        }
+        return await response.text();
+      }, `Fetching llms.txt from ${url}`);
+
+      return this.parseLlmsMarkdown(markdown);
+    } catch (error) {
+      console.error(`Failed to fetch llms.txt from ${url}:`, error);
+      return [];
+    }
+  }
+
+  /**
    * Parse raw Markdown from llms.txt into individual TerragruntDoc entries.
    * Splits on H1 (`# `) boundaries; each H1 becomes one doc.
    *
