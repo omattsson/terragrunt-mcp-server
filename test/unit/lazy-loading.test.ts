@@ -66,11 +66,6 @@ describe('Lazy Loading', () => {
       expect(manager.contentCache.size).toBe(0);
     });
 
-    it('should initialize empty loading promises map', () => {
-      const manager = new TerragruntDocsManager() as any;
-      expect(manager.loadingPromises.size).toBe(0);
-    });
-
     it('should initialize empty loaded docs set', () => {
       const manager = new TerragruntDocsManager() as any;
       expect(manager.loadedDocs.size).toBe(0);
@@ -123,7 +118,7 @@ describe('Lazy Loading', () => {
       expect(doc.title).toBe(metadata.title);
     });
 
-    it('should deduplicate concurrent loads of same document', async () => {
+    it('should return same cached content for concurrent calls to same document', async () => {
       const manager = new TerragruntDocsManager() as any;
       const url = 'https://example.com/doc';
       const metadata = {
@@ -134,16 +129,9 @@ describe('Lazy Loading', () => {
       };
 
       manager.metadataCache.set(url, metadata);
+      manager.contentCache.set(url, 'Test content');
 
-      // Mock fetchSingleDocContent to return after delay
-      let callCount = 0;
-      manager.fetchSingleDocContent = vi.fn(async () => {
-        callCount++;
-        await new Promise(resolve => setTimeout(resolve, 50));
-        return 'Test content';
-      });
-
-      // Start multiple concurrent loads
+      // Start multiple concurrent loads — all should return the same cached result
       const promises = [
         manager.loadDocContent(url),
         manager.loadDocContent(url),
@@ -152,14 +140,12 @@ describe('Lazy Loading', () => {
 
       const results = await Promise.all(promises);
 
-      // Should only fetch once due to deduplication
-      expect(callCount).toBe(1);
       expect(results[0].content).toBe('Test content');
       expect(results[1].content).toBe('Test content');
       expect(results[2].content).toBe('Test content');
     });
 
-    it('should increment docsLoadedLazily counter', async () => {
+    it('should return doc with metadata and content from cache', async () => {
       const manager = new TerragruntDocsManager() as any;
       const url = 'https://example.com/doc';
       const metadata = {
@@ -170,73 +156,18 @@ describe('Lazy Loading', () => {
       };
 
       manager.metadataCache.set(url, metadata);
-      manager.fetchSingleDocContent = vi.fn(async () => 'Test content');
+      manager.contentCache.set(url, 'Test content');
 
-      const initialCount = manager.lazyLoadingMetrics.docsLoadedLazily;
-      await manager.loadDocContent(url);
+      const doc = await manager.loadDocContent(url);
       
-      expect(manager.lazyLoadingMetrics.docsLoadedLazily).toBe(initialCount + 1);
-    });
-
-    it('should add URL to loadedDocs set', async () => {
-      const manager = new TerragruntDocsManager() as any;
-      const url = 'https://example.com/doc';
-      const metadata = {
-        title: 'Test Doc',
-        url,
-        section: 'test',
-        lastUpdated: new Date().toISOString()
-      };
-
-      manager.metadataCache.set(url, metadata);
-      manager.fetchSingleDocContent = vi.fn(async () => 'Test content');
-
-      await manager.loadDocContent(url);
-      
-      expect(manager.loadedDocs.has(url)).toBe(true);
-    });
-
-    it('should store content in contentCache', async () => {
-      const manager = new TerragruntDocsManager() as any;
-      const url = 'https://example.com/doc';
-      const metadata = {
-        title: 'Test Doc',
-        url,
-        section: 'test',
-        lastUpdated: new Date().toISOString()
-      };
-
-      manager.metadataCache.set(url, metadata);
-      manager.fetchSingleDocContent = vi.fn(async () => 'Test content');
-
-      await manager.loadDocContent(url);
-      
-      expect(manager.contentCache.get(url)).toBe('Test content');
-    });
-
-    it('should clean up loading promise after completion', async () => {
-      const manager = new TerragruntDocsManager() as any;
-      const url = 'https://example.com/doc';
-      const metadata = {
-        title: 'Test Doc',
-        url,
-        section: 'test',
-        lastUpdated: new Date().toISOString()
-      };
-
-      manager.metadataCache.set(url, metadata);
-      manager.fetchSingleDocContent = vi.fn(async () => 'Test content');
-
-      await manager.loadDocContent(url);
-      
-      expect(manager.loadingPromises.has(url)).toBe(false);
+      expect(doc.content).toBe('Test content');
+      expect(doc.title).toBe('Test Doc');
+      expect(doc.section).toBe('test');
     });
 
     it('should return empty doc when metadata does not exist', async () => {
       const manager = new TerragruntDocsManager() as any;
       const url = 'https://example.com/nonexistent';
-      
-      manager.fetchSingleDocContent = vi.fn(async () => 'Test content');
 
       const result = await manager.loadDocContent(url);
       
@@ -245,7 +176,7 @@ describe('Lazy Loading', () => {
       expect(result.url).toBe(url);
     });
 
-    it('should handle fetchSingleDocContent returning empty string', async () => {
+    it('should return empty content when metadata exists but content is not cached', async () => {
       const manager = new TerragruntDocsManager() as any;
       const url = 'https://example.com/doc';
       const metadata = {
@@ -256,16 +187,13 @@ describe('Lazy Loading', () => {
       };
 
       manager.metadataCache.set(url, metadata);
-      manager.fetchSingleDocContent = vi.fn(async () => ''); // Empty string on error
+      // No content in contentCache
 
-      const initialCount = manager.lazyLoadingMetrics.docsLoadedLazily;
       const result = await manager.loadDocContent(url);
       
-      // Empty content means failed load - should not increment metrics or loadedDocs
+      // Should return doc with empty content (no HTML fetch)
       expect(result.content).toBe('');
-      expect(manager.contentCache.get(url)).toBe('');
-      expect(manager.lazyLoadingMetrics.docsLoadedLazily).toBe(initialCount);
-      expect(manager.loadedDocs.has(url)).toBe(false);
+      expect(result.title).toBe('Test Doc');
     });
 
     it('should handle inconsistent state where content exists but metadata does not', async () => {
@@ -290,7 +218,7 @@ describe('Lazy Loading', () => {
       warnSpy.mockRestore();
     });
 
-    it('should load content when metadata exists but content not yet loaded', async () => {
+    it('should load content when metadata and content both exist in cache', async () => {
       const manager = new TerragruntDocsManager() as any;
       const url = 'https://example.com/doc';
       const metadata = {
@@ -300,16 +228,49 @@ describe('Lazy Loading', () => {
         lastUpdated: new Date().toISOString()
       };
 
-      // Normal lazy loading scenario: metadata exists, content not yet cached
+      // Both metadata and content are populated (normal state after llms.txt fetch)
       manager.metadataCache.set(url, metadata);
-      manager.fetchSingleDocContent = vi.fn(async () => 'Fetched content');
+      manager.contentCache.set(url, 'Fetched content');
 
       const result = await manager.loadDocContent(url);
       
       expect(result.title).toBe('Test Doc');
       expect(result.content).toBe('Fetched content');
-      expect(manager.fetchSingleDocContent).toHaveBeenCalledWith(url);
       expect(manager.contentCache.get(url)).toBe('Fetched content');
+    });
+
+    it('should fall back to docsCache when metadata and content caches are empty', async () => {
+      const manager = new TerragruntDocsManager() as any;
+      const url = 'https://example.com/fixture-doc';
+      const fixtureDoc = {
+        title: 'Fixture Doc',
+        url,
+        content: 'Fixture content',
+        section: 'reference',
+        lastUpdated: new Date().toISOString()
+      };
+
+      // Simulate fixture-loaded doc in docsCache (but not in lazy caches)
+      manager.docsCache.set(url, fixtureDoc);
+
+      const result = await manager.loadDocContent(url);
+
+      expect(result.title).toBe('Fixture Doc');
+      expect(result.content).toBe('Fixture content');
+      // Should also hydrate lazy-loading caches for future lookups
+      expect(manager.metadataCache.has(url)).toBe(true);
+      expect(manager.contentCache.get(url)).toBe('Fixture content');
+    });
+
+    it('should return empty doc when URL is not found in any cache', async () => {
+      const manager = new TerragruntDocsManager() as any;
+      const url = 'https://example.com/nowhere';
+
+      const result = await manager.loadDocContent(url);
+
+      expect(result.title).toBe('Unknown');
+      expect(result.content).toBe('');
+      expect(result.section).toBe('unknown');
     });
   });
 
@@ -615,6 +576,34 @@ describe('Lazy Loading', () => {
       const manager = new TerragruntDocsManager() as any;
       expect(manager.saveCacheToDisk).toBeDefined();
       expect(typeof manager.saveCacheToDisk).toBe('function');
+    });
+  });
+
+  describe('Fixture Fallback in Lazy Loading Mode', () => {
+    it('should make docsCache docs available via loadDocContent in lazy mode', async () => {
+      process.env.TERRAGRUNT_LAZY_LOADING = 'true';
+      const manager = new TerragruntDocsManager() as any;
+
+      const url = 'https://terragrunt.gruntwork.io/docs/getting-started/quick-start/';
+      const fixtureDoc = {
+        title: 'Quick Start',
+        url,
+        content: 'Getting started content',
+        section: 'getting-started',
+        lastUpdated: new Date().toISOString()
+      };
+
+      // Simulate what loadFixture does: populate docsCache only
+      manager.docsCache.set(url, fixtureDoc);
+
+      // loadDocContent should fall back to docsCache and hydrate lazy caches
+      const result = await manager.loadDocContent(url);
+
+      expect(result.title).toBe('Quick Start');
+      expect(result.content).toBe('Getting started content');
+      // Verify lazy caches were hydrated for future lookups
+      expect(manager.metadataCache.has(url)).toBe(true);
+      expect(manager.contentCache.get(url)).toBe('Getting started content');
     });
   });
 

@@ -1,5 +1,4 @@
 import fetch from 'node-fetch';
-import * as cheerio from 'cheerio';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
@@ -44,10 +43,17 @@ interface CacheMetadata {
 interface LazyLoadingMetrics {
   enabled: boolean;
   startupTimeMs: number;
-  metadataOnlyLoadTime?: number;
+  /** Time to fetch all docs from llms.txt and build indexes (renamed from metadataOnlyLoadTime) */
+  fetchAndIndexTime?: number;
+  /** Time spent in warmup phase (now a no-op with llms.txt since all content is pre-loaded) */
   warmupTime?: number;
   initialMemoryMB: number;
   metadataCount: number;
+  /**
+   * Legacy metric from the HTML-scraping era. Always 0 with the llms.txt model
+   * because all documents are fetched upfront in a single request rather than
+   * loaded on-demand.
+   */
   docsLoadedLazily: number;
   averageDocLoadTimeMs: number;
   warmupStrategy: WarmupStrategy;
@@ -144,11 +150,9 @@ export class TerragruntDocsManager {
   private metadataCache: Map<string, DocMetadata> = new Map();
   private indexedMetadata: IndexedMetadata[] = [];
   private contentCache: Map<string, string> = new Map();
-  private loadingPromises: Map<string, Promise<string>> = new Map();
   private loadedDocs: Set<string> = new Set();
   private lazyLoadingMetrics: LazyLoadingMetrics;
   private readonly startTime: number;
-  private totalDocLoadTimeMs: number = 0;
   
   private stats: CacheStats = {
     hits: 0,
@@ -236,13 +240,12 @@ export class TerragruntDocsManager {
    * Get cache statistics for monitoring and optimization
    */
   getCacheStats(): CacheStats {
-    // Update metadataCount and averageDocLoadTimeMs dynamically
+    // Update metadataCount dynamically
     const updatedMetrics: LazyLoadingMetrics = {
       ...this.lazyLoadingMetrics,
       metadataCount: this.metadataCache.size,
-      averageDocLoadTimeMs: this.lazyLoadingMetrics.docsLoadedLazily > 0
-        ? this.totalDocLoadTimeMs / this.lazyLoadingMetrics.docsLoadedLazily
-        : 0
+      // averageDocLoadTimeMs is no longer meaningful with single-fetch llms.txt model
+      averageDocLoadTimeMs: 0
     };
     
     return {
@@ -333,6 +336,26 @@ export class TerragruntDocsManager {
       
       // Build search index for fixture docs
       this.buildSearchIndex();
+
+      // Also populate lazy-loading caches so loadDocContent() works in lazy mode
+      if (this.lazyLoadingEnabled) {
+        this.metadataCache.clear();
+        this.contentCache.clear();
+        this.loadedDocs.clear();
+        docs.forEach(doc => {
+          this.metadataCache.set(doc.url, {
+            title: doc.title,
+            url: doc.url,
+            section: doc.section,
+            lastUpdated: doc.lastUpdated
+          });
+          if (doc.content != null) {
+            this.contentCache.set(doc.url, doc.content);
+            this.loadedDocs.add(doc.url);
+          }
+        });
+        this.buildMetadataIndex();
+      }
 
       console.log(`Loaded ${docs.length} docs from fixture (fallback mode)`);
       return true;
@@ -469,7 +492,10 @@ export class TerragruntDocsManager {
       const docs: TerragruntDoc[] = JSON.parse(docsContent);
 
       if (this.lazyLoadingEnabled) {
-        // Lazy loading mode: load metadata and populate contentCache with existing content
+        // Dual-cache (metadata-indexed) mode: populate metadata and content caches.
+        // NOTE: "lazy loading" is a historical term from the HTML-scraping era.
+        // With llms.txt, all content is fetched upfront; the dual-cache architecture
+        // is retained for efficient metadata-based searching.
         this.metadataCache.clear();
         this.contentCache.clear();
         this.loadedDocs.clear();
@@ -482,12 +508,27 @@ export class TerragruntDocsManager {
           };
           this.metadataCache.set(doc.url, docMetadata);
           
-          // Populate contentCache if document has content
-          if (doc.content) {
+          // Populate contentCache if document has content (empty string is valid)
+          if (doc.content != null) {
             this.contentCache.set(doc.url, doc.content);
             this.loadedDocs.add(doc.url);
           }
         });
+        
+        // Detect stale lazy-mode disk caches created by the old HTML-scraping implementation
+        // where docs were saved with content: '' or null. Check both empty contentCache
+        // and the case where all cached content is empty strings.
+        const hasNoContent = this.contentCache.size === 0 ||
+          Array.from(this.contentCache.values()).every(c => c === '');
+        if (this.metadataCache.size > 0 && hasNoContent) {
+          console.warn('Disk cache has metadata but no meaningful content (likely a stale lazy-mode cache from the HTML-scraping era) — treating as cache miss');
+          this.metadataCache.clear();
+          this.contentCache.clear();
+          this.loadedDocs.clear();
+          this.lastFetchTime = null;
+          this.stats.misses++;
+          return false;
+        }
         
         this.lastFetchTime = new Date(metadata.lastFetchTime);
         this.stats.hits++;
@@ -497,7 +538,8 @@ export class TerragruntDocsManager {
         
         console.log(`Loaded metadata for ${docs.length} docs from disk cache (${this.contentCache.size} with content, lazy mode, age: ${Math.round(cacheAge / 1000 / 60)} minutes)`);
         
-        // Perform warmup if configured
+        // Warmup is effectively a no-op with the llms.txt model since all content
+        // is already in contentCache. Retained for API/metrics compatibility.
         await this.warmupCache(this.warmupStrategy);
         
         // Calculate startup time after warmup completes
@@ -649,73 +691,66 @@ export class TerragruntDocsManager {
 
   private async refreshDocsCache(): Promise<void> {
     try {
-      console.log('Refreshing Terragrunt documentation cache...');
+      console.log('Refreshing Terragrunt documentation cache via llms.txt...');
       
-      // Use retry logic for fetching docs
-      const docPages = await this.retryWithBackoff(
-        () => this.getDocumentationPages(),
-        'Fetching documentation pages'
-      );
+      const refreshStartTime = performance.now();
+      
+      // Fetch all docs in a single HTTP request via llms.txt
+      const docs = await this.fetchFromLlmsTxt();
+
+      if (docs.length === 0) {
+        throw new Error('fetchFromLlmsTxt returned no documents');
+      }
       
       this.docsCache.clear();
       this.metadataCache.clear();
       this.contentCache.clear();
       this.loadedDocs.clear();
-
-      const refreshStartTime = performance.now();
+      this.searchCache.clear();
+      this.indexedDocs = [];
+      this.indexedMetadata = [];
       
       if (this.lazyLoadingEnabled) {
-        // Lazy loading mode: only fetch metadata
-        for (const page of docPages) {
+        // Dual-cache (metadata-indexed) mode: populate metadata and content caches
+        // from llms.txt results. All content is fetched upfront in a single request;
+        // "lazy loading" is a historical term retained for configuration compatibility.
+        for (const doc of docs) {
           const metadata: DocMetadata = {
-            title: page.title,
-            url: page.url,
-            section: page.section,
-            lastUpdated: new Date().toISOString()
+            title: doc.title,
+            url: doc.url,
+            section: doc.section,
+            lastUpdated: doc.lastUpdated
           };
-          this.metadataCache.set(page.url, metadata);
+          this.metadataCache.set(doc.url, metadata);
+          this.contentCache.set(doc.url, doc.content);
+          this.loadedDocs.add(doc.url);
         }
 
         this.lastFetchTime = new Date();
         this.stats.lastRefresh = this.lastFetchTime;
         
-        const endTime = performance.now();
-        this.lazyLoadingMetrics.metadataOnlyLoadTime = endTime - refreshStartTime;
-        
         // Build indexed metadata for optimized searches
         this.buildMetadataIndex();
         
-        console.log(`Lazy loaded metadata for ${this.metadataCache.size} docs in ${this.lazyLoadingMetrics.metadataOnlyLoadTime.toFixed(2)}ms`);
+        const endTime = performance.now();
+        this.lazyLoadingMetrics.fetchAndIndexTime = endTime - refreshStartTime;
         
-        // Validate that we got some metadata
-        if (this.metadataCache.size === 0) {
-          throw new Error('Failed to fetch any documentation metadata');
-        }
+        // No documents are lazily loaded during llms.txt refresh; all docs are fetched upfront
+        this.lazyLoadingMetrics.docsLoadedLazily = 0;
         
-        // Perform warmup if configured
+        console.log(`Loaded ${this.metadataCache.size} docs from llms.txt in ${this.lazyLoadingMetrics.fetchAndIndexTime.toFixed(2)}ms (indexed mode)`);
+        
+        // Warmup is effectively a no-op with the llms.txt model since all content
+        // is already in contentCache. Retained for API/metrics compatibility.
         await this.warmupCache(this.warmupStrategy);
         
-        // Calculate startup time
+        // Calculate startup time (including warmup)
         this.lazyLoadingMetrics.startupTimeMs = performance.now() - this.startTime;
         
       } else {
-        // Traditional mode: fetch full content
-        for (const page of docPages) {
-          try {
-            const doc = await this.retryWithBackoff(
-              () => this.fetchDocumentPage(page),
-              `Fetching ${page.url}`
-            );
-            if (doc) {
-              this.docsCache.set(doc.url, doc);
-            }
-          } catch {
-            console.warn(`Skipping page ${page.url} after retries failed`);
-          }
-        }
-
-        if (this.docsCache.size === 0) {
-          throw new Error('No documentation pages were successfully fetched');
+        // Traditional mode: populate docsCache directly
+        for (const doc of docs) {
+          this.docsCache.set(doc.url, doc);
         }
 
         this.lastFetchTime = new Date();
@@ -724,7 +759,7 @@ export class TerragruntDocsManager {
         // Build search index from fetched docs
         this.buildSearchIndex();
         
-        console.log(`Cached ${this.docsCache.size} documentation pages`);
+        console.log(`Cached ${this.docsCache.size} documentation pages from llms.txt`);
       }
       
       // Save to disk after successful fetch
@@ -747,210 +782,48 @@ export class TerragruntDocsManager {
     }
   }
 
-  private async getDocumentationPages(): Promise<Array<{ url: string, title: string, section: string }>> {
-    const response = await fetch(`${this.baseUrl}/docs/`);
-    const html = await response.text();
-    const $ = cheerio.load(html);
 
-    const pages: Array<{ url: string, title: string, section: string }> = [];
-
-    // Extract main documentation links from navigation
-    $('nav a[href^="/docs/"], .sidebar a[href^="/docs/"], .menu a[href^="/docs/"]').each((_: any, element: any) => {
-      const href = $(element).attr('href');
-      const title = $(element).text().trim();
-
-      if (href && title && !pages.some(p => p.url === `${this.baseUrl}${href}`)) {
-        const section = this.extractSection(href);
-        pages.push({
-          url: `${this.baseUrl}${href}`,
-          title,
-          section
-        });
-      }
-    });
-
-    // Also extract links from content area
-    $('.content a[href^="/docs/"], main a[href^="/docs/"]').each((_: any, element: any) => {
-      const href = $(element).attr('href');
-      const title = $(element).text().trim();
-
-      if (href && title && !pages.some(p => p.url === `${this.baseUrl}${href}`)) {
-        const section = this.extractSection(href);
-        pages.push({
-          url: `${this.baseUrl}${href}`,
-          title,
-          section
-        });
-      }
-    });
-
-    // Add some core documentation pages if not found
-    const coreDocs = [
-      { url: `${this.baseUrl}/docs/getting-started/quick-start/`, title: 'Quick Start', section: 'getting-started' },
-      { url: `${this.baseUrl}/docs/reference/config-blocks-and-attributes/`, title: 'Configuration Reference', section: 'reference' },
-      { url: `${this.baseUrl}/docs/reference/hcl/functions/`, title: 'Built-in Functions', section: 'reference' },
-      { url: `${this.baseUrl}/docs/features/keep-your-terraform-code-dry/`, title: 'Keep Your Code DRY', section: 'features' },
-      { url: `${this.baseUrl}/docs/features/execute-terraform-commands-on-multiple-modules-at-once/`, title: 'Multiple Modules', section: 'features' },
-    ];
-
-    for (const coreDoc of coreDocs) {
-      if (!pages.some(p => p.url === coreDoc.url)) {
-        pages.push(coreDoc);
-      }
-    }
-
-    return pages;
-  }
-
-  private extractSection(href: string): string {
-    const pathParts = href.split('/').filter(part => part);
-    if (pathParts.length >= 2) {
-      return pathParts[1]; // /docs/[section]/...
-    }
-    return 'general';
-  }
-
-  private async fetchDocumentPage(page: { url: string, title: string, section: string }): Promise<TerragruntDoc | null> {
-    try {
-      const response = await fetch(page.url);
-
-      if (!response.ok) {
-        console.warn(`Failed to fetch ${page.url}: ${response.status}`);
-        return null;
-      }
-
-      const html = await response.text();
-      const $ = cheerio.load(html);
-
-      // Remove navigation and other non-content elements
-      $('nav, .sidebar, .menu, .header, .footer, script, style').remove();
-
-      const content = this.extractHtmlContent($);
-
-      if (!content) {
-        console.warn(`No content found for ${page.url}`);
-        return null;
-      }
-
-      return {
-        title: page.title,
-        url: page.url,
-        content,
-        section: page.section,
-        lastUpdated: new Date().toISOString()
-      };
-    } catch (error) {
-      console.error(`Failed to fetch doc page ${page.url}:`, error);
-      return null;
-    }
-  }
-
-  private cleanContent(content: string): string {
-    return content
-      .replace(/\s+/g, ' ')
-      .replace(/\n\s*\n/g, '\n')
-      .replace(/\t+/g, ' ')
-      .trim();
-  }
 
   /**
-   * Extract and parse HTML content from a loaded cheerio instance.
-   * Shared logic used by both fetchDocumentPage and fetchSingleDocContent.
-   */
-  private extractHtmlContent($: cheerio.CheerioAPI): string {
-    let content = '';
-    const contentSelectors = ['.content', '.markdown', 'main', '.post-content', '.doc-content', 'article'];
-
-    for (const selector of contentSelectors) {
-      const element = $(selector).first();
-      if (element.length > 0) {
-        content = element.text().trim();
-        break;
-      }
-    }
-
-    // Fallback to body if no content container found
-    if (!content) {
-      $('body nav, body .sidebar, body .menu, body .header, body .footer').remove();
-      content = $('body').text().trim();
-    }
-
-    return this.cleanContent(content);
-  }
-
-  /**
-   * Lazy load full content for a specific document by URL.
-   * Implements promise deduplication to avoid concurrent fetches of the same document.
+   * Look up full content for a specific document by URL.
+   * With llms.txt, all content is fetched upfront so this is a pure cache lookup.
    */
   private async loadDocContent(url: string): Promise<TerragruntDoc> {
-    // Check if already loaded
     const cachedContent = this.contentCache.get(url);
-    if (cachedContent) {
-      const metadata = this.metadataCache.get(url);
-      if (metadata) {
-        return { ...metadata, content: cachedContent };
-      } else {
-        // Inconsistent state: have content but no metadata
-        console.warn(`[LazyLoading] Inconsistent state: content exists for ${url} but metadata is missing`);
-        return this.createEmptyDoc(url);
-      }
+    const metadata = this.metadataCache.get(url);
+
+    if (metadata && cachedContent !== undefined) {
+      return { ...metadata, content: cachedContent };
     }
 
-    // Check if already loading (deduplication)
-    const existingPromise = this.loadingPromises.get(url);
-    if (existingPromise) {
-      const content = await existingPromise;
-      const metadata = this.metadataCache.get(url);
-      return metadata ? { ...metadata, content } : this.createEmptyDoc(url);
+    if (cachedContent !== undefined && !metadata) {
+      console.warn(`[LazyLoading] Inconsistent state: content exists for ${url} but metadata is missing`);
+      return this.createEmptyDoc(url);
     }
 
-    // Start new load with timing
-    const loadStartTime = performance.now();
-    const loadPromise = this.fetchSingleDocContent(url);
-    this.loadingPromises.set(url, loadPromise);
-
-    try {
-      const content = await loadPromise;
-      const loadDuration = performance.now() - loadStartTime;
-      
-      this.contentCache.set(url, content);
-
-      // Track metrics and loaded state only for successful loads (non-empty content)
-      if (content) {
-        this.loadedDocs.add(url);
-        this.lazyLoadingMetrics.docsLoadedLazily++;
-        this.totalDocLoadTimeMs += loadDuration;
-      }
-      // Return document with metadata
-      const metadata = this.metadataCache.get(url);
-      return metadata ? { ...metadata, content } : this.createEmptyDoc(url);
-    } finally {
-      this.loadingPromises.delete(url);
+    if (metadata && cachedContent === undefined) {
+      // Metadata exists but content was not populated (e.g., partial disk cache).
+      // Return doc with empty content rather than fetching HTML.
+      return { ...metadata, content: '' };
     }
-  }
 
-  /**
-   * Fetch HTML content for a single document by URL.
-   * Note: metadata is handled separately by the caller and may be missing.
-   */
-  private async fetchSingleDocContent(url: string): Promise<string> {
-    try {
-      const response = await fetch(url);
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-
-      const html = await response.text();
-      const $ = cheerio.load(html);
-
-      // Remove navigation and other non-content elements (consistent with fetchDocumentPage)
-      $('nav, .sidebar, .menu, .header, .footer, script, style').remove();
-
-      return this.extractHtmlContent($);
-    } catch (error) {
-      console.error(`Failed to lazy load content for ${url}:`, error);
-      return '';
+    // Fallback: check docsCache (populated by loadFixture or traditional mode).
+    // This ensures fixture docs are usable even when lazy-loading caches are empty.
+    const fixtureDoc = this.docsCache.get(url);
+    if (fixtureDoc) {
+      // Hydrate lazy-loading caches for future lookups
+      this.metadataCache.set(url, {
+        title: fixtureDoc.title,
+        url: fixtureDoc.url,
+        section: fixtureDoc.section,
+        lastUpdated: fixtureDoc.lastUpdated
+      });
+      this.contentCache.set(url, fixtureDoc.content);
+      this.loadedDocs.add(url);
+      return fixtureDoc;
     }
+
+    return this.createEmptyDoc(url);
   }
 
   /**
