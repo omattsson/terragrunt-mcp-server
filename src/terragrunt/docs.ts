@@ -143,11 +143,9 @@ export class TerragruntDocsManager {
   private metadataCache: Map<string, DocMetadata> = new Map();
   private indexedMetadata: IndexedMetadata[] = [];
   private contentCache: Map<string, string> = new Map();
-  private loadingPromises: Map<string, Promise<string>> = new Map();
   private loadedDocs: Set<string> = new Set();
   private lazyLoadingMetrics: LazyLoadingMetrics;
   private readonly startTime: number;
-  private totalDocLoadTimeMs: number = 0;
   
   private stats: CacheStats = {
     hits: 0,
@@ -235,13 +233,12 @@ export class TerragruntDocsManager {
    * Get cache statistics for monitoring and optimization
    */
   getCacheStats(): CacheStats {
-    // Update metadataCount and averageDocLoadTimeMs dynamically
+    // Update metadataCount dynamically
     const updatedMetrics: LazyLoadingMetrics = {
       ...this.lazyLoadingMetrics,
       metadataCount: this.metadataCache.size,
-      averageDocLoadTimeMs: this.lazyLoadingMetrics.docsLoadedLazily > 0
-        ? this.totalDocLoadTimeMs / this.lazyLoadingMetrics.docsLoadedLazily
-        : 0
+      // averageDocLoadTimeMs is no longer meaningful with single-fetch llms.txt model
+      averageDocLoadTimeMs: 0
     };
     
     return {
@@ -687,9 +684,15 @@ export class TerragruntDocsManager {
         // Build indexed metadata for optimized searches
         this.buildMetadataIndex();
         
+        // Track how many docs were loaded in this refresh
+        this.lazyLoadingMetrics.docsLoadedLazily = docs.length;
+        
         console.log(`Loaded ${this.metadataCache.size} docs from llms.txt in ${this.lazyLoadingMetrics.metadataOnlyLoadTime.toFixed(2)}ms (lazy mode)`);
         
-        // Calculate startup time
+        // Perform warmup if configured (consistent with disk cache loading path)
+        await this.warmupCache(this.warmupStrategy);
+        
+        // Calculate startup time (including warmup)
         this.lazyLoadingMetrics.startupTimeMs = performance.now() - this.startTime;
         
       } else {

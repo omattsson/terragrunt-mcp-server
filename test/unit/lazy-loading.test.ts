@@ -66,11 +66,6 @@ describe('Lazy Loading', () => {
       expect(manager.contentCache.size).toBe(0);
     });
 
-    it('should initialize empty loading promises map', () => {
-      const manager = new TerragruntDocsManager() as any;
-      expect(manager.loadingPromises.size).toBe(0);
-    });
-
     it('should initialize empty loaded docs set', () => {
       const manager = new TerragruntDocsManager() as any;
       expect(manager.loadedDocs.size).toBe(0);
@@ -123,7 +118,7 @@ describe('Lazy Loading', () => {
       expect(doc.title).toBe(metadata.title);
     });
 
-    it('should deduplicate concurrent loads of same document (returns same cached result)', async () => {
+    it('should return same cached content for concurrent calls to same document', async () => {
       const manager = new TerragruntDocsManager() as any;
       const url = 'https://example.com/doc';
       const metadata = {
@@ -150,7 +145,7 @@ describe('Lazy Loading', () => {
       expect(results[2].content).toBe('Test content');
     });
 
-    it('should increment docsLoadedLazily counter (now tracked during refresh, not loadDocContent)', async () => {
+    it('should return doc with metadata and content from cache', async () => {
       const manager = new TerragruntDocsManager() as any;
       const url = 'https://example.com/doc';
       const metadata = {
@@ -163,68 +158,11 @@ describe('Lazy Loading', () => {
       manager.metadataCache.set(url, metadata);
       manager.contentCache.set(url, 'Test content');
 
-      // loadDocContent is now a pure cache lookup — docsLoadedLazily is no longer
-      // incremented here (it's tracked during refreshDocsCache).
       const doc = await manager.loadDocContent(url);
       
       expect(doc.content).toBe('Test content');
       expect(doc.title).toBe('Test Doc');
-    });
-
-    it('should add URL to loadedDocs set (now tracked during refresh)', async () => {
-      const manager = new TerragruntDocsManager() as any;
-      const url = 'https://example.com/doc';
-      const metadata = {
-        title: 'Test Doc',
-        url,
-        section: 'test',
-        lastUpdated: new Date().toISOString()
-      };
-
-      manager.metadataCache.set(url, metadata);
-      manager.contentCache.set(url, 'Test content');
-      manager.loadedDocs.add(url);
-
-      await manager.loadDocContent(url);
-      
-      expect(manager.loadedDocs.has(url)).toBe(true);
-    });
-
-    it('should store content in contentCache (populated during refresh)', async () => {
-      const manager = new TerragruntDocsManager() as any;
-      const url = 'https://example.com/doc';
-      const metadata = {
-        title: 'Test Doc',
-        url,
-        section: 'test',
-        lastUpdated: new Date().toISOString()
-      };
-
-      manager.metadataCache.set(url, metadata);
-      manager.contentCache.set(url, 'Test content');
-
-      await manager.loadDocContent(url);
-      
-      expect(manager.contentCache.get(url)).toBe('Test content');
-    });
-
-    it('should clean up loading promise after completion (no longer applicable — pure cache lookup)', async () => {
-      const manager = new TerragruntDocsManager() as any;
-      const url = 'https://example.com/doc';
-      const metadata = {
-        title: 'Test Doc',
-        url,
-        section: 'test',
-        lastUpdated: new Date().toISOString()
-      };
-
-      manager.metadataCache.set(url, metadata);
-      manager.contentCache.set(url, 'Test content');
-
-      await manager.loadDocContent(url);
-      
-      // loadingPromises should not be used for cache lookups
-      expect(manager.loadingPromises.has(url)).toBe(false);
+      expect(doc.section).toBe('test');
     });
 
     it('should return empty doc when metadata does not exist', async () => {
