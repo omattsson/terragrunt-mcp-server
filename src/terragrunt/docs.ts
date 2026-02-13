@@ -94,7 +94,6 @@ export const SECTION_MAP: Array<{ pattern: RegExp; section: string; urlPrefix: s
 
   // Reference: CLI commands
   { pattern: /^(bootstrap|delete|migrate|catalog|graph|exec|find|fmt|validate|print|list|OpenTofu Shortcuts|render|scaffold)$/i, section: 'reference', urlPrefix: '/docs/reference/cli/commands' },
-  { pattern: /^(run)$/i, section: 'reference', urlPrefix: '/docs/reference/cli/commands' },
   { pattern: /^(Global Flags|CLI Rules)$/i, section: 'reference', urlPrefix: '/docs/reference/cli' },
 
   // Reference: experiments
@@ -106,9 +105,6 @@ export const SECTION_MAP: Array<{ pattern: RegExp; section: string; urlPrefix: s
   // Reference: other
   { pattern: /^(Lock File Handling|Releases)$/i, section: 'reference', urlPrefix: '/docs/reference' },
   { pattern: /^(Formatting|Strict Controls)$/i, section: 'reference', urlPrefix: '/docs/reference/logging' },
-
-  // Reference: overview (logging overview, cli overview, hcl overview)
-  { pattern: /^Overview$/i, section: 'reference', urlPrefix: '/docs/reference' },
 
   // Troubleshooting
   { pattern: /^(OpenTofu and Terraform Version Compatibility|Terragrunt Cache|Debugging|OpenTelemetry|Performance)$/i, section: 'troubleshooting', urlPrefix: '/docs/troubleshooting' },
@@ -1276,11 +1272,39 @@ export class TerragruntDocsManager {
     // Strip optional <SYSTEM>...</SYSTEM> preamble
     const cleaned = markdown.replace(/^<SYSTEM>[\s\S]*?<\/SYSTEM>\s*/i, '');
 
-    // Split on H1 boundaries (positive lookahead keeps the delimiter with each chunk)
-    const sections = cleaned.split(/^(?=# )/m).filter(s => s.trim());
+    // Split on H1 boundaries while ignoring `# ` lines inside fenced code blocks.
+    // This avoids corrupting sections when shell/HCL comments appear in code fences.
+    const sectionChunks: string[] = [];
+    const currentSectionLines: string[] = [];
+    const lines = cleaned.split('\n');
+    let inFence = false;
+
+    for (const line of lines) {
+      // Detect fenced code block boundaries (``` or ~~~, possibly with language spec)
+      if (/^(```+|~~~+)/.test(line)) {
+        inFence = !inFence;
+      }
+
+      // Start a new section on H1 only when not inside a fenced code block
+      if (!inFence && line.startsWith('# ')) {
+        if (currentSectionLines.length > 0) {
+          sectionChunks.push(currentSectionLines.join('\n'));
+          currentSectionLines.length = 0;
+        }
+      }
+
+      currentSectionLines.push(line);
+    }
+
+    if (currentSectionLines.length > 0) {
+      sectionChunks.push(currentSectionLines.join('\n'));
+    }
+
+    const sections = sectionChunks.filter(s => s.trim());
 
     const docs: TerragruntDoc[] = [];
     const seenSlugs = new Set<string>();
+    const parseTimestamp = new Date().toISOString();
 
     for (const section of sections) {
       // Extract the H1 line
@@ -1315,7 +1339,7 @@ export class TerragruntDocsManager {
         content,
         section: mapping.section,
         url,
-        lastUpdated: new Date().toISOString(),
+        lastUpdated: parseTimestamp,
       });
     }
 

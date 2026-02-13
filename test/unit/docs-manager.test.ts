@@ -848,8 +848,9 @@ describe('TerragruntDocsManager', () => {
 
       expect(docs).toHaveLength(1);
       expect(docs[0].lastUpdated).toBeDefined();
-      // Should be a valid ISO date
-      expect(() => new Date(docs[0].lastUpdated!)).not.toThrow();
+      // Should be a valid, parseable ISO date
+      const lastUpdated = docs[0].lastUpdated!;
+      expect(Number.isFinite(new Date(lastUpdated).getTime())).toBe(true);
     });
 
     it('should construct correct URLs for CLI command titles', () => {
@@ -916,6 +917,35 @@ describe('TerragruntDocsManager', () => {
       expect(docs[1].url).toContain('/docs/features/authentication/');
       expect(docs[1].content).toContain('```hcl');
       expect(docs[1].content).toContain('iam_role');
+    });
+
+    it('should not split on H1 inside fenced code blocks', () => {
+      const markdown = [
+        '# Shell Example',
+        '',
+        '> How to run scripts.',
+        '',
+        '```bash',
+        '# This is a shell comment that starts with H1-like syntax',
+        'echo "hello"',
+        '# Another comment',
+        '```',
+        '',
+        'More content after the fence.',
+        '',
+        '# Next Section',
+        '',
+        'Content of next section.',
+      ].join('\n');
+
+      const docs = manager.parseLlmsMarkdown(markdown);
+
+      expect(docs).toHaveLength(2);
+      expect(docs[0].title).toBe('Shell Example');
+      expect(docs[0].content).toContain('# This is a shell comment');
+      expect(docs[0].content).toContain('# Another comment');
+      expect(docs[0].content).toContain('More content after the fence.');
+      expect(docs[1].title).toBe('Next Section');
     });
   });
 });
