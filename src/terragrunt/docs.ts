@@ -72,6 +72,63 @@ interface RetryConfig {
   backoffMultiplier: number;
 }
 
+/**
+ * Maps title patterns (case-insensitive regex) to Terragrunt doc sections.
+ * Order matters: first match wins. More specific patterns should appear before general ones.
+ */
+export const SECTION_MAP: Array<{ pattern: RegExp; section: string; urlPrefix: string }> = [
+  // Community pages
+  { pattern: /^(Contributing|License|Support)$/i, section: 'community', urlPrefix: '/docs/community' },
+
+  // Getting started
+  { pattern: /^(Install|Overview|Quick Start|Terminology)$/i, section: 'getting-started', urlPrefix: '/docs/getting-started' },
+
+  // Migration / tutorial: terralith-to-terragrunt guide
+  { pattern: /^(Introduction|Setup|Step \d+[:\s].*|Wrap Up)$/i, section: 'migrate', urlPrefix: '/docs/migrate/terralith-to-terragrunt' },
+
+  // Migration guides (general)
+  { pattern: /^(Bare Include|CLI Redesign|Migrating|Terragrunt Stacks|Upgrading|Terragrunt 1\.0 Guarantees)$/i, section: 'migrate', urlPrefix: '/docs/migrate' },
+
+  // Reference: CLI commands (stack subcommands)
+  { pattern: /^(clean|generate|output|run)$/i, section: 'reference', urlPrefix: '/docs/reference/cli/commands/stack' },
+
+  // Reference: CLI commands
+  { pattern: /^(bootstrap|delete|migrate|catalog|graph|exec|find|fmt|validate|print|list|OpenTofu Shortcuts|render|scaffold)$/i, section: 'reference', urlPrefix: '/docs/reference/cli/commands' },
+  { pattern: /^(run)$/i, section: 'reference', urlPrefix: '/docs/reference/cli/commands' },
+  { pattern: /^(Global Flags|CLI Rules)$/i, section: 'reference', urlPrefix: '/docs/reference/cli' },
+
+  // Reference: experiments
+  { pattern: /^Experiments$/i, section: 'reference', urlPrefix: '/docs/reference' },
+
+  // Reference: HCL
+  { pattern: /^(Attributes|Blocks|Functions)$/i, section: 'reference', urlPrefix: '/docs/reference/hcl' },
+
+  // Reference: other
+  { pattern: /^(Lock File Handling|Releases)$/i, section: 'reference', urlPrefix: '/docs/reference' },
+  { pattern: /^(Formatting|Strict Controls)$/i, section: 'reference', urlPrefix: '/docs/reference/logging' },
+
+  // Reference: overview (logging overview, cli overview, hcl overview)
+  { pattern: /^Overview$/i, section: 'reference', urlPrefix: '/docs/reference' },
+
+  // Troubleshooting
+  { pattern: /^(OpenTofu and Terraform Version Compatibility|Terragrunt Cache|Debugging|OpenTelemetry|Performance)$/i, section: 'troubleshooting', urlPrefix: '/docs/troubleshooting' },
+
+  // Features (catch-all for remaining titles)
+  { pattern: /./i, section: 'features', urlPrefix: '/docs/features' },
+];
+
+/**
+ * Convert a title string to a URL-friendly slug.
+ * e.g., "Keep Your Code DRY" → "keep-your-code-dry"
+ */
+export function slugifyTitle(title: string): string {
+  return title
+    .toLowerCase()
+    .replace(/[()]/g, '')           // Remove parentheses
+    .replace(/[^a-z0-9]+/g, '-')   // Replace non-alphanumeric with hyphens
+    .replace(/^-+|-+$/g, '');       // Trim leading/trailing hyphens
+}
+
 export class TerragruntDocsManager {
   private readonly baseUrl = 'https://terragrunt.gruntwork.io';
   private docsCache: Map<string, TerragruntDoc> = new Map();
@@ -1202,5 +1259,79 @@ export class TerragruntDocsManager {
 
     // Remove duplicates and limit
     return Array.from(new Set(examples)).slice(0, 5);
+  }
+
+  /**
+   * Parse raw Markdown from llms.txt into individual TerragruntDoc entries.
+   * Splits on H1 (`# `) boundaries; each H1 becomes one doc.
+   *
+   * @param markdown - Raw Markdown string (e.g., fetched from llms-small.txt)
+   * @returns Array of TerragruntDoc objects with title, content, section, and url
+   */
+  parseLlmsMarkdown(markdown: string): TerragruntDoc[] {
+    if (!markdown || !markdown.trim()) {
+      return [];
+    }
+
+    // Strip optional <SYSTEM>...</SYSTEM> preamble
+    const cleaned = markdown.replace(/^<SYSTEM>[\s\S]*?<\/SYSTEM>\s*/i, '');
+
+    // Split on H1 boundaries (positive lookahead keeps the delimiter with each chunk)
+    const sections = cleaned.split(/^(?=# )/m).filter(s => s.trim());
+
+    const docs: TerragruntDoc[] = [];
+    const seenSlugs = new Set<string>();
+
+    for (const section of sections) {
+      // Extract the H1 line
+      const headerMatch = section.match(/^# (.+)$/m);
+      if (!headerMatch) {
+        continue; // Skip chunks that don't start with a proper H1
+      }
+
+      const title = headerMatch[1].trim();
+      // Content is everything after the H1 line
+      const content = section.slice(headerMatch[0].length).trim();
+
+      // Infer section and URL prefix from SECTION_MAP
+      const mapping = this.inferSection(title);
+      const slug = slugifyTitle(title);
+
+      // Handle duplicate slugs by appending a counter
+      let uniqueSlug = slug;
+      if (seenSlugs.has(slug)) {
+        let counter = 2;
+        while (seenSlugs.has(`${slug}-${counter}`)) {
+          counter++;
+        }
+        uniqueSlug = `${slug}-${counter}`;
+      }
+      seenSlugs.add(uniqueSlug);
+
+      const url = `${this.baseUrl}${mapping.urlPrefix}/${uniqueSlug}/`;
+
+      docs.push({
+        title,
+        content,
+        section: mapping.section,
+        url,
+        lastUpdated: new Date().toISOString(),
+      });
+    }
+
+    return docs;
+  }
+
+  /**
+   * Infer the doc section and URL prefix for a given title using SECTION_MAP.
+   */
+  private inferSection(title: string): { section: string; urlPrefix: string } {
+    for (const entry of SECTION_MAP) {
+      if (entry.pattern.test(title)) {
+        return { section: entry.section, urlPrefix: entry.urlPrefix };
+      }
+    }
+    // Fallback (shouldn't reach here since SECTION_MAP has a catch-all)
+    return { section: 'general', urlPrefix: '/docs' };
   }
 }

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi, beforeAll, afterAll } from 'vitest';
-import { TerragruntDocsManager, TerragruntDoc } from '../../src/terragrunt/docs.js';
+import { TerragruntDocsManager, TerragruntDoc, SECTION_MAP, slugifyTitle } from '../../src/terragrunt/docs.js';
 
 // Mock node-fetch
 vi.mock('node-fetch');
@@ -606,6 +606,316 @@ describe('TerragruntDocsManager', () => {
       expect(typeof result.totalDocs).toBe('number');
       expect(typeof result.functionDocsCount).toBe('number');
       expect(Array.isArray(result.missingPages)).toBe(true);
+    });
+  });
+
+  describe('slugifyTitle', () => {
+    it('should convert a simple title to a slug', () => {
+      expect(slugifyTitle('Quick Start')).toBe('quick-start');
+    });
+
+    it('should handle parentheses', () => {
+      expect(slugifyTitle('Content Addressable Store (CAS)')).toBe('content-addressable-store-cas');
+    });
+
+    it('should handle special characters', () => {
+      expect(slugifyTitle('Feature Flags, Errors and Excludes')).toBe('feature-flags-errors-and-excludes');
+    });
+
+    it('should handle numbers', () => {
+      expect(slugifyTitle('Step 1: Starting the Terralith')).toBe('step-1-starting-the-terralith');
+    });
+
+    it('should handle single word titles', () => {
+      expect(slugifyTitle('Install')).toBe('install');
+    });
+
+    it('should handle version numbers', () => {
+      expect(slugifyTitle('Upgrading to Terragrunt 0.19.x')).toBe('upgrading-to-terragrunt-0-19-x');
+    });
+
+    it('should trim leading and trailing hyphens', () => {
+      expect(slugifyTitle('---test---')).toBe('test');
+    });
+
+    it('should return empty string for empty input', () => {
+      expect(slugifyTitle('')).toBe('');
+    });
+  });
+
+  describe('SECTION_MAP', () => {
+    it('should map community titles correctly', () => {
+      expect(SECTION_MAP.find(e => e.pattern.test('Contributing'))?.section).toBe('community');
+      expect(SECTION_MAP.find(e => e.pattern.test('License'))?.section).toBe('community');
+      expect(SECTION_MAP.find(e => e.pattern.test('Support'))?.section).toBe('community');
+    });
+
+    it('should map getting-started titles correctly', () => {
+      expect(SECTION_MAP.find(e => e.pattern.test('Install'))?.section).toBe('getting-started');
+      expect(SECTION_MAP.find(e => e.pattern.test('Quick Start'))?.section).toBe('getting-started');
+      expect(SECTION_MAP.find(e => e.pattern.test('Terminology'))?.section).toBe('getting-started');
+      expect(SECTION_MAP.find(e => e.pattern.test('Overview'))?.section).toBe('getting-started');
+    });
+
+    it('should map migration/tutorial titles correctly', () => {
+      expect(SECTION_MAP.find(e => e.pattern.test('Introduction'))?.section).toBe('migrate');
+      expect(SECTION_MAP.find(e => e.pattern.test('Step 1: Starting the Terralith'))?.section).toBe('migrate');
+      expect(SECTION_MAP.find(e => e.pattern.test('Wrap Up'))?.section).toBe('migrate');
+      expect(SECTION_MAP.find(e => e.pattern.test('Bare Include'))?.section).toBe('migrate');
+      expect(SECTION_MAP.find(e => e.pattern.test('CLI Redesign'))?.section).toBe('migrate');
+    });
+
+    it('should map reference CLI titles correctly', () => {
+      expect(SECTION_MAP.find(e => e.pattern.test('bootstrap'))?.section).toBe('reference');
+      expect(SECTION_MAP.find(e => e.pattern.test('find'))?.section).toBe('reference');
+      expect(SECTION_MAP.find(e => e.pattern.test('Global Flags'))?.section).toBe('reference');
+    });
+
+    it('should map reference HCL titles correctly', () => {
+      expect(SECTION_MAP.find(e => e.pattern.test('Attributes'))?.section).toBe('reference');
+      expect(SECTION_MAP.find(e => e.pattern.test('Blocks'))?.section).toBe('reference');
+      expect(SECTION_MAP.find(e => e.pattern.test('Functions'))?.section).toBe('reference');
+    });
+
+    it('should map troubleshooting titles correctly', () => {
+      expect(SECTION_MAP.find(e => e.pattern.test('Debugging'))?.section).toBe('troubleshooting');
+      expect(SECTION_MAP.find(e => e.pattern.test('Performance'))?.section).toBe('troubleshooting');
+      expect(SECTION_MAP.find(e => e.pattern.test('OpenTelemetry'))?.section).toBe('troubleshooting');
+    });
+
+    it('should fall back to features for unknown titles', () => {
+      expect(SECTION_MAP.find(e => e.pattern.test('Authentication'))?.section).toBe('features');
+      expect(SECTION_MAP.find(e => e.pattern.test('Hooks'))?.section).toBe('features');
+      expect(SECTION_MAP.find(e => e.pattern.test('State Backend'))?.section).toBe('features');
+    });
+
+    it('should have a catch-all entry as the last rule', () => {
+      const lastEntry = SECTION_MAP[SECTION_MAP.length - 1];
+      expect(lastEntry.pattern.test('Anything at all')).toBe(true);
+      expect(lastEntry.section).toBe('features');
+    });
+  });
+
+  describe('parseLlmsMarkdown', () => {
+    let manager: TerragruntDocsManager;
+
+    beforeEach(() => {
+      manager = new TerragruntDocsManager();
+    });
+
+    it('should return empty array for empty input', () => {
+      expect(manager.parseLlmsMarkdown('')).toEqual([]);
+      expect(manager.parseLlmsMarkdown('  ')).toEqual([]);
+    });
+
+    it('should parse a single H1 section', () => {
+      const markdown = '# Quick Start\n\n> Start using Terragrunt today!\n\nSome content here.';
+      const docs = manager.parseLlmsMarkdown(markdown);
+
+      expect(docs).toHaveLength(1);
+      expect(docs[0].title).toBe('Quick Start');
+      expect(docs[0].content).toContain('Start using Terragrunt today!');
+      expect(docs[0].content).toContain('Some content here.');
+      expect(docs[0].section).toBe('getting-started');
+      expect(docs[0].url).toContain('/docs/getting-started/quick-start/');
+    });
+
+    it('should parse multiple H1 sections', () => {
+      const markdown = [
+        '# Authentication',
+        '',
+        '> Learn about auth.',
+        '',
+        'Auth content here.',
+        '',
+        '# Hooks',
+        '',
+        '> Execute custom code.',
+        '',
+        'Hooks content here.',
+      ].join('\n');
+
+      const docs = manager.parseLlmsMarkdown(markdown);
+
+      expect(docs).toHaveLength(2);
+      expect(docs[0].title).toBe('Authentication');
+      expect(docs[0].section).toBe('features');
+      expect(docs[1].title).toBe('Hooks');
+      expect(docs[1].section).toBe('features');
+    });
+
+    it('should strip <SYSTEM> preamble', () => {
+      const markdown = [
+        '<SYSTEM>This is the abridged developer documentation for Terragrunt</SYSTEM>',
+        '',
+        '# Install',
+        '',
+        'Install instructions.',
+      ].join('\n');
+
+      const docs = manager.parseLlmsMarkdown(markdown);
+
+      expect(docs).toHaveLength(1);
+      expect(docs[0].title).toBe('Install');
+      expect(docs[0].content).not.toContain('SYSTEM');
+    });
+
+    it('should preserve Markdown formatting in content', () => {
+      const markdown = [
+        '# State Backend',
+        '',
+        '## Configuration',
+        '',
+        'Use `remote_state` block:',
+        '',
+        '```hcl',
+        'remote_state {',
+        '  backend = "s3"',
+        '}',
+        '```',
+        '',
+        '- Item one',
+        '- Item two',
+      ].join('\n');
+
+      const docs = manager.parseLlmsMarkdown(markdown);
+
+      expect(docs).toHaveLength(1);
+      expect(docs[0].content).toContain('```hcl');
+      expect(docs[0].content).toContain('remote_state {');
+      expect(docs[0].content).toContain('- Item one');
+    });
+
+    it('should handle H1 with no content', () => {
+      const markdown = '# Empty Section\n\n# Another Section\n\nSome content.';
+      const docs = manager.parseLlmsMarkdown(markdown);
+
+      expect(docs).toHaveLength(2);
+      expect(docs[0].title).toBe('Empty Section');
+      expect(docs[0].content).toBe('');
+      expect(docs[1].title).toBe('Another Section');
+      expect(docs[1].content).toBe('Some content.');
+    });
+
+    it('should handle duplicate titles by appending counter to slug', () => {
+      const markdown = [
+        '# Overview',
+        '',
+        'First overview content.',
+        '',
+        '# Overview',
+        '',
+        'Second overview content.',
+        '',
+        '# Overview',
+        '',
+        'Third overview content.',
+      ].join('\n');
+
+      const docs = manager.parseLlmsMarkdown(markdown);
+
+      expect(docs).toHaveLength(3);
+      // All titled "Overview" but with unique URLs
+      expect(docs[0].url).toContain('/overview/');
+      expect(docs[1].url).toContain('/overview-2/');
+      expect(docs[2].url).toContain('/overview-3/');
+    });
+
+    it('should not split on ## or ### headers', () => {
+      const markdown = [
+        '# Main Title',
+        '',
+        '## Sub Section',
+        '',
+        'Sub content.',
+        '',
+        '### Sub Sub Section',
+        '',
+        'Deep content.',
+      ].join('\n');
+
+      const docs = manager.parseLlmsMarkdown(markdown);
+
+      expect(docs).toHaveLength(1);
+      expect(docs[0].title).toBe('Main Title');
+      expect(docs[0].content).toContain('## Sub Section');
+      expect(docs[0].content).toContain('### Sub Sub Section');
+    });
+
+    it('should include lastUpdated timestamp', () => {
+      const markdown = '# Install\n\nContent.';
+      const docs = manager.parseLlmsMarkdown(markdown);
+
+      expect(docs).toHaveLength(1);
+      expect(docs[0].lastUpdated).toBeDefined();
+      // Should be a valid ISO date
+      expect(() => new Date(docs[0].lastUpdated!)).not.toThrow();
+    });
+
+    it('should construct correct URLs for CLI command titles', () => {
+      const markdown = '# find\n\n> Find units.\n\nContent.';
+      const docs = manager.parseLlmsMarkdown(markdown);
+
+      expect(docs).toHaveLength(1);
+      expect(docs[0].url).toContain('/docs/reference/cli/commands/find/');
+    });
+
+    it('should construct correct URLs for troubleshooting titles', () => {
+      const markdown = '# Debugging\n\n> Debug info.\n\nContent.';
+      const docs = manager.parseLlmsMarkdown(markdown);
+
+      expect(docs).toHaveLength(1);
+      expect(docs[0].url).toContain('/docs/troubleshooting/debugging/');
+    });
+
+    it('should handle content before first H1 gracefully', () => {
+      const markdown = 'Some preamble text\n\n# Real Title\n\nContent.';
+      const docs = manager.parseLlmsMarkdown(markdown);
+
+      // Preamble without H1 should be skipped
+      expect(docs).toHaveLength(1);
+      expect(docs[0].title).toBe('Real Title');
+    });
+
+    it('should handle realistic llms.txt content sample', () => {
+      const markdown = [
+        '<SYSTEM>This is the abridged developer documentation for Terragrunt</SYSTEM>',
+        '',
+        '# Contributing',
+        '',
+        '> Contributing to Terragrunt',
+        '',
+        '## Contribution Guidelines',
+        '',
+        'Contributions to Terragrunt are very welcome!',
+        '',
+        '# Authentication',
+        '',
+        '> Learn how Terragrunt helps you automate authentication workflows.',
+        '',
+        '## Motivation',
+        '',
+        'AWS is by far the most popular OpenTofu/Terraform provider.',
+        '',
+        '```hcl',
+        'iam_role = "arn:aws:iam::ACCOUNT_ID:role/ROLE_NAME"',
+        '```',
+      ].join('\n');
+
+      const docs = manager.parseLlmsMarkdown(markdown);
+
+      expect(docs).toHaveLength(2);
+
+      expect(docs[0].title).toBe('Contributing');
+      expect(docs[0].section).toBe('community');
+      expect(docs[0].url).toContain('/docs/community/contributing/');
+      expect(docs[0].content).toContain('Contributions to Terragrunt are very welcome!');
+
+      expect(docs[1].title).toBe('Authentication');
+      expect(docs[1].section).toBe('features');
+      expect(docs[1].url).toContain('/docs/features/authentication/');
+      expect(docs[1].content).toContain('```hcl');
+      expect(docs[1].content).toContain('iam_role');
     });
   });
 });
