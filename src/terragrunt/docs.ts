@@ -349,7 +349,7 @@ export class TerragruntDocsManager {
             section: doc.section,
             lastUpdated: doc.lastUpdated
           });
-          if (doc.content) {
+          if (doc.content != null) {
             this.contentCache.set(doc.url, doc.content);
             this.loadedDocs.add(doc.url);
           }
@@ -508,8 +508,8 @@ export class TerragruntDocsManager {
           };
           this.metadataCache.set(doc.url, docMetadata);
           
-          // Populate contentCache if document has content
-          if (doc.content) {
+          // Populate contentCache if document has content (empty string is valid)
+          if (doc.content != null) {
             this.contentCache.set(doc.url, doc.content);
             this.loadedDocs.add(doc.url);
           }
@@ -790,16 +790,16 @@ export class TerragruntDocsManager {
     const cachedContent = this.contentCache.get(url);
     const metadata = this.metadataCache.get(url);
 
-    if (metadata && cachedContent) {
+    if (metadata && cachedContent !== undefined) {
       return { ...metadata, content: cachedContent };
     }
 
-    if (cachedContent && !metadata) {
+    if (cachedContent !== undefined && !metadata) {
       console.warn(`[LazyLoading] Inconsistent state: content exists for ${url} but metadata is missing`);
       return this.createEmptyDoc(url);
     }
 
-    if (metadata && !cachedContent) {
+    if (metadata && cachedContent === undefined) {
       // Metadata exists but content was not populated (e.g., partial disk cache).
       // Return doc with empty content rather than fetching HTML.
       return { ...metadata, content: '' };
