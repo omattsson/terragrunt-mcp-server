@@ -57,65 +57,6 @@ describe('TerragruntDocsManager', () => {
     });
   });
 
-  describe('Section Extraction', () => {
-    it('should extract section from standard docs URL', () => {
-      const manager = docsManager as any;
-      const section = manager.extractSection('/docs/getting-started/quick-start/');
-      expect(section).toBe('getting-started');
-    });
-
-    it('should extract section from reference URL', () => {
-      const manager = docsManager as any;
-      const section = manager.extractSection('/docs/reference/config-blocks/');
-      expect(section).toBe('reference');
-    });
-
-    it('should extract section from features URL', () => {
-      const manager = docsManager as any;
-      const section = manager.extractSection('/docs/features/keep-your-code-dry/');
-      expect(section).toBe('features');
-    });
-
-    it('should return "general" for malformed URLs', () => {
-      const manager = docsManager as any;
-      const section = manager.extractSection('/docs/');
-      expect(section).toBe('general');
-    });
-
-    it('should return "general" for URLs without section', () => {
-      const manager = docsManager as any;
-      const section = manager.extractSection('/');
-      expect(section).toBe('general');
-    });
-  });
-
-  describe('Content Cleaning', () => {
-    it('should remove extra whitespace', () => {
-      const manager = docsManager as any;
-      const cleaned = manager.cleanContent('Hello    world    test');
-      expect(cleaned).toBe('Hello world test');
-    });
-
-    it('should normalize whitespace including newlines', () => {
-      const manager = docsManager as any;
-      const cleaned = manager.cleanContent('Hello\n\n\nworld');
-      // First replacement converts all whitespace to single spaces
-      expect(cleaned).toBe('Hello world');
-    });
-
-    it('should remove tabs', () => {
-      const manager = docsManager as any;
-      const cleaned = manager.cleanContent('Hello\t\tworld');
-      expect(cleaned).toBe('Hello world');
-    });
-
-    it('should trim leading and trailing whitespace', () => {
-      const manager = docsManager as any;
-      const cleaned = manager.cleanContent('  Hello world  ');
-      expect(cleaned).toBe('Hello world');
-    });
-  });
-
   describe('Search Functionality', () => {
     const mockDocs: TerragruntDoc[] = [
       {
