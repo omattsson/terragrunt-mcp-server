@@ -702,6 +702,9 @@ export class TerragruntDocsManager {
       this.metadataCache.clear();
       this.contentCache.clear();
       this.loadedDocs.clear();
+      this.searchCache.clear();
+      this.indexedDocs = [];
+      this.indexedMetadata = [];
 
       const refreshStartTime = performance.now();
       
@@ -814,6 +817,7 @@ export class TerragruntDocsManager {
         lastUpdated: fixtureDoc.lastUpdated
       });
       this.contentCache.set(url, fixtureDoc.content);
+      this.loadedDocs.add(url);
       return fixtureDoc;
     }
 
