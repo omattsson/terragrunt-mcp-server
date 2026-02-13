@@ -43,10 +43,17 @@ interface CacheMetadata {
 interface LazyLoadingMetrics {
   enabled: boolean;
   startupTimeMs: number;
-  metadataOnlyLoadTime?: number;
+  /** Time to fetch all docs from llms.txt and build indexes (renamed from metadataOnlyLoadTime) */
+  fetchAndIndexTime?: number;
+  /** Time spent in warmup phase (now a no-op with llms.txt since all content is pre-loaded) */
   warmupTime?: number;
   initialMemoryMB: number;
   metadataCount: number;
+  /**
+   * Legacy metric from the HTML-scraping era. Always 0 with the llms.txt model
+   * because all documents are fetched upfront in a single request rather than
+   * loaded on-demand.
+   */
   docsLoadedLazily: number;
   averageDocLoadTimeMs: number;
   warmupStrategy: WarmupStrategy;
@@ -485,7 +492,10 @@ export class TerragruntDocsManager {
       const docs: TerragruntDoc[] = JSON.parse(docsContent);
 
       if (this.lazyLoadingEnabled) {
-        // Lazy loading mode: load metadata and populate contentCache with existing content
+        // Dual-cache (metadata-indexed) mode: populate metadata and content caches.
+        // NOTE: "lazy loading" is a historical term from the HTML-scraping era.
+        // With llms.txt, all content is fetched upfront; the dual-cache architecture
+        // is retained for efficient metadata-based searching.
         this.metadataCache.clear();
         this.contentCache.clear();
         this.loadedDocs.clear();
@@ -505,14 +515,6 @@ export class TerragruntDocsManager {
           }
         });
         
-        this.lastFetchTime = new Date(metadata.lastFetchTime);
-        this.stats.hits++;
-        
-        // Build indexed metadata for optimized searches
-        this.buildMetadataIndex();
-        
-        console.log(`Loaded metadata for ${docs.length} docs from disk cache (${this.contentCache.size} with content, lazy mode, age: ${Math.round(cacheAge / 1000 / 60)} minutes)`);
-        
         // Detect stale lazy-mode disk caches created by the old HTML-scraping implementation
         // where most docs were saved with content: ''. Treat as cache miss to force a fresh
         // llms.txt fetch rather than serving empty content until TTL expiry.
@@ -526,7 +528,16 @@ export class TerragruntDocsManager {
           return false;
         }
         
-        // Perform warmup if configured
+        this.lastFetchTime = new Date(metadata.lastFetchTime);
+        this.stats.hits++;
+        
+        // Build indexed metadata for optimized searches
+        this.buildMetadataIndex();
+        
+        console.log(`Loaded metadata for ${docs.length} docs from disk cache (${this.contentCache.size} with content, lazy mode, age: ${Math.round(cacheAge / 1000 / 60)} minutes)`);
+        
+        // Warmup is effectively a no-op with the llms.txt model since all content
+        // is already in contentCache. Retained for API/metrics compatibility.
         await this.warmupCache(this.warmupStrategy);
         
         // Calculate startup time after warmup completes
@@ -695,7 +706,9 @@ export class TerragruntDocsManager {
       const refreshStartTime = performance.now();
       
       if (this.lazyLoadingEnabled) {
-        // Lazy loading mode: populate metadata and content caches from llms.txt results
+        // Dual-cache (metadata-indexed) mode: populate metadata and content caches
+        // from llms.txt results. All content is fetched upfront in a single request;
+        // "lazy loading" is a historical term retained for configuration compatibility.
         for (const doc of docs) {
           const metadata: DocMetadata = {
             title: doc.title,
@@ -712,17 +725,18 @@ export class TerragruntDocsManager {
         this.stats.lastRefresh = this.lastFetchTime;
         
         const endTime = performance.now();
-        this.lazyLoadingMetrics.metadataOnlyLoadTime = endTime - refreshStartTime;
+        this.lazyLoadingMetrics.fetchAndIndexTime = endTime - refreshStartTime;
         
         // Build indexed metadata for optimized searches
         this.buildMetadataIndex();
         
-        // Track how many docs were loaded in this refresh
-        this.lazyLoadingMetrics.docsLoadedLazily = docs.length;
+        // No documents are lazily loaded during llms.txt refresh; all docs are fetched upfront
+        this.lazyLoadingMetrics.docsLoadedLazily = 0;
         
-        console.log(`Loaded ${this.metadataCache.size} docs from llms.txt in ${this.lazyLoadingMetrics.metadataOnlyLoadTime.toFixed(2)}ms (lazy mode)`);
+        console.log(`Loaded ${this.metadataCache.size} docs from llms.txt in ${this.lazyLoadingMetrics.fetchAndIndexTime.toFixed(2)}ms (indexed mode)`);
         
-        // Perform warmup if configured (consistent with disk cache loading path)
+        // Warmup is effectively a no-op with the llms.txt model since all content
+        // is already in contentCache. Retained for API/metrics compatibility.
         await this.warmupCache(this.warmupStrategy);
         
         // Calculate startup time (including warmup)
