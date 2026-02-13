@@ -289,8 +289,15 @@ describe('MetricsPersistence', () => {
 
   describe('cleanup', () => {
     it('should delete snapshots older than retention period', async () => {
-      const oldDate = '2025-12-01';
-      const recentDate = '2026-01-06';
+      // Use dynamic dates relative to today to avoid flakiness from hardcoded dates
+      const now = new Date();
+      const oldDateObj = new Date(now);
+      oldDateObj.setDate(oldDateObj.getDate() - 60); // 60 days ago — well past retention
+      const recentDateObj = new Date(now);
+      recentDateObj.setDate(recentDateObj.getDate() - 5); // 5 days ago — within retention
+
+      const oldDate = oldDateObj.toISOString().split('T')[0];
+      const recentDate = recentDateObj.toISOString().split('T')[0];
 
       await persistence.saveSnapshot({
         timestamp: new Date().toISOString(),
