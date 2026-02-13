@@ -691,6 +691,8 @@ export class TerragruntDocsManager {
     try {
       console.log('Refreshing Terragrunt documentation cache via llms.txt...');
       
+      const refreshStartTime = performance.now();
+      
       // Fetch all docs in a single HTTP request via llms.txt
       const docs = await this.fetchFromLlmsTxt();
 
@@ -705,8 +707,6 @@ export class TerragruntDocsManager {
       this.searchCache.clear();
       this.indexedDocs = [];
       this.indexedMetadata = [];
-
-      const refreshStartTime = performance.now();
       
       if (this.lazyLoadingEnabled) {
         // Dual-cache (metadata-indexed) mode: populate metadata and content caches
@@ -727,11 +727,11 @@ export class TerragruntDocsManager {
         this.lastFetchTime = new Date();
         this.stats.lastRefresh = this.lastFetchTime;
         
-        const endTime = performance.now();
-        this.lazyLoadingMetrics.fetchAndIndexTime = endTime - refreshStartTime;
-        
         // Build indexed metadata for optimized searches
         this.buildMetadataIndex();
+        
+        const endTime = performance.now();
+        this.lazyLoadingMetrics.fetchAndIndexTime = endTime - refreshStartTime;
         
         // No documents are lazily loaded during llms.txt refresh; all docs are fetched upfront
         this.lazyLoadingMetrics.docsLoadedLazily = 0;
