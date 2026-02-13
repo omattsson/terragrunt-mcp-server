@@ -948,4 +948,184 @@ describe('TerragruntDocsManager', () => {
       expect(docs[1].title).toBe('Next Section');
     });
   });
+
+  describe('fetchFromLlmsTxt', () => {
+    let manager: TerragruntDocsManager;
+    let mockFetch: ReturnType<typeof vi.fn>;
+    const sampleMarkdown = [
+      '# Install',
+      '',
+      'Install instructions here.',
+      '',
+      '# Quick Start',
+      '',
+      'Quick start guide.',
+    ].join('\n');
+
+    /** Helper to create a mock Response-like object */
+    function mockResponse(opts: { ok: boolean; status?: number; statusText?: string; body?: string }) {
+      return {
+        ok: opts.ok,
+        status: opts.status ?? (opts.ok ? 200 : 500),
+        statusText: opts.statusText ?? (opts.ok ? 'OK' : 'Internal Server Error'),
+        text: () => Promise.resolve(opts.body ?? ''),
+      };
+    }
+
+    beforeEach(async () => {
+      manager = new TerragruntDocsManager();
+      // Speed up retries for all tests in this suite
+      (manager as any).retryConfig = {
+        maxRetries: 3,
+        initialDelayMs: 1,
+        maxDelayMs: 5,
+        backoffMultiplier: 2,
+      };
+      vi.clearAllMocks();
+      delete process.env.TERRAGRUNT_LLMS_SOURCE;
+
+      // Obtain a typed reference to the mocked fetch
+      const fetchModule = await import('node-fetch');
+      mockFetch = fetchModule.default as unknown as ReturnType<typeof vi.fn>;
+    });
+
+    afterAll(() => {
+      delete process.env.TERRAGRUNT_LLMS_SOURCE;
+    });
+
+    it('should fetch and parse llms.txt into TerragruntDoc[]', async () => {
+      mockFetch.mockResolvedValueOnce(mockResponse({ ok: true, body: sampleMarkdown }));
+
+      const docs = await manager.fetchFromLlmsTxt();
+
+      expect(docs).toHaveLength(2);
+      expect(docs[0].title).toBe('Install');
+      expect(docs[0].section).toBe('getting-started');
+      expect(docs[1].title).toBe('Quick Start');
+      expect(docs[1].section).toBe('getting-started');
+
+      expect(mockFetch).toHaveBeenCalledWith('https://terragrunt.gruntwork.io/llms-small.txt');
+    });
+
+    it('should use TERRAGRUNT_LLMS_SOURCE env var with absolute URL', async () => {
+      process.env.TERRAGRUNT_LLMS_SOURCE = 'https://example.com/llms-full.txt';
+
+      mockFetch.mockResolvedValueOnce(mockResponse({ ok: true, body: sampleMarkdown }));
+
+      const docs = await manager.fetchFromLlmsTxt();
+
+      expect(docs).toHaveLength(2);
+      expect(mockFetch).toHaveBeenCalledWith('https://example.com/llms-full.txt');
+    });
+
+    it('should resolve TERRAGRUNT_LLMS_SOURCE filename against baseUrl', async () => {
+      process.env.TERRAGRUNT_LLMS_SOURCE = 'llms-full.txt';
+
+      mockFetch.mockResolvedValueOnce(mockResponse({ ok: true, body: sampleMarkdown }));
+
+      const docs = await manager.fetchFromLlmsTxt();
+
+      expect(docs).toHaveLength(2);
+      expect(mockFetch).toHaveBeenCalledWith('https://terragrunt.gruntwork.io/llms-full.txt');
+    });
+
+    it('should resolve TERRAGRUNT_LLMS_SOURCE path with leading slash', async () => {
+      process.env.TERRAGRUNT_LLMS_SOURCE = '/custom/llms.txt';
+
+      mockFetch.mockResolvedValueOnce(mockResponse({ ok: true, body: sampleMarkdown }));
+
+      await manager.fetchFromLlmsTxt();
+
+      expect(mockFetch).toHaveBeenCalledWith('https://terragrunt.gruntwork.io/custom/llms.txt');
+    });
+
+    it('should return empty array on total fetch failure without throwing', async () => {
+      mockFetch.mockRejectedValue(new Error('Network error'));
+
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+      const docs = await manager.fetchFromLlmsTxt();
+
+      expect(docs).toEqual([]);
+      expect(consoleSpy).toHaveBeenCalled();
+      consoleSpy.mockRestore();
+      warnSpy.mockRestore();
+      logSpy.mockRestore();
+    });
+
+    it('should not retry on 4xx HTTP errors (non-retryable)', async () => {
+      mockFetch.mockResolvedValue(mockResponse({ ok: false, status: 404, statusText: 'Not Found' }));
+
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      const docs = await manager.fetchFromLlmsTxt();
+
+      expect(docs).toEqual([]);
+      // Should have been called only once — no retries for 404
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+      expect(consoleSpy).toHaveBeenCalled();
+      consoleSpy.mockRestore();
+    });
+
+    it('should retry on 5xx HTTP errors', async () => {
+      mockFetch
+        .mockResolvedValueOnce(mockResponse({ ok: false, status: 503, statusText: 'Service Unavailable' }))
+        .mockResolvedValueOnce(mockResponse({ ok: true, body: sampleMarkdown }));
+
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+      const docs = await manager.fetchFromLlmsTxt();
+
+      expect(docs).toHaveLength(2);
+      expect(mockFetch).toHaveBeenCalledTimes(2);
+      warnSpy.mockRestore();
+      logSpy.mockRestore();
+    });
+
+    it('should retry on 429 Too Many Requests', async () => {
+      mockFetch
+        .mockResolvedValueOnce(mockResponse({ ok: false, status: 429, statusText: 'Too Many Requests' }))
+        .mockResolvedValueOnce(mockResponse({ ok: true, body: sampleMarkdown }));
+
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+      const docs = await manager.fetchFromLlmsTxt();
+
+      expect(docs).toHaveLength(2);
+      expect(mockFetch).toHaveBeenCalledTimes(2);
+      warnSpy.mockRestore();
+      logSpy.mockRestore();
+    });
+
+    it('should return empty array when response body is empty', async () => {
+      mockFetch.mockResolvedValueOnce(mockResponse({ ok: true, body: '' }));
+
+      const docs = await manager.fetchFromLlmsTxt();
+
+      expect(docs).toEqual([]);
+    });
+
+    it('should retry on transient failure then succeed', async () => {
+      // Fail twice, then succeed
+      mockFetch
+        .mockRejectedValueOnce(new Error('Temporary failure'))
+        .mockRejectedValueOnce(new Error('Temporary failure'))
+        .mockResolvedValueOnce(mockResponse({ ok: true, body: sampleMarkdown }));
+
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+      const docs = await manager.fetchFromLlmsTxt();
+
+      expect(docs).toHaveLength(2);
+      expect(mockFetch).toHaveBeenCalledTimes(3);
+
+      warnSpy.mockRestore();
+      logSpy.mockRestore();
+    });
+  });
 });
