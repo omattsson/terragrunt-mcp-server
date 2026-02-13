@@ -238,6 +238,40 @@ describe('Lazy Loading', () => {
       expect(result.content).toBe('Fetched content');
       expect(manager.contentCache.get(url)).toBe('Fetched content');
     });
+
+    it('should fall back to docsCache when metadata and content caches are empty', async () => {
+      const manager = new TerragruntDocsManager() as any;
+      const url = 'https://example.com/fixture-doc';
+      const fixtureDoc = {
+        title: 'Fixture Doc',
+        url,
+        content: 'Fixture content',
+        section: 'reference',
+        lastUpdated: new Date().toISOString()
+      };
+
+      // Simulate fixture-loaded doc in docsCache (but not in lazy caches)
+      manager.docsCache.set(url, fixtureDoc);
+
+      const result = await manager.loadDocContent(url);
+
+      expect(result.title).toBe('Fixture Doc');
+      expect(result.content).toBe('Fixture content');
+      // Should also hydrate lazy-loading caches for future lookups
+      expect(manager.metadataCache.has(url)).toBe(true);
+      expect(manager.contentCache.get(url)).toBe('Fixture content');
+    });
+
+    it('should return empty doc when URL is not found in any cache', async () => {
+      const manager = new TerragruntDocsManager() as any;
+      const url = 'https://example.com/nowhere';
+
+      const result = await manager.loadDocContent(url);
+
+      expect(result.title).toBe('Unknown');
+      expect(result.content).toBe('');
+      expect(result.section).toBe('unknown');
+    });
   });
 
   describe('getCommonSections', () => {
@@ -542,6 +576,34 @@ describe('Lazy Loading', () => {
       const manager = new TerragruntDocsManager() as any;
       expect(manager.saveCacheToDisk).toBeDefined();
       expect(typeof manager.saveCacheToDisk).toBe('function');
+    });
+  });
+
+  describe('Fixture Fallback in Lazy Loading Mode', () => {
+    it('should make docsCache docs available via loadDocContent in lazy mode', async () => {
+      process.env.TERRAGRUNT_LAZY_LOADING = 'true';
+      const manager = new TerragruntDocsManager() as any;
+
+      const url = 'https://terragrunt.gruntwork.io/docs/getting-started/quick-start/';
+      const fixtureDoc = {
+        title: 'Quick Start',
+        url,
+        content: 'Getting started content',
+        section: 'getting-started',
+        lastUpdated: new Date().toISOString()
+      };
+
+      // Simulate what loadFixture does: populate docsCache only
+      manager.docsCache.set(url, fixtureDoc);
+
+      // loadDocContent should fall back to docsCache and hydrate lazy caches
+      const result = await manager.loadDocContent(url);
+
+      expect(result.title).toBe('Quick Start');
+      expect(result.content).toBe('Getting started content');
+      // Verify lazy caches were hydrated for future lookups
+      expect(manager.metadataCache.has(url)).toBe(true);
+      expect(manager.contentCache.get(url)).toBe('Getting started content');
     });
   });
 

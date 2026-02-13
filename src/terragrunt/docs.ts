@@ -330,6 +330,26 @@ export class TerragruntDocsManager {
       // Build search index for fixture docs
       this.buildSearchIndex();
 
+      // Also populate lazy-loading caches so loadDocContent() works in lazy mode
+      if (this.lazyLoadingEnabled) {
+        this.metadataCache.clear();
+        this.contentCache.clear();
+        this.loadedDocs.clear();
+        docs.forEach(doc => {
+          this.metadataCache.set(doc.url, {
+            title: doc.title,
+            url: doc.url,
+            section: doc.section,
+            lastUpdated: doc.lastUpdated
+          });
+          if (doc.content) {
+            this.contentCache.set(doc.url, doc.content);
+            this.loadedDocs.add(doc.url);
+          }
+        });
+        this.buildMetadataIndex();
+      }
+
       console.log(`Loaded ${docs.length} docs from fixture (fallback mode)`);
       return true;
     } catch (error) {
@@ -492,6 +512,19 @@ export class TerragruntDocsManager {
         this.buildMetadataIndex();
         
         console.log(`Loaded metadata for ${docs.length} docs from disk cache (${this.contentCache.size} with content, lazy mode, age: ${Math.round(cacheAge / 1000 / 60)} minutes)`);
+        
+        // Detect stale lazy-mode disk caches created by the old HTML-scraping implementation
+        // where most docs were saved with content: ''. Treat as cache miss to force a fresh
+        // llms.txt fetch rather than serving empty content until TTL expiry.
+        if (this.metadataCache.size > 0 && this.contentCache.size === 0) {
+          console.warn('Disk cache has metadata but no content (likely a stale lazy-mode cache from the HTML-scraping era) — treating as cache miss');
+          this.metadataCache.clear();
+          this.contentCache.clear();
+          this.loadedDocs.clear();
+          this.lastFetchTime = null;
+          this.stats.misses++;
+          return false;
+        }
         
         // Perform warmup if configured
         await this.warmupCache(this.warmupStrategy);
@@ -750,9 +783,24 @@ export class TerragruntDocsManager {
     }
 
     if (metadata && !cachedContent) {
-      // Metadata exists but content was not populated (e.g., stale disk cache with missing content).
+      // Metadata exists but content was not populated (e.g., partial disk cache).
       // Return doc with empty content rather than fetching HTML.
       return { ...metadata, content: '' };
+    }
+
+    // Fallback: check docsCache (populated by loadFixture or traditional mode).
+    // This ensures fixture docs are usable even when lazy-loading caches are empty.
+    const fixtureDoc = this.docsCache.get(url);
+    if (fixtureDoc) {
+      // Hydrate lazy-loading caches for future lookups
+      this.metadataCache.set(url, {
+        title: fixtureDoc.title,
+        url: fixtureDoc.url,
+        section: fixtureDoc.section,
+        lastUpdated: fixtureDoc.lastUpdated
+      });
+      this.contentCache.set(url, fixtureDoc.content);
+      return fixtureDoc;
     }
 
     return this.createEmptyDoc(url);
