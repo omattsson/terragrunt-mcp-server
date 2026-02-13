@@ -516,10 +516,12 @@ export class TerragruntDocsManager {
         });
         
         // Detect stale lazy-mode disk caches created by the old HTML-scraping implementation
-        // where most docs were saved with content: ''. Treat as cache miss to force a fresh
-        // llms.txt fetch rather than serving empty content until TTL expiry.
-        if (this.metadataCache.size > 0 && this.contentCache.size === 0) {
-          console.warn('Disk cache has metadata but no content (likely a stale lazy-mode cache from the HTML-scraping era) — treating as cache miss');
+        // where docs were saved with content: '' or null. Check both empty contentCache
+        // and the case where all cached content is empty strings.
+        const hasNoContent = this.contentCache.size === 0 ||
+          Array.from(this.contentCache.values()).every(c => c === '');
+        if (this.metadataCache.size > 0 && hasNoContent) {
+          console.warn('Disk cache has metadata but no meaningful content (likely a stale lazy-mode cache from the HTML-scraping era) — treating as cache miss');
           this.metadataCache.clear();
           this.contentCache.clear();
           this.loadedDocs.clear();
