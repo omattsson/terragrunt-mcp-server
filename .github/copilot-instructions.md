@@ -80,19 +80,6 @@ npm run start:guidance     # Best practices/troubleshooting
 4. Implement lazy `loadData()` called on first use
 5. Wire to `ToolHandler` constructor
 
-## Performance: Lazy Loading
-
-Enable for large doc sets (60-80% initial memory footprint reduction):
-```bash
-TERRAGRUNT_LAZY_LOADING=true npm start
-```
-
-Warmup strategies (`TERRAGRUNT_WARMUP_STRATEGY`):
-- `none`: Load metadata only, fetch content on demand
-- `minimal`: Preload getting-started docs
-- `common`: Preload frequently accessed sections
-- `full`: Preload everything (default behavior without lazy loading)
-
 ## Schema Drift Detection
 
 Backend schemas (`schemas/backends/*.json`) track Terraform backend attributes. Detect drift from upstream docs:

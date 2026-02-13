@@ -21,6 +21,19 @@ vi.mock('fs/promises', () => ({
 describe('TerragruntDocsManager', () => {
   let docsManager: TerragruntDocsManager;
   
+  // Helper to populate the new metadata/content caches from TerragruntDoc[]
+  function populateCaches(manager: any, docs: TerragruntDoc[]) {
+    manager.metadataCache = new Map(docs.map(doc => [doc.url, {
+      title: doc.title,
+      url: doc.url,
+      section: doc.section,
+      lastUpdated: doc.lastUpdated
+    }]));
+    manager.contentCache = new Map(docs.map(doc => [doc.url, doc.content]));
+    manager.buildMetadataIndex();
+    manager.lastFetchTime = new Date();
+  }
+
   beforeEach(() => {
     docsManager = new TerragruntDocsManager();
     vi.clearAllMocks();
@@ -83,9 +96,7 @@ describe('TerragruntDocsManager', () => {
     ];
 
     beforeEach(() => {
-      const manager = docsManager as any;
-      manager.docsCache = new Map(mockDocs.map(doc => [doc.url, doc]));
-      manager.lastFetchTime = new Date();
+      populateCaches(docsManager as any, mockDocs);
     });
 
     it('should find docs by title match', async () => {
@@ -154,9 +165,7 @@ describe('TerragruntDocsManager', () => {
     ];
 
     beforeEach(() => {
-      const manager = docsManager as any;
-      manager.docsCache = new Map(mockDocs.map(doc => [doc.url, doc]));
-      manager.lastFetchTime = new Date();
+      populateCaches(docsManager as any, mockDocs);
     });
 
     it('should return docs for valid section', async () => {
@@ -185,9 +194,7 @@ describe('TerragruntDocsManager', () => {
     ];
 
     beforeEach(() => {
-      const manager = docsManager as any;
-      manager.docsCache = new Map(mockDocs.map(doc => [doc.url, doc]));
-      manager.lastFetchTime = new Date();
+      populateCaches(docsManager as any, mockDocs);
     });
 
     it('should return unique sections', async () => {
@@ -207,7 +214,9 @@ describe('TerragruntDocsManager', () => {
     it('should return empty array when cache is manually cleared', async () => {
       const manager = docsManager as any;
       // Clear the cache and mark as fetched to prevent auto-loading
-      manager.docsCache = new Map();
+      manager.metadataCache = new Map();
+      manager.contentCache = new Map();
+      manager.indexedMetadata = [];
       manager.lastFetchTime = new Date();
       
       const sections = await docsManager.getAvailableSections();
@@ -246,9 +255,7 @@ describe('TerragruntDocsManager', () => {
     ];
 
     beforeEach(() => {
-      const manager = docsManager as any;
-      manager.docsCache = new Map(mockDocs.map(doc => [doc.url, doc]));
-      manager.lastFetchTime = new Date();
+      populateCaches(docsManager as any, mockDocs);
     });
 
     it('should find exact command match by title', async () => {
@@ -310,9 +317,7 @@ describe('TerragruntDocsManager', () => {
     ];
 
     beforeEach(() => {
-      const manager = docsManager as any;
-      manager.docsCache = new Map(mockDocs.map(doc => [doc.url, doc]));
-      manager.lastFetchTime = new Date();
+      populateCaches(docsManager as any, mockDocs);
     });
 
     it('should find HCL block by title', async () => {
@@ -383,9 +388,7 @@ describe('TerragruntDocsManager', () => {
     ];
 
     beforeEach(() => {
-      const manager = docsManager as any;
-      manager.docsCache = new Map(mockDocs.map(doc => [doc.url, doc]));
-      manager.lastFetchTime = new Date();
+      populateCaches(docsManager as any, mockDocs);
     });
 
     it('should extract code examples from relevant docs', async () => {
@@ -417,8 +420,7 @@ describe('TerragruntDocsManager', () => {
         content: `dependency "test" { config_path = "../test${i}" }`,
         section: 'features'
       }));
-      manager.docsCache = new Map(manyDocs.map(doc => [doc.url, doc]));
-      manager.lastFetchTime = new Date();
+      populateCaches(manager, manyDocs);
 
       const results = await docsManager.getCodeExamples('dependency');
       expect(results.length).toBeLessThanOrEqual(10); // Should limit to 10
