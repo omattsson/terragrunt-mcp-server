@@ -296,6 +296,11 @@ export class TerragruntDocsManager {
         return await operation();
       } catch (error) {
         lastError = error instanceof Error ? error : new Error(String(error));
+
+        // Non-retryable errors should propagate immediately
+        if (lastError.name === 'NonRetryableError') {
+          throw lastError;
+        }
         
         if (attempt < this.retryConfig.maxRetries) {
           console.warn(`${context} failed (attempt ${attempt + 1}/${this.retryConfig.maxRetries + 1}): ${lastError.message}`);
@@ -1260,17 +1265,39 @@ export class TerragruntDocsManager {
   /**
    * Fetch and parse the llms.txt endpoint into TerragruntDoc[].
    * Uses TERRAGRUNT_LLMS_SOURCE env var to override the default URL.
+   * The env var accepts an absolute URL (with scheme) or a path/filename
+   * relative to the base URL (e.g., "llms-full.txt" or "/llms-full.txt").
    * Never throws — returns empty array and logs on failure.
    */
   async fetchFromLlmsTxt(): Promise<TerragruntDoc[]> {
     const defaultUrl = `${this.baseUrl}/llms-small.txt`;
-    const url = process.env.TERRAGRUNT_LLMS_SOURCE || defaultUrl;
+    const source = process.env.TERRAGRUNT_LLMS_SOURCE;
+
+    let url: string;
+    if (!source) {
+      url = defaultUrl;
+    } else if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(source)) {
+      // Absolute URL (has a scheme) — use as-is
+      url = source;
+    } else {
+      // Relative path or filename — resolve against baseUrl
+      const normalizedPath = source.startsWith('/') ? source : `/${source}`;
+      url = `${this.baseUrl}${normalizedPath}`;
+    }
 
     try {
       const markdown = await this.retryWithBackoff(async () => {
         const response = await fetch(url);
         if (!response.ok) {
-          throw new Error(`HTTP ${response.status} ${response.statusText}`);
+          const status = response.status;
+          const message = `HTTP ${status} ${response.statusText}`;
+          // Don't retry on client errors (4xx) except 408 (timeout) and 429 (rate limit)
+          if (status >= 400 && status < 500 && status !== 408 && status !== 429) {
+            const err = new Error(message);
+            err.name = 'NonRetryableError';
+            throw err;
+          }
+          throw new Error(message);
         }
         return await response.text();
       }, `Fetching llms.txt from ${url}`);
