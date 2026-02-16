@@ -599,6 +599,45 @@ Also mentioned: terraform { source = "unfenced" }
       expect(blocks[0].code).toContain('fenced-source');
       expect(blocks[0].language).toBe('hcl');
     });
+
+    it('should extract tilde-fenced code blocks', () => {
+      const manager = docsManager as any;
+      const content = `
+~~~hcl
+remote_state {
+  backend = "s3"
+}
+~~~
+      `;
+      const blocks = manager.extractCodeBlocks(content);
+      expect(blocks.length).toBe(1);
+      expect(blocks[0].language).toBe('hcl');
+      expect(blocks[0].code).toContain('remote_state');
+    });
+
+    it('should tolerate extra info on fence opening line', () => {
+      const manager = docsManager as any;
+      const content = `
+\`\`\`hcl title="example"
+terraform {
+  source = "example"
+}
+\`\`\`
+      `;
+      const blocks = manager.extractCodeBlocks(content);
+      expect(blocks.length).toBe(1);
+      expect(blocks[0].language).toBe('hcl');
+      expect(blocks[0].code).toContain('terraform');
+    });
+
+    it('should label CLI commands as shell in pattern fallback', () => {
+      const manager = docsManager as any;
+      const content = 'Run terragrunt plan --terragrunt-working-dir /path to execute';
+      const blocks = manager.extractCodeBlocks(content);
+      expect(blocks.length).toBeGreaterThan(0);
+      expect(blocks[0].language).toBe('shell');
+      expect(blocks[0].code).toContain('terragrunt plan');
+    });
   });
 
   describe('Fixture Validation', () => {

@@ -842,7 +842,7 @@ export class TerragruntDocsManager {
     return results;
   }
 
-  extractCodeBlocks(content: string): CodeBlock[] {
+  private extractCodeBlocks(content: string): CodeBlock[] {
     // First, try to extract fenced Markdown code blocks with language identifiers.
     // These are more accurate and carry language metadata.
     const fenced = this.extractFencedCodeBlocks(content);
@@ -856,18 +856,22 @@ export class TerragruntDocsManager {
   }
 
   /**
-   * Extract fenced code blocks (``` ... ```) with optional language identifiers.
+   * Extract fenced code blocks (``` or ~~~) with optional language identifiers.
+   * Supports both backtick and tilde fences, tolerates extra info on the fence
+   * line (e.g., ```hcl title="example"), and handles \r\n line endings.
    * Returns CodeBlock[] with language metadata.
    */
   private extractFencedCodeBlocks(content: string): CodeBlock[] {
     const blocks: CodeBlock[] = [];
-    // Match ```lang ...code... ``` blocks, capturing the optional language and the code body
-    const fenceRegex = /^(```+)(\w*)\s*\n([\s\S]*?)^\1\s*$/gm;
+    // Match ```lang or ~~~lang fenced blocks, capturing the fence chars,
+    // the optional language identifier, and the code body.
+    // Tolerates extra text after the language on the opening fence line.
+    const fenceRegex = /^((`{3,})|(~{3,}))(\w*)[^\n\r]*\r?\n([\s\S]*?)^(\2|\3)\s*$/gm;
     let match;
 
     while ((match = fenceRegex.exec(content)) !== null) {
-      const language = match[2] || 'text';
-      const code = match[3].trim();
+      const language = match[4] || 'text';
+      const code = match[5].trim();
       if (code.length > 0) {
         blocks.push({ code, language });
       }
@@ -891,10 +895,15 @@ export class TerragruntDocsManager {
    * Used for content without proper Markdown fenced code blocks.
    */
   private extractCodeBlocksByPattern(content: string): CodeBlock[] {
-    const examples: string[] = [];
+    const results: CodeBlock[] = [];
     
-    const codePatterns = [
+    // CLI command patterns → 'shell'
+    const cliPatterns = [
       /terragrunt\s+\w+[^\n]*/gi,
+    ];
+
+    // HCL config block patterns → 'hcl'
+    const hclPatterns = [
       /terraform\s*{[\s\S]*?}/gi,
       /remote_state\s*{[\s\S]*?}/gi,
       /dependency\s*"[^"]+"\s*{[\s\S]*?}/gi,
@@ -902,15 +911,35 @@ export class TerragruntDocsManager {
       /inputs\s*=\s*{[\s\S]*?}/gi,
     ];
 
-    for (const pattern of codePatterns) {
+    const seen = new Set<string>();
+
+    for (const pattern of cliPatterns) {
       const matches = content.match(pattern);
       if (matches) {
-        examples.push(...matches.map(m => m.trim()));
+        for (const m of matches) {
+          const code = m.trim();
+          if (!seen.has(code)) {
+            seen.add(code);
+            results.push({ code, language: 'shell' });
+          }
+        }
       }
     }
 
-    // Remove duplicates, limit, and wrap as CodeBlock with 'hcl' language
-    return Array.from(new Set(examples)).slice(0, 5).map(code => ({ code, language: 'hcl' }));
+    for (const pattern of hclPatterns) {
+      const matches = content.match(pattern);
+      if (matches) {
+        for (const m of matches) {
+          const code = m.trim();
+          if (!seen.has(code)) {
+            seen.add(code);
+            results.push({ code, language: 'hcl' });
+          }
+        }
+      }
+    }
+
+    return results.slice(0, 5);
   }
 
   /**
