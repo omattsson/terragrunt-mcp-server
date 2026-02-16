@@ -1597,7 +1597,8 @@ export class ToolHandler {
                     title: result.doc.title,
                     url: result.doc.url,
                     section: result.doc.section,
-                    snippetCount: result.examples.length
+                    snippetCount: result.examples.length,
+                    languages: [...new Set(result.examples.map(ex => ex.language))]
                 })),
                 hasMore: results.length > limit
             };
@@ -1611,11 +1612,12 @@ export class ToolHandler {
                 documentTitle: result.doc.title,
                 documentUrl: result.doc.url,
                 section: result.doc.section,
-                codeSnippets: result.examples.map(ex => 
-                    this.truncateCodeSnippet(ex, 1000, result.doc.url)
-                ),
+                codeSnippets: result.examples.map(ex => ({
+                    code: this.truncateCodeSnippet(ex.code, 1000, result.doc.url),
+                    language: ex.language
+                })),
                 snippetCount: result.examples.length,
-                truncated: result.examples.some(ex => ex.length > 1000)
+                truncated: result.examples.some(ex => ex.code.length > 1000)
             })),
             totalDocuments: results.length,
             hasMore: results.length > limit

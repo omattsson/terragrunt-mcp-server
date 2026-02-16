@@ -20,6 +20,11 @@ export interface TerragruntDoc extends DocMetadata {
   content: string;
 }
 
+export interface CodeBlock {
+  code: string;
+  language: string;
+}
+
 interface IndexedMetadata extends DocMetadata {
   titleLower: string;
   sectionLower: string;
@@ -815,10 +820,10 @@ export class TerragruntDocsManager {
     );
   }
 
-  async getCodeExamples(topic: string): Promise<Array<{ doc: TerragruntDoc, examples: string[] }>> {
+  async getCodeExamples(topic: string): Promise<Array<{ doc: TerragruntDoc, examples: CodeBlock[] }>> {
     const docs = await this.fetchLatestDocs();
     const query = topic.toLowerCase();
-    const results: Array<{ doc: TerragruntDoc, examples: string[] }> = [];
+    const results: Array<{ doc: TerragruntDoc, examples: CodeBlock[] }> = [];
 
     // Search docs that match the topic
     const relevantDocs = docs.filter(doc =>
@@ -837,11 +842,57 @@ export class TerragruntDocsManager {
     return results;
   }
 
-  private extractCodeBlocks(content: string): string[] {
+  extractCodeBlocks(content: string): CodeBlock[] {
+    // First, try to extract fenced Markdown code blocks with language identifiers.
+    // These are more accurate and carry language metadata.
+    const fenced = this.extractFencedCodeBlocks(content);
+    if (fenced.length > 0) {
+      return fenced;
+    }
+
+    // Fallback: use plain-text regex patterns for legacy/fixture content
+    // that doesn't have proper Markdown fencing.
+    return this.extractCodeBlocksByPattern(content);
+  }
+
+  /**
+   * Extract fenced code blocks (``` ... ```) with optional language identifiers.
+   * Returns CodeBlock[] with language metadata.
+   */
+  private extractFencedCodeBlocks(content: string): CodeBlock[] {
+    const blocks: CodeBlock[] = [];
+    // Match ```lang ...code... ``` blocks, capturing the optional language and the code body
+    const fenceRegex = /^(```+)(\w*)\s*\n([\s\S]*?)^\1\s*$/gm;
+    let match;
+
+    while ((match = fenceRegex.exec(content)) !== null) {
+      const language = match[2] || 'text';
+      const code = match[3].trim();
+      if (code.length > 0) {
+        blocks.push({ code, language });
+      }
+    }
+
+    // Remove duplicates (by code content) and limit to 5
+    const seen = new Set<string>();
+    const unique: CodeBlock[] = [];
+    for (const block of blocks) {
+      if (!seen.has(block.code)) {
+        seen.add(block.code);
+        unique.push(block);
+      }
+    }
+
+    return unique.slice(0, 5);
+  }
+
+  /**
+   * Fallback: extract code examples using HCL/Terragrunt-specific regex patterns.
+   * Used for content without proper Markdown fenced code blocks.
+   */
+  private extractCodeBlocksByPattern(content: string): CodeBlock[] {
     const examples: string[] = [];
     
-    // Match code blocks patterns in markdown-like content
-    // Looking for common patterns like: "terragrunt", "terraform {", "remote_state {", etc.
     const codePatterns = [
       /terragrunt\s+\w+[^\n]*/gi,
       /terraform\s*{[\s\S]*?}/gi,
@@ -858,8 +909,8 @@ export class TerragruntDocsManager {
       }
     }
 
-    // Remove duplicates and limit
-    return Array.from(new Set(examples)).slice(0, 5);
+    // Remove duplicates, limit, and wrap as CodeBlock with 'hcl' language
+    return Array.from(new Set(examples)).slice(0, 5).map(code => ({ code, language: 'hcl' }));
   }
 
   /**
