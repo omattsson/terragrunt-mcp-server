@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi, beforeAll, afterAll } from 'vitest';
-import { TerragruntDocsManager, TerragruntDoc } from '../../src/terragrunt/docs.js';
+import { TerragruntDocsManager, TerragruntDoc, SECTION_MAP, slugifyTitle } from '../../src/terragrunt/docs.js';
 
 // Mock node-fetch
 vi.mock('node-fetch');
@@ -21,6 +21,19 @@ vi.mock('fs/promises', () => ({
 describe('TerragruntDocsManager', () => {
   let docsManager: TerragruntDocsManager;
   
+  // Helper to populate the new metadata/content caches from TerragruntDoc[]
+  function populateCaches(manager: any, docs: TerragruntDoc[]) {
+    manager.metadataCache = new Map(docs.map(doc => [doc.url, {
+      title: doc.title,
+      url: doc.url,
+      section: doc.section,
+      lastUpdated: doc.lastUpdated
+    }]));
+    manager.contentCache = new Map(docs.map(doc => [doc.url, doc.content]));
+    manager.buildMetadataIndex();
+    manager.lastFetchTime = new Date();
+  }
+
   beforeEach(() => {
     docsManager = new TerragruntDocsManager();
     vi.clearAllMocks();
@@ -57,65 +70,6 @@ describe('TerragruntDocsManager', () => {
     });
   });
 
-  describe('Section Extraction', () => {
-    it('should extract section from standard docs URL', () => {
-      const manager = docsManager as any;
-      const section = manager.extractSection('/docs/getting-started/quick-start/');
-      expect(section).toBe('getting-started');
-    });
-
-    it('should extract section from reference URL', () => {
-      const manager = docsManager as any;
-      const section = manager.extractSection('/docs/reference/config-blocks/');
-      expect(section).toBe('reference');
-    });
-
-    it('should extract section from features URL', () => {
-      const manager = docsManager as any;
-      const section = manager.extractSection('/docs/features/keep-your-code-dry/');
-      expect(section).toBe('features');
-    });
-
-    it('should return "general" for malformed URLs', () => {
-      const manager = docsManager as any;
-      const section = manager.extractSection('/docs/');
-      expect(section).toBe('general');
-    });
-
-    it('should return "general" for URLs without section', () => {
-      const manager = docsManager as any;
-      const section = manager.extractSection('/');
-      expect(section).toBe('general');
-    });
-  });
-
-  describe('Content Cleaning', () => {
-    it('should remove extra whitespace', () => {
-      const manager = docsManager as any;
-      const cleaned = manager.cleanContent('Hello    world    test');
-      expect(cleaned).toBe('Hello world test');
-    });
-
-    it('should normalize whitespace including newlines', () => {
-      const manager = docsManager as any;
-      const cleaned = manager.cleanContent('Hello\n\n\nworld');
-      // First replacement converts all whitespace to single spaces
-      expect(cleaned).toBe('Hello world');
-    });
-
-    it('should remove tabs', () => {
-      const manager = docsManager as any;
-      const cleaned = manager.cleanContent('Hello\t\tworld');
-      expect(cleaned).toBe('Hello world');
-    });
-
-    it('should trim leading and trailing whitespace', () => {
-      const manager = docsManager as any;
-      const cleaned = manager.cleanContent('  Hello world  ');
-      expect(cleaned).toBe('Hello world');
-    });
-  });
-
   describe('Search Functionality', () => {
     const mockDocs: TerragruntDoc[] = [
       {
@@ -142,9 +96,7 @@ describe('TerragruntDocsManager', () => {
     ];
 
     beforeEach(() => {
-      const manager = docsManager as any;
-      manager.docsCache = new Map(mockDocs.map(doc => [doc.url, doc]));
-      manager.lastFetchTime = new Date();
+      populateCaches(docsManager as any, mockDocs);
     });
 
     it('should find docs by title match', async () => {
@@ -213,9 +165,7 @@ describe('TerragruntDocsManager', () => {
     ];
 
     beforeEach(() => {
-      const manager = docsManager as any;
-      manager.docsCache = new Map(mockDocs.map(doc => [doc.url, doc]));
-      manager.lastFetchTime = new Date();
+      populateCaches(docsManager as any, mockDocs);
     });
 
     it('should return docs for valid section', async () => {
@@ -244,9 +194,7 @@ describe('TerragruntDocsManager', () => {
     ];
 
     beforeEach(() => {
-      const manager = docsManager as any;
-      manager.docsCache = new Map(mockDocs.map(doc => [doc.url, doc]));
-      manager.lastFetchTime = new Date();
+      populateCaches(docsManager as any, mockDocs);
     });
 
     it('should return unique sections', async () => {
@@ -266,7 +214,9 @@ describe('TerragruntDocsManager', () => {
     it('should return empty array when cache is manually cleared', async () => {
       const manager = docsManager as any;
       // Clear the cache and mark as fetched to prevent auto-loading
-      manager.docsCache = new Map();
+      manager.metadataCache = new Map();
+      manager.contentCache = new Map();
+      manager.indexedMetadata = [];
       manager.lastFetchTime = new Date();
       
       const sections = await docsManager.getAvailableSections();
@@ -305,9 +255,7 @@ describe('TerragruntDocsManager', () => {
     ];
 
     beforeEach(() => {
-      const manager = docsManager as any;
-      manager.docsCache = new Map(mockDocs.map(doc => [doc.url, doc]));
-      manager.lastFetchTime = new Date();
+      populateCaches(docsManager as any, mockDocs);
     });
 
     it('should find exact command match by title', async () => {
@@ -369,9 +317,7 @@ describe('TerragruntDocsManager', () => {
     ];
 
     beforeEach(() => {
-      const manager = docsManager as any;
-      manager.docsCache = new Map(mockDocs.map(doc => [doc.url, doc]));
-      manager.lastFetchTime = new Date();
+      populateCaches(docsManager as any, mockDocs);
     });
 
     it('should find HCL block by title', async () => {
@@ -442,9 +388,7 @@ describe('TerragruntDocsManager', () => {
     ];
 
     beforeEach(() => {
-      const manager = docsManager as any;
-      manager.docsCache = new Map(mockDocs.map(doc => [doc.url, doc]));
-      manager.lastFetchTime = new Date();
+      populateCaches(docsManager as any, mockDocs);
     });
 
     it('should extract code examples from relevant docs', async () => {
@@ -476,8 +420,7 @@ describe('TerragruntDocsManager', () => {
         content: `dependency "test" { config_path = "../test${i}" }`,
         section: 'features'
       }));
-      manager.docsCache = new Map(manyDocs.map(doc => [doc.url, doc]));
-      manager.lastFetchTime = new Date();
+      populateCaches(manager, manyDocs);
 
       const results = await docsManager.getCodeExamples('dependency');
       expect(results.length).toBeLessThanOrEqual(10); // Should limit to 10
@@ -606,6 +549,526 @@ describe('TerragruntDocsManager', () => {
       expect(typeof result.totalDocs).toBe('number');
       expect(typeof result.functionDocsCount).toBe('number');
       expect(Array.isArray(result.missingPages)).toBe(true);
+    });
+  });
+
+  describe('slugifyTitle', () => {
+    it('should convert a simple title to a slug', () => {
+      expect(slugifyTitle('Quick Start')).toBe('quick-start');
+    });
+
+    it('should handle parentheses', () => {
+      expect(slugifyTitle('Content Addressable Store (CAS)')).toBe('content-addressable-store-cas');
+    });
+
+    it('should handle special characters', () => {
+      expect(slugifyTitle('Feature Flags, Errors and Excludes')).toBe('feature-flags-errors-and-excludes');
+    });
+
+    it('should handle numbers', () => {
+      expect(slugifyTitle('Step 1: Starting the Terralith')).toBe('step-1-starting-the-terralith');
+    });
+
+    it('should handle single word titles', () => {
+      expect(slugifyTitle('Install')).toBe('install');
+    });
+
+    it('should handle version numbers', () => {
+      expect(slugifyTitle('Upgrading to Terragrunt 0.19.x')).toBe('upgrading-to-terragrunt-0-19-x');
+    });
+
+    it('should trim leading and trailing hyphens', () => {
+      expect(slugifyTitle('---test---')).toBe('test');
+    });
+
+    it('should return empty string for empty input', () => {
+      expect(slugifyTitle('')).toBe('');
+    });
+  });
+
+  describe('SECTION_MAP', () => {
+    it('should map community titles correctly', () => {
+      expect(SECTION_MAP.find(e => e.pattern.test('Contributing'))?.section).toBe('community');
+      expect(SECTION_MAP.find(e => e.pattern.test('License'))?.section).toBe('community');
+      expect(SECTION_MAP.find(e => e.pattern.test('Support'))?.section).toBe('community');
+    });
+
+    it('should map getting-started titles correctly', () => {
+      expect(SECTION_MAP.find(e => e.pattern.test('Install'))?.section).toBe('getting-started');
+      expect(SECTION_MAP.find(e => e.pattern.test('Quick Start'))?.section).toBe('getting-started');
+      expect(SECTION_MAP.find(e => e.pattern.test('Terminology'))?.section).toBe('getting-started');
+      expect(SECTION_MAP.find(e => e.pattern.test('Overview'))?.section).toBe('getting-started');
+    });
+
+    it('should map migration/tutorial titles correctly', () => {
+      expect(SECTION_MAP.find(e => e.pattern.test('Introduction'))?.section).toBe('migrate');
+      expect(SECTION_MAP.find(e => e.pattern.test('Step 1: Starting the Terralith'))?.section).toBe('migrate');
+      expect(SECTION_MAP.find(e => e.pattern.test('Wrap Up'))?.section).toBe('migrate');
+      expect(SECTION_MAP.find(e => e.pattern.test('Bare Include'))?.section).toBe('migrate');
+      expect(SECTION_MAP.find(e => e.pattern.test('CLI Redesign'))?.section).toBe('migrate');
+    });
+
+    it('should map reference CLI titles correctly', () => {
+      expect(SECTION_MAP.find(e => e.pattern.test('bootstrap'))?.section).toBe('reference');
+      expect(SECTION_MAP.find(e => e.pattern.test('find'))?.section).toBe('reference');
+      expect(SECTION_MAP.find(e => e.pattern.test('Global Flags'))?.section).toBe('reference');
+    });
+
+    it('should map reference HCL titles correctly', () => {
+      expect(SECTION_MAP.find(e => e.pattern.test('Attributes'))?.section).toBe('reference');
+      expect(SECTION_MAP.find(e => e.pattern.test('Blocks'))?.section).toBe('reference');
+      expect(SECTION_MAP.find(e => e.pattern.test('Functions'))?.section).toBe('reference');
+    });
+
+    it('should map troubleshooting titles correctly', () => {
+      expect(SECTION_MAP.find(e => e.pattern.test('Debugging'))?.section).toBe('troubleshooting');
+      expect(SECTION_MAP.find(e => e.pattern.test('Performance'))?.section).toBe('troubleshooting');
+      expect(SECTION_MAP.find(e => e.pattern.test('OpenTelemetry'))?.section).toBe('troubleshooting');
+    });
+
+    it('should fall back to features for unknown titles', () => {
+      expect(SECTION_MAP.find(e => e.pattern.test('Authentication'))?.section).toBe('features');
+      expect(SECTION_MAP.find(e => e.pattern.test('Hooks'))?.section).toBe('features');
+      expect(SECTION_MAP.find(e => e.pattern.test('State Backend'))?.section).toBe('features');
+    });
+
+    it('should have a catch-all entry as the last rule', () => {
+      const lastEntry = SECTION_MAP[SECTION_MAP.length - 1];
+      expect(lastEntry.pattern.test('Anything at all')).toBe(true);
+      expect(lastEntry.section).toBe('features');
+    });
+  });
+
+  describe('parseLlmsMarkdown', () => {
+    let manager: TerragruntDocsManager;
+
+    beforeEach(() => {
+      manager = new TerragruntDocsManager();
+    });
+
+    it('should return empty array for empty input', () => {
+      expect(manager.parseLlmsMarkdown('')).toEqual([]);
+      expect(manager.parseLlmsMarkdown('  ')).toEqual([]);
+    });
+
+    it('should parse a single H1 section', () => {
+      const markdown = '# Quick Start\n\n> Start using Terragrunt today!\n\nSome content here.';
+      const docs = manager.parseLlmsMarkdown(markdown);
+
+      expect(docs).toHaveLength(1);
+      expect(docs[0].title).toBe('Quick Start');
+      expect(docs[0].content).toContain('Start using Terragrunt today!');
+      expect(docs[0].content).toContain('Some content here.');
+      expect(docs[0].section).toBe('getting-started');
+      expect(docs[0].url).toContain('/docs/getting-started/quick-start/');
+    });
+
+    it('should parse multiple H1 sections', () => {
+      const markdown = [
+        '# Authentication',
+        '',
+        '> Learn about auth.',
+        '',
+        'Auth content here.',
+        '',
+        '# Hooks',
+        '',
+        '> Execute custom code.',
+        '',
+        'Hooks content here.',
+      ].join('\n');
+
+      const docs = manager.parseLlmsMarkdown(markdown);
+
+      expect(docs).toHaveLength(2);
+      expect(docs[0].title).toBe('Authentication');
+      expect(docs[0].section).toBe('features');
+      expect(docs[1].title).toBe('Hooks');
+      expect(docs[1].section).toBe('features');
+    });
+
+    it('should strip <SYSTEM> preamble', () => {
+      const markdown = [
+        '<SYSTEM>This is the abridged developer documentation for Terragrunt</SYSTEM>',
+        '',
+        '# Install',
+        '',
+        'Install instructions.',
+      ].join('\n');
+
+      const docs = manager.parseLlmsMarkdown(markdown);
+
+      expect(docs).toHaveLength(1);
+      expect(docs[0].title).toBe('Install');
+      expect(docs[0].content).not.toContain('SYSTEM');
+    });
+
+    it('should preserve Markdown formatting in content', () => {
+      const markdown = [
+        '# State Backend',
+        '',
+        '## Configuration',
+        '',
+        'Use `remote_state` block:',
+        '',
+        '```hcl',
+        'remote_state {',
+        '  backend = "s3"',
+        '}',
+        '```',
+        '',
+        '- Item one',
+        '- Item two',
+      ].join('\n');
+
+      const docs = manager.parseLlmsMarkdown(markdown);
+
+      expect(docs).toHaveLength(1);
+      expect(docs[0].content).toContain('```hcl');
+      expect(docs[0].content).toContain('remote_state {');
+      expect(docs[0].content).toContain('- Item one');
+    });
+
+    it('should handle H1 with no content', () => {
+      const markdown = '# Empty Section\n\n# Another Section\n\nSome content.';
+      const docs = manager.parseLlmsMarkdown(markdown);
+
+      expect(docs).toHaveLength(2);
+      expect(docs[0].title).toBe('Empty Section');
+      expect(docs[0].content).toBe('');
+      expect(docs[1].title).toBe('Another Section');
+      expect(docs[1].content).toBe('Some content.');
+    });
+
+    it('should handle duplicate titles by appending counter to slug', () => {
+      const markdown = [
+        '# Overview',
+        '',
+        'First overview content.',
+        '',
+        '# Overview',
+        '',
+        'Second overview content.',
+        '',
+        '# Overview',
+        '',
+        'Third overview content.',
+      ].join('\n');
+
+      const docs = manager.parseLlmsMarkdown(markdown);
+
+      expect(docs).toHaveLength(3);
+      // All titled "Overview" but with unique URLs
+      expect(docs[0].url).toContain('/overview/');
+      expect(docs[1].url).toContain('/overview-2/');
+      expect(docs[2].url).toContain('/overview-3/');
+    });
+
+    it('should not split on ## or ### headers', () => {
+      const markdown = [
+        '# Main Title',
+        '',
+        '## Sub Section',
+        '',
+        'Sub content.',
+        '',
+        '### Sub Sub Section',
+        '',
+        'Deep content.',
+      ].join('\n');
+
+      const docs = manager.parseLlmsMarkdown(markdown);
+
+      expect(docs).toHaveLength(1);
+      expect(docs[0].title).toBe('Main Title');
+      expect(docs[0].content).toContain('## Sub Section');
+      expect(docs[0].content).toContain('### Sub Sub Section');
+    });
+
+    it('should include lastUpdated timestamp', () => {
+      const markdown = '# Install\n\nContent.';
+      const docs = manager.parseLlmsMarkdown(markdown);
+
+      expect(docs).toHaveLength(1);
+      expect(docs[0].lastUpdated).toBeDefined();
+      // Should be a valid, parseable ISO date
+      const lastUpdated = docs[0].lastUpdated!;
+      expect(Number.isFinite(new Date(lastUpdated).getTime())).toBe(true);
+    });
+
+    it('should construct correct URLs for CLI command titles', () => {
+      const markdown = '# find\n\n> Find units.\n\nContent.';
+      const docs = manager.parseLlmsMarkdown(markdown);
+
+      expect(docs).toHaveLength(1);
+      expect(docs[0].url).toContain('/docs/reference/cli/commands/find/');
+    });
+
+    it('should construct correct URLs for troubleshooting titles', () => {
+      const markdown = '# Debugging\n\n> Debug info.\n\nContent.';
+      const docs = manager.parseLlmsMarkdown(markdown);
+
+      expect(docs).toHaveLength(1);
+      expect(docs[0].url).toContain('/docs/troubleshooting/debugging/');
+    });
+
+    it('should handle content before first H1 gracefully', () => {
+      const markdown = 'Some preamble text\n\n# Real Title\n\nContent.';
+      const docs = manager.parseLlmsMarkdown(markdown);
+
+      // Preamble without H1 should be skipped
+      expect(docs).toHaveLength(1);
+      expect(docs[0].title).toBe('Real Title');
+    });
+
+    it('should handle realistic llms.txt content sample', () => {
+      const markdown = [
+        '<SYSTEM>This is the abridged developer documentation for Terragrunt</SYSTEM>',
+        '',
+        '# Contributing',
+        '',
+        '> Contributing to Terragrunt',
+        '',
+        '## Contribution Guidelines',
+        '',
+        'Contributions to Terragrunt are very welcome!',
+        '',
+        '# Authentication',
+        '',
+        '> Learn how Terragrunt helps you automate authentication workflows.',
+        '',
+        '## Motivation',
+        '',
+        'AWS is by far the most popular OpenTofu/Terraform provider.',
+        '',
+        '```hcl',
+        'iam_role = "arn:aws:iam::ACCOUNT_ID:role/ROLE_NAME"',
+        '```',
+      ].join('\n');
+
+      const docs = manager.parseLlmsMarkdown(markdown);
+
+      expect(docs).toHaveLength(2);
+
+      expect(docs[0].title).toBe('Contributing');
+      expect(docs[0].section).toBe('community');
+      expect(docs[0].url).toContain('/docs/community/contributing/');
+      expect(docs[0].content).toContain('Contributions to Terragrunt are very welcome!');
+
+      expect(docs[1].title).toBe('Authentication');
+      expect(docs[1].section).toBe('features');
+      expect(docs[1].url).toContain('/docs/features/authentication/');
+      expect(docs[1].content).toContain('```hcl');
+      expect(docs[1].content).toContain('iam_role');
+    });
+
+    it('should not split on H1 inside fenced code blocks', () => {
+      const markdown = [
+        '# Shell Example',
+        '',
+        '> How to run scripts.',
+        '',
+        '```bash',
+        '# This is a shell comment that starts with H1-like syntax',
+        'echo "hello"',
+        '# Another comment',
+        '```',
+        '',
+        'More content after the fence.',
+        '',
+        '# Next Section',
+        '',
+        'Content of next section.',
+      ].join('\n');
+
+      const docs = manager.parseLlmsMarkdown(markdown);
+
+      expect(docs).toHaveLength(2);
+      expect(docs[0].title).toBe('Shell Example');
+      expect(docs[0].content).toContain('# This is a shell comment');
+      expect(docs[0].content).toContain('# Another comment');
+      expect(docs[0].content).toContain('More content after the fence.');
+      expect(docs[1].title).toBe('Next Section');
+    });
+  });
+
+  describe('fetchFromLlmsTxt', () => {
+    let manager: TerragruntDocsManager;
+    let mockFetch: ReturnType<typeof vi.fn>;
+    const sampleMarkdown = [
+      '# Install',
+      '',
+      'Install instructions here.',
+      '',
+      '# Quick Start',
+      '',
+      'Quick start guide.',
+    ].join('\n');
+
+    /** Helper to create a mock Response-like object */
+    function mockResponse(opts: { ok: boolean; status?: number; statusText?: string; body?: string }) {
+      return {
+        ok: opts.ok,
+        status: opts.status ?? (opts.ok ? 200 : 500),
+        statusText: opts.statusText ?? (opts.ok ? 'OK' : 'Internal Server Error'),
+        text: () => Promise.resolve(opts.body ?? ''),
+      };
+    }
+
+    beforeEach(async () => {
+      manager = new TerragruntDocsManager();
+      // Speed up retries for all tests in this suite
+      (manager as any).retryConfig = {
+        maxRetries: 3,
+        initialDelayMs: 1,
+        maxDelayMs: 5,
+        backoffMultiplier: 2,
+      };
+      vi.clearAllMocks();
+      delete process.env.TERRAGRUNT_LLMS_SOURCE;
+
+      // Obtain a typed reference to the mocked fetch
+      const fetchModule = await import('node-fetch');
+      mockFetch = fetchModule.default as unknown as ReturnType<typeof vi.fn>;
+    });
+
+    afterAll(() => {
+      delete process.env.TERRAGRUNT_LLMS_SOURCE;
+    });
+
+    it('should fetch and parse llms.txt into TerragruntDoc[]', async () => {
+      mockFetch.mockResolvedValueOnce(mockResponse({ ok: true, body: sampleMarkdown }));
+
+      const docs = await manager.fetchFromLlmsTxt();
+
+      expect(docs).toHaveLength(2);
+      expect(docs[0].title).toBe('Install');
+      expect(docs[0].section).toBe('getting-started');
+      expect(docs[1].title).toBe('Quick Start');
+      expect(docs[1].section).toBe('getting-started');
+
+      expect(mockFetch).toHaveBeenCalledWith('https://terragrunt.gruntwork.io/llms-small.txt');
+    });
+
+    it('should use TERRAGRUNT_LLMS_SOURCE env var with absolute URL', async () => {
+      process.env.TERRAGRUNT_LLMS_SOURCE = 'https://example.com/llms-full.txt';
+
+      mockFetch.mockResolvedValueOnce(mockResponse({ ok: true, body: sampleMarkdown }));
+
+      const docs = await manager.fetchFromLlmsTxt();
+
+      expect(docs).toHaveLength(2);
+      expect(mockFetch).toHaveBeenCalledWith('https://example.com/llms-full.txt');
+    });
+
+    it('should resolve TERRAGRUNT_LLMS_SOURCE filename against baseUrl', async () => {
+      process.env.TERRAGRUNT_LLMS_SOURCE = 'llms-full.txt';
+
+      mockFetch.mockResolvedValueOnce(mockResponse({ ok: true, body: sampleMarkdown }));
+
+      const docs = await manager.fetchFromLlmsTxt();
+
+      expect(docs).toHaveLength(2);
+      expect(mockFetch).toHaveBeenCalledWith('https://terragrunt.gruntwork.io/llms-full.txt');
+    });
+
+    it('should resolve TERRAGRUNT_LLMS_SOURCE path with leading slash', async () => {
+      process.env.TERRAGRUNT_LLMS_SOURCE = '/custom/llms.txt';
+
+      mockFetch.mockResolvedValueOnce(mockResponse({ ok: true, body: sampleMarkdown }));
+
+      await manager.fetchFromLlmsTxt();
+
+      expect(mockFetch).toHaveBeenCalledWith('https://terragrunt.gruntwork.io/custom/llms.txt');
+    });
+
+    it('should return empty array on total fetch failure without throwing', async () => {
+      mockFetch.mockRejectedValue(new Error('Network error'));
+
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+      const docs = await manager.fetchFromLlmsTxt();
+
+      expect(docs).toEqual([]);
+      expect(consoleSpy).toHaveBeenCalled();
+      consoleSpy.mockRestore();
+      warnSpy.mockRestore();
+      logSpy.mockRestore();
+    });
+
+    it('should not retry on 4xx HTTP errors (non-retryable)', async () => {
+      mockFetch.mockResolvedValue(mockResponse({ ok: false, status: 404, statusText: 'Not Found' }));
+
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      const docs = await manager.fetchFromLlmsTxt();
+
+      expect(docs).toEqual([]);
+      // Should have been called only once — no retries for 404
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+      expect(consoleSpy).toHaveBeenCalled();
+      consoleSpy.mockRestore();
+    });
+
+    it('should retry on 5xx HTTP errors', async () => {
+      mockFetch
+        .mockResolvedValueOnce(mockResponse({ ok: false, status: 503, statusText: 'Service Unavailable' }))
+        .mockResolvedValueOnce(mockResponse({ ok: true, body: sampleMarkdown }));
+
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+      const docs = await manager.fetchFromLlmsTxt();
+
+      expect(docs).toHaveLength(2);
+      expect(mockFetch).toHaveBeenCalledTimes(2);
+      warnSpy.mockRestore();
+      logSpy.mockRestore();
+    });
+
+    it('should retry on 429 Too Many Requests', async () => {
+      mockFetch
+        .mockResolvedValueOnce(mockResponse({ ok: false, status: 429, statusText: 'Too Many Requests' }))
+        .mockResolvedValueOnce(mockResponse({ ok: true, body: sampleMarkdown }));
+
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+      const docs = await manager.fetchFromLlmsTxt();
+
+      expect(docs).toHaveLength(2);
+      expect(mockFetch).toHaveBeenCalledTimes(2);
+      warnSpy.mockRestore();
+      logSpy.mockRestore();
+    });
+
+    it('should return empty array when response body is empty', async () => {
+      mockFetch.mockResolvedValueOnce(mockResponse({ ok: true, body: '' }));
+
+      const docs = await manager.fetchFromLlmsTxt();
+
+      expect(docs).toEqual([]);
+    });
+
+    it('should retry on transient failure then succeed', async () => {
+      // Fail twice, then succeed
+      mockFetch
+        .mockRejectedValueOnce(new Error('Temporary failure'))
+        .mockRejectedValueOnce(new Error('Temporary failure'))
+        .mockResolvedValueOnce(mockResponse({ ok: true, body: sampleMarkdown }));
+
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+      const docs = await manager.fetchFromLlmsTxt();
+
+      expect(docs).toHaveLength(2);
+      expect(mockFetch).toHaveBeenCalledTimes(3);
+
+      warnSpy.mockRestore();
+      logSpy.mockRestore();
     });
   });
 });

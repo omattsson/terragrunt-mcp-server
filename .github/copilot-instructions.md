@@ -48,23 +48,6 @@ npm run lint:fix             # ESLint v9 flat config
 
 **Integration tests** run against the compiled output: `node test/server-test.js` sends raw JSON-RPC over stdio. Build first.
 
-## Adding a New Tool
-
-1. Add tool schema in `ToolHandler.getAvailableTools()` — name, description, inputSchema
-2. Add case in `ToolHandler.executeTool()` switch
-3. Add to the appropriate mode's `tools` array in `src/modes/config.ts` (and add its dependency type)
-4. Add unit test in `test/unit/tool-handler.test.ts`
-5. Update tool count assertions in MCP protocol tests
-6. Prefer merging into an existing tool with a `mode` parameter over creating a new tool
-
-## Adding a New Manager
-
-1. Create in `src/terragrunt/` — accept `TerragruntDocsManager` in constructor if doc access is needed
-2. Use `Map<string, T>` + `normalizeKey()` for case-insensitive caching
-3. Implement lazy `loadData()` called on first use
-4. Add dependency type to `DependencyType` union in `src/modes/config.ts`
-5. Wire instantiation in `ToolHandler.initializeManagers()` behind `shouldLoadDependency()` guard
-
 ## Schema Drift Detection
 
 Backend schemas (`schemas/backends/*.json`) track Terraform backend attributes:

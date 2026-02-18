@@ -12,13 +12,12 @@ This MCP server enables AI assistants to access and search the complete Terragru
 
 ### 📚 Documentation Access
 
-- **Live Documentation**: Automatically fetches the latest Terragrunt documentation from the official website
-- **Lazy Loading**: Metadata-first loading with on-demand content fetching (60-80% memory reduction, opt-in via `TERRAGRUNT_LAZY_LOADING=true`)
+- **Live Documentation**: Automatically fetches the latest Terragrunt documentation via llms.txt in a single HTTP request
+- **Indexed Search**: Metadata-indexed architecture for efficient search with full content available on demand
 - **Smart Caching**: Two-tier caching system (in-memory + disk) with 24-hour refresh cycle
-- **Warmup Strategies**: Preload commonly used docs (none/minimal/common/full strategies)
 - **Network Resilience**: Retry mechanism with exponential backoff (3 retries, up to 10s delay)
 - **Multiple Fallbacks**: Network → Disk cache → Stale cache → Local fixture (for offline/CI use)
-- **Fast Search**: Metadata-first search (title/section/URL) with lazy loading, full-text when loaded, promise deduplication
+- **Fast Search**: Metadata-first search (title/section/URL) with full-text content fallback
 - **Organized Sections**: Browse documentation by categories (getting-started, reference, features, etc.)
 - **Persistent Cache**: Cache survives server restarts (stored in `.cache/terragrunt-docs/`)
 
