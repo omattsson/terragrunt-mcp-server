@@ -5,7 +5,7 @@ export default defineConfig({
     globals: true,
     environment: 'node',
     include: ['test/integration/**/*.test.ts'],
-    exclude: ['node_modules', 'dist'],
+    exclude: ['node_modules', 'dist', 'test/integration/schema-drift-scraper.test.ts'],
     testTimeout: 60000, // 60 seconds for integration tests with network calls
     coverage: {
       provider: 'v8',

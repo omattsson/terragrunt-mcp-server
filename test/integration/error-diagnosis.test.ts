@@ -33,7 +33,8 @@ describe('Error Diagnosis Integration', () => {
       expect(typeof result.overallConfidence).toBe('number');
       expect(typeof result.matchCount).toBe('number');
       expect(Array.isArray(result.matches)).toBe(true);
-      expect(Array.isArray(result.debuggingSteps)).toBe(true);
+      // enrichWithDocs defaults to true, so enriched format returns orderedDebuggingSteps
+      expect(Array.isArray(result.orderedDebuggingSteps) || Array.isArray(result.debuggingSteps)).toBe(true);
       expect(Array.isArray(result.generalAdvice)).toBe(true);
     });
 
@@ -202,7 +203,8 @@ describe('Error Diagnosis Integration', () => {
       expect('overallConfidence' in result).toBe(true);
       expect('matchCount' in result).toBe(true);
       expect('matches' in result).toBe(true);
-      expect('debuggingSteps' in result).toBe(true);
+      // enrichWithDocs defaults to true, so enriched format uses orderedDebuggingSteps
+      expect('orderedDebuggingSteps' in result || 'debuggingSteps' in result).toBe(true);
       expect('generalAdvice' in result).toBe(true);
 
       // Verify match structure

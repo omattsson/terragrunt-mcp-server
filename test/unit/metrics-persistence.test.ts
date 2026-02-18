@@ -295,7 +295,6 @@ describe('MetricsPersistence', () => {
       oldDateObj.setDate(oldDateObj.getDate() - 60); // 60 days ago — well past retention
       const recentDateObj = new Date(now);
       recentDateObj.setDate(recentDateObj.getDate() - 5); // 5 days ago — within retention
-
       const oldDate = oldDateObj.toISOString().split('T')[0];
       const recentDate = recentDateObj.toISOString().split('T')[0];
 
