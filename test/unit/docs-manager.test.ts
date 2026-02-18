@@ -406,7 +406,7 @@ describe('TerragruntDocsManager', () => {
       const results = await docsManager.getCodeExamples('dependency');
       expect(results.length).toBeGreaterThan(0);
       const hasDepExample = results.some(r => 
-        r.examples.some(ex => ex.includes('dependency'))
+        r.examples.some(ex => ex.code.includes('dependency'))
       );
       expect(hasDepExample).toBe(true);
     });
@@ -434,7 +434,59 @@ describe('TerragruntDocsManager', () => {
   });
 
   describe('Code Block Extraction', () => {
-    it('should extract terraform blocks', () => {
+    it('should extract fenced code blocks with language', () => {
+      const manager = docsManager as any;
+      const content = `
+Example configuration:
+
+\`\`\`hcl
+terraform {
+  source = "git::https://github.com/example/repo.git"
+}
+\`\`\`
+      `;
+      const blocks = manager.extractCodeBlocks(content);
+      expect(blocks.length).toBeGreaterThan(0);
+      expect(blocks[0].language).toBe('hcl');
+      expect(blocks[0].code).toContain('terraform');
+    });
+
+    it('should extract multiple fenced blocks with different languages', () => {
+      const manager = docsManager as any;
+      const content = `
+\`\`\`hcl
+remote_state {
+  backend = "s3"
+}
+\`\`\`
+
+Run the following:
+
+\`\`\`bash
+terragrunt plan
+\`\`\`
+      `;
+      const blocks = manager.extractCodeBlocks(content);
+      expect(blocks.length).toBe(2);
+      expect(blocks[0].language).toBe('hcl');
+      expect(blocks[0].code).toContain('remote_state');
+      expect(blocks[1].language).toBe('bash');
+      expect(blocks[1].code).toContain('terragrunt plan');
+    });
+
+    it('should default to text when no language is specified on fence', () => {
+      const manager = docsManager as any;
+      const content = `
+\`\`\`
+some code here
+\`\`\`
+      `;
+      const blocks = manager.extractCodeBlocks(content);
+      expect(blocks.length).toBe(1);
+      expect(blocks[0].language).toBe('text');
+    });
+
+    it('should fall back to pattern matching when no fenced blocks exist', () => {
       const manager = docsManager as any;
       const content = `
         Example configuration:
@@ -444,10 +496,11 @@ describe('TerragruntDocsManager', () => {
       `;
       const blocks = manager.extractCodeBlocks(content);
       expect(blocks.length).toBeGreaterThan(0);
-      expect(blocks.some((b: string) => b.includes('terraform'))).toBe(true);
+      expect(blocks.some((b: any) => b.code.includes('terraform'))).toBe(true);
+      expect(blocks[0].language).toBe('hcl');
     });
 
-    it('should extract remote_state blocks', () => {
+    it('should extract remote_state blocks via pattern fallback', () => {
       const manager = docsManager as any;
       const content = `
         remote_state {
@@ -456,10 +509,10 @@ describe('TerragruntDocsManager', () => {
         }
       `;
       const blocks = manager.extractCodeBlocks(content);
-      expect(blocks.some((b: string) => b.includes('remote_state'))).toBe(true);
+      expect(blocks.some((b: any) => b.code.includes('remote_state'))).toBe(true);
     });
 
-    it('should extract dependency blocks', () => {
+    it('should extract dependency blocks via pattern fallback', () => {
       const manager = docsManager as any;
       const content = `
         dependency "vpc" {
@@ -467,33 +520,59 @@ describe('TerragruntDocsManager', () => {
         }
       `;
       const blocks = manager.extractCodeBlocks(content);
-      expect(blocks.some((b: string) => b.includes('dependency'))).toBe(true);
+      expect(blocks.some((b: any) => b.code.includes('dependency'))).toBe(true);
     });
 
     it('should limit extracted blocks to 5', () => {
       const manager = docsManager as any;
       const content = `
-        dependency "a" { config_path = "../a" }
-        dependency "b" { config_path = "../b" }
-        dependency "c" { config_path = "../c" }
-        dependency "d" { config_path = "../d" }
-        dependency "e" { config_path = "../e" }
-        dependency "f" { config_path = "../f" }
-        dependency "g" { config_path = "../g" }
+\`\`\`hcl
+dependency "a" { config_path = "../a" }
+\`\`\`
+
+\`\`\`hcl
+dependency "b" { config_path = "../b" }
+\`\`\`
+
+\`\`\`hcl
+dependency "c" { config_path = "../c" }
+\`\`\`
+
+\`\`\`hcl
+dependency "d" { config_path = "../d" }
+\`\`\`
+
+\`\`\`hcl
+dependency "e" { config_path = "../e" }
+\`\`\`
+
+\`\`\`hcl
+dependency "f" { config_path = "../f" }
+\`\`\`
+
+\`\`\`hcl
+dependency "g" { config_path = "../g" }
+\`\`\`
       `;
       const blocks = manager.extractCodeBlocks(content);
       expect(blocks.length).toBeLessThanOrEqual(5);
     });
 
-    it('should remove duplicate blocks', () => {
+    it('should remove duplicate fenced blocks', () => {
       const manager = docsManager as any;
       const content = `
-        dependency "vpc" { config_path = "../vpc" }
-        dependency "vpc" { config_path = "../vpc" }
+\`\`\`hcl
+dependency "vpc" { config_path = "../vpc" }
+\`\`\`
+
+\`\`\`hcl
+dependency "vpc" { config_path = "../vpc" }
+\`\`\`
       `;
       const blocks = manager.extractCodeBlocks(content);
-      const uniqueBlocks = new Set(blocks);
-      expect(blocks.length).toBe(uniqueBlocks.size);
+      const codes = blocks.map((b: any) => b.code);
+      const uniqueCodes = new Set(codes);
+      expect(codes.length).toBe(uniqueCodes.size);
     });
 
     it('should return empty array when no code blocks', () => {
@@ -501,6 +580,63 @@ describe('TerragruntDocsManager', () => {
       const content = 'This is just plain text with no code';
       const blocks = manager.extractCodeBlocks(content);
       expect(blocks).toHaveLength(0);
+    });
+
+    it('should prefer fenced blocks over pattern fallback', () => {
+      const manager = docsManager as any;
+      const content = `
+\`\`\`hcl
+terraform {
+  source = "fenced-source"
+}
+\`\`\`
+
+Also mentioned: terraform { source = "unfenced" }
+      `;
+      const blocks = manager.extractCodeBlocks(content);
+      // Should only return the fenced block, not the unfenced pattern match
+      expect(blocks.length).toBe(1);
+      expect(blocks[0].code).toContain('fenced-source');
+      expect(blocks[0].language).toBe('hcl');
+    });
+
+    it('should extract tilde-fenced code blocks', () => {
+      const manager = docsManager as any;
+      const content = `
+~~~hcl
+remote_state {
+  backend = "s3"
+}
+~~~
+      `;
+      const blocks = manager.extractCodeBlocks(content);
+      expect(blocks.length).toBe(1);
+      expect(blocks[0].language).toBe('hcl');
+      expect(blocks[0].code).toContain('remote_state');
+    });
+
+    it('should tolerate extra info on fence opening line', () => {
+      const manager = docsManager as any;
+      const content = `
+\`\`\`hcl title="example"
+terraform {
+  source = "example"
+}
+\`\`\`
+      `;
+      const blocks = manager.extractCodeBlocks(content);
+      expect(blocks.length).toBe(1);
+      expect(blocks[0].language).toBe('hcl');
+      expect(blocks[0].code).toContain('terraform');
+    });
+
+    it('should label CLI commands as shell in pattern fallback', () => {
+      const manager = docsManager as any;
+      const content = 'Run terragrunt plan --terragrunt-working-dir /path to execute';
+      const blocks = manager.extractCodeBlocks(content);
+      expect(blocks.length).toBeGreaterThan(0);
+      expect(blocks[0].language).toBe('shell');
+      expect(blocks[0].code).toContain('terragrunt plan');
     });
   });
 

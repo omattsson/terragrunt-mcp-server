@@ -628,7 +628,7 @@ describe('ToolHandler', () => {
       const examples = [
         {
           doc: mockDocs[0],
-          examples: ['terraform { source = "..." }']
+          examples: [{ code: 'terraform { source = "..." }', language: 'hcl' }]
         }
       ];
       mockDocsManager.getCodeExamples.mockResolvedValueOnce(examples);
@@ -657,7 +657,7 @@ describe('ToolHandler', () => {
     it('should apply default limit of 5', async () => {
       const examples = Array.from({ length: 10 }, (_, i) => ({
         doc: mockDocs[0],
-        examples: [`example ${i}`]
+        examples: [{ code: `example ${i}`, language: 'hcl' }]
       }));
       mockDocsManager.getCodeExamples.mockResolvedValueOnce(examples);
 
@@ -672,7 +672,7 @@ describe('ToolHandler', () => {
     it('should respect custom limit', async () => {
       const examples = Array.from({ length: 10 }, (_, i) => ({
         doc: mockDocs[0],
-        examples: [`example ${i}`]
+        examples: [{ code: `example ${i}`, language: 'hcl' }]
       }));
       mockDocsManager.getCodeExamples.mockResolvedValueOnce(examples);
 
@@ -735,7 +735,7 @@ inputs = {
       const examples = [
         {
           doc: { ...mockDocs[0], url: 'https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/' },
-          examples: [longCode]
+          examples: [{ code: longCode, language: 'hcl' }]
         }
       ];
       mockDocsManager.getCodeExamples.mockResolvedValueOnce(examples);
@@ -745,11 +745,12 @@ inputs = {
         detailLevel: 'full'
       });
       
-      expect(result.examples[0].codeSnippets[0]).toContain('# ... [Truncated. See full example at https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/]');
-      expect(result.examples[0].codeSnippets[0].length).toBeLessThan(longCode.length);
+      expect(result.examples[0].codeSnippets[0].code).toContain('# ... [Truncated. See full example at https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/]');
+      expect(result.examples[0].codeSnippets[0].code.length).toBeLessThan(longCode.length);
+      expect(result.examples[0].codeSnippets[0].language).toBe('hcl');
       expect(result.examples[0].truncated).toBe(true);
       // Verify truncation occurred at a line boundary (complete line)
-      const truncated = result.examples[0].codeSnippets[0];
+      const truncated = result.examples[0].codeSnippets[0].code;
       const lines = truncated.split('\n');
       const lastLineBeforeTruncation = lines[lines.length - 3]; // -1 is empty, -2 is truncation msg, -3 is last code line
       expect(lastLineBeforeTruncation).toBeDefined();
@@ -763,7 +764,7 @@ inputs = {
       const examples = [
         {
           doc: { ...mockDocs[0], url: 'https://example.com/docs/test' },
-          examples: [shortCode]
+          examples: [{ code: shortCode, language: 'hcl' }]
         }
       ];
       mockDocsManager.getCodeExamples.mockResolvedValueOnce(examples);
@@ -773,8 +774,9 @@ inputs = {
         detailLevel: 'full'
       });
       
-      expect(result.examples[0].codeSnippets[0]).toBe(shortCode);
-      expect(result.examples[0].codeSnippets[0]).not.toContain('Truncated');
+      expect(result.examples[0].codeSnippets[0].code).toBe(shortCode);
+      expect(result.examples[0].codeSnippets[0].code).not.toContain('Truncated');
+      expect(result.examples[0].codeSnippets[0].language).toBe('hcl');
       expect(result.examples[0].truncated).toBe(false);
     });
 
@@ -784,7 +786,7 @@ inputs = {
       const examples = [
         {
           doc: { ...mockDocs[0], url: 'https://example.com/docs/test' },
-          examples: [shortCode, longCode]
+          examples: [{ code: shortCode, language: 'hcl' }, { code: longCode, language: 'hcl' }]
         }
       ];
       mockDocsManager.getCodeExamples.mockResolvedValueOnce(examples);
@@ -794,8 +796,8 @@ inputs = {
         detailLevel: 'full'
       });
       
-      expect(result.examples[0].codeSnippets[0]).toBe(shortCode);
-      expect(result.examples[0].codeSnippets[1]).toContain('Truncated');
+      expect(result.examples[0].codeSnippets[0].code).toBe(shortCode);
+      expect(result.examples[0].codeSnippets[1].code).toContain('Truncated');
       expect(result.examples[0].truncated).toBe(true);
     });
 
@@ -885,7 +887,7 @@ inputs = {
       const examples = [
         {
           doc: { ...mockDocs[0], url: docUrl },
-          examples: [longCode]
+          examples: [{ code: longCode, language: 'hcl' }]
         }
       ];
       mockDocsManager.getCodeExamples.mockResolvedValueOnce(examples);
@@ -895,7 +897,7 @@ inputs = {
         detailLevel: 'full'
       });
       
-      expect(result.examples[0].codeSnippets[0]).toContain(`# ... [Truncated. See full example at ${docUrl}]`);
+      expect(result.examples[0].codeSnippets[0].code).toContain(`# ... [Truncated. See full example at ${docUrl}]`);
     });
 
     it('should handle missing docsUrl with fallback message', async () => {

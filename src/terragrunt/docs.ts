@@ -20,6 +20,11 @@ export interface TerragruntDoc extends DocMetadata {
   content: string;
 }
 
+export interface CodeBlock {
+  code: string;
+  language: string;
+}
+
 interface IndexedMetadata extends DocMetadata {
   titleLower: string;
   sectionLower: string;
@@ -815,10 +820,10 @@ export class TerragruntDocsManager {
     );
   }
 
-  async getCodeExamples(topic: string): Promise<Array<{ doc: TerragruntDoc, examples: string[] }>> {
+  async getCodeExamples(topic: string): Promise<Array<{ doc: TerragruntDoc, examples: CodeBlock[] }>> {
     const docs = await this.fetchLatestDocs();
     const query = topic.toLowerCase();
-    const results: Array<{ doc: TerragruntDoc, examples: string[] }> = [];
+    const results: Array<{ doc: TerragruntDoc, examples: CodeBlock[] }> = [];
 
     // Search docs that match the topic
     const relevantDocs = docs.filter(doc =>
@@ -837,13 +842,68 @@ export class TerragruntDocsManager {
     return results;
   }
 
-  private extractCodeBlocks(content: string): string[] {
-    const examples: string[] = [];
+  private extractCodeBlocks(content: string): CodeBlock[] {
+    // First, try to extract fenced Markdown code blocks with language identifiers.
+    // These are more accurate and carry language metadata.
+    const fenced = this.extractFencedCodeBlocks(content);
+    if (fenced.length > 0) {
+      return fenced;
+    }
+
+    // Fallback: use plain-text regex patterns for legacy/fixture content
+    // that doesn't have proper Markdown fencing.
+    return this.extractCodeBlocksByPattern(content);
+  }
+
+  /**
+   * Extract fenced code blocks (``` or ~~~) with optional language identifiers.
+   * Supports both backtick and tilde fences, tolerates extra info on the fence
+   * line (e.g., ```hcl title="example"), and handles \r\n line endings.
+   * Returns CodeBlock[] with language metadata.
+   */
+  private extractFencedCodeBlocks(content: string): CodeBlock[] {
+    const blocks: CodeBlock[] = [];
+    // Match ```lang or ~~~lang fenced blocks, capturing the fence chars,
+    // the optional language identifier, and the code body.
+    // Tolerates extra text after the language on the opening fence line.
+    const fenceRegex = /^((`{3,})|(~{3,}))(\w*)[^\n\r]*\r?\n([\s\S]*?)^(\2|\3)\s*$/gm;
+    let match;
+
+    while ((match = fenceRegex.exec(content)) !== null) {
+      const language = match[4] || 'text';
+      const code = match[5].trim();
+      if (code.length > 0) {
+        blocks.push({ code, language });
+      }
+    }
+
+    // Remove duplicates (by code content) and limit to 5
+    const seen = new Set<string>();
+    const unique: CodeBlock[] = [];
+    for (const block of blocks) {
+      if (!seen.has(block.code)) {
+        seen.add(block.code);
+        unique.push(block);
+      }
+    }
+
+    return unique.slice(0, 5);
+  }
+
+  /**
+   * Fallback: extract code examples using HCL/Terragrunt-specific regex patterns.
+   * Used for content without proper Markdown fenced code blocks.
+   */
+  private extractCodeBlocksByPattern(content: string): CodeBlock[] {
+    const results: CodeBlock[] = [];
     
-    // Match code blocks patterns in markdown-like content
-    // Looking for common patterns like: "terragrunt", "terraform {", "remote_state {", etc.
-    const codePatterns = [
+    // CLI command patterns → 'shell'
+    const cliPatterns = [
       /terragrunt\s+\w+[^\n]*/gi,
+    ];
+
+    // HCL config block patterns → 'hcl'
+    const hclPatterns = [
       /terraform\s*{[\s\S]*?}/gi,
       /remote_state\s*{[\s\S]*?}/gi,
       /dependency\s*"[^"]+"\s*{[\s\S]*?}/gi,
@@ -851,15 +911,35 @@ export class TerragruntDocsManager {
       /inputs\s*=\s*{[\s\S]*?}/gi,
     ];
 
-    for (const pattern of codePatterns) {
+    const seen = new Set<string>();
+
+    for (const pattern of cliPatterns) {
       const matches = content.match(pattern);
       if (matches) {
-        examples.push(...matches.map(m => m.trim()));
+        for (const m of matches) {
+          const code = m.trim();
+          if (!seen.has(code)) {
+            seen.add(code);
+            results.push({ code, language: 'shell' });
+          }
+        }
       }
     }
 
-    // Remove duplicates and limit
-    return Array.from(new Set(examples)).slice(0, 5);
+    for (const pattern of hclPatterns) {
+      const matches = content.match(pattern);
+      if (matches) {
+        for (const m of matches) {
+          const code = m.trim();
+          if (!seen.has(code)) {
+            seen.add(code);
+            results.push({ code, language: 'hcl' });
+          }
+        }
+      }
+    }
+
+    return results.slice(0, 5);
   }
 
   /**
