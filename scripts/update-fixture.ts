@@ -2,8 +2,9 @@
 /**
  * Fixture Update Script
  *
- * Fetches the latest Terragrunt documentation from llms-small.txt,
- * parses it using TerragruntDocsManager.parseLlmsMarkdown(), and
+ * Fetches the latest Terragrunt documentation from llms-small.txt
+ * using TerragruntDocsManager.fetchFromLlmsTxt() (which internally
+ * parses the content via the instance method parseLlmsMarkdown) and
  * writes the result to fixtures/terragrunt-docs-fixture.json.
  *
  * Usage: npm run update-fixture
@@ -22,8 +23,14 @@ const __dirname = path.dirname(__filename);
 
 const FIXTURE_PATH = path.join(__dirname, '..', 'fixtures', 'terragrunt-docs-fixture.json');
 
+const LLMS_SMALL_URL = 'https://terragrunt.gruntwork.io/llms-small.txt';
+
 async function main(): Promise<void> {
-  console.log('Fetching Terragrunt documentation from llms-small.txt...');
+  // Force canonical source to ensure deterministic fixture regeneration,
+  // regardless of any TERRAGRUNT_LLMS_SOURCE env var the user may have set.
+  process.env.TERRAGRUNT_LLMS_SOURCE = LLMS_SMALL_URL;
+
+  console.log(`Fetching Terragrunt documentation from ${LLMS_SMALL_URL}...`);
 
   const docsManager = new TerragruntDocsManager();
   const docs = await docsManager.fetchFromLlmsTxt();
@@ -53,8 +60,9 @@ async function main(): Promise<void> {
   console.log(`  Functions page:  ${hasFunctionsPage ? 'present' : 'MISSING'}`);
 
   if (!hasFunctionsPage) {
-    console.warn('\nWARNING: "Functions" page not found — validateFixture() may fail.');
-    console.warn('Check whether the title has changed in llms-small.txt.');
+    console.error('\nERROR: "Functions" page not found — the generated fixture would be invalid.');
+    console.error('Check whether the title has changed in llms-small.txt.');
+    process.exit(1);
   }
 }
 
