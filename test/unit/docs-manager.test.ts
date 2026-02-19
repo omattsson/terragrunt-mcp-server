@@ -1207,4 +1207,129 @@ terraform {
       logSpy.mockRestore();
     });
   });
+
+  describe('refreshDocsCache fallback chain', () => {
+    let manager: any;
+    const fakeDocs: TerragruntDoc[] = [
+      {
+        title: 'Install',
+        url: 'https://terragrunt.gruntwork.io/docs/getting-started/install/',
+        content: 'Install instructions.',
+        section: 'getting-started',
+        lastUpdated: '2025-01-01',
+      },
+    ];
+
+    beforeEach(() => {
+      manager = new TerragruntDocsManager();
+      // Speed up retries so tests don't stall
+      manager.retryConfig = {
+        maxRetries: 0,
+        initialDelayMs: 1,
+        maxDelayMs: 2,
+        backoffMultiplier: 1,
+      };
+      vi.clearAllMocks();
+    });
+
+    it('should populate caches on successful llms.txt fetch', async () => {
+      vi.spyOn(manager, 'fetchFromLlmsTxt').mockResolvedValueOnce(fakeDocs);
+      vi.spyOn(manager, 'saveCacheToDisk').mockResolvedValueOnce(undefined);
+      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+      await manager.refreshDocsCache();
+
+      expect(manager.metadataCache.size).toBe(1);
+      expect(manager.contentCache.size).toBe(1);
+      expect(manager.lastFetchTime).toBeInstanceOf(Date);
+
+      logSpy.mockRestore();
+    });
+
+    it('should fall back to disk cache when llms.txt fetch fails', async () => {
+      vi.spyOn(manager, 'fetchFromLlmsTxt').mockResolvedValueOnce([]);
+      const diskSpy = vi.spyOn(manager, 'loadCacheFromDisk').mockImplementation(async () => {
+        // Simulate loading 1 doc from disk
+        manager.metadataCache.set(fakeDocs[0].url, {
+          title: fakeDocs[0].title,
+          url: fakeDocs[0].url,
+          section: fakeDocs[0].section,
+        });
+        manager.contentCache.set(fakeDocs[0].url, fakeDocs[0].content);
+        return true;
+      });
+      const fixtureSpy = vi.spyOn(manager, 'loadFixture');
+      const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+      await manager.refreshDocsCache();
+
+      expect(diskSpy).toHaveBeenCalledOnce();
+      expect(fixtureSpy).not.toHaveBeenCalled();
+      expect(manager.metadataCache.size).toBe(1);
+
+      errSpy.mockRestore();
+      logSpy.mockRestore();
+    });
+
+    it('should fall back to fixture when both llms.txt and disk cache fail', async () => {
+      vi.spyOn(manager, 'fetchFromLlmsTxt').mockResolvedValueOnce([]);
+      vi.spyOn(manager, 'loadCacheFromDisk').mockResolvedValueOnce(false);
+      const fixtureSpy = vi.spyOn(manager, 'loadFixture').mockImplementation(async () => {
+        manager.metadataCache.set(fakeDocs[0].url, {
+          title: fakeDocs[0].title,
+          url: fakeDocs[0].url,
+          section: fakeDocs[0].section,
+        });
+        manager.contentCache.set(fakeDocs[0].url, fakeDocs[0].content);
+        return true;
+      });
+      const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+      await manager.refreshDocsCache();
+
+      expect(fixtureSpy).toHaveBeenCalledOnce();
+      expect(manager.metadataCache.size).toBe(1);
+
+      errSpy.mockRestore();
+      logSpy.mockRestore();
+    });
+
+    it('should throw when all three sources fail', async () => {
+      vi.spyOn(manager, 'fetchFromLlmsTxt').mockResolvedValueOnce([]);
+      vi.spyOn(manager, 'loadCacheFromDisk').mockResolvedValueOnce(false);
+      vi.spyOn(manager, 'loadFixture').mockResolvedValueOnce(false);
+      const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      await expect(manager.refreshDocsCache()).rejects.toThrow(
+        'Failed to load documentation from any source (network, disk cache, or fixture)'
+      );
+
+      errSpy.mockRestore();
+    });
+
+    it('should fall back to disk cache when fetchFromLlmsTxt throws', async () => {
+      vi.spyOn(manager, 'fetchFromLlmsTxt').mockRejectedValueOnce(new Error('Network down'));
+      const diskSpy = vi.spyOn(manager, 'loadCacheFromDisk').mockImplementation(async () => {
+        manager.metadataCache.set(fakeDocs[0].url, {
+          title: fakeDocs[0].title,
+          url: fakeDocs[0].url,
+          section: fakeDocs[0].section,
+        });
+        manager.contentCache.set(fakeDocs[0].url, fakeDocs[0].content);
+        return true;
+      });
+      const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+      await manager.refreshDocsCache();
+
+      expect(diskSpy).toHaveBeenCalledOnce();
+      expect(manager.contentCache.size).toBe(1);
+
+      errSpy.mockRestore();
+      logSpy.mockRestore();
+    });
+  });
 });
