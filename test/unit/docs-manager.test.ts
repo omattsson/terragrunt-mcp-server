@@ -1242,6 +1242,7 @@ terraform {
       expect(manager.metadataCache.size).toBe(1);
       expect(manager.contentCache.size).toBe(1);
       expect(manager.lastFetchTime).toBeInstanceOf(Date);
+      expect(manager.saveCacheToDisk).toHaveBeenCalledOnce();
 
       logSpy.mockRestore();
     });
@@ -1254,6 +1255,7 @@ terraform {
           title: fakeDocs[0].title,
           url: fakeDocs[0].url,
           section: fakeDocs[0].section,
+          lastUpdated: fakeDocs[0].lastUpdated,
         });
         manager.contentCache.set(fakeDocs[0].url, fakeDocs[0].content);
         return true;
@@ -1280,6 +1282,7 @@ terraform {
           title: fakeDocs[0].title,
           url: fakeDocs[0].url,
           section: fakeDocs[0].section,
+          lastUpdated: fakeDocs[0].lastUpdated,
         });
         manager.contentCache.set(fakeDocs[0].url, fakeDocs[0].content);
         return true;
@@ -1316,6 +1319,7 @@ terraform {
           title: fakeDocs[0].title,
           url: fakeDocs[0].url,
           section: fakeDocs[0].section,
+          lastUpdated: fakeDocs[0].lastUpdated,
         });
         manager.contentCache.set(fakeDocs[0].url, fakeDocs[0].content);
         return true;
