@@ -25,10 +25,10 @@ The Terragrunt MCP Server implements a sophisticated **two-tier caching system**
                │ Miss/Expired
                ▼
         ┌──────────────────────────┐
-        │  Web Fetch (Source)      │
+        │  llms.txt Fetch (Source) │
         │  terragrunt.gruntwork.io │
-        │  Access: 5-10s           │
-        │  (with retry logic)      │
+        │  /llms-small.txt         │
+        │  (single HTTP request)   │
         └──────┬───────────────────┘
                │ Failure
                ▼
@@ -201,7 +201,7 @@ rm -rf .cache/terragrunt-docs/
 
 ### Fallback Levels
 
-1. **Primary**: Web fetch with retry
+1. **Primary**: llms.txt fetch with retry
 2. **Secondary**: Disk cache (even if expired)
 3. **Tertiary**: Local fixture
 
@@ -227,27 +227,23 @@ const retryConfig = {
 ### Fallback Implementation
 
 ```typescript
-async fetchLatestDocs(): Promise<TerragruntDoc[]> {
+async refreshDocsCache(): Promise<void> {
   try {
-    // Try web fetch with retry
-    return await this.retryWithBackoff(() => this.fetchFromWeb());
-  } catch (error) {
-    console.warn('Web fetch failed, trying disk cache...');
-    
-    try {
-      // Try disk cache (even if expired)
-      const cached = await this.loadFromDisk();
-      if (cached.length > 0) {
-        console.info('Using stale cache');
-        return cached;
-      }
-    } catch (diskError) {
-      console.warn('Disk cache unavailable');
+    // Fetch all docs in a single HTTP request via llms.txt
+    const docs = await this.fetchFromLlmsTxt();
+    // Populate metadata and content caches
+    for (const doc of docs) {
+      this.metadataCache.set(doc.url, { title: doc.title, url: doc.url, section: doc.section });
+      this.contentCache.set(doc.url, doc.content);
     }
-    
-    // Last resort: local fixture
-    console.info('Using local fixture');
-    return await this.loadFixture();
+    await this.saveCacheToDisk();
+  } catch (error) {
+    console.error('Failed to refresh docs cache:', error);
+    // Try loading from disk cache if available
+    const diskCacheLoaded = await this.loadCacheFromDisk();
+    if (diskCacheLoaded) return;
+    // Fall back to fixture as last resort
+    await this.loadFixture();
   }
 }
 ```
@@ -301,7 +297,7 @@ cp .cache/terragrunt-docs/docs-cache.json fixtures/terragrunt-docs-fixture.json
 |----------|------|-----------|
 | In-memory hit | <1ms | L1 |
 | Disk cache load | ~10ms | L2 |
-| Web fetch (full) | 5-10s | Miss |
+| llms.txt fetch | 1-5s | Miss |
 | Stale cache fallback | ~10ms | L2 (expired) |
 | Fixture load | ~5ms | Fixture |
 
@@ -319,7 +315,7 @@ Request → L1 miss → L2 hit → 10ms load → L1 populate → <1ms next
 
 **Worst case** (cold start, no cache):
 ```text
-Request → L1 miss → L2 miss → Web fetch → 5-10s → Save L2 → Populate L1 → <1ms next
+Request → L1 miss → L2 miss → llms.txt fetch → 1-5s → Save L2 → Populate L1 → <1ms next
 ```
 
 ### Cache Hit Rates
@@ -379,6 +375,25 @@ const manager = new TerragruntDocsManager({
 const manager = new TerragruntDocsManager({
   cacheExpiryHours: 48
 });
+```
+
+### llms.txt Source
+
+The documentation source URL can be configured via the `TERRAGRUNT_LLMS_SOURCE` environment variable. It accepts an absolute URL (with scheme) or a path/filename relative to `https://terragrunt.gruntwork.io`.
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `TERRAGRUNT_LLMS_SOURCE` | `llms-small.txt` | Override llms.txt URL (absolute URL or relative path) |
+
+```bash
+# Use abridged docs (default)
+# https://terragrunt.gruntwork.io/llms-small.txt
+
+# Use full docs
+export TERRAGRUNT_LLMS_SOURCE=llms-full.txt
+
+# Use a local file or mirror
+export TERRAGRUNT_LLMS_SOURCE=https://my-mirror.example.com/llms.txt
 ```
 
 ### Disable Caching
