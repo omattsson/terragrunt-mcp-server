@@ -29,28 +29,32 @@ The documentation fetching follows this priority:
 
 ## Updating the Fixture
 
-To update the fixture with fresh documentation:
+To update the fixture with fresh documentation from `llms-small.txt`:
 
 ```bash
-# Ensure you have fresh docs in cache
-npm run test:server
+npm run update-fixture
+```
 
-# Copy the cache to fixture
-cp .cache/terragrunt-docs/docs-cache.json fixtures/terragrunt-docs-fixture.json
+This fetches `https://terragrunt.gruntwork.io/llms-small.txt`, parses it using
+`TerragruntDocsManager.parseLlmsMarkdown()`, and writes the result to
+`fixtures/terragrunt-docs-fixture.json`.
 
-# Commit the updated fixture
+After updating, commit the changes:
+
+```bash
 git add fixtures/terragrunt-docs-fixture.json
 git commit -m "chore: Update Terragrunt documentation fixture"
 ```
 
 ## Fixture Contents
 
-The fixture contains approximately 84 documentation pages covering:
+The fixture contains approximately 88 Markdown documentation pages sourced from
+`llms-small.txt`, covering:
 - Getting Started guides
 - Configuration reference
 - Features documentation
 - CLI commands
-- HCL blocks and attributes
+- HCL blocks, attributes, and functions
 - Troubleshooting guides
 
-Last updated: October 2025
+Last updated: February 2026
