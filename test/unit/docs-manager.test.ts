@@ -1250,14 +1250,8 @@ terraform {
     it('should fall back to disk cache when llms.txt fetch fails', async () => {
       vi.spyOn(manager, 'fetchFromLlmsTxt').mockResolvedValueOnce([]);
       const diskSpy = vi.spyOn(manager, 'loadCacheFromDisk').mockImplementation(async () => {
-        // Simulate loading 1 doc from disk
-        manager.metadataCache.set(fakeDocs[0].url, {
-          title: fakeDocs[0].title,
-          url: fakeDocs[0].url,
-          section: fakeDocs[0].section,
-          lastUpdated: fakeDocs[0].lastUpdated,
-        });
-        manager.contentCache.set(fakeDocs[0].url, fakeDocs[0].content);
+        // Use shared helper to simulate loading docs from disk
+        populateCaches(manager, fakeDocs);
         return true;
       });
       const fixtureSpy = vi.spyOn(manager, 'loadFixture');
@@ -1278,13 +1272,8 @@ terraform {
       vi.spyOn(manager, 'fetchFromLlmsTxt').mockResolvedValueOnce([]);
       vi.spyOn(manager, 'loadCacheFromDisk').mockResolvedValueOnce(false);
       const fixtureSpy = vi.spyOn(manager, 'loadFixture').mockImplementation(async () => {
-        manager.metadataCache.set(fakeDocs[0].url, {
-          title: fakeDocs[0].title,
-          url: fakeDocs[0].url,
-          section: fakeDocs[0].section,
-          lastUpdated: fakeDocs[0].lastUpdated,
-        });
-        manager.contentCache.set(fakeDocs[0].url, fakeDocs[0].content);
+        // Use shared helper to simulate loading docs from fixture
+        populateCaches(manager, fakeDocs);
         return true;
       });
       const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -1304,24 +1293,21 @@ terraform {
       vi.spyOn(manager, 'loadCacheFromDisk').mockResolvedValueOnce(false);
       vi.spyOn(manager, 'loadFixture').mockResolvedValueOnce(false);
       const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
 
       await expect(manager.refreshDocsCache()).rejects.toThrow(
         'Failed to load documentation from any source (network, disk cache, or fixture)'
       );
 
       errSpy.mockRestore();
+      logSpy.mockRestore();
     });
 
     it('should fall back to disk cache when fetchFromLlmsTxt throws', async () => {
       vi.spyOn(manager, 'fetchFromLlmsTxt').mockRejectedValueOnce(new Error('Network down'));
       const diskSpy = vi.spyOn(manager, 'loadCacheFromDisk').mockImplementation(async () => {
-        manager.metadataCache.set(fakeDocs[0].url, {
-          title: fakeDocs[0].title,
-          url: fakeDocs[0].url,
-          section: fakeDocs[0].section,
-          lastUpdated: fakeDocs[0].lastUpdated,
-        });
-        manager.contentCache.set(fakeDocs[0].url, fakeDocs[0].content);
+        // Use shared helper to simulate loading docs from disk
+        populateCaches(manager, fakeDocs);
         return true;
       });
       const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
