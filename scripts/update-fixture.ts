@@ -36,15 +36,18 @@ async function main(): Promise<void> {
   const docs = await docsManager.fetchFromLlmsTxt();
 
   if (docs.length === 0) {
-    console.error('ERROR: No documents were returned from llms-small.txt.');
-    console.error('Check network connectivity and that https://terragrunt.gruntwork.io/llms-small.txt is reachable.');
+    console.error(`ERROR: No documents were returned from ${LLMS_SMALL_URL}.`);
+    console.error(`Check network connectivity and that ${LLMS_SMALL_URL} is reachable.`);
     process.exit(1);
   }
 
   console.log(`Fetched ${docs.length} documents.`);
 
-  // Write pretty-printed JSON
-  await fs.writeFile(FIXTURE_PATH, JSON.stringify(docs, null, 2) + '\n', 'utf-8');
+  // Write pretty-printed JSON atomically: temp file + rename to avoid
+  // leaving a partially-written/corrupt fixture if the process is interrupted.
+  const tempFixturePath = `${FIXTURE_PATH}.tmp-${process.pid}-${Date.now()}`;
+  await fs.writeFile(tempFixturePath, JSON.stringify(docs, null, 2) + '\n', 'utf-8');
+  await fs.rename(tempFixturePath, FIXTURE_PATH);
   console.log(`Wrote fixture to ${path.relative(process.cwd(), FIXTURE_PATH)}`);
 
   // Quick validation summary

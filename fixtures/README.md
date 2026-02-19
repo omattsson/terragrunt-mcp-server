@@ -35,9 +35,10 @@ To update the fixture with fresh documentation from `llms-small.txt`:
 npm run update-fixture
 ```
 
-This runs `TerragruntDocsManager.fetchFromLlmsTxt()`, which downloads
-`https://terragrunt.gruntwork.io/llms-small.txt`, parses it internally, and
-writes the result to `fixtures/terragrunt-docs-fixture.json`.
+The script forces the canonical source (`https://terragrunt.gruntwork.io/llms-small.txt`)
+regardless of any `TERRAGRUNT_LLMS_SOURCE` environment variable, then calls
+`TerragruntDocsManager.fetchFromLlmsTxt()` to download and parse the docs,
+and writes the result to `fixtures/terragrunt-docs-fixture.json`.
 
 After updating, commit the changes:
 
