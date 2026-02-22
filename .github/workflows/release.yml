@@ -170,7 +170,7 @@ jobs:
             gh release create v${{ github.event.inputs.version }} \
               --title "v${{ github.event.inputs.version }}" \
               --notes-file "CHANGELOG-${{ github.event.inputs.version }}.md" \
-              ${{ github.event.inputs.prerelease && '--prerelease' || '--latest' }}
+              ${{ github.event.inputs.prerelease == 'true' && '--prerelease' || '--latest' }}
           else
             echo "📝 Generating changelog from git history"
             PREV_TAG=$(git describe --tags --abbrev=0 v${{ github.event.inputs.version }}^ 2>/dev/null || echo "")
@@ -219,7 +219,7 @@ jobs:
             gh release create v${{ github.event.inputs.version }} \
               --title "v${{ github.event.inputs.version }}" \
               --notes-file /tmp/release-notes.md \
-              ${{ github.event.inputs.prerelease && '--prerelease' || '--latest' }}
+              ${{ github.event.inputs.prerelease == 'true' && '--prerelease' || '--latest' }}
           fi
           
           echo "✅ Release v${{ github.event.inputs.version }} published successfully!"
