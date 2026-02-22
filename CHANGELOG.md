@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-02-22
+
+### ✨ Added
+
+#### llms.txt Integration (#231, #232, #233, #237, #238, #239, #240)
+
+- **llms.txt Data Source**: Replaced HTML web scraping with Terragrunt's official `llms.txt` endpoint for documentation fetching — a cleaner, more reliable, and more structured data source
+- **Markdown Splitter**: New Markdown content splitter to parse llms.txt content into individual documentation sections
+- **`fetchFromLlmsTxt()` Method**: New dedicated method for fetching and parsing the llms.txt source
+- **Improved Code Example Extraction**: Better extraction of code examples from Markdown-formatted content
+- **Updated Docs Fixture**: Regenerated documentation fixture from llms.txt source
+- **Updated Tests**: Docs-manager tests updated to cover llms.txt integration
+
+### 🔄 Changed
+
+#### Usability Improvements (#216)
+
+- **Improved Tool Responses**: Enhanced tool output clarity and usefulness without increasing token usage
+
+#### Architecture Refactoring (#225, #234, #236)
+
+- **Simplified Lazy Loading**: Refactored lazy loading to work with the single-fetch llms.txt model
+- **Removed cheerio Runtime Dependency**: Moved `cheerio` (HTML parser) to devDependencies — no longer needed at runtime since HTML scraping was replaced by llms.txt
+
 ### 🐛 Fixed
 
 #### Schema Drift Detection Parser (Issue #210)
@@ -25,8 +49,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Checks deprecated attribute marking
   - Ensures example attributes are excluded
 - **Results**: Script now correctly identifies 58 S3, 32 Azure, and 9 GCS attributes (previously 0 for all)
-
-### 🔄 Changed
 
 #### Backend Schema Updates (Issue #210)
 
