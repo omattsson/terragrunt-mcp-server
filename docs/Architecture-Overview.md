@@ -43,8 +43,8 @@ This page provides a comprehensive overview of the Terragrunt MCP Server's archi
           ┌────────────────┼────────────────┐
           │                │                │
 ┌─────────▼──────┐  ┌──────▼─────┐  ┌──────▼──────────┐
-│  Web Scraping  │  │  Disk      │  │  Local Fixture  │
-│  (Cheerio)     │  │  Cache     │  │  (Fallback)     │
+│  llms.txt      │  │  Disk      │  │  Local Fixture  │
+│  Fetch         │  │  Cache     │  │  (Fallback)     │
 └────────────────┘  └────────────┘  └─────────────────┘
 ```
 
@@ -99,7 +99,7 @@ This page provides a comprehensive overview of the Terragrunt MCP Server's archi
 **Key Class**: `TerragruntDocsManager`
 
 **Responsibilities**:
-- Web scraping documentation from terragrunt.gruntwork.io
+- Fetching documentation via llms.txt from terragrunt.gruntwork.io
 - Multi-tier caching management
 - Search and retrieval operations
 - Fallback handling
@@ -169,13 +169,13 @@ This page provides a comprehensive overview of the Terragrunt MCP Server's archi
 
 ```text
 1. Tool Request → ToolHandler
-2. → TerragruntDocsManager.fetchLatestDocs()
+2. → TerragruntDocsManager.ensureInitialized()
 3. → Check in-memory cache: Empty
 4. → Check disk cache: Not found
-5. → Fetch from web (with retry logic)
-6. → Parse with Cheerio
-7. → Save to disk cache
-8. → Save to in-memory cache
+5. → Fetch from llms.txt (single HTTP request)
+6. → Parse Markdown into doc entries
+7. → Populate metadata + content caches
+8. → Save to disk cache
 9. → Return docs to handler
 10. → Format and return to client
 ```
@@ -269,38 +269,33 @@ Network → Disk Cache → Stale Cache → Fixture
 
 This ensures the server **always** has data to return.
 
-## Web Scraping
+## llms.txt Documentation Fetching
 
 ### Technology
 
-- **Cheerio**: Fast HTML parsing
+- **llms.txt**: Machine-readable Markdown served by Terragrunt website
 - **node-fetch**: HTTP requests
-- **Selectors**: Navigational + content-based
+- **Native Markdown parsing**: Split on H1 (`# `) boundaries
 
-### Extraction Process
+### How It Works
 
-1. **Fetch main docs page**: `https://terragrunt.gruntwork.io/docs/`
-2. **Extract links**: From navigation, sidebar, and content
-3. **Categorize by section**: Auto-detect from URL structure
-4. **Fetch each page**: Individual HTML requests
-5. **Parse content**: Remove nav, scripts, styles
-6. **Clean text**: Normalize whitespace
-7. **Store structured data**: Title, URL, content, section
+1. **Fetch llms.txt**: Single HTTP request to `https://terragrunt.gruntwork.io/llms-small.txt`
+2. **Parse Markdown**: Split content on H1 boundaries into individual doc entries
+3. **Extract metadata**: Title, URL, and section from each entry
+4. **Populate caches**: Metadata cache (lightweight) + content cache (full Markdown)
+5. **Build search index**: Pre-computed lowercase fields for fast matching
 
-### Content Selectors
+### Source Configuration
 
-```typescript
-const contentSelectors = [
-  '.content',
-  '.markdown', 
-  'main',
-  '.post-content',
-  '.doc-content',
-  'article'
-];
+The source URL is configurable via `TERRAGRUNT_LLMS_SOURCE`:
+
+```bash
+# Default: llms-small.txt (abridged docs)
+# Full docs:
+export TERRAGRUNT_LLMS_SOURCE=llms-full.txt
+# Custom mirror:
+export TERRAGRUNT_LLMS_SOURCE=https://my-mirror.example.com/llms.txt
 ```
-
-Fallback to `body` if no content container found.
 
 ## Search Implementation
 
@@ -380,7 +375,7 @@ try {
 |-----------|------|-------|
 | In-memory cache hit | <1ms | Hot path |
 | Disk cache load | ~10ms | Warm start |
-| Web fetch (full) | ~5-10s | Cold start |
+| llms.txt fetch | ~1-5s | Cold start |
 | Search (in-memory) | <10ms | Across all docs |
 | Tool execution | <20ms | Including search |
 
@@ -389,8 +384,8 @@ try {
 ### Production
 
 - `@modelcontextprotocol/sdk`: MCP protocol
-- `cheerio`: HTML parsing
 - `node-fetch`: HTTP requests
+- `lru-cache`: Search result caching
 - `typescript`: Type safety
 
 ### Development
@@ -407,12 +402,13 @@ try {
 2. **Disk**: Persistence (survives restarts)
 3. **Trade-off**: Small memory footprint vs. performance
 
-### Why Web Scraping vs. API?
+### Why llms.txt?
 
-- No official Terragrunt documentation API exists
-- Web scraping is reliable and well-tested
-- Content is relatively stable
-- Caching minimizes requests
+- Terragrunt provides an official `llms.txt` endpoint for machine-readable documentation
+- Single HTTP request fetches all docs (vs. crawling many pages)
+- Native Markdown — no HTML parsing or content extraction needed
+- Structured for AI consumption out of the box
+- Faster and more reliable than web scraping
 
 ### Why ESM Modules?
 

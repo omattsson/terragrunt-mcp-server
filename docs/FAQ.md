@@ -136,10 +136,13 @@ Yes! The server provides documentation access regardless of whether your project
 
 ### Where does the documentation come from?
 
-The server fetches documentation from the official Terragrunt website:
-`https://terragrunt.gruntwork.io/docs/`
+The server fetches documentation from the official Terragrunt website via its
+machine-readable `llms.txt` endpoint:
+`https://terragrunt.gruntwork.io/llms-small.txt`
 
-It uses web scraping (Cheerio library) to parse and extract content.
+A single HTTP request retrieves all documentation as Markdown, which is then
+parsed into individual doc entries (split on H1 boundaries). The source URL is
+configurable via the `TERRAGRUNT_LLMS_SOURCE` environment variable.
 
 ### Is the documentation cached?
 
@@ -156,7 +159,7 @@ See [Caching System](Caching-System) for details.
 
 The server has multiple fallback mechanisms:
 
-1. Try web fetch (with 3 retries)
+1. Try llms.txt fetch (with 3 retries)
 2. Use disk cache (even if expired)
 3. Use stale in-memory cache
 4. Load embedded fixture (last resort)
@@ -380,7 +383,7 @@ See [Release Process](Release-Process):
 
 Typical response times:
 
-- **First query** (cold start): 5-10 seconds (web fetch)
+- **First query** (cold start): 1-5 seconds (llms.txt fetch)
 - **Second query** (warm cache): <10ms (disk cache)
 - **Subsequent queries**: <1ms (in-memory cache)
 

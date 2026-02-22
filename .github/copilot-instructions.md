@@ -22,7 +22,7 @@ import { ToolHandler } from './handlers/tools';     // ✗ Runtime crash
 
 ## Key Patterns
 
-**Multi-tier cache (DocsManager `src/terragrunt/docs.ts`):** In-memory `Map` → LRU search cache → Disk `.cache/terragrunt-docs/` (gzip-compressed) → Network (cheerio scraping from terragrunt.gruntwork.io) → Fixture fallback (`fixtures/terragrunt-docs-fixture.json`).
+**Multi-tier cache (DocsManager `src/terragrunt/docs.ts`):** In-memory `Map` → LRU search cache → Disk `.cache/terragrunt-docs/` (gzip-compressed) → Network (llms.txt from terragrunt.gruntwork.io) → Fixture fallback (`fixtures/terragrunt-docs-fixture.json`).
 
 **Case-insensitive lookups:** Managers use `private normalizeKey(name: string): string` with `Map<string, T>` for cache keys. Follow this pattern in any new manager (see `src/terragrunt/functions.ts`, `src/terragrunt/best-practices.ts`).
 
