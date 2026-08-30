@@ -243,7 +243,7 @@ It doesn't contain any troubleshooting steps.
       mockDocsManager.setMockDocs([
         {
           title: 'Backend Configuration',
-          url: 'https://terragrunt.gruntwork.io/docs/backend',
+          url: 'https://docs.terragrunt.com/backend',
           content: 'Configure backend with remote_state block.',
           section: 'reference'
         }
@@ -390,13 +390,13 @@ It doesn't contain any troubleshooting steps.
       mockDocsManager.setMockDocs([
         {
           title: 'Backend Configuration',
-          url: 'https://terragrunt.gruntwork.io/docs/backend',
+          url: 'https://docs.terragrunt.com/backend',
           content: 'Configure your backend with remote_state block.',
           section: 'reference'
         },
         {
           title: 'Getting Started',
-          url: 'https://terragrunt.gruntwork.io/docs/getting-started',
+          url: 'https://docs.terragrunt.com/getting-started',
           content: 'Introduction to Terragrunt.',
           section: 'intro'
         }

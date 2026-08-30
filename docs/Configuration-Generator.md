@@ -574,11 +574,11 @@ Use the generated `explanation` and `relatedDocs` to document your setup in your
 - **[Available Tools](Available-Tools.md)** - Explore all 9 tools
 - **[Examples](Examples-and-Use-Cases.md)** - More real-world examples
 - **[FAQ](FAQ.md)** - Common questions
-- **[Terragrunt Documentation](https://terragrunt.gruntwork.io/)** - Official docs
+- **[Terragrunt Documentation](https://docs.terragrunt.com/)** - Official docs
 
 ## Related Documentation
 
-- [Remote State Configuration](https://terragrunt.gruntwork.io/docs/features/keep-your-remote-state-configuration-dry/)
-- [Dependencies](https://terragrunt.gruntwork.io/docs/features/execute-terraform-commands-on-multiple-modules-at-once/#dependencies-between-modules)
-- [Hooks](https://terragrunt.gruntwork.io/docs/features/hooks/)
-- [Generate Blocks](https://terragrunt.gruntwork.io/docs/features/keep-your-cli-flags-dry/#generating-terraform-code-with-terragrunt)
+- [Remote State Configuration](https://docs.terragrunt.com/features/units/state-backend/)
+- [Dependencies](https://docs.terragrunt.com/features/stacks/stack-operations#dependencies-between-units)
+- [Hooks](https://docs.terragrunt.com/features/units/hooks/)
+- [Generate Blocks](https://docs.terragrunt.com/features/units/extra-arguments/)

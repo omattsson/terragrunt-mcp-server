@@ -26,7 +26,7 @@ The Terragrunt MCP Server implements a sophisticated **two-tier caching system**
                ▼
         ┌──────────────────────────┐
         │  llms.txt Fetch (Source) │
-        │  terragrunt.gruntwork.io │
+        │  docs.terragrunt.com │
         │  /llms-small.txt         │
         │  (single HTTP request)   │
         └──────┬───────────────────┘
@@ -112,7 +112,7 @@ Server Restart → L1 cleared → Repeat
   "docs": [
     {
       "title": "Getting Started",
-      "url": "https://terragrunt.gruntwork.io/docs/getting-started/",
+      "url": "https://docs.terragrunt.com/getting-started/",
       "section": "getting-started",
       "content": "Full documentation content...",
       "lastFetched": "2024-01-15T10:30:00.000Z"
@@ -379,7 +379,7 @@ const manager = new TerragruntDocsManager({
 
 ### llms.txt Source
 
-The documentation source URL can be configured via the `TERRAGRUNT_LLMS_SOURCE` environment variable. It accepts an absolute URL (with scheme) or a path/filename relative to `https://terragrunt.gruntwork.io`.
+The documentation source URL can be configured via the `TERRAGRUNT_LLMS_SOURCE` environment variable. It accepts an absolute URL (with scheme) or a path/filename relative to `https://docs.terragrunt.com`.
 
 | Variable | Default | Description |
 |----------|---------|-------------|
@@ -387,7 +387,7 @@ The documentation source URL can be configured via the `TERRAGRUNT_LLMS_SOURCE` 
 
 ```bash
 # Use abridged docs (default)
-# https://terragrunt.gruntwork.io/llms-small.txt
+# https://docs.terragrunt.com/llms-small.txt
 
 # Use full docs
 export TERRAGRUNT_LLMS_SOURCE=llms-full.txt

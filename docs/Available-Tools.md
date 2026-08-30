@@ -103,7 +103,7 @@ Find code examples and patterns.
   "results": [
     {
       "title": "Dependencies",
-      "url": "https://terragrunt.gruntwork.io/docs/...",
+      "url": "https://docs.terragrunt.com/...",
       "section": "features",
       "snippet": "...",
       "lastUpdated": "2025-10-23"
@@ -425,7 +425,7 @@ The tool accepts these removed names for migration help. Current Terragrunt does
     "Equivalent to: terragrunt run -- plan",
     "With --all, equivalent to: terragrunt run --all -- plan"
   ],
-  "documentationUrl": "https://terragrunt.gruntwork.io/docs/reference/cli/",
+  "documentationUrl": "https://docs.terragrunt.com/reference/cli/",
   "formattedHelp": "# plan\n\nShortcut for running terraform plan..."
 }
 ```
@@ -537,7 +537,7 @@ The tool accepts these removed names for migration help. Current Terragrunt does
   "results": [
     {
       "title": "Blocks",
-      "url": "https://terragrunt.gruntwork.io/docs/reference/hcl/blocks/",
+      "url": "https://docs.terragrunt.com/reference/hcl/blocks/",
       "content": "The dependency block is used to...",
       "lastUpdated": "2025-10-23"
     }
@@ -667,7 +667,7 @@ Generates and writes in one operation. Useful for:
   "relatedDocs": [
     {
       "title": "Remote State",
-      "url": "https://terragrunt.gruntwork.io/docs/features/keep-your-remote-state-configuration-dry/",
+      "url": "https://docs.terragrunt.com/features/units/state-backend/",
       "section": "features"
     }
   ],
@@ -887,7 +887,7 @@ See [File Writing Guide](File-Writing-Guide.md) for detailed security configurat
           "explanation": "Reinitialize with new backend configuration"
         }
       ],
-      "documentationRefs": ["https://terragrunt.gruntwork.io/docs/..."]
+      "documentationRefs": ["https://docs.terragrunt.com/..."]
     }
   ],
   "debuggingSteps": [
@@ -946,7 +946,7 @@ When `enrichWithDocs: true`, you get additional documentation-sourced solutions:
   ],
   "documentationLinks": [
     {
-      "url": "https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/#remote_state",
+      "url": "https://docs.terragrunt.com/reference/hcl/blocks/#remote_state",
       "title": "Remote State Configuration",
       "excerpt": "Configure your backend with the remote_state block...",
       "relevanceScore": 0.9

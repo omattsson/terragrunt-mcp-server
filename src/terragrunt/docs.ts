@@ -117,7 +117,7 @@ export function slugifyTitle(title: string): string {
 }
 
 export class TerragruntDocsManager {
-  private readonly baseUrl = 'https://terragrunt.gruntwork.io';
+  private readonly baseUrl = 'https://docs.terragrunt.com';
   private searchCache: LRUCache<string, TerragruntDoc[]>;
   private lastFetchTime: Date | null = null;
   private readonly cacheExpiry: number;

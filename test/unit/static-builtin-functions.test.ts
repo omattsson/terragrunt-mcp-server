@@ -412,7 +412,7 @@ describe('Doc enrichment of static functions', () => {
   it('enriches static function with additional examples from docs', async () => {
     const mockDocs: TerragruntDoc[] = [{
       title: 'Built-in Functions',
-      url: 'https://terragrunt.gruntwork.io/docs/reference/hcl/functions/',
+      url: 'https://docs.terragrunt.com/reference/hcl/functions/',
       content: `
         ## get_env
         get_env(name, default) -> string
@@ -443,7 +443,7 @@ describe('Doc enrichment of static functions', () => {
 
     const mockDocs: TerragruntDoc[] = [{
       title: 'Built-in Functions',
-      url: 'https://terragrunt.gruntwork.io/docs/reference/hcl/functions/',
+      url: 'https://docs.terragrunt.com/reference/hcl/functions/',
       content: `
         ## get_env
         get_env(name, default) -> string

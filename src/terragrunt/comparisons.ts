@@ -112,8 +112,8 @@ inputs = {
       'Circular dependency references between modules',
     ],
     relatedDocs: [
-      'https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/#dependency',
-      'https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/#dependencies',
+      'https://docs.terragrunt.com/reference/hcl/blocks/#dependency',
+      'https://docs.terragrunt.com/reference/hcl/blocks/#dependencies',
     ],
   },
 
@@ -211,8 +211,8 @@ include "region" {
       'Over-engineering with too many includes when one would suffice',
     ],
     relatedDocs: [
-      'https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/#include',
-      'https://terragrunt.gruntwork.io/docs/features/keep-your-terragrunt-architecture-dry/',
+      'https://docs.terragrunt.com/reference/hcl/blocks/#include',
+      'https://docs.terragrunt.com/features/units/includes/',
     ],
   },
 
@@ -307,8 +307,8 @@ inputs = {
       'Not using expose = true in includes when sharing locals',
     ],
     relatedDocs: [
-      'https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/#inputs',
-      'https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/#locals',
+      'https://docs.terragrunt.com/reference/hcl/blocks/#inputs',
+      'https://docs.terragrunt.com/reference/hcl/blocks/#locals',
     ],
   },
 
@@ -425,8 +425,8 @@ terraform {
       'Forgetting the double-slash in terraform.source for subdirectories',
     ],
     relatedDocs: [
-      'https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/#generate',
-      'https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/#terraform',
+      'https://docs.terragrunt.com/reference/hcl/blocks/#generate',
+      'https://docs.terragrunt.com/reference/hcl/blocks/#terraform',
     ],
   },
 
@@ -531,8 +531,8 @@ terraform {
       'Ignoring hook failures that should abort the operation',
     ],
     relatedDocs: [
-      'https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/#terraform',
-      'https://terragrunt.gruntwork.io/docs/features/hooks/',
+      'https://docs.terragrunt.com/reference/hcl/blocks/#terraform',
+      'https://docs.terragrunt.com/features/units/hooks/',
     ],
   },
 
@@ -638,8 +638,8 @@ inputs = {
       'Forgetting that remote_state is about YOUR state, dependency is about OTHERS\' state',
     ],
     relatedDocs: [
-      'https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/#remote_state',
-      'https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/#dependency',
+      'https://docs.terragrunt.com/reference/hcl/blocks/#remote_state',
+      'https://docs.terragrunt.com/reference/hcl/blocks/#dependency',
     ],
   },
 ];

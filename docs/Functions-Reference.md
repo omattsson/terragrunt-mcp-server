@@ -342,7 +342,7 @@ locals {
 
 ## Additional Resources
 
-- **Official Terragrunt Functions Documentation**: <https://terragrunt.gruntwork.io/docs/reference/built-in-functions/>
+- **Official Terragrunt Functions Documentation**: <https://docs.terragrunt.com/reference/hcl/functions/>
 - **Use the MCP Server**: Ask `@terragrunt` for real-time function documentation
 - **Example Patterns**: See [Available Tools](./Available-Tools.md) for more usage examples
 

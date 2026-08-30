@@ -683,7 +683,7 @@ npx eslint --fix src/
 - [MCP Protocol Specification](https://spec.modelcontextprotocol.io/)
 - [TypeScript Handbook](https://www.typescriptlang.org/docs/)
 - [Node.js Documentation](https://nodejs.org/docs/)
-- [Terragrunt Documentation](https://terragrunt.gruntwork.io/)
+- [Terragrunt Documentation](https://docs.terragrunt.com/)
 
 ### Tools
 

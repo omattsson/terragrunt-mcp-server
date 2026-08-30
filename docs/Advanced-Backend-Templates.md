@@ -494,4 +494,4 @@ client_secret = run_cmd("--terragrunt-quiet", "aws", "secretsmanager", "get-secr
 - [Configuration Generator Guide](Configuration-Generator.md) - All templates and use cases
 - [Custom Templates Guide](Custom-Templates.md) - Create your own templates
 - [HCL Validation](HCL-Validation.md) - Syntax validation features
-- [Terragrunt Remote State Docs](https://terragrunt.gruntwork.io/docs/features/keep-your-remote-state-configuration-dry/)
+- [Terragrunt Remote State Docs](https://docs.terragrunt.com/features/units/state-backend/)

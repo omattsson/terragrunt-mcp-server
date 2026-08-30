@@ -1083,7 +1083,7 @@ terraform {
       expect(docs[1].title).toBe('Quick Start');
       expect(docs[1].section).toBe('getting-started');
 
-      expect(mockFetch).toHaveBeenCalledWith('https://terragrunt.gruntwork.io/llms-small.txt');
+      expect(mockFetch).toHaveBeenCalledWith('https://docs.terragrunt.com/llms-small.txt');
     });
 
     it('should use TERRAGRUNT_LLMS_SOURCE env var with absolute URL', async () => {
@@ -1105,7 +1105,7 @@ terraform {
       const docs = await manager.fetchFromLlmsTxt();
 
       expect(docs).toHaveLength(2);
-      expect(mockFetch).toHaveBeenCalledWith('https://terragrunt.gruntwork.io/llms-full.txt');
+      expect(mockFetch).toHaveBeenCalledWith('https://docs.terragrunt.com/llms-full.txt');
     });
 
     it('should resolve TERRAGRUNT_LLMS_SOURCE path with leading slash', async () => {
@@ -1115,7 +1115,7 @@ terraform {
 
       await manager.fetchFromLlmsTxt();
 
-      expect(mockFetch).toHaveBeenCalledWith('https://terragrunt.gruntwork.io/custom/llms.txt');
+      expect(mockFetch).toHaveBeenCalledWith('https://docs.terragrunt.com/custom/llms.txt');
     });
 
     it('should return empty array on total fetch failure without throwing', async () => {
@@ -1213,7 +1213,7 @@ terraform {
     const fakeDocs: TerragruntDoc[] = [
       {
         title: 'Install',
-        url: 'https://terragrunt.gruntwork.io/docs/getting-started/install/',
+        url: 'https://docs.terragrunt.com/getting-started/install/',
         content: 'Install instructions.',
         section: 'getting-started',
         lastUpdated: '2025-01-01',

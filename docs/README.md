@@ -60,7 +60,7 @@ A Model Context Protocol (MCP) server that provides comprehensive Terragrunt doc
 - **Version**: 0.2.0
 - **License**: MIT
 - **MCP Protocol**: [Model Context Protocol](https://modelcontextprotocol.io/)
-- **Terragrunt Docs**: [Official Documentation](https://terragrunt.gruntwork.io/)
+- **Terragrunt Docs**: [Official Documentation](https://docs.terragrunt.com/)
 
 ## Recent Updates
 

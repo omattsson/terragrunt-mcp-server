@@ -47,14 +47,14 @@ describe('ToolHandler', () => {
   const mockDocs: TerragruntDoc[] = [
     {
       title: 'Quick Start',
-      url: 'https://terragrunt.gruntwork.io/docs/getting-started/quick-start/',
+      url: 'https://docs.terragrunt.com/getting-started/quick-start/',
       content: 'Getting started with Terragrunt',
       section: 'getting-started',
       lastUpdated: '2025-01-01'
     },
     {
       title: 'plan command',
-      url: 'https://terragrunt.gruntwork.io/docs/reference/cli/commands/plan/',
+      url: 'https://docs.terragrunt.com/reference/cli/commands/plan/',
       content: 'Execute terraform plan',
       section: 'reference',
       lastUpdated: '2025-01-01'
@@ -735,7 +735,7 @@ inputs = {
 }`;
       const examples = [
         {
-          doc: { ...mockDocs[0], url: 'https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/' },
+          doc: { ...mockDocs[0], url: 'https://docs.terragrunt.com/reference/hcl/blocks/' },
           examples: [{ code: longCode, language: 'hcl' }]
         }
       ];
@@ -746,7 +746,7 @@ inputs = {
         detailLevel: 'full'
       });
       
-      expect(result.examples[0].codeSnippets[0].code).toContain('# ... [Truncated. See full example at https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/]');
+      expect(result.examples[0].codeSnippets[0].code).toContain('# ... [Truncated. See full example at https://docs.terragrunt.com/reference/hcl/blocks/]');
       expect(result.examples[0].codeSnippets[0].code.length).toBeLessThan(longCode.length);
       expect(result.examples[0].codeSnippets[0].language).toBe('hcl');
       expect(result.examples[0].truncated).toBe(true);
@@ -821,7 +821,7 @@ inputs = {
               pitfalls: [],
               relatedExamples: [],
               tags: ['test'],
-              docsUrl: 'https://terragrunt.gruntwork.io/docs/examples/backend-configuration/'
+              docsUrl: 'https://docs.terragrunt.com/examples/backend-configuration/'
             },
             matchType: 'exact',
             score: 100
@@ -837,7 +837,7 @@ inputs = {
         detailLevel: 'full'
       });
       
-      expect(result.example.code).toContain('# ... [Truncated. See full example at https://terragrunt.gruntwork.io/docs/examples/backend-configuration/]');
+      expect(result.example.code).toContain('# ... [Truncated. See full example at https://docs.terragrunt.com/examples/backend-configuration/]');
       expect(result.example.code.length).toBeLessThan(longCode.length);
       expect(result.example.codeTruncated).toBe(true);
     });
@@ -861,7 +861,7 @@ inputs = {
               pitfalls: [],
               relatedExamples: [],
               tags: ['test'],
-              docsUrl: 'https://terragrunt.gruntwork.io/docs/examples/dependencies/'
+              docsUrl: 'https://docs.terragrunt.com/examples/dependencies/'
             },
             matchType: 'exact',
             score: 100
@@ -884,7 +884,7 @@ inputs = {
 
     it('should include valid doc URL in truncation message', async () => {
       const longCode = 'c'.repeat(1100);
-      const docUrl = 'https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/';
+      const docUrl = 'https://docs.terragrunt.com/reference/hcl/blocks/';
       const examples = [
         {
           doc: { ...mockDocs[0], url: docUrl },

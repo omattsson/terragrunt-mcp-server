@@ -389,7 +389,7 @@ dependencies defined in terragrunt.hcl files.`,
         },
       ],
       relatedCommands: ['plan', 'apply', 'destroy', 'stack run'],
-      documentationUrl: 'https://terragrunt.gruntwork.io/docs/reference/cli/commands/run/',
+      documentationUrl: 'https://docs.terragrunt.com/reference/cli/commands/run/',
       notes: [
         'The `run-all` alias is deprecated in favor of `run --all`',
         'Use `--` to separate Terragrunt flags from Terraform command and arguments',
@@ -719,7 +719,7 @@ to Terragrunt's resolved configuration values.`,
         },
       ],
       relatedCommands: ['run'],
-      documentationUrl: 'https://terragrunt.gruntwork.io/docs/reference/cli/commands/exec/',
+      documentationUrl: 'https://docs.terragrunt.com/reference/cli/commands/exec/',
     };
   }
 
@@ -751,7 +751,7 @@ For GCP, this creates the GCS bucket. For Azure, it creates the storage account 
         },
       ],
       relatedCommands: ['backend delete', 'backend migrate'],
-      documentationUrl: 'https://terragrunt.gruntwork.io/docs/reference/cli/commands/backend/bootstrap/',
+      documentationUrl: 'https://docs.terragrunt.com/reference/cli/commands/backend/bootstrap/',
     };
   }
 
@@ -783,7 +783,7 @@ For GCP, this creates the GCS bucket. For Azure, it creates the storage account 
         },
       ],
       relatedCommands: ['backend bootstrap', 'backend migrate'],
-      documentationUrl: 'https://terragrunt.gruntwork.io/docs/reference/cli/commands/backend/delete/',
+      documentationUrl: 'https://docs.terragrunt.com/reference/cli/commands/backend/delete/',
       notes: [
         '⚠️ This permanently deletes remote state; ensure it is backed up.',
         '--force bypasses the backend-versioning safety check.',
@@ -817,7 +817,7 @@ backend settings.`,
         },
       ],
       relatedCommands: ['backend bootstrap', 'backend delete'],
-      documentationUrl: 'https://terragrunt.gruntwork.io/docs/reference/cli/commands/backend/migrate/',
+      documentationUrl: 'https://docs.terragrunt.com/reference/cli/commands/backend/migrate/',
     };
   }
 
@@ -859,7 +859,7 @@ The stack run command respects dependency ordering and can run modules in parall
         },
       ],
       relatedCommands: ['run --all', 'stack output', 'stack clean'],
-      documentationUrl: 'https://terragrunt.gruntwork.io/docs/reference/cli/commands/stack/run/',
+      documentationUrl: 'https://docs.terragrunt.com/reference/cli/commands/stack/run/',
     };
   }
 
@@ -902,7 +902,7 @@ getting a summary of all resources and their outputs across the entire infrastru
         },
       ],
       relatedCommands: ['stack run', 'output'],
-      documentationUrl: 'https://terragrunt.gruntwork.io/docs/reference/cli/commands/stack/output/',
+      documentationUrl: 'https://docs.terragrunt.com/reference/cli/commands/stack/output/',
     };
   }
 
@@ -931,7 +931,7 @@ Generation includes validation by default.`,
         },
       ],
       relatedCommands: ['stack run', 'find', 'list'],
-      documentationUrl: 'https://terragrunt.gruntwork.io/docs/reference/cli/commands/stack/generate/',
+      documentationUrl: 'https://docs.terragrunt.com/reference/cli/commands/stack/generate/',
     };
   }
 
@@ -951,7 +951,7 @@ Generation includes validation by default.`,
         },
       ],
       relatedCommands: ['stack run'],
-      documentationUrl: 'https://terragrunt.gruntwork.io/docs/reference/cli/commands/stack/clean/',
+      documentationUrl: 'https://docs.terragrunt.com/reference/cli/commands/stack/clean/',
     };
   }
 
@@ -1004,7 +1004,7 @@ new projects using modules from the catalog.`,
         },
       ],
       relatedCommands: ['scaffold'],
-      documentationUrl: 'https://terragrunt.gruntwork.io/docs/reference/cli/commands/catalog/',
+      documentationUrl: 'https://docs.terragrunt.com/reference/cli/commands/catalog/',
       notes: ['The jsonl and md formats require the catalog-format experiment.'],
     };
   }
@@ -1043,7 +1043,7 @@ and configuration pre-filled based on the module's interface.`,
         },
       ],
       relatedCommands: ['catalog'],
-      documentationUrl: 'https://terragrunt.gruntwork.io/docs/reference/cli/commands/scaffold/',
+      documentationUrl: 'https://docs.terragrunt.com/reference/cli/commands/scaffold/',
     };
   }
 
@@ -1103,7 +1103,7 @@ a large infrastructure repository.`,
         },
       ],
       relatedCommands: ['list', 'dag graph'],
-      documentationUrl: 'https://terragrunt.gruntwork.io/docs/reference/cli/commands/find/',
+      documentationUrl: 'https://docs.terragrunt.com/reference/cli/commands/find/',
     };
   }
 
@@ -1164,7 +1164,7 @@ their status, dependencies, and configuration. More detailed than 'find'.`,
         },
       ],
       relatedCommands: ['find', 'dag graph'],
-      documentationUrl: 'https://terragrunt.gruntwork.io/docs/reference/cli/commands/list/',
+      documentationUrl: 'https://docs.terragrunt.com/reference/cli/commands/list/',
     };
   }
 
@@ -1270,7 +1270,7 @@ recursively to format all files in a directory tree.`,
         },
       ],
       relatedCommands: ['hcl validate', 'render'],
-      documentationUrl: 'https://terragrunt.gruntwork.io/docs/reference/cli/commands/hcl/fmt/',
+      documentationUrl: 'https://docs.terragrunt.com/reference/cli/commands/hcl/fmt/',
       notes: [
         'Useful in CI/CD to enforce consistent formatting',
         'The --check flag is commonly used in pre-commit hooks',
@@ -1332,7 +1332,7 @@ Does not validate Terraform configurations.`,
         },
       ],
       relatedCommands: ['hcl fmt', 'render'],
-      documentationUrl: 'https://terragrunt.gruntwork.io/docs/reference/cli/commands/hcl/validate/',
+      documentationUrl: 'https://docs.terragrunt.com/reference/cli/commands/hcl/validate/',
     };
   }
 
@@ -1375,7 +1375,7 @@ configuration issues and understanding the effective configuration.`,
         },
       ],
       relatedCommands: ['hcl validate', 'info print'],
-      documentationUrl: 'https://terragrunt.gruntwork.io/docs/reference/cli/commands/render/',
+      documentationUrl: 'https://docs.terragrunt.com/reference/cli/commands/render/',
     };
   }
 
@@ -1401,7 +1401,7 @@ list --format=dot --dag --dependencies --external. Pipe the output to a DOT rend
         },
       ],
       relatedCommands: ['list', 'find', 'run --graph'],
-      documentationUrl: 'https://terragrunt.gruntwork.io/docs/reference/cli/commands/dag/graph/',
+      documentationUrl: 'https://docs.terragrunt.com/reference/cli/commands/dag/graph/',
     };
   }
 
@@ -1426,7 +1426,7 @@ including paths, versions, environment variables, and resolved configuration val
         },
       ],
       relatedCommands: ['render'],
-      documentationUrl: 'https://terragrunt.gruntwork.io/docs/reference/cli/commands/info/print/',
+      documentationUrl: 'https://docs.terragrunt.com/reference/cli/commands/info/print/',
     };
   }
 
@@ -1491,7 +1491,7 @@ input variables, backend configuration, and any before/after hooks.`,
         },
       ],
       relatedCommands: ['apply', 'destroy', 'run', 'hcl validate'],
-      documentationUrl: 'https://terragrunt.gruntwork.io/docs/reference/cli/',
+      documentationUrl: 'https://docs.terragrunt.com/reference/cli/',
       notes: [
         'Equivalent to: terragrunt run -- plan',
         'With --all, equivalent to: terragrunt run --all -- plan',
@@ -1554,7 +1554,7 @@ Can apply a saved plan file or run interactively.`,
         },
       ],
       relatedCommands: ['plan', 'destroy', 'run'],
-      documentationUrl: 'https://terragrunt.gruntwork.io/docs/reference/cli/',
+      documentationUrl: 'https://docs.terragrunt.com/reference/cli/',
       notes: [
         'Equivalent to: terragrunt run -- apply',
         'With --all, equivalent to: terragrunt run --all -- apply',
@@ -1602,7 +1602,7 @@ Use with extreme caution as this is destructive.`,
         },
       ],
       relatedCommands: ['apply', 'plan', 'run'],
-      documentationUrl: 'https://terragrunt.gruntwork.io/docs/reference/cli/',
+      documentationUrl: 'https://docs.terragrunt.com/reference/cli/',
       notes: [
         '⚠️ Destructive operation - use with caution',
         'Equivalent to terragrunt run -- destroy, or terragrunt run --all -- destroy with --all.',
@@ -1654,7 +1654,7 @@ Shows the outputs from the Terraform state for the current module.`,
         },
       ],
       relatedCommands: ['stack output', 'apply'],
-      documentationUrl: 'https://terragrunt.gruntwork.io/docs/reference/cli/',
+      documentationUrl: 'https://docs.terragrunt.com/reference/cli/',
     };
   }
 
@@ -1703,7 +1703,7 @@ and configuring the backend.`,
         },
       ],
       relatedCommands: ['plan', 'apply'],
-      documentationUrl: 'https://terragrunt.gruntwork.io/docs/reference/cli/',
+      documentationUrl: 'https://docs.terragrunt.com/reference/cli/',
       notes: [
         'Terragrunt typically runs init automatically when needed',
         'Use -upgrade periodically to get provider updates',

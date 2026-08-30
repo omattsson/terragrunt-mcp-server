@@ -579,7 +579,7 @@ export class ErrorPatternMatcher {
           { step: 3, explanation: 'Ensure the source URL is accessible and correct' }
         ],
         documentationRefs: [
-          'https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/#terraform'
+          'https://docs.terragrunt.com/reference/hcl/blocks/#terraform'
         ]
       },
       {
@@ -599,7 +599,7 @@ export class ErrorPatternMatcher {
           { step: 3, explanation: 'Review the line number indicated in the error' }
         ],
         documentationRefs: [
-          'https://terragrunt.gruntwork.io/docs/getting-started/configuration/'
+          'https://docs.terragrunt.com/reference/hcl/'
         ]
       },
       {
@@ -619,7 +619,7 @@ export class ErrorPatternMatcher {
           { step: 3, explanation: 'Verify the variable is exported from parent if using dependency' }
         ],
         documentationRefs: [
-          'https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/#inputs'
+          'https://docs.terragrunt.com/reference/hcl/blocks/#inputs'
         ]
       },
       {
@@ -639,7 +639,7 @@ export class ErrorPatternMatcher {
           { step: 3, explanation: 'Ensure block is at correct nesting level' }
         ],
         documentationRefs: [
-          'https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/'
+          'https://docs.terragrunt.com/reference/hcl/blocks/'
         ]
       },
       {
@@ -659,7 +659,7 @@ export class ErrorPatternMatcher {
           { step: 3, explanation: 'Use merge strategy if intentionally overriding' }
         ],
         documentationRefs: [
-          'https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/'
+          'https://docs.terragrunt.com/reference/hcl/blocks/'
         ]
       },
       {
@@ -679,7 +679,7 @@ export class ErrorPatternMatcher {
           { step: 3, explanation: 'Check Terragrunt version compatibility' }
         ],
         documentationRefs: [
-          'https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/'
+          'https://docs.terragrunt.com/reference/hcl/blocks/'
         ]
       },
       {
@@ -699,7 +699,7 @@ export class ErrorPatternMatcher {
           { step: 3, explanation: 'Review version upgrade notes if recently upgraded' }
         ],
         documentationRefs: [
-          'https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/'
+          'https://docs.terragrunt.com/reference/hcl/blocks/'
         ]
       },
       {
@@ -719,7 +719,7 @@ export class ErrorPatternMatcher {
           { step: 3, explanation: 'Ensure ref parameter is properly formatted for Git sources' }
         ],
         documentationRefs: [
-          'https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/#terraform'
+          'https://docs.terragrunt.com/reference/hcl/blocks/#terraform'
         ]
       },
       {
@@ -739,7 +739,7 @@ export class ErrorPatternMatcher {
           { step: 3, explanation: 'Review function documentation for correct usage' }
         ],
         documentationRefs: [
-          'https://terragrunt.gruntwork.io/docs/reference/built-in-functions/'
+          'https://docs.terragrunt.com/reference/hcl/functions/'
         ]
       },
       {
@@ -759,7 +759,7 @@ export class ErrorPatternMatcher {
           { step: 3, explanation: 'Use path functions like find_in_parent_folders() if needed' }
         ],
         documentationRefs: [
-          'https://terragrunt.gruntwork.io/docs/reference/built-in-functions/#find_in_parent_folders'
+          'https://docs.terragrunt.com/reference/hcl/functions/#find_in_parent_folders'
         ]
       },
       {
@@ -799,7 +799,7 @@ export class ErrorPatternMatcher {
           { step: 3, explanation: 'Configure required backend attributes' }
         ],
         documentationRefs: [
-          'https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/#remote_state'
+          'https://docs.terragrunt.com/reference/hcl/blocks/#remote_state'
         ]
       },
       {
@@ -819,7 +819,7 @@ export class ErrorPatternMatcher {
           { step: 3, explanation: 'Ensure path points to a directory, not a file' }
         ],
         documentationRefs: [
-          'https://terragrunt.gruntwork.io/docs/getting-started/configuration/'
+          'https://docs.terragrunt.com/reference/hcl/'
         ]
       },
       {
@@ -867,7 +867,7 @@ export class ErrorPatternMatcher {
           { step: 3, command: 'terragrunt force-unlock <LOCK_ID>', explanation: 'Force unlock if you are sure no other process is running' }
         ],
         documentationRefs: [
-          'https://terragrunt.gruntwork.io/docs/reference/cli-options/#force-unlock'
+          'https://docs.terragrunt.com/reference/cli/commands/opentofu-shortcuts/'
         ]
       },
       {
@@ -887,7 +887,7 @@ export class ErrorPatternMatcher {
           { step: 3, explanation: 'Verify the new backend configuration is correct' }
         ],
         documentationRefs: [
-          'https://terragrunt.gruntwork.io/docs/reference/cli-options/#init'
+          'https://docs.terragrunt.com/reference/cli/commands/opentofu-shortcuts/'
         ]
       },
       {
@@ -935,7 +935,7 @@ export class ErrorPatternMatcher {
           { step: 3, explanation: 'Consider using data sources instead of dependencies where appropriate' }
         ],
         documentationRefs: [
-          'https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/#dependencies'
+          'https://docs.terragrunt.com/reference/hcl/blocks/#dependencies'
         ]
       },
       {
@@ -955,7 +955,7 @@ export class ErrorPatternMatcher {
           { step: 3, explanation: 'Ensure Git repository is accessible if using Git source' }
         ],
         documentationRefs: [
-          'https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/#terraform'
+          'https://docs.terragrunt.com/reference/hcl/blocks/#terraform'
         ]
       },
       {
@@ -975,7 +975,7 @@ export class ErrorPatternMatcher {
           { step: 3, explanation: 'Ensure proper credentials are configured for private repositories' }
         ],
         documentationRefs: [
-          'https://terragrunt.gruntwork.io/docs/features/keep-your-terraform-code-dry/#remote-terraform-configurations'
+          'https://docs.terragrunt.com/features/units/#remote-opentofuterraform-modules'
         ]
       }
     ];
@@ -1003,7 +1003,7 @@ export class ErrorPatternMatcher {
           { step: 3, explanation: 'Create the bucket if it does not exist or update configuration' }
         ],
         documentationRefs: [
-          'https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/#remote_state'
+          'https://docs.terragrunt.com/reference/hcl/blocks/#remote_state'
         ]
       },
       {
@@ -1023,7 +1023,7 @@ export class ErrorPatternMatcher {
           { step: 3, explanation: 'Review bucket policies and ensure your user/role is allowed' }
         ],
         documentationRefs: [
-          'https://terragrunt.gruntwork.io/docs/features/keep-your-remote-state-configuration-dry/'
+          'https://docs.terragrunt.com/features/units/state-backend/'
         ]
       },
       {
@@ -1043,7 +1043,7 @@ export class ErrorPatternMatcher {
           { step: 3, explanation: 'Ensure you are using the correct GCP project' }
         ],
         documentationRefs: [
-          'https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/#remote_state'
+          'https://docs.terragrunt.com/reference/hcl/blocks/#remote_state'
         ]
       },
       {
@@ -1063,7 +1063,7 @@ export class ErrorPatternMatcher {
           { step: 3, explanation: 'Ensure you are using the correct Azure subscription' }
         ],
         documentationRefs: [
-          'https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/#remote_state'
+          'https://docs.terragrunt.com/reference/hcl/blocks/#remote_state'
         ]
       }
     ];
@@ -1227,7 +1227,7 @@ export class ErrorPatternMatcher {
           { step: 3, explanation: 'Try again or increase timeout values if configurable' }
         ],
         documentationRefs: [
-          'https://terragrunt.gruntwork.io/docs/reference/cli-options/'
+          'https://docs.terragrunt.com/reference/cli/'
         ]
       },
       {
@@ -1247,7 +1247,7 @@ export class ErrorPatternMatcher {
           { step: 3, explanation: 'Review firewall rules and network security groups' }
         ],
         documentationRefs: [
-          'https://terragrunt.gruntwork.io/docs/getting-started/configuration/'
+          'https://docs.terragrunt.com/reference/hcl/'
         ]
       }
     ];
@@ -1275,7 +1275,7 @@ export class ErrorPatternMatcher {
           { step: 3, explanation: 'Set up Git credential helper for HTTPS' }
         ],
         documentationRefs: [
-          'https://terragrunt.gruntwork.io/docs/features/keep-your-terraform-code-dry/'
+          'https://docs.terragrunt.com/features/units/'
         ]
       },
       {
@@ -1415,7 +1415,7 @@ export class ErrorPatternMatcher {
           { step: 3, explanation: 'Check disk space and file system health' }
         ],
         documentationRefs: [
-          'https://terragrunt.gruntwork.io/docs/reference/cli-options/#clear-cache'
+          'https://docs.terragrunt.com/reference/cli/'
         ]
       },
       {
@@ -1435,7 +1435,7 @@ export class ErrorPatternMatcher {
           { step: 3, explanation: 'Use separate modules for shared components' }
         ],
         documentationRefs: [
-          'https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/#terraform'
+          'https://docs.terragrunt.com/reference/hcl/blocks/#terraform'
         ]
       },
       {
@@ -1483,7 +1483,7 @@ export class ErrorPatternMatcher {
           { step: 3, explanation: 'Check working directory and environment variables' }
         ],
         documentationRefs: [
-          'https://terragrunt.gruntwork.io/docs/features/hooks/'
+          'https://docs.terragrunt.com/features/units/hooks/'
         ]
       },
       {
@@ -1503,7 +1503,7 @@ export class ErrorPatternMatcher {
           { step: 3, explanation: 'Check for infinite loops or blocking operations' }
         ],
         documentationRefs: [
-          'https://terragrunt.gruntwork.io/docs/features/hooks/'
+          'https://docs.terragrunt.com/features/units/hooks/'
         ]
       },
       {
@@ -1523,7 +1523,7 @@ export class ErrorPatternMatcher {
           { step: 3, explanation: 'Verify required environment variables are set' }
         ],
         documentationRefs: [
-          'https://terragrunt.gruntwork.io/docs/features/hooks/'
+          'https://docs.terragrunt.com/features/units/hooks/'
         ]
       },
       {
@@ -1543,7 +1543,7 @@ export class ErrorPatternMatcher {
           { step: 3, explanation: 'Make hooks more resilient with retries' }
         ],
         documentationRefs: [
-          'https://terragrunt.gruntwork.io/docs/features/hooks/'
+          'https://docs.terragrunt.com/features/units/hooks/'
         ]
       },
       {
@@ -1563,7 +1563,7 @@ export class ErrorPatternMatcher {
           { step: 3, explanation: 'Use ${get_env()} function to provide defaults' }
         ],
         documentationRefs: [
-          'https://terragrunt.gruntwork.io/docs/features/hooks/'
+          'https://docs.terragrunt.com/features/units/hooks/'
         ]
       },
       {
@@ -1583,7 +1583,7 @@ export class ErrorPatternMatcher {
           { step: 3, explanation: 'Use absolute paths or path functions' }
         ],
         documentationRefs: [
-          'https://terragrunt.gruntwork.io/docs/features/hooks/'
+          'https://docs.terragrunt.com/features/units/hooks/'
         ]
       },
       {
@@ -1603,7 +1603,7 @@ export class ErrorPatternMatcher {
           { step: 3, explanation: 'Enable logging temporarily for debugging' }
         ],
         documentationRefs: [
-          'https://terragrunt.gruntwork.io/docs/features/hooks/'
+          'https://docs.terragrunt.com/features/units/hooks/'
         ]
       }
     ];
@@ -1631,7 +1631,7 @@ export class ErrorPatternMatcher {
           { step: 3, explanation: 'Use find_in_parent_folders() if searching parent directories' }
         ],
         documentationRefs: [
-          'https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/#include'
+          'https://docs.terragrunt.com/reference/hcl/blocks/#include'
         ]
       },
       {
@@ -1651,7 +1651,7 @@ export class ErrorPatternMatcher {
           { step: 3, explanation: 'Use inheritance hierarchy instead of circular includes' }
         ],
         documentationRefs: [
-          'https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/#include'
+          'https://docs.terragrunt.com/reference/hcl/blocks/#include'
         ]
       },
       {
@@ -1671,7 +1671,7 @@ export class ErrorPatternMatcher {
           { step: 3, explanation: 'Resolve conflicting definitions in include files' }
         ],
         documentationRefs: [
-          'https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/#include'
+          'https://docs.terragrunt.com/reference/hcl/blocks/#include'
         ]
       },
       {
@@ -1691,7 +1691,7 @@ export class ErrorPatternMatcher {
           { step: 3, explanation: 'Ensure file encoding is UTF-8' }
         ],
         documentationRefs: [
-          'https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/#include'
+          'https://docs.terragrunt.com/reference/hcl/blocks/#include'
         ]
       },
       {
@@ -1711,7 +1711,7 @@ export class ErrorPatternMatcher {
           { step: 3, explanation: 'Use merge strategies to resolve conflicts' }
         ],
         documentationRefs: [
-          'https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/#include'
+          'https://docs.terragrunt.com/reference/hcl/blocks/#include'
         ]
       },
       {
@@ -1731,7 +1731,7 @@ export class ErrorPatternMatcher {
           { step: 3, explanation: 'Configure fallback path in find_in_parent_folders()' }
         ],
         documentationRefs: [
-          'https://terragrunt.gruntwork.io/docs/reference/built-in-functions/#find_in_parent_folders'
+          'https://docs.terragrunt.com/reference/hcl/functions/#find_in_parent_folders'
         ]
       },
       {
@@ -1751,7 +1751,7 @@ export class ErrorPatternMatcher {
           { step: 3, explanation: 'Ensure dependency outputs are properly exposed' }
         ],
         documentationRefs: [
-          'https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/#include'
+          'https://docs.terragrunt.com/reference/hcl/blocks/#include'
         ]
       }
     ];
@@ -1779,7 +1779,7 @@ export class ErrorPatternMatcher {
           { step: 3, explanation: 'Verify local is defined in accessible scope' }
         ],
         documentationRefs: [
-          'https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/#locals'
+          'https://docs.terragrunt.com/reference/hcl/blocks/#locals'
         ]
       },
       {
@@ -1799,7 +1799,7 @@ export class ErrorPatternMatcher {
           { step: 3, explanation: 'Use intermediate locals to break dependency chain' }
         ],
         documentationRefs: [
-          'https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/#locals'
+          'https://docs.terragrunt.com/reference/hcl/blocks/#locals'
         ]
       },
       {
@@ -1819,7 +1819,7 @@ export class ErrorPatternMatcher {
           { step: 3, explanation: 'Use try() or can() functions for defensive evaluation' }
         ],
         documentationRefs: [
-          'https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/#locals'
+          'https://docs.terragrunt.com/reference/hcl/blocks/#locals'
         ]
       },
       {
@@ -1859,7 +1859,7 @@ export class ErrorPatternMatcher {
           { step: 3, explanation: 'Explicitly handle conflicts with conditional logic' }
         ],
         documentationRefs: [
-          'https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/#locals'
+          'https://docs.terragrunt.com/reference/hcl/blocks/#locals'
         ]
       }
     ];
@@ -1887,7 +1887,7 @@ export class ErrorPatternMatcher {
           { step: 3, explanation: 'Change generate block path to avoid conflict' }
         ],
         documentationRefs: [
-          'https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/#generate'
+          'https://docs.terragrunt.com/reference/hcl/blocks/#generate'
         ]
       },
       {
@@ -1907,7 +1907,7 @@ export class ErrorPatternMatcher {
           { step: 3, explanation: 'Use different path with appropriate permissions' }
         ],
         documentationRefs: [
-          'https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/#generate'
+          'https://docs.terragrunt.com/reference/hcl/blocks/#generate'
         ]
       },
       {
@@ -1927,7 +1927,7 @@ export class ErrorPatternMatcher {
           { step: 3, explanation: 'Check path does not contain invalid characters' }
         ],
         documentationRefs: [
-          'https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/#generate'
+          'https://docs.terragrunt.com/reference/hcl/blocks/#generate'
         ]
       },
       {
@@ -1947,7 +1947,7 @@ export class ErrorPatternMatcher {
           { step: 3, explanation: 'Test template with simple content first' }
         ],
         documentationRefs: [
-          'https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/#generate'
+          'https://docs.terragrunt.com/reference/hcl/blocks/#generate'
         ]
       },
       {
@@ -1967,7 +1967,7 @@ export class ErrorPatternMatcher {
           { step: 3, explanation: 'Check documentation for strategy behavior' }
         ],
         documentationRefs: [
-          'https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/#generate'
+          'https://docs.terragrunt.com/reference/hcl/blocks/#generate'
         ]
       }
     ];

@@ -71,7 +71,7 @@ export const STATIC_BEST_PRACTICES: StaticBestPractice[] = [
       'More directories to navigate but clearer organization',
       'Requires understanding of include/dependency patterns'
     ],
-    relatedDocs: ['https://terragrunt.gruntwork.io/docs/getting-started/quick-start/']
+    relatedDocs: ['https://docs.terragrunt.com/getting-started/quick-start/']
   },
   {
     id: 'ps-002',
@@ -129,7 +129,7 @@ inputs = {
       'All environments share the same backend configuration pattern',
       'Changes to root config affect all environments'
     ],
-    relatedDocs: ['https://terragrunt.gruntwork.io/docs/features/keep-your-remote-state-configuration-dry/']
+    relatedDocs: ['https://docs.terragrunt.com/features/units/state-backend/']
   },
   {
     id: 'ps-003',
@@ -186,7 +186,7 @@ inputs = {
       'Additional indirection can make debugging harder',
       'Must understand merge_strategy options (deep, shallow, no_merge)'
     ],
-    relatedDocs: ['https://terragrunt.gruntwork.io/docs/features/keep-your-terragrunt-architecture-dry/']
+    relatedDocs: ['https://docs.terragrunt.com/features/units/includes/']
   },
   {
     id: 'ps-004',
@@ -234,7 +234,7 @@ locals {
       'Deeper directory nesting',
       'More files to maintain (env.hcl, region.hcl per level)'
     ],
-    relatedDocs: ['https://terragrunt.gruntwork.io/docs/getting-started/quick-start/']
+    relatedDocs: ['https://docs.terragrunt.com/getting-started/quick-start/']
   },
   {
     id: 'ps-005',
@@ -313,7 +313,7 @@ terraform {
       'Requires environment variable setup in CI/CD',
       'Local development needs .env file or exports'
     ],
-    relatedDocs: ['https://terragrunt.gruntwork.io/docs/reference/built-in-functions/#get_env']
+    relatedDocs: ['https://docs.terragrunt.com/reference/hcl/functions/#get_env']
   },
   {
     id: 'ec-002',
@@ -369,7 +369,7 @@ inputs = {
       'Requires consistent file naming across environments',
       'Changes to structure affect all child modules'
     ],
-    relatedDocs: ['https://terragrunt.gruntwork.io/docs/reference/built-in-functions/#read_terragrunt_config']
+    relatedDocs: ['https://docs.terragrunt.com/reference/hcl/functions/#read_terragrunt_config']
   },
   {
     id: 'ec-003',
@@ -423,7 +423,7 @@ inputs = {
       'deep merge can produce unexpected results with complex nested structures',
       'no_merge requires more explicit configuration'
     ],
-    relatedDocs: ['https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/#include']
+    relatedDocs: ['https://docs.terragrunt.com/reference/hcl/blocks/#include']
   },
   {
     id: 'ec-004',
@@ -472,7 +472,7 @@ inputs = {
       'More lines of code in locals block',
       'Must scroll to find actual input values'
     ],
-    relatedDocs: ['https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/#locals']
+    relatedDocs: ['https://docs.terragrunt.com/reference/hcl/blocks/#locals']
   },
   {
     id: 'ec-005',
@@ -518,7 +518,7 @@ inputs = {
       'Creates implicit ordering requirements',
       'Mock values may not reflect real resource behavior'
     ],
-    relatedDocs: ['https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/#dependency']
+    relatedDocs: ['https://docs.terragrunt.com/reference/hcl/blocks/#dependency']
   },
   {
     id: 'ec-006',
@@ -560,7 +560,7 @@ inputs = {
       'Additional complexity for simple on/off decisions',
       'Must track which features are enabled where'
     ],
-    relatedDocs: ['https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/#feature']
+    relatedDocs: ['https://docs.terragrunt.com/reference/hcl/blocks/#feature']
   },
 
   // ============ MODULE ORGANIZATION ============
@@ -609,7 +609,7 @@ inputs = {
       'More dependency relationships to manage',
       'May need wrapper modules for common patterns'
     ],
-    relatedDocs: ['https://terragrunt.gruntwork.io/docs/features/keep-your-terraform-code-dry/']
+    relatedDocs: ['https://docs.terragrunt.com/features/units/']
   },
   {
     id: 'mo-002',
@@ -647,7 +647,7 @@ terraform {
       'Requires discipline to upgrade versions',
       'May miss important bug fixes if not updated regularly'
     ],
-    relatedDocs: ['https://terragrunt.gruntwork.io/docs/features/keep-your-terraform-code-dry/']
+    relatedDocs: ['https://docs.terragrunt.com/features/units/']
   },
   {
     id: 'mo-003',
@@ -734,7 +734,7 @@ remote_state {
       'Additional infrastructure to manage (S3 bucket, DynamoDB table)',
       'Costs associated with state storage and locking'
     ],
-    relatedDocs: ['https://terragrunt.gruntwork.io/docs/features/keep-your-remote-state-configuration-dry/']
+    relatedDocs: ['https://docs.terragrunt.com/features/units/state-backend/']
   },
   {
     id: 'sm-002',
@@ -765,7 +765,7 @@ remote_state {
       'State key structure mirrors directory structure',
       'Renaming directories requires state migration'
     ],
-    relatedDocs: ['https://terragrunt.gruntwork.io/docs/reference/built-in-functions/#path_relative_to_include']
+    relatedDocs: ['https://docs.terragrunt.com/reference/hcl/functions/#path_relative_to_include']
   },
 
   // ============ DEPENDENCIES ============
@@ -800,7 +800,7 @@ remote_state {
       'Must keep mock outputs in sync with module outputs',
       'Mocks may not catch type/structure mismatches'
     ],
-    relatedDocs: ['https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/#dependency']
+    relatedDocs: ['https://docs.terragrunt.com/reference/hcl/blocks/#dependency']
   },
   {
     id: 'dp-002',
@@ -828,7 +828,7 @@ vpc -> subnet -> route-table -> nat-gateway -> security-group -> eks -> nodegrou
       'May need to combine some resources to reduce deps',
       'Flatter structures may have more parallel applies'
     ],
-    relatedDocs: ['https://terragrunt.gruntwork.io/docs/features/execute-terraform-commands-on-multiple-modules-at-once/']
+    relatedDocs: ['https://docs.terragrunt.com/features/stacks/']
   },
 
   // ============ CI/CD ============
@@ -863,7 +863,7 @@ terragrunt run --all --parallelism 10 --out-dir tfplans -- plan`,
       'Higher parallelism = faster but more API calls',
       'run --all applies might be harder to debug'
     ],
-    relatedDocs: ['https://terragrunt.gruntwork.io/docs/features/execute-terraform-commands-on-multiple-modules-at-once/']
+    relatedDocs: ['https://docs.terragrunt.com/features/stacks/']
   },
   {
     id: 'cd-002',
@@ -938,7 +938,7 @@ data "aws_secretsmanager_secret_version" "db" {
       'Requires external secret management setup',
       'Local development needs secret access configured'
     ],
-    relatedDocs: ['https://terragrunt.gruntwork.io/docs/reference/built-in-functions/#get_env']
+    relatedDocs: ['https://docs.terragrunt.com/reference/hcl/functions/#get_env']
   },
   {
     id: 'sc-002',
@@ -970,7 +970,7 @@ remote_state {
       'KMS encryption adds cost and complexity',
       'Must manage KMS key access permissions'
     ],
-    relatedDocs: ['https://terragrunt.gruntwork.io/docs/features/keep-your-remote-state-configuration-dry/']
+    relatedDocs: ['https://docs.terragrunt.com/features/units/state-backend/']
   },
 
   // ============ PERFORMANCE ============
@@ -1031,7 +1031,7 @@ terragrunt run --all --parallelism 2 -- apply`
       'Higher parallelism = faster but riskier',
       'May need to tune based on time of day/load'
     ],
-    relatedDocs: ['https://terragrunt.gruntwork.io/docs/features/execute-terraform-commands-on-multiple-modules-at-once/']
+    relatedDocs: ['https://docs.terragrunt.com/features/stacks/']
   },
 
   // ============ TESTING ============
@@ -1072,7 +1072,7 @@ terraform {
       'Adds time to each operation',
       'Must maintain validation tooling and configs'
     ],
-    relatedDocs: ['https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/#terraform']
+    relatedDocs: ['https://docs.terragrunt.com/reference/hcl/blocks/#terraform']
   },
   {
     id: 'ts-002',

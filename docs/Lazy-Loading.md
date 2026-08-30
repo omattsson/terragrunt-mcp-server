@@ -64,7 +64,7 @@ Separating metadata from content enables:
 
 ```bash
 # Use abridged docs (default)
-# https://terragrunt.gruntwork.io/llms-small.txt
+# https://docs.terragrunt.com/llms-small.txt
 
 # Use full docs
 export TERRAGRUNT_LLMS_SOURCE=llms-full.txt

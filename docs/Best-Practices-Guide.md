@@ -87,7 +87,7 @@ The tool returns comprehensive structured data:
       "examples": ["remote_state { backend = \"s3\" ... }"],
       "antipatterns": ["Using local state for multi-user environments"],
       "tradeoffs": ["May increase latency vs local state"],
-      "relatedDocs": ["https://terragrunt.gruntwork.io/docs/..."]
+      "relatedDocs": ["https://docs.terragrunt.com/..."]
     }
   ],
   "summary": "Best practices overview...",
@@ -836,7 +836,7 @@ inputs = {
 
 Found a gap in best practices coverage? The tool extracts data from official Terragrunt documentation. To improve coverage:
 
-1. Check if the practice is documented at [terragrunt.gruntwork.io](https://terragrunt.gruntwork.io)
+1. Check if the practice is documented at [docs.terragrunt.com](https://docs.terragrunt.com)
 2. If missing, consider contributing to Terragrunt documentation
 3. If present but not extracted, open an issue with the specific documentation page
 

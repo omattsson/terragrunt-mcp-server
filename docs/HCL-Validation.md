@@ -289,7 +289,7 @@ terragrunt apply
 
 - [Configuration Generator Guide](Configuration-Generator.md) - Learn about config generation
 - [Available Tools](Available-Tools.md) - All available tools
-- [Terragrunt Documentation](https://terragrunt.gruntwork.io/docs/) - Official docs
+- [Terragrunt Documentation](https://docs.terragrunt.com/) - Official docs
 - [HCL Specification](https://github.com/hashicorp/hcl) - Official HCL language spec
 
 ---

@@ -19,7 +19,7 @@ The documentation fetching follows this priority:
 
 1. **In-memory cache** - Fastest, used if already loaded
 2. **Disk cache** - `.cache/terragrunt-docs/` (24-hour expiry)
-3. **Network fetch with retry** - Fetches from terragrunt.gruntwork.io with exponential backoff:
+3. **Network fetch with retry** - Fetches from docs.terragrunt.com with exponential backoff:
    - Max retries: 3
    - Initial delay: 1 second
    - Max delay: 10 seconds
@@ -35,7 +35,7 @@ To update the fixture with fresh documentation from `llms-small.txt`:
 npm run update-fixture
 ```
 
-The script forces the canonical source (`https://terragrunt.gruntwork.io/llms-small.txt`)
+The script forces the canonical source (`https://docs.terragrunt.com/llms-small.txt`)
 regardless of any `TERRAGRUNT_LLMS_SOURCE` environment variable, then calls
 `TerragruntDocsManager.fetchFromLlmsTxt()` to download and parse the docs,
 and writes the result to `fixtures/terragrunt-docs-fixture.json`.

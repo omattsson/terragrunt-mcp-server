@@ -267,7 +267,7 @@ terragrunt://docs/{type}/{identifier}
 ```
 terragrunt://docs/overview
 terragrunt://docs/section/getting-started
-terragrunt://docs/page/https%3A%2F%2Fterragrunt.gruntwork.io%2Fdocs%2Fgetting-started%2F
+terragrunt://docs/page/https%3A%2F%2Fdocs.terragrunt.com%2Fgetting-started%2F
 ```
 
 ### 9. Concurrency Compliance (3 tests)

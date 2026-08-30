@@ -20,13 +20,13 @@ describe('TerragruntConfigGenerator', () => {
     vi.spyOn(mockDocsManager, 'searchDocs').mockResolvedValue([
       {
         title: 'Remote State',
-        url: 'https://terragrunt.gruntwork.io/docs/features/keep-your-remote-state-configuration-dry/',
+        url: 'https://docs.terragrunt.com/features/units/state-backend/',
         content: 'Documentation about remote state configuration',
         section: 'features',
       },
       {
         title: 'AWS Provider',
-        url: 'https://terragrunt.gruntwork.io/docs/features/generate-provider/',
+        url: 'https://docs.terragrunt.com/features/generate-provider/',
         content: 'Documentation about generating provider blocks',
         section: 'features',
       },

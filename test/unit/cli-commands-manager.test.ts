@@ -406,7 +406,7 @@ describe('CLICommandsManager', () => {
             const help = manager.formatCommandHelp(cmd!);
             
             expect(help).toContain('## Documentation');
-            expect(help).toContain('terragrunt.gruntwork.io');
+            expect(help).toContain('docs.terragrunt.com');
         });
     });
 
