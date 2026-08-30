@@ -10,12 +10,12 @@ export const backendTemplates: ConfigTemplate[] = [
   {
     id: 'aws-s3-backend',
     name: 'AWS S3 Remote State Backend',
-    description: 'Configure S3 backend with DynamoDB locking for AWS',
+    description: 'Configure S3 remote state with native lockfile locking for AWS',
     category: 'backend',
     cloudProvider: 'aws',
     source: 'gruntwork',
     version: '1.0.0',
-    tags: ['remote-state', 's3', 'dynamodb', 'aws', 'backend'],
+    tags: ['remote-state', 's3', 'lockfile', 'dynamodb', 'aws', 'backend'],
     variables: [
       {
         name: 'bucket',
@@ -39,11 +39,11 @@ export const backendTemplates: ConfigTemplate[] = [
         example: 'us-east-1',
       },
       {
-        name: 'dynamodb_table',
-        description: 'DynamoDB table for state locking',
-        type: 'string',
-        required: true,
-        example: 'terraform-locks',
+        name: 'use_lockfile',
+        description: 'Enable S3 native state locking',
+        type: 'boolean',
+        required: false,
+        defaultValue: true,
       },
       {
         name: 'encrypt',
@@ -51,6 +51,13 @@ export const backendTemplates: ConfigTemplate[] = [
         type: 'boolean',
         required: false,
         defaultValue: true,
+      },
+      {
+        name: 'dynamodb_table',
+        description: 'Deprecated DynamoDB lock table retained for compatibility and lock migration',
+        type: 'string',
+        required: false,
+        example: 'terraform-locks',
       },
     ],
     templateHcl: `remote_state {
@@ -60,7 +67,10 @@ export const backendTemplates: ConfigTemplate[] = [
     key            = "{{key}}"
     region         = "{{region}}"
     encrypt        = {{encrypt}}
+    use_lockfile   = {{use_lockfile}}
+{{#dynamodb_table}}
     dynamodb_table = "{{dynamodb_table}}"
+{{/dynamodb_table}}
   }
 }`,
     example: `remote_state {
@@ -70,7 +80,7 @@ export const backendTemplates: ConfigTemplate[] = [
     key            = "\${path_relative_to_include()}/terraform.tfstate"
     region         = "us-east-1"
     encrypt        = true
-    dynamodb_table = "terraform-locks"
+    use_lockfile   = true
   }
 }`,
   },
@@ -79,12 +89,12 @@ export const backendTemplates: ConfigTemplate[] = [
   {
     id: 'aws-s3-backend-advanced',
     name: 'AWS S3 Advanced Remote State Backend',
-    description: 'Advanced S3 backend with KMS encryption, cross-account access, and custom endpoint support',
+    description: 'Advanced S3 backend with native locking, KMS encryption, cross-account access, and custom endpoint support',
     category: 'backend',
     cloudProvider: 'aws',
     source: 'gruntwork',
     version: '1.0.0',
-    tags: ['remote-state', 's3', 'dynamodb', 'aws', 'backend', 'advanced', 'kms', 'cross-account'],
+    tags: ['remote-state', 's3', 'lockfile', 'dynamodb', 'aws', 'backend', 'advanced', 'kms', 'cross-account'],
     variables: [
       {
         name: 'bucket',
@@ -108,8 +118,15 @@ export const backendTemplates: ConfigTemplate[] = [
         example: 'us-east-1',
       },
       {
+        name: 'use_lockfile',
+        description: 'Enable S3 native state locking',
+        type: 'boolean',
+        required: false,
+        defaultValue: true,
+      },
+      {
         name: 'dynamodb_table',
-        description: 'DynamoDB table for state locking',
+        description: 'Deprecated DynamoDB lock table retained for compatibility and lock migration',
         type: 'string',
         required: false,
         example: 'terraform-locks',
@@ -175,6 +192,7 @@ export const backendTemplates: ConfigTemplate[] = [
     bucket         = "{{bucket}}"
     key            = "{{key}}"
     region         = "{{region}}"
+    use_lockfile   = {{use_lockfile}}
 {{#dynamodb_table}}
     dynamodb_table = "{{dynamodb_table}}"
 {{/dynamodb_table}}
@@ -211,7 +229,7 @@ export const backendTemplates: ConfigTemplate[] = [
     key            = "\${path_relative_to_include()}/terraform.tfstate"
     region         = "us-east-1"
     encrypt        = true
-    dynamodb_table = "terraform-locks"
+    use_lockfile   = true
     kms_key_id     = "arn:aws:kms:us-east-1:123456789012:key/12345678-1234-1234-1234-123456789012"
     role_arn       = "arn:aws:iam::987654321098:role/TerraformStateRole"
   }

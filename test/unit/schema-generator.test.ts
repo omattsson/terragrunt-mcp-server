@@ -267,6 +267,20 @@ describe('SchemaToTemplateGenerator', () => {
       expect(variables.map(v => v.name)).toContain('old');
     });
 
+    it('should include only selected deprecated migration attributes', () => {
+      const attributes: BackendAttribute[] = [
+        createTestAttribute({ name: 'current', deprecated: false }),
+        createTestAttribute({ name: 'dynamodb_table', deprecated: true }),
+        createTestAttribute({ name: 'old', deprecated: true }),
+      ];
+
+      const variables = generator.generateVariables(attributes, {
+        includeDeprecatedAttributes: ['dynamodb_table'],
+      });
+
+      expect(variables.map(variable => variable.name)).toEqual(['current', 'dynamodb_table']);
+    });
+
     it('should handle all attribute types', () => {
       const types: Array<'string' | 'number' | 'boolean' | 'list' | 'map' | 'object'> = [
         'string', 'number', 'boolean', 'list', 'map', 'object',
@@ -420,6 +434,24 @@ describe('SchemaToTemplateGenerator', () => {
 
       expect(hcl).toContain('current');
       expect(hcl).toContain('old');
+    });
+
+    it('should render only selected deprecated migration attributes', () => {
+      const schema = createTestSchema({
+        attributes: [
+          createTestAttribute({ name: 'current', deprecated: false }),
+          createTestAttribute({ name: 'dynamodb_table', deprecated: true }),
+          createTestAttribute({ name: 'old', deprecated: true }),
+        ],
+      });
+
+      const hcl = generator.generateHcl(schema, {
+        includeDeprecatedAttributes: ['dynamodb_table'],
+      });
+
+      expect(hcl).toContain('current');
+      expect(hcl).toContain('dynamodb_table');
+      expect(hcl).not.toContain('old');
     });
 
     it('should handle list type attributes', () => {

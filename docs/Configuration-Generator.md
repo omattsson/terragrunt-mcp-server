@@ -64,9 +64,10 @@ Generate S3 remote state config with bucket my-terraform-state in us-west-2
   "backend": "s3",
   "options": {
     "bucket": "my-terraform-state",
+    "key": "${path_relative_to_include()}/terraform.tfstate",
     "region": "us-west-2",
-    "dynamodb_table": "terraform-locks",
-    "encrypt": "true"
+    "use_lockfile": true,
+    "encrypt": true
   }
 }
 ```
@@ -81,7 +82,7 @@ remote_state {
     key            = "${path_relative_to_include()}/terraform.tfstate"
     region         = "us-west-2"
     encrypt        = true
-    dynamodb_table = "terraform-locks"
+    use_lockfile   = true
   }
 }
 ```
@@ -89,7 +90,9 @@ remote_state {
 **Required AWS resources:**
 
 - S3 bucket for state storage
-- DynamoDB table for state locking (prevents concurrent modifications)
+- Permissions to read, write, and delete the `<key>.tflock` object
+
+For migration from deprecated DynamoDB locking, temporarily provide both `use_lockfile: true` and `dynamodb_table: "terraform-locks"`. Remove `dynamodb_table` after all clients have migrated. Clients without S3 lockfile support can set `use_lockfile: false` and continue providing `dynamodb_table`, but DynamoDB locking is not recommended for new configurations.
 
 #### Azure Blob Storage Backend
 
@@ -484,8 +487,9 @@ Migrating existing local state to S3:
   "backend": "s3",
   "options": {
     "bucket": "my-bucket",
+    "key": "terraform.tfstate",
     "region": "us-east-1",
-    "dynamodb_table": "terraform-locks"
+    "use_lockfile": true
   }
 }
 ```

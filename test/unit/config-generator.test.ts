@@ -403,7 +403,8 @@ describe('TerragruntConfigGenerator', () => {
       });
 
       expect(result.nextSteps.some(step => step.includes('S3 bucket'))).toBe(true);
-      expect(result.nextSteps.some(step => step.includes('DynamoDB'))).toBe(true);
+      expect(result.nextSteps.some(step => step.includes('S3 lock file'))).toBe(true);
+      expect(result.nextSteps.some(step => step.includes('DynamoDB'))).toBe(false);
     });
 
     it('should include Azure-specific steps for Azure backend', async () => {

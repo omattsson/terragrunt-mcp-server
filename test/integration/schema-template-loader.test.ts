@@ -225,6 +225,17 @@ describe('SchemaTemplateLoader Integration Tests', () => {
       expect(hasConditionals).toBe(true);
     });
 
+    it('should expose native and migration locking in S3 templates', async () => {
+      const template = await templatesManager.getTemplate('s3');
+
+      expect(template).toBeDefined();
+      expect(template?.variables.map(variable => variable.name)).toEqual(
+        expect.arrayContaining(['use_lockfile', 'dynamodb_table'])
+      );
+      expect(template?.templateHcl).toContain('use_lockfile = {{use_lockfile}}');
+      expect(template?.templateHcl).toContain('dynamodb_table = "{{dynamodb_table}}"');
+    });
+
     it('should have variables with correct types', async () => {
       const template = await templatesManager.getTemplate('gcp-gcs-complete');
 

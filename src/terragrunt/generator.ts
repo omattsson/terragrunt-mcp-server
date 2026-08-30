@@ -32,8 +32,19 @@ export class TerragruntConfigGenerator {
       throw new Error(`No template found for use case '${useCase}'${backend ? ` with backend '${backend}'` : ''}${tierMsg}`);
     }
 
+    const resolvedOptions = { ...options };
+    const supportsNativeS3Locking = template.variables.some(variable => variable.name === 'use_lockfile');
+    if (
+      useCase === 'remote_state'
+      && supportsNativeS3Locking
+      && options.use_lockfile === undefined
+      && options.dynamodb_table === undefined
+    ) {
+      resolvedOptions.use_lockfile = true;
+    }
+
     // Validate and resolve variables
-    const validation = this.validateVariables(template, options);
+    const validation = this.validateVariables(template, resolvedOptions);
     if (!validation.isValid) {
       throw new Error(`Missing required variables: ${validation.missingVariables.join(', ')}`);
     }
@@ -470,7 +481,7 @@ export class TerragruntConfigGenerator {
     if (backend && useCase === 'remote_state') {
       if (backend.toLowerCase().includes('s3')) {
         steps.push('Enable versioning on the S3 bucket for state history');
-        steps.push('Create DynamoDB table for state locking');
+        steps.push('Grant read, write, and delete permissions for the S3 lock file');
       } else if (backend.toLowerCase().includes('azure') || backend.toLowerCase().includes('azurerm')) {
         steps.push('Enable blob versioning on the storage account');
         steps.push('Configure Azure AD authentication for secure access');

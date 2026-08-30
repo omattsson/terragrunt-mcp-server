@@ -46,7 +46,9 @@ export class SchemaTemplateLoader implements TemplateLoader {
         try {
           const schemaPath = join(this.schemaDir, file);
           const schema = await loadBackendSchema(schemaPath);
-          const template = this.generator.generateTemplate(schema);
+          const template = this.generator.generateTemplate(schema, {
+            includeDeprecatedAttributes: schema.backend === 's3' ? ['dynamodb_table'] : [],
+          });
           
           templates.push(template);
         } catch (error) {

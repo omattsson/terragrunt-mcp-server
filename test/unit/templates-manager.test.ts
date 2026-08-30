@@ -187,15 +187,16 @@ describe('TemplatesManager', () => {
     it('should have valid variables for AWS S3 backend', async () => {
       const template = await manager.getTemplate('aws-s3-backend');
       
-      expect(template?.variables).toHaveLength(5);
+      expect(template?.variables).toHaveLength(6);
       
       const requiredVars = template?.variables.filter(v => v.required);
-      expect(requiredVars?.length).toBe(4);
+      expect(requiredVars?.length).toBe(3);
       
       const varNames = template?.variables.map(v => v.name);
       expect(varNames).toContain('bucket');
       expect(varNames).toContain('key');
       expect(varNames).toContain('region');
+      expect(varNames).toContain('use_lockfile');
       expect(varNames).toContain('dynamodb_table');
       expect(varNames).toContain('encrypt');
     });

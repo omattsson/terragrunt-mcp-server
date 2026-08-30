@@ -35,6 +35,7 @@ import { TerragruntConfigGenerator } from '../terragrunt/generator.js';
 import { ConfigTemplateLibrary, UseCase } from '../terragrunt/library.js';
 import { TemplatesManager } from '../terragrunt/templates/index.js';
 import { BuiltinTemplateLoader } from '../terragrunt/templates/loaders/builtin.js';
+import { SchemaTemplateLoader } from '../terragrunt/templates/loaders/schema.js';
 import { FilesystemTemplateLoader } from '../terragrunt/templates/loaders/filesystem.js';
 import { CustomTemplateLoader } from '../terragrunt/templates/loaders/custom.js';
 import { TemplateValidator } from '../terragrunt/templates/validator.js';
@@ -257,9 +258,10 @@ export class ToolHandler {
         
         // Configuration generation subsystem
         if (shouldLoadDependency('templates', this.mode)) {
-            // Initialize templates manager with builtin and filesystem loaders
+            // Initialize templates manager with builtin, schema, and filesystem loaders
             this.templatesManager = new TemplatesManager([
                 new BuiltinTemplateLoader(),
+                new SchemaTemplateLoader(),
                 new FilesystemTemplateLoader()  // Defaults to ~/.terragrunt-mcp/templates/
             ]);
             
@@ -2201,6 +2203,7 @@ export class ToolHandler {
                 const customTemplatesManager = new TemplatesManager([
                     new CustomTemplateLoader(validatedTemplate),
                     new FilesystemTemplateLoader(),
+                    new SchemaTemplateLoader(),
                     new BuiltinTemplateLoader()
                 ]);
                 templateLibrary = new ConfigTemplateLibrary(customTemplatesManager);
