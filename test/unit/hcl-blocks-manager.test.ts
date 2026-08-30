@@ -618,6 +618,13 @@ describe('HCLBlocksManager', () => {
                 expect(retryBlock?.nestedAttributes?.some(attribute => attribute.name === 'retryable_errors')).toBe(true);
             });
 
+            it('should relate prevent_destroy to exclude instead of removed skip', () => {
+                const preventDestroy = manager.getBlock('prevent_destroy')!;
+
+                expect(preventDestroy.relatedBlocks).toContain('exclude');
+                expect(preventDestroy.relatedBlocks).not.toContain('skip');
+            });
+
             it.each(['unit', 'stack'])('should document autoinclude inside %s', blockName => {
                 const block = manager.getBlock(blockName)!;
 

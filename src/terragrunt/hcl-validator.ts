@@ -463,9 +463,17 @@ function checkRemovedTopLevelAttributes(config: string): string[] {
     retry_sleep_interval_sec: 'errors.retry.sleep_interval_sec',
   };
   let braceDepth = 0;
+  let heredocDelimiter: string | null = null;
 
   for (const [index, sourceLine] of config.split('\n').entries()) {
     const line = sourceLine.trim();
+
+    if (heredocDelimiter) {
+      if (line === heredocDelimiter) {
+        heredocDelimiter = null;
+      }
+      continue;
+    }
 
     if (braceDepth === 0) {
       const attributeMatch = line.match(/^([a-zA-Z_][a-zA-Z0-9_]*)\s*=/);
@@ -495,6 +503,11 @@ function checkRemovedTopLevelAttributes(config: string): string[] {
       }
       if (inString) continue;
       if (char === '#' || (char === '/' && nextChar === '/')) break;
+      const heredocMatch = sourceLine.slice(column).match(/^<<-?\s*([a-zA-Z_][a-zA-Z0-9_-]*)/);
+      if (heredocMatch) {
+        heredocDelimiter = heredocMatch[1];
+        break;
+      }
       if (char === '{') braceDepth++;
       if (char === '}') braceDepth = Math.max(0, braceDepth - 1);
     }

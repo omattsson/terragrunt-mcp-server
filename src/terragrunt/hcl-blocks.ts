@@ -934,7 +934,7 @@ exclude {
 prevent_destroy = true`,
       },
     ],
-    relatedBlocks: ['skip'],
+    relatedBlocks: ['exclude'],
     docsUrl: 'https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/#prevent_destroy',
   },
   {

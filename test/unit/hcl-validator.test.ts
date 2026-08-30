@@ -83,6 +83,17 @@ inputs = {
       expect(result.syntaxValid).toBe(true);
       expect(result.errors).toEqual([]);
     });
+
+    it('should not treat heredoc-like text in strings as a delimiter', () => {
+      const config = `
+iam_web_identity_token = "<<EOF"
+skip = true
+`;
+      const result = validateHCL(config);
+
+      expect(result.syntaxValid).toBe(false);
+      expect(result.errors.some(error => error.includes("'skip' was removed"))).toBe(true);
+    });
   });
 
   describe('Invalid delimiter balancing', () => {
@@ -375,6 +386,28 @@ stack "services" {
 
       expect(result.syntaxValid).toBe(false);
       expect(result.errors.some(error => error.includes(`'${attribute}' was removed`))).toBe(true);
+    });
+
+    it('should ignore removed attribute names inside heredocs', () => {
+      const config = `
+iam_web_identity_token = <<EOF
+skip = true
+retryable_errors = [".*timeout.*"]
+EOF
+
+generate "example" {
+  path      = "example.tf"
+  if_exists = "overwrite"
+  contents  = <<-EOT
+    retry_max_attempts = 3
+    retry_sleep_interval_sec = 5
+  EOT
+}
+`;
+      const result = validateHCL(config);
+
+      expect(result.syntaxValid).toBe(true);
+      expect(result.errors).toEqual([]);
     });
   });
 
