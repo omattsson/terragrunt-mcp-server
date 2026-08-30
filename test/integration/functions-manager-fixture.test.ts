@@ -8,9 +8,14 @@ import { TerragruntDocsManager } from '../../src/terragrunt/docs.js';
  */
 describe('TerragruntFunctionsManager - Fixture Integration', () => {
   describe('Fixture-based Function Extraction', () => {
+    async function createFixtureDocsManager(): Promise<TerragruntDocsManager> {
+      const docsManager = new TerragruntDocsManager();
+      expect(await (docsManager as any).loadFixture()).toBe(true);
+      return docsManager;
+    }
+
     it('can extract functions from real fixture data', async () => {
-      // Use real DocsManager with fixture data
-      const realDocsManager = new TerragruntDocsManager();
+      const realDocsManager = await createFixtureDocsManager();
       
       // Validate fixture first
       const validation = await realDocsManager.validateFixture();
@@ -27,7 +32,7 @@ describe('TerragruntFunctionsManager - Fixture Integration', () => {
     });
 
     it('extracted functions from fixture have complete metadata', async () => {
-      const realDocsManager = new TerragruntDocsManager();
+      const realDocsManager = await createFixtureDocsManager();
       const realFunctionsManager = new TerragruntFunctionsManager(realDocsManager);
       
       await realFunctionsManager.loadFunctions();
@@ -49,7 +54,7 @@ describe('TerragruntFunctionsManager - Fixture Integration', () => {
     });
 
     it('extracts all functions from issue #98 (missing built-in functions)', async () => {
-      const realDocsManager = new TerragruntDocsManager();
+      const realDocsManager = await createFixtureDocsManager();
       const realFunctionsManager = new TerragruntFunctionsManager(realDocsManager);
       
       await realFunctionsManager.loadFunctions();
