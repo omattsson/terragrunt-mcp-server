@@ -206,7 +206,7 @@ Common commands tested:
 - `apply` ✅
 - `init` (may not have docs)
 - `validate` (may not have docs)
-- Deprecated alias `run-all` ✅
+- Removed command lookup name `run-all` ✅
 
 Format variations:
 - **Hyphens in removed command lookup names**: `run-all` ✅

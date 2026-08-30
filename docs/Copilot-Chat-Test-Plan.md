@@ -237,7 +237,7 @@ Expected: Should list available Terragrunt documentation and configuration tools
 ```
 @terragrunt How do I use hcl fmt?
 ```
-**Expected:** Returns help for the `hcl fmt` command and identifies `hclfmt` as a deprecated alias.
+**Expected:** Returns help for the `hcl fmt` command and identifies `hclfmt` as a removed command name retained only for migration lookup; current Terragrunt does not execute it.
 
 ---
 
