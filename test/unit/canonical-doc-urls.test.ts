@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 const STATIC_DOC_FILES = [
   '.github/ISSUE_TEMPLATE/config.yml',
+  '.github/copilot-instructions.md',
   'README.md',
   'docs/Advanced-Backend-Templates.md',
   'docs/Architecture-Overview.md',
@@ -26,6 +27,7 @@ const STATIC_DOC_FILES = [
   'src/terragrunt/docs.ts',
   'src/terragrunt/error-patterns.ts',
   'src/terragrunt/hcl-blocks.ts',
+  'scripts/test-compression.ts',
   'scripts/update-fixture.ts',
 ];
 

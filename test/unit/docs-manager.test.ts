@@ -773,6 +773,10 @@ terraform {
       expect(lastEntry.pattern.test('Anything at all')).toBe(true);
       expect(lastEntry.section).toBe('features');
     });
+
+    it('should use canonical URL prefixes without a docs segment', () => {
+      expect(SECTION_MAP.every(entry => !entry.urlPrefix.startsWith('/docs'))).toBe(true);
+    });
   });
 
   describe('parseLlmsMarkdown', () => {
@@ -796,7 +800,7 @@ terraform {
       expect(docs[0].content).toContain('Start using Terragrunt today!');
       expect(docs[0].content).toContain('Some content here.');
       expect(docs[0].section).toBe('getting-started');
-      expect(docs[0].url).toContain('/docs/getting-started/quick-start/');
+      expect(docs[0].url).toBe('https://docs.terragrunt.com/getting-started/quick-start/');
     });
 
     it('should parse multiple H1 sections', () => {
@@ -937,7 +941,7 @@ terraform {
       const docs = manager.parseLlmsMarkdown(markdown);
 
       expect(docs).toHaveLength(1);
-      expect(docs[0].url).toContain('/docs/reference/cli/commands/find/');
+      expect(docs[0].url).toBe('https://docs.terragrunt.com/reference/cli/commands/find/');
     });
 
     it('should construct correct URLs for troubleshooting titles', () => {
@@ -945,7 +949,7 @@ terraform {
       const docs = manager.parseLlmsMarkdown(markdown);
 
       expect(docs).toHaveLength(1);
-      expect(docs[0].url).toContain('/docs/troubleshooting/debugging/');
+      expect(docs[0].url).toBe('https://docs.terragrunt.com/troubleshooting/debugging/');
     });
 
     it('should handle content before first H1 gracefully', () => {
@@ -988,12 +992,12 @@ terraform {
 
       expect(docs[0].title).toBe('Contributing');
       expect(docs[0].section).toBe('community');
-      expect(docs[0].url).toContain('/docs/community/contributing/');
+      expect(docs[0].url).toBe('https://docs.terragrunt.com/community/contributing/');
       expect(docs[0].content).toContain('Contributions to Terragrunt are very welcome!');
 
       expect(docs[1].title).toBe('Authentication');
       expect(docs[1].section).toBe('features');
-      expect(docs[1].url).toContain('/docs/features/authentication/');
+      expect(docs[1].url).toBe('https://docs.terragrunt.com/features/authentication/');
       expect(docs[1].content).toContain('```hcl');
       expect(docs[1].content).toContain('iam_role');
     });
