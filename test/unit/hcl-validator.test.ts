@@ -315,6 +315,67 @@ dependency "vpc" {
       // Should not warn about any of these standard blocks
       expect(result.warnings.filter(w => w.includes('Unknown block type'))).toEqual([]);
     });
+
+    it('should allow current Terragrunt blocks and nested error handling', () => {
+      const config = `
+feature "deploy" {
+  default = true
+}
+
+exclude {
+  if      = false
+  actions = ["all"]
+}
+
+errors {
+  retry "transient" {
+    retryable_errors  = [".*timeout.*"]
+    max_attempts      = 3
+    sleep_interval_sec = 5
+  }
+}
+
+catalog {
+  urls = ["github.com/acme/modules"]
+}
+
+engine {
+  source = "github.com/gruntwork-io/terragrunt-engine-opentofu"
+}
+
+unit "vpc" {
+  source = "../units/vpc"
+  path   = "vpc"
+
+  autoinclude {
+    inputs = {
+      environment = "dev"
+    }
+  }
+}
+
+stack "services" {
+  source = "../stacks/services"
+  path   = "services"
+}
+`;
+      const result = validateHCL(config);
+
+      expect(result.syntaxValid).toBe(true);
+      expect(result.warnings.filter(w => w.includes('Unknown block type'))).toEqual([]);
+    });
+
+    it.each([
+      ['skip', 'true'],
+      ['retryable_errors', '[".*timeout.*"]'],
+      ['retry_max_attempts', '3'],
+      ['retry_sleep_interval_sec', '5'],
+    ])('should reject removed top-level %s attribute', (attribute, value) => {
+      const result = validateHCL(`${attribute} = ${value}`);
+
+      expect(result.syntaxValid).toBe(false);
+      expect(result.errors.some(error => error.includes(`'${attribute}' was removed`))).toBe(true);
+    });
   });
 
   describe('Performance validation', () => {

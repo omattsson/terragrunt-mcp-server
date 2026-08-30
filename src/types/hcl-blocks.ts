@@ -20,11 +20,11 @@ export type HCLAttributeType =
  */
 export type HCLBlockCategory =
   | 'core'           // terraform, remote_state, locals, inputs
-  | 'modules'        // include, dependency, dependencies
+  | 'modules'        // include, dependencies, catalogs, units, stacks
   | 'generation'     // generate
-  | 'execution'      // skip, prevent_destroy, retry settings
+  | 'execution'      // feature flags, exclusions, error handling, prevent_destroy
   | 'iam'            // iam_role, iam_assume_role_*, iam_web_identity_token
-  | 'terraform';     // terraform_binary, terraform_version_constraint, download_dir
+  | 'terraform';     // engine, binary, version constraints, download_dir
 
 /**
  * Definition for an HCL attribute
