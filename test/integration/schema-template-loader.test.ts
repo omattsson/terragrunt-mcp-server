@@ -27,6 +27,18 @@ describe('SchemaTemplateLoader Integration Tests', () => {
       expect(templates.length).toBeGreaterThan(0);
     });
 
+    it('should load default schemas independently of the working directory', async () => {
+      const originalCwd = process.cwd();
+
+      try {
+        process.chdir('..');
+        const templates = await new SchemaTemplateLoader().loadTemplates();
+        expect(templates).toHaveLength(4);
+      } finally {
+        process.chdir(originalCwd);
+      }
+    });
+
     it('should generate templates with correct structure', async () => {
       const loader = new SchemaTemplateLoader();
       const templates = await loader.loadTemplates();

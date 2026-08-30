@@ -38,9 +38,8 @@ export class TerragruntConfigGenerator {
       useCase === 'remote_state'
       && supportsNativeS3Locking
       && options.use_lockfile === undefined
-      && options.dynamodb_table === undefined
     ) {
-      resolvedOptions.use_lockfile = true;
+      resolvedOptions.use_lockfile = options.dynamodb_table === undefined;
     }
 
     // Validate and resolve variables
@@ -86,7 +85,7 @@ export class TerragruntConfigGenerator {
     const relatedDocs = await this.fetchRelevantDocs(useCase, backend);
 
     // Generate next steps
-    const nextSteps = await this.generateNextSteps(useCase, backend);
+    const nextSteps = await this.generateNextSteps(useCase, backend, validation.resolvedValues);
 
     // Suggest additional options
     const additionalOptions = this.suggestAdditionalOptions(template, validation.resolvedValues);
@@ -438,7 +437,11 @@ export class TerragruntConfigGenerator {
   /**
    * Generate next steps for the user
    */
-  private async generateNextSteps(useCase: UseCase, backend?: string): Promise<string[]> {
+  private async generateNextSteps(
+    useCase: UseCase,
+    backend?: string,
+    resolvedValues: Record<string, string | number | boolean> = {}
+  ): Promise<string[]> {
     const steps: string[] = [];
 
     // Use case specific next steps
@@ -481,7 +484,12 @@ export class TerragruntConfigGenerator {
     if (backend && useCase === 'remote_state') {
       if (backend.toLowerCase().includes('s3')) {
         steps.push('Enable versioning on the S3 bucket for state history');
-        steps.push('Grant read, write, and delete permissions for the S3 lock file');
+        if (resolvedValues.use_lockfile === true) {
+          steps.push('Grant read, write, and delete permissions for the S3 lock file');
+        }
+        if (resolvedValues.dynamodb_table) {
+          steps.push('Create the DynamoDB table used for state locking');
+        }
       } else if (backend.toLowerCase().includes('azure') || backend.toLowerCase().includes('azurerm')) {
         steps.push('Enable blob versioning on the storage account');
         steps.push('Configure Azure AD authentication for secure access');

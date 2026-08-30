@@ -150,8 +150,42 @@ describe('Config Generation Integration Tests', () => {
       expect(migration.success).toBe(true);
       expect(migration.config).toContain('use_lockfile = true');
       expect(migration.config).toContain('dynamodb_table = "terraform-locks"');
+      expect(migration.nextSteps.join(' ')).toContain('S3 lock file');
+      expect(migration.nextSteps.join(' ')).toContain('DynamoDB table');
       validateNoPlaceholders(migration.config);
       validateBalancedBraces(migration.config);
+
+      const dynamoOnly = await toolHandler.executeTool('build_config', {
+        useCase: 'remote_state',
+        backend: 's3',
+        options: {
+          bucket: 'test-terraform-state',
+          key: 'terraform.tfstate',
+          region: 'us-east-1',
+          dynamodb_table: 'terraform-locks'
+        }
+      });
+
+      expect(dynamoOnly.success).toBe(true);
+      expect(dynamoOnly.config).toContain('use_lockfile = false');
+      expect(dynamoOnly.nextSteps.join(' ')).not.toContain('S3 lock file');
+      expect(dynamoOnly.nextSteps.join(' ')).toContain('DynamoDB table');
+
+      const lockingDisabled = await toolHandler.executeTool('build_config', {
+        useCase: 'remote_state',
+        backend: 's3',
+        options: {
+          bucket: 'test-terraform-state',
+          key: 'terraform.tfstate',
+          region: 'us-east-1',
+          use_lockfile: false
+        }
+      });
+
+      expect(lockingDisabled.success).toBe(true);
+      expect(lockingDisabled.config).toContain('use_lockfile = false');
+      expect(lockingDisabled.nextSteps.join(' ')).not.toContain('S3 lock file');
+      expect(lockingDisabled.nextSteps.join(' ')).not.toContain('DynamoDB table');
     }, 10000);
 
     it('should generate complete Azure Blob remote state config', async () => {
