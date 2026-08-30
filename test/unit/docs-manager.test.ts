@@ -647,6 +647,15 @@ terraform {
       vi.unmock('fs/promises');
     });
 
+    async function loadFixtureDocs(): Promise<TerragruntDoc[]> {
+      vi.resetModules();
+      const { TerragruntDocsManager: UnmockedManager } = await import('../../src/terragrunt/docs.js');
+      const realDocsManager = new UnmockedManager() as any;
+
+      expect(await realDocsManager.loadFixture()).toBe(true);
+      return realDocsManager.fetchLatestDocs();
+    }
+
     it('should validate fixture contains function documentation', async () => {
       // Re-import to get unmocked version
       vi.resetModules();
@@ -686,6 +695,87 @@ terraform {
       expect(typeof result.totalDocs).toBe('number');
       expect(typeof result.functionDocsCount).toBe('number');
       expect(Array.isArray(result.missingPages)).toBe(true);
+    });
+
+    it('should match the canonical documentation inventory', async () => {
+      const docs = await loadFixtureDocs();
+      const fixturePaths = docs.map(doc => new URL(doc.url).pathname).sort();
+      const canonicalPaths = TERRAGRUNT_DOC_MANIFEST.map(([, path]) => path).sort();
+
+      expect(docs).toHaveLength(124);
+      expect(new Set(fixturePaths).size).toBe(docs.length);
+      expect(fixturePaths).toEqual(canonicalPaths);
+    });
+
+    it('should contain current audited Terragrunt content', async () => {
+      const docs = await loadFixtureDocs();
+      const docsByPath = new Map(docs.map(doc => [new URL(doc.url).pathname, doc]));
+      const expectContent = (path: string, fragments: string[]) => {
+        const doc = docsByPath.get(path);
+        expect(doc, `Missing fixture document ${path}`).toBeDefined();
+        for (const fragment of fragments) {
+          expect(doc!.content).toContain(fragment);
+        }
+      };
+
+      expectContent('/reference/cli/commands/browse/', [
+        'Browse Terragrunt configurations in an interactive TUI.',
+      ]);
+      expectContent('/features/caching/cas/', [
+        'deduplicate content across multiple Terragrunt configurations',
+        'stack generation by avoiding redundant downloads of remote sources',
+      ]);
+      expectContent('/features/caching/cas/oci/', [
+        'Direct `oci://` sources in `unit` and `stack` blocks',
+        '`terraform.source` follows the normal source-download behavior',
+      ]);
+      expectContent('/troubleshooting/performance/', [
+        'fetching and parsing the backend state object directly',
+        'experiment supports S3 and GCS backends',
+        'Azure Storage (`azurerm`) is supported',
+      ]);
+      expectContent('/features/stacks/explicit/', [
+        'Add an `autoinclude` block to the `unit` block',
+      ]);
+      expectContent('/reference/hcl/blocks/', [
+        'The `stack` block supports the following arguments',
+        'The `unit` block supports the following arguments',
+        '`no_dot_terragrunt_stack` (attribute, optional)',
+        '`no_validation` (attribute, optional)',
+      ]);
+      expectContent('/reference/hcl/functions/', [
+        '`deep_merge(map1, map2, ...)` deeply merges maps/objects',
+        '`deep_merge` requires the [`deep-merge`](/reference/experiments/active#deep-merge) experiment',
+        '`mark_glob_as_read(pattern)` expands the given glob and marks every matching file as read',
+        '`...` expands a list into positional arguments',
+      ]);
+      expectContent('/reference/experiments/', [
+        '[Active Experiments](/reference/experiments/active)',
+        '[Completed Experiments](/reference/experiments/completed)',
+      ]);
+    });
+
+    it('should load the real fixture when network and disk access are unavailable', async () => {
+      vi.resetModules();
+      const { TerragruntDocsManager: UnmockedManager } = await import('../../src/terragrunt/docs.js');
+      const realDocsManager = new UnmockedManager() as any;
+      vi.spyOn(realDocsManager, 'loadCacheFromDisk').mockResolvedValue(false);
+      vi.spyOn(realDocsManager, 'fetchFromLlmsTxt').mockRejectedValue(new Error('Network disabled'));
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+      const docs = await realDocsManager.fetchLatestDocs();
+
+      expect(realDocsManager.fetchFromLlmsTxt).toHaveBeenCalledOnce();
+      expect(realDocsManager.loadCacheFromDisk).toHaveBeenCalledTimes(2);
+      expect(docs).toHaveLength(124);
+      expect(docs).toContainEqual(expect.objectContaining({
+        title: 'browse',
+        url: 'https://docs.terragrunt.com/reference/cli/commands/browse/',
+      }));
+
+      errorSpy.mockRestore();
+      logSpy.mockRestore();
     });
   });
 
