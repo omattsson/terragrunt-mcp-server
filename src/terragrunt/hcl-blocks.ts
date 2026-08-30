@@ -869,12 +869,14 @@ inputs = {
         type: 'boolean',
         required: false,
         description: 'Format generated HCL before writing it. When omitted, formatting is enabled for .hcl, .tf, and .tofu files. Requires the mutable-generate experiment.',
+        defaultValue: 'true for .hcl, .tf, and .tofu files; false otherwise',
       },
       {
         name: 'mutable',
         type: 'boolean',
         required: false,
         description: 'Write a directly writable generated file instead of a read-only CAS hard link. Requires the mutable-generate experiment.',
+        defaultValue: false,
       },
     ],
     examples: [

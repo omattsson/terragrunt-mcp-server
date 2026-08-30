@@ -629,9 +629,11 @@ describe('HCLBlocksManager', () => {
                 const mutable = block.attributes.find(attribute => attribute.name === 'mutable')!;
 
                 expect(hclFmt.type).toBe('boolean');
+                expect(hclFmt.defaultValue).toBe('true for .hcl, .tf, and .tofu files; false otherwise');
                 expect(hclFmt.description).toContain('.tofu');
                 expect(hclFmt.description).toContain('mutable-generate');
                 expect(mutable.type).toBe('boolean');
+                expect(mutable.defaultValue).toBe(false);
                 expect(mutable.description).toContain('CAS hard link');
                 expect(mutable.description).toContain('mutable-generate');
             });
