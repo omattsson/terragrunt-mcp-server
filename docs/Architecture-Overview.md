@@ -99,7 +99,7 @@ This page provides a comprehensive overview of the Terragrunt MCP Server's archi
 **Key Class**: `TerragruntDocsManager`
 
 **Responsibilities**:
-- Fetching documentation via llms.txt from terragrunt.gruntwork.io
+- Fetching documentation via llms.txt from docs.terragrunt.com
 - Multi-tier caching management
 - Search and retrieval operations
 - Fallback handling
@@ -279,7 +279,7 @@ This ensures the server **always** has data to return.
 
 ### How It Works
 
-1. **Fetch llms.txt**: Single HTTP request to `https://terragrunt.gruntwork.io/llms-small.txt`
+1. **Fetch llms.txt**: Single HTTP request to `https://docs.terragrunt.com/llms-small.txt`
 2. **Parse Markdown**: Split content on H1 boundaries into individual doc entries
 3. **Extract metadata**: Title, URL, and section from each entry
 4. **Populate caches**: Metadata cache (lightweight) + content cache (full Markdown)

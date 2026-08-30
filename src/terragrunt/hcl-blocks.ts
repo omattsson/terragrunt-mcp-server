@@ -154,7 +154,7 @@ const HCL_BLOCKS: HCLBlock[] = [
       },
     ],
     relatedBlocks: ['remote_state', 'include', 'dependency'],
-    docsUrl: 'https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/#terraform',
+    docsUrl: 'https://docs.terragrunt.com/reference/hcl/blocks/#terraform',
   },
   {
     name: 'remote_state',
@@ -241,7 +241,7 @@ const HCL_BLOCKS: HCLBlock[] = [
       },
     ],
     relatedBlocks: ['terraform', 'generate'],
-    docsUrl: 'https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/#remote_state',
+    docsUrl: 'https://docs.terragrunt.com/reference/hcl/blocks/#remote_state',
   },
   {
     name: 'locals',
@@ -288,7 +288,7 @@ const HCL_BLOCKS: HCLBlock[] = [
       },
     ],
     relatedBlocks: ['inputs', 'include'],
-    docsUrl: 'https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/#locals',
+    docsUrl: 'https://docs.terragrunt.com/reference/hcl/blocks/#locals',
   },
   {
     name: 'inputs',
@@ -326,7 +326,7 @@ const HCL_BLOCKS: HCLBlock[] = [
       },
     ],
     relatedBlocks: ['locals', 'dependency'],
-    docsUrl: 'https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/#inputs',
+    docsUrl: 'https://docs.terragrunt.com/reference/hcl/blocks/#inputs',
   },
 
   // ============================================================================
@@ -398,7 +398,7 @@ include "env" {
       },
     ],
     relatedBlocks: ['locals', 'terraform', 'remote_state'],
-    docsUrl: 'https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/#include',
+    docsUrl: 'https://docs.terragrunt.com/reference/hcl/blocks/#include',
   },
   {
     name: 'dependency',
@@ -488,7 +488,7 @@ inputs = {
       },
     ],
     relatedBlocks: ['dependencies', 'inputs'],
-    docsUrl: 'https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/#dependency',
+    docsUrl: 'https://docs.terragrunt.com/reference/hcl/blocks/#dependency',
   },
   {
     name: 'dependencies',
@@ -530,7 +530,7 @@ inputs = {
       },
     ],
     relatedBlocks: ['dependency'],
-    docsUrl: 'https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/#dependencies',
+    docsUrl: 'https://docs.terragrunt.com/reference/hcl/blocks/#dependencies',
   },
   {
     name: 'catalog',
@@ -820,7 +820,7 @@ EOF
       },
     ],
     relatedBlocks: ['terraform', 'remote_state'],
-    docsUrl: 'https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/#generate',
+    docsUrl: 'https://docs.terragrunt.com/reference/hcl/blocks/#generate',
   },
 
   // ============================================================================
@@ -935,7 +935,7 @@ prevent_destroy = true`,
       },
     ],
     relatedBlocks: ['exclude'],
-    docsUrl: 'https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/#prevent_destroy',
+    docsUrl: 'https://docs.terragrunt.com/reference/hcl/blocks/#prevent_destroy',
   },
   {
     name: 'errors',
@@ -1013,7 +1013,7 @@ prevent_destroy = true`,
       },
     ],
     relatedBlocks: ['iam_assume_role_duration', 'iam_assume_role_session_name'],
-    docsUrl: 'https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/#iam_role',
+    docsUrl: 'https://docs.terragrunt.com/reference/hcl/blocks/#iam_role',
   },
   {
     name: 'iam_assume_role_duration',
@@ -1037,7 +1037,7 @@ prevent_destroy = true`,
       },
     ],
     relatedBlocks: ['iam_role', 'iam_assume_role_session_name'],
-    docsUrl: 'https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/#iam_assume_role_duration',
+    docsUrl: 'https://docs.terragrunt.com/reference/hcl/blocks/#iam_assume_role_duration',
   },
   {
     name: 'iam_assume_role_session_name',
@@ -1061,7 +1061,7 @@ prevent_destroy = true`,
       },
     ],
     relatedBlocks: ['iam_role', 'iam_assume_role_duration'],
-    docsUrl: 'https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/#iam_assume_role_session_name',
+    docsUrl: 'https://docs.terragrunt.com/reference/hcl/blocks/#iam_assume_role_session_name',
   },
   {
     name: 'iam_web_identity_token',
@@ -1085,7 +1085,7 @@ prevent_destroy = true`,
       },
     ],
     relatedBlocks: ['iam_role'],
-    docsUrl: 'https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/#iam_web_identity_token',
+    docsUrl: 'https://docs.terragrunt.com/reference/hcl/blocks/#iam_web_identity_token',
   },
 
   // ============================================================================
@@ -1164,7 +1164,7 @@ prevent_destroy = true`,
       },
     ],
     relatedBlocks: ['terraform_version_constraint'],
-    docsUrl: 'https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/#terraform_binary',
+    docsUrl: 'https://docs.terragrunt.com/reference/hcl/blocks/#terraform_binary',
   },
   {
     name: 'terraform_version_constraint',
@@ -1192,7 +1192,7 @@ prevent_destroy = true`,
       },
     ],
     relatedBlocks: ['terraform_binary'],
-    docsUrl: 'https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/#terraform_version_constraint',
+    docsUrl: 'https://docs.terragrunt.com/reference/hcl/blocks/#terraform_version_constraint',
   },
   {
     name: 'terragrunt_version_constraint',
@@ -1240,7 +1240,7 @@ prevent_destroy = true`,
       },
     ],
     relatedBlocks: ['terraform'],
-    docsUrl: 'https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/#download_dir',
+    docsUrl: 'https://docs.terragrunt.com/reference/hcl/blocks/#download_dir',
   },
 ];
 

@@ -37,7 +37,7 @@ describe('TerragruntFunctionsManager', () => {
 
     const mockDocs: TerragruntDoc[] = [{
       title: 'Built-in Functions',
-      url: 'https://terragrunt.gruntwork.io/docs/reference/hcl/functions/',
+      url: 'https://docs.terragrunt.com/reference/hcl/functions/',
       content,
       section: 'reference',
       lastUpdated: new Date().toISOString(),
@@ -387,7 +387,7 @@ describe('TerragruntFunctionsManager', () => {
 
       const mockDocs: TerragruntDoc[] = [{
         title: 'Test Functions',
-        url: 'https://terragrunt.gruntwork.io/docs/reference/hcl/functions/',
+        url: 'https://docs.terragrunt.com/reference/hcl/functions/',
         content,
         section: 'reference',
         lastUpdated: new Date().toISOString(),
@@ -431,7 +431,7 @@ describe('TerragruntFunctionsManager', () => {
 
       const mockDocs: TerragruntDoc[] = [{
         title: 'Functions with Underscores',
-        url: 'https://terragrunt.gruntwork.io/docs/reference/hcl/functions/',
+        url: 'https://docs.terragrunt.com/reference/hcl/functions/',
         content,
         section: 'reference',
         lastUpdated: new Date().toISOString(),
@@ -461,7 +461,7 @@ describe('TerragruntFunctionsManager', () => {
 
       const mockDocs: TerragruntDoc[] = [{
         title: 'Long Functions',
-        url: 'https://terragrunt.gruntwork.io/docs/reference/hcl/functions/',
+        url: 'https://docs.terragrunt.com/reference/hcl/functions/',
         content,
         section: 'reference',
         lastUpdated: new Date().toISOString(),
@@ -485,7 +485,7 @@ describe('TerragruntFunctionsManager', () => {
 
       const mockDocs: TerragruntDoc[] = [{
         title: 'Minimal Function',
-        url: 'https://terragrunt.gruntwork.io/docs/reference/hcl/functions/',
+        url: 'https://docs.terragrunt.com/reference/hcl/functions/',
         content,
         section: 'reference',
         lastUpdated: new Date().toISOString(),

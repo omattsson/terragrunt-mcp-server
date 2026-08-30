@@ -138,7 +138,7 @@ Yes! The server provides documentation access regardless of whether your project
 
 The server fetches documentation from the official Terragrunt website via its
 machine-readable `llms.txt` endpoint:
-`https://terragrunt.gruntwork.io/llms-small.txt`
+`https://docs.terragrunt.com/llms-small.txt`
 
 A single HTTP request retrieves all documentation as Markdown, which is then
 parsed into individual doc entries (split on H1 boundaries). The source URL is
@@ -203,7 +203,7 @@ Future versions may support environment variable configuration.
 
 No! The server:
 - Runs entirely locally on your machine
-- Only connects to `terragrunt.gruntwork.io` for docs
+- Only connects to `docs.terragrunt.com` for docs
 - Doesn't send telemetry
 - Doesn't collect user data
 - Doesn't require authentication

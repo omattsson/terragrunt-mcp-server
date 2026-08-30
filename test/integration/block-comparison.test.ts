@@ -113,7 +113,7 @@ describe('Block Comparison and Pattern Guidance Tools', () => {
         
         expect(result.comparison.relatedDocs).toBeDefined();
         expect(result.comparison.relatedDocs.length).toBeGreaterThan(0);
-        expect(result.comparison.relatedDocs[0]).toContain('terragrunt.gruntwork.io');
+        expect(result.comparison.relatedDocs[0]).toContain('docs.terragrunt.com');
       });
     });
 

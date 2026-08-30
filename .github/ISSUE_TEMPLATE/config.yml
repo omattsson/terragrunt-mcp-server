@@ -4,5 +4,5 @@ contact_links:
     url: https://github.com/omattsson/terragrunt-mcp-server/discussions
     about: Ask questions or discuss ideas in GitHub Discussions
   - name: Terragrunt Documentation
-    url: https://terragrunt.gruntwork.io/docs/
+    url: https://docs.terragrunt.com/
     about: Official Terragrunt documentation

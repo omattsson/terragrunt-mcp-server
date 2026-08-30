@@ -23,7 +23,7 @@ const __dirname = path.dirname(__filename);
 
 const FIXTURE_PATH = path.join(__dirname, '..', 'fixtures', 'terragrunt-docs-fixture.json');
 
-const LLMS_SMALL_URL = 'https://terragrunt.gruntwork.io/llms-small.txt';
+const LLMS_SMALL_URL = 'https://docs.terragrunt.com/llms-small.txt';
 
 async function main(): Promise<void> {
   // Force canonical source to ensure deterministic fixture regeneration,

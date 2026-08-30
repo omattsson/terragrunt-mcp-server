@@ -67,14 +67,14 @@ describe('BestPracticesAnalyzer', () => {
     mockDocs = [
       {
         title: 'State Management Guide',
-        url: 'https://terragrunt.gruntwork.io/docs/features/keep-your-remote-state-configuration-dry/',
+        url: 'https://docs.terragrunt.com/features/units/state-backend/',
         content,
         section: 'features',
         lastUpdated: new Date().toISOString(),
       },
       {
         title: 'Getting Started',
-        url: 'https://terragrunt.gruntwork.io/docs/getting-started/quick-start/',
+        url: 'https://docs.terragrunt.com/getting-started/quick-start/',
         content: 'Basic module setup should use simple folder structures. This is simple for beginners.',
         section: 'getting-started',
         lastUpdated: new Date().toISOString(),

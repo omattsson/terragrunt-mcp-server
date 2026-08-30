@@ -639,7 +639,7 @@ Built-in retry mechanism with exponential backoff:
 
 Uses Cheerio to parse the official Terragrunt documentation site:
 
-- Extracts all documentation pages from `https://terragrunt.gruntwork.io/docs/`
+- Extracts all documentation pages from `https://docs.terragrunt.com/`
 - Preserves document structure (sections, titles, URLs)
 - Cleans HTML content for better AI consumption
 - Updates automatically based on cache expiry
@@ -663,7 +663,7 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 ## Related Resources
 
 - [Model Context Protocol Documentation](https://modelcontextprotocol.io/)
-- [Terragrunt Official Documentation](https://terragrunt.gruntwork.io/)
+- [Terragrunt Official Documentation](https://docs.terragrunt.com/)
 - [GitHub Repository](https://github.com/omattsson/terragrunt-mcp-server)
 - [Setup Guide](SETUP.md)
 - [Docker Guide](DOCKER.md)

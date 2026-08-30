@@ -69,39 +69,39 @@ interface RetryConfig {
  */
 export const SECTION_MAP: Array<{ pattern: RegExp; section: string; urlPrefix: string }> = [
   // Community pages
-  { pattern: /^(Contributing|License|Support)$/i, section: 'community', urlPrefix: '/docs/community' },
+  { pattern: /^(Contributing|License|Support)$/i, section: 'community', urlPrefix: '/community' },
 
   // Getting started
-  { pattern: /^(Install|Overview|Quick Start|Terminology)$/i, section: 'getting-started', urlPrefix: '/docs/getting-started' },
+  { pattern: /^(Install|Overview|Quick Start|Terminology)$/i, section: 'getting-started', urlPrefix: '/getting-started' },
 
   // Migration / tutorial: terralith-to-terragrunt guide
-  { pattern: /^(Introduction|Setup|Step \d+[:\s].*|Wrap Up)$/i, section: 'migrate', urlPrefix: '/docs/migrate/terralith-to-terragrunt' },
+  { pattern: /^(Introduction|Setup|Step \d+[:\s].*|Wrap Up)$/i, section: 'migrate', urlPrefix: '/migrate/terralith-to-terragrunt' },
 
   // Migration guides (general)
-  { pattern: /^(Bare Include|CLI Redesign|Migrating|Terragrunt Stacks|Upgrading|Terragrunt 1\.0 Guarantees)$/i, section: 'migrate', urlPrefix: '/docs/migrate' },
+  { pattern: /^(Bare Include|CLI Redesign|Migrating|Terragrunt Stacks|Upgrading|Terragrunt 1\.0 Guarantees)$/i, section: 'migrate', urlPrefix: '/migrate' },
 
   // Reference: CLI commands (stack subcommands)
-  { pattern: /^(clean|generate|output|run)$/i, section: 'reference', urlPrefix: '/docs/reference/cli/commands/stack' },
+  { pattern: /^(clean|generate|output|run)$/i, section: 'reference', urlPrefix: '/reference/cli/commands/stack' },
 
   // Reference: CLI commands
-  { pattern: /^(bootstrap|delete|migrate|catalog|graph|exec|find|fmt|validate|print|list|OpenTofu Shortcuts|render|scaffold)$/i, section: 'reference', urlPrefix: '/docs/reference/cli/commands' },
-  { pattern: /^(Global Flags|CLI Rules)$/i, section: 'reference', urlPrefix: '/docs/reference/cli' },
+  { pattern: /^(bootstrap|delete|migrate|catalog|graph|exec|find|fmt|validate|print|list|OpenTofu Shortcuts|render|scaffold)$/i, section: 'reference', urlPrefix: '/reference/cli/commands' },
+  { pattern: /^(Global Flags|CLI Rules)$/i, section: 'reference', urlPrefix: '/reference/cli' },
 
   // Reference: experiments
-  { pattern: /^Experiments$/i, section: 'reference', urlPrefix: '/docs/reference' },
+  { pattern: /^Experiments$/i, section: 'reference', urlPrefix: '/reference' },
 
   // Reference: HCL
-  { pattern: /^(Attributes|Blocks|Functions)$/i, section: 'reference', urlPrefix: '/docs/reference/hcl' },
+  { pattern: /^(Attributes|Blocks|Functions)$/i, section: 'reference', urlPrefix: '/reference/hcl' },
 
   // Reference: other
-  { pattern: /^(Lock File Handling|Releases)$/i, section: 'reference', urlPrefix: '/docs/reference' },
-  { pattern: /^(Formatting|Strict Controls)$/i, section: 'reference', urlPrefix: '/docs/reference/logging' },
+  { pattern: /^(Lock File Handling|Releases)$/i, section: 'reference', urlPrefix: '/reference' },
+  { pattern: /^(Formatting|Strict Controls)$/i, section: 'reference', urlPrefix: '/reference/logging' },
 
   // Troubleshooting
-  { pattern: /^(OpenTofu and Terraform Version Compatibility|Terragrunt Cache|Debugging|OpenTelemetry|Performance)$/i, section: 'troubleshooting', urlPrefix: '/docs/troubleshooting' },
+  { pattern: /^(OpenTofu and Terraform Version Compatibility|Terragrunt Cache|Debugging|OpenTelemetry|Performance)$/i, section: 'troubleshooting', urlPrefix: '/troubleshooting' },
 
   // Features (catch-all for remaining titles)
-  { pattern: /./i, section: 'features', urlPrefix: '/docs/features' },
+  { pattern: /./i, section: 'features', urlPrefix: '/features' },
 ];
 
 /**
@@ -117,7 +117,7 @@ export function slugifyTitle(title: string): string {
 }
 
 export class TerragruntDocsManager {
-  private readonly baseUrl = 'https://terragrunt.gruntwork.io';
+  private readonly baseUrl = 'https://docs.terragrunt.com';
   private searchCache: LRUCache<string, TerragruntDoc[]>;
   private lastFetchTime: Date | null = null;
   private readonly cacheExpiry: number;
@@ -1088,6 +1088,6 @@ export class TerragruntDocsManager {
       }
     }
     // Fallback (shouldn't reach here since SECTION_MAP has a catch-all)
-    return { section: 'general', urlPrefix: '/docs' };
+    return { section: 'general', urlPrefix: '' };
   }
 }

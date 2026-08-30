@@ -343,7 +343,7 @@ describe('HCLBlocksManager', () => {
             const md = manager.formatBlockAsMarkdown(block);
             
             expect(md).toContain('## Documentation');
-            expect(md).toContain('terragrunt.gruntwork.io');
+            expect(md).toContain('docs.terragrunt.com');
         });
 
         it('should format nested attributes with indentation', () => {
@@ -435,7 +435,7 @@ describe('HCLBlocksManager', () => {
             
             for (const block of coreBlocks) {
                 if (block.docsUrl) {
-                    expect(block.docsUrl).toMatch(/^https:\/\/terragrunt\.gruntwork\.io/);
+                    expect(block.docsUrl).toMatch(/^https:\/\/docs\.terragrunt\.com/);
                 }
             }
         });

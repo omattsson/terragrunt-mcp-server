@@ -33,7 +33,7 @@ const sampleResponses = {
     results: Array.from({ length: 10 }, (_, i) => ({
       title: `Documentation Page ${i}`,
       content: `This is a longer documentation page with detailed information about Terragrunt features and concepts. `.repeat(20),
-      url: `https://terragrunt.gruntwork.io/docs/page-${i}`,
+      url: `https://docs.terragrunt.com/page-${i}`,
       section: 'reference'
     }))
   },
