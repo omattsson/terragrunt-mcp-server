@@ -472,10 +472,26 @@ describe('HCLBlocksManager', () => {
                 expect(extraArgs?.nestedAttributes).toBeDefined();
             });
 
-            it.each(['exclude_from_copy', 'copy_terraform_lock_file', 'mutable'])('should have current %s attribute', attributeName => {
+            it.each(['version', 'exclude_from_copy', 'copy_terraform_lock_file', 'update_source_with_cas', 'mutable'])('should have current %s attribute', attributeName => {
                 const block = manager.getBlock('terraform')!;
 
                 expect(block.attributes.some(attribute => attribute.name === attributeName)).toBe(true);
+            });
+
+            it('should document registry versions, OCI sources, and stable CAS behavior', () => {
+                const block = manager.getBlock('terraform')!;
+                const source = block.attributes.find(attribute => attribute.name === 'source')!;
+                const version = block.attributes.find(attribute => attribute.name === 'version')!;
+                const updateSourceWithCas = block.attributes.find(attribute => attribute.name === 'update_source_with_cas')!;
+                const mutable = block.attributes.find(attribute => attribute.name === 'mutable')!;
+
+                expect(source.description).toContain('oci://');
+                expect(version.type).toBe('string');
+                expect(version.description).toContain('version-attribute');
+                expect(version.description).toContain('tfr://');
+                expect(updateSourceWithCas).toMatchObject({ type: 'boolean', defaultValue: false });
+                expect(mutable).toMatchObject({ type: 'boolean', defaultValue: false });
+                expect(mutable.description).not.toContain('experimental content-addressable store');
             });
 
             it('should have before_hook nested block', () => {
@@ -559,6 +575,20 @@ describe('HCLBlocksManager', () => {
                 
                 expect(mockOutputs).toBeDefined();
             });
+
+            it('should document block iteration', () => {
+                const block = manager.getBlock('dependency')!;
+                const expansion = block.attributes.find(attribute => attribute.name === 'expansion')!;
+
+                expect(expansion.nestedAttributes?.map(attribute => attribute.name)).toEqual(['for_each', 'count']);
+                expect(expansion.description).toContain('block-iteration');
+                expect(expansion.description).toContain('1,000,000');
+                expect(expansion.nestedAttributes?.find(attribute => attribute.name === 'for_each')?.description).toContain('each.value');
+                expect(expansion.nestedAttributes?.find(attribute => attribute.name === 'count')).toMatchObject({
+                    type: 'number',
+                    description: expect.stringContaining('count.index'),
+                });
+            });
         });
 
         describe('generate block', () => {
@@ -587,10 +617,25 @@ describe('HCLBlocksManager', () => {
                 expect(contents?.required).toBe(true);
             });
 
-            it.each(['if_disabled', 'disable'])('should have current %s attribute', attributeName => {
+            it.each(['if_disabled', 'disable', 'hcl_fmt', 'mutable'])('should have current %s attribute', attributeName => {
                 const block = manager.getBlock('generate')!;
 
                 expect(block.attributes.some(attribute => attribute.name === attributeName)).toBe(true);
+            });
+
+            it('should document mutable generation behavior', () => {
+                const block = manager.getBlock('generate')!;
+                const hclFmt = block.attributes.find(attribute => attribute.name === 'hcl_fmt')!;
+                const mutable = block.attributes.find(attribute => attribute.name === 'mutable')!;
+
+                expect(hclFmt.type).toBe('boolean');
+                expect(hclFmt.defaultValue).toBe('true for .hcl, .tf, and .tofu files; false otherwise');
+                expect(hclFmt.description).toContain('.tofu');
+                expect(hclFmt.description).toContain('mutable-generate');
+                expect(mutable.type).toBe('boolean');
+                expect(mutable.defaultValue).toBe(false);
+                expect(mutable.description).toContain('CAS hard link');
+                expect(mutable.description).toContain('mutable-generate');
             });
         });
 
@@ -629,6 +674,20 @@ describe('HCLBlocksManager', () => {
                 const block = manager.getBlock(blockName)!;
 
                 expect(block.attributes.some(attribute => attribute.name === 'autoinclude')).toBe(true);
+            });
+
+            it.each(['unit', 'stack'])('should document iteration and CAS fields inside %s', blockName => {
+                const block = manager.getBlock(blockName)!;
+                const attributeNames = block.attributes.map(attribute => attribute.name);
+                const expansion = block.attributes.find(attribute => attribute.name === 'expansion')!;
+
+                expect(attributeNames).toEqual(expect.arrayContaining(['enabled', 'update_source_with_cas', 'mutable', 'expansion']));
+                expect(expansion.nestedAttributes?.map(attribute => attribute.name)).toEqual(['for_each', 'count']);
+                expect(expansion.description).toContain('block-iteration');
+                expect(block.attributes.find(attribute => attribute.name === 'source')?.description).toContain('oci://');
+                expect(block.attributes.find(attribute => attribute.name === 'enabled')).toMatchObject({ type: 'boolean', defaultValue: true });
+                expect(block.attributes.find(attribute => attribute.name === 'update_source_with_cas')).toMatchObject({ type: 'boolean', defaultValue: false });
+                expect(block.attributes.find(attribute => attribute.name === 'mutable')).toMatchObject({ type: 'boolean', defaultValue: false });
             });
         });
     });
