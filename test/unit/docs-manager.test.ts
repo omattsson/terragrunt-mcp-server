@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi, beforeAll, afterAll } from 'vitest';
 import { TerragruntDocsManager, TerragruntDoc, SECTION_MAP, slugifyTitle } from '../../src/terragrunt/docs.js';
+import { TERRAGRUNT_DOC_MANIFEST } from '../../src/terragrunt/docs-manifest.js';
 
 // Mock node-fetch
 vi.mock('node-fetch');
@@ -880,28 +881,81 @@ terraform {
       expect(docs[1].content).toBe('Some content.');
     });
 
-    it('should handle duplicate titles by appending counter to slug', () => {
+    it('should map duplicate titles to their canonical source pages', () => {
       const markdown = [
         '# Overview',
         '',
-        'First overview content.',
+        '> Get a high level overview of the most important Terragrunt features.',
+        '',
+        'Getting started content.',
         '',
         '# Overview',
         '',
-        'Second overview content.',
+        '> Overview of the Terralith to Terragrunt guide',
+        '',
+        'Migration guide content.',
         '',
         '# Overview',
         '',
-        'Third overview content.',
+        '> Learn how the Terragrunt CLI works',
+        '',
+        'CLI reference content.',
       ].join('\n');
 
       const docs = manager.parseLlmsMarkdown(markdown);
 
       expect(docs).toHaveLength(3);
-      // All titled "Overview" but with unique URLs
-      expect(docs[0].url).toContain('/overview/');
-      expect(docs[1].url).toContain('/overview-2/');
-      expect(docs[2].url).toContain('/overview-3/');
+      expect(docs.map(doc => ({ section: doc.section, url: doc.url }))).toEqual([
+        {
+          section: 'getting-started',
+          url: 'https://docs.terragrunt.com/getting-started/overview/',
+        },
+        {
+          section: 'guides',
+          url: 'https://docs.terragrunt.com/guides/terralith-to-terragrunt/overview/',
+        },
+        {
+          section: 'reference',
+          url: 'https://docs.terragrunt.com/reference/cli/',
+        },
+      ]);
+      expect(new Set(docs.map(doc => doc.url)).size).toBe(3);
+      expect(docs.every(doc => !doc.url.includes('overview-'))).toBe(true);
+    });
+
+    it('should apply canonical metadata to the complete upstream inventory', () => {
+      const markdown = [...TERRAGRUNT_DOC_MANIFEST]
+        .reverse()
+        .map(([title, , description]) => [
+          `# ${title}`,
+          description ? `> ${description}` : undefined,
+          `Content for ${title}.`,
+        ].filter(Boolean).join('\n\n'))
+        .join('\n\n');
+
+      const docs = manager.parseLlmsMarkdown(markdown);
+
+      expect(docs).toHaveLength(TERRAGRUNT_DOC_MANIFEST.length);
+      expect(docs.map(doc => new URL(doc.url).pathname)).toEqual(
+        [...TERRAGRUNT_DOC_MANIFEST].reverse().map(([, path]) => path),
+      );
+      expect(docs.map(doc => doc.section)).toEqual(
+        [...TERRAGRUNT_DOC_MANIFEST].reverse().map(([, path]) => path.split('/')[1]),
+      );
+      expect(new Set(docs.map(doc => doc.url)).size).toBe(docs.length);
+    });
+
+    it('should reject canonical metadata when the upstream inventory drifts', () => {
+      const markdown = TERRAGRUNT_DOC_MANIFEST
+        .map(([title], index) => `# ${index === 4 ? 'Changed Page' : title}\n\nContent.`)
+        .join('\n\n');
+
+      const docs = manager.parseLlmsMarkdown(markdown);
+
+      expect(docs[4].url).toBe('https://docs.terragrunt.com/features/changed-page/');
+      expect(docs[4].url).not.toBe(
+        `https://docs.terragrunt.com${TERRAGRUNT_DOC_MANIFEST[4][1]}`,
+      );
     });
 
     it('should not split on ## or ### headers', () => {
@@ -997,7 +1051,7 @@ terraform {
 
       expect(docs[1].title).toBe('Authentication');
       expect(docs[1].section).toBe('features');
-      expect(docs[1].url).toBe('https://docs.terragrunt.com/features/authentication/');
+      expect(docs[1].url).toBe('https://docs.terragrunt.com/features/units/authentication/');
       expect(docs[1].content).toContain('```hcl');
       expect(docs[1].content).toContain('iam_role');
     });
