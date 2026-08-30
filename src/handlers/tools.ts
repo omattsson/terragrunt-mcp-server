@@ -596,7 +596,7 @@ export class ToolHandler {
             },
             {
                 name: 'get_hcl_config_reference',
-                description: 'Get Terragrunt HCL block documentation with syntax and examples. Blocks: remote_state, dependency, dependencies, generate, terraform, inputs, include, locals.',
+                description: 'Get current Terragrunt HCL block and attribute documentation with syntax and examples, including stacks, feature flags, exclusions, error handling, catalogs, and engines.',
                 inputSchema: {
                     type: 'object',
                     properties: {
@@ -1504,7 +1504,7 @@ export class ToolHandler {
             return {
                 config,
                 error: `No HCL configuration documentation found for: ${config}`,
-                suggestion: 'Use listBlocks=true to see all available HCL blocks, or try one of these common blocks: terraform, remote_state, locals, inputs, include, dependency, generate',
+                suggestion: 'Use listBlocks=true to see all available HCL definitions, or try: terraform, remote_state, include, dependency, feature, exclude, errors, unit, or stack',
                 availableBlocks: this.hclBlocksManager!.listBlocks().map(b => b.name)
             };
         }

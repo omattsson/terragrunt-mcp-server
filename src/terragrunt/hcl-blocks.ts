@@ -44,6 +44,27 @@ const HCL_BLOCKS: HCLBlock[] = [
         example: '["*.json", "templates/**/*.tpl"]',
       },
       {
+        name: 'exclude_from_copy',
+        type: 'list',
+        required: false,
+        description: 'List of glob patterns to exclude when copying the working directory into the Terraform source.',
+        example: '["*.tmp", ".cache/**"]',
+      },
+      {
+        name: 'copy_terraform_lock_file',
+        type: 'boolean',
+        required: false,
+        description: 'Copy .terraform.lock.hcl from the temporary working directory back to the Terragrunt working directory.',
+        defaultValue: true,
+      },
+      {
+        name: 'mutable',
+        type: 'boolean',
+        required: false,
+        description: 'Make source content materialized from the experimental content-addressable store writable.',
+        defaultValue: false,
+      },
+      {
         name: 'extra_arguments',
         type: 'block',
         required: false,
@@ -156,6 +177,12 @@ const HCL_BLOCKS: HCLBlock[] = [
         required: true,
         description: 'Backend-specific configuration options.',
         example: '{ bucket = "my-terraform-state", key = "terraform.tfstate", region = "us-east-1" }',
+      },
+      {
+        name: 'encryption',
+        type: 'map',
+        required: false,
+        description: 'OpenTofu state and plan encryption configuration, transformed into the generated terraform encryption block.',
       },
       {
         name: 'generate',
@@ -505,6 +532,188 @@ inputs = {
     relatedBlocks: ['dependency'],
     docsUrl: 'https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/#dependencies',
   },
+  {
+    name: 'catalog',
+    displayName: 'Catalog Block',
+    description: 'Configures module catalogs and Boilerplate template behavior for the catalog and scaffold commands.',
+    category: 'modules',
+    syntax: 'catalog { ... }',
+    attributes: [
+      {
+        name: 'urls',
+        type: 'list',
+        required: true,
+        description: 'Local or remote module catalog locations. Relative paths are resolved from the configuration file.',
+        example: '["github.com/acme/infrastructure-modules"]',
+      },
+      {
+        name: 'default_template',
+        type: 'string',
+        required: false,
+        description: 'Default Boilerplate template used when a selected module does not provide one.',
+        example: '"github.com/acme/templates//terragrunt"',
+      },
+      {
+        name: 'no_shell',
+        type: 'boolean',
+        required: false,
+        description: 'Disable shell command execution in Boilerplate templates.',
+        defaultValue: false,
+      },
+      {
+        name: 'no_hooks',
+        type: 'boolean',
+        required: false,
+        description: 'Disable hook execution in Boilerplate templates.',
+        defaultValue: false,
+      },
+    ],
+    examples: [
+      {
+        description: 'Configure a secure module catalog',
+        code: `catalog {
+  urls = [
+    "github.com/acme/infrastructure-modules",
+  ]
+  default_template = "github.com/acme/templates//terragrunt"
+  no_shell         = true
+  no_hooks         = true
+}`,
+      },
+    ],
+    relatedBlocks: ['unit', 'stack'],
+    docsUrl: 'https://docs.terragrunt.com/reference/hcl/blocks/#catalog',
+  },
+  {
+    name: 'unit',
+    displayName: 'Unit Block',
+    description: 'Defines one deployable infrastructure unit in a terragrunt.stack.hcl file.',
+    category: 'modules',
+    syntax: 'unit "<name>" { ... }',
+    requiresLabel: true,
+    allowMultiple: true,
+    attributes: [
+      {
+        name: 'source',
+        type: 'string',
+        required: true,
+        description: 'Source containing the Terragrunt configuration for the unit.',
+        example: '"git::git@github.com:acme/units.git//vpc?ref=v1.0.0"',
+      },
+      {
+        name: 'path',
+        type: 'string',
+        required: true,
+        description: 'Path where the unit is generated within the stack.',
+        example: '"vpc"',
+      },
+      {
+        name: 'values',
+        type: 'map',
+        required: false,
+        description: 'Values written to terragrunt.values.hcl for the generated unit.',
+      },
+      {
+        name: 'autoinclude',
+        type: 'block',
+        required: false,
+        description: 'Content generated into terragrunt.autoinclude.hcl after unit and stack paths are available for evaluation.',
+      },
+      {
+        name: 'no_dot_terragrunt_stack',
+        type: 'boolean',
+        required: false,
+        description: 'Generate beside terragrunt.stack.hcl instead of under .terragrunt-stack.',
+        defaultValue: false,
+      },
+      {
+        name: 'no_validation',
+        type: 'boolean',
+        required: false,
+        description: 'Skip validation of the generated unit configuration.',
+        defaultValue: false,
+      },
+    ],
+    examples: [
+      {
+        description: 'Define a VPC unit',
+        code: `unit "vpc" {
+  source = "git::git@github.com:acme/units.git//vpc?ref=v1.0.0"
+  path   = "vpc"
+  values = {
+    cidr = "10.0.0.0/16"
+  }
+}`,
+      },
+    ],
+    relatedBlocks: ['stack'],
+    docsUrl: 'https://docs.terragrunt.com/reference/hcl/blocks/#unit',
+  },
+  {
+    name: 'stack',
+    displayName: 'Stack Block',
+    description: 'Defines a reusable, nestable collection of units in a terragrunt.stack.hcl file.',
+    category: 'modules',
+    syntax: 'stack "<name>" { ... }',
+    requiresLabel: true,
+    allowMultiple: true,
+    attributes: [
+      {
+        name: 'source',
+        type: 'string',
+        required: true,
+        description: 'Source containing the nested terragrunt.stack.hcl configuration.',
+        example: '"github.com/acme/stacks//services?ref=v1.0.0"',
+      },
+      {
+        name: 'path',
+        type: 'string',
+        required: true,
+        description: 'Relative or absolute path where the nested stack is generated.',
+        example: '"services"',
+      },
+      {
+        name: 'values',
+        type: 'map',
+        required: false,
+        description: 'Values made available to the generated stack through terragrunt.values.hcl.',
+      },
+      {
+        name: 'autoinclude',
+        type: 'block',
+        required: false,
+        description: 'Unit and stack content generated into terragrunt.autoinclude.stack.hcl after component paths are available.',
+      },
+      {
+        name: 'no_dot_terragrunt_stack',
+        type: 'boolean',
+        required: false,
+        description: 'Generate beside terragrunt.stack.hcl instead of under .terragrunt-stack.',
+        defaultValue: false,
+      },
+      {
+        name: 'no_validation',
+        type: 'boolean',
+        required: false,
+        description: 'Skip validation of the generated stack configuration.',
+        defaultValue: false,
+      },
+    ],
+    examples: [
+      {
+        description: 'Define a reusable services stack',
+        code: `stack "services" {
+  source = "github.com/acme/stacks//services?ref=v1.0.0"
+  path   = "services"
+  values = {
+    environment = "dev"
+  }
+}`,
+      },
+    ],
+    relatedBlocks: ['unit'],
+    docsUrl: 'https://docs.terragrunt.com/reference/hcl/blocks/#stack',
+  },
 
   // ============================================================================
   // GENERATION BLOCKS
@@ -534,6 +743,14 @@ inputs = {
         defaultValue: 'overwrite_terragrunt',
       },
       {
+        name: 'if_disabled',
+        type: 'string',
+        required: false,
+        description: 'What to do with an existing file when this generate block is disabled.',
+        validValues: ['remove', 'remove_terragrunt', 'skip'],
+        defaultValue: 'skip',
+      },
+      {
         name: 'contents',
         type: 'string',
         required: true,
@@ -552,6 +769,13 @@ inputs = {
         type: 'boolean',
         required: false,
         description: 'Disable the "Generated by Terragrunt" signature in the file.',
+        defaultValue: false,
+      },
+      {
+        name: 'disable',
+        type: 'boolean',
+        required: false,
+        description: 'Disable this generate block and apply its if_disabled behavior.',
         defaultValue: false,
       },
     ],
@@ -603,33 +827,86 @@ EOF
   // EXECUTION CONTROL
   // ============================================================================
   {
-    name: 'skip',
-    displayName: 'Skip Attribute',
-    description: 'When set to true, Terragrunt will skip this module during run-all commands. Useful for temporarily disabling modules or for modules that should only run under certain conditions.',
+    name: 'feature',
+    displayName: 'Feature Block',
+    description: 'Defines a named feature flag whose value can be overridden with the --feature CLI option or TG_FEATURE environment variable.',
     category: 'execution',
-    syntax: 'skip = <boolean>',
+    syntax: 'feature "<name>" { ... }',
+    requiresLabel: true,
+    allowMultiple: true,
     attributes: [
       {
-        name: 'skip',
+        name: 'default',
+        type: 'any',
+        required: true,
+        description: 'Default feature value. The expression is evaluated dynamically and exposed as feature.<name>.value.',
+        example: 'false',
+      },
+    ],
+    examples: [
+      {
+        description: 'Control behavior with a feature flag',
+        code: `feature "deploy" {
+  default = false
+}
+
+exclude {
+  if      = !feature.deploy.value
+  actions = ["apply"]
+}`,
+      },
+    ],
+    relatedBlocks: ['exclude', 'terraform'],
+    docsUrl: 'https://docs.terragrunt.com/reference/hcl/blocks/#feature',
+  },
+  {
+    name: 'exclude',
+    displayName: 'Exclude Block',
+    description: 'Conditionally excludes a unit from selected actions. This replaces the removed top-level skip attribute with action-aware control.',
+    category: 'execution',
+    syntax: 'exclude { ... }',
+    attributes: [
+      {
+        name: 'if',
+        type: 'boolean',
+        required: true,
+        description: 'Condition that determines whether exclusion is active.',
+        example: 'feature.deploy.value == false',
+      },
+      {
+        name: 'actions',
+        type: 'list',
+        required: true,
+        description: 'Actions to exclude, including individual commands, all, or all_except_output.',
+        example: '["plan", "apply"]',
+      },
+      {
+        name: 'exclude_dependencies',
         type: 'boolean',
         required: false,
-        description: 'Whether to skip this module.',
+        description: 'Whether dependencies of the excluded unit should also be excluded.',
+        defaultValue: false,
+      },
+      {
+        name: 'no_run',
+        type: 'boolean',
+        required: false,
+        description: 'Prevent matching single-unit commands from running. This is ignored by run --all.',
         defaultValue: false,
       },
     ],
     examples: [
       {
-        description: 'Conditionally skip based on environment',
-        code: `skip = local.environment == "development"`,
-      },
-      {
-        description: 'Skip deprecated module',
-        code: `# This module is deprecated, skip it
-skip = true`,
+        description: 'Exclude apply in development',
+        code: `exclude {
+  if                   = get_env("ENVIRONMENT", "dev") == "dev"
+  actions              = ["apply"]
+  exclude_dependencies = false
+}`,
       },
     ],
-    relatedBlocks: ['prevent_destroy'],
-    docsUrl: 'https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/#skip',
+    relatedBlocks: ['feature', 'prevent_destroy'],
+    docsUrl: 'https://docs.terragrunt.com/reference/hcl/blocks/#exclude',
   },
   {
     name: 'prevent_destroy',
@@ -657,84 +934,58 @@ skip = true`,
 prevent_destroy = true`,
       },
     ],
-    relatedBlocks: ['skip'],
+    relatedBlocks: ['exclude'],
     docsUrl: 'https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/#prevent_destroy',
   },
   {
-    name: 'retryable_errors',
-    displayName: 'Retryable Errors Attribute',
-    description: 'List of regex patterns for errors that should trigger automatic retry. Useful for handling transient errors like rate limiting or network issues.',
+    name: 'errors',
+    displayName: 'Errors Block',
+    description: 'Configures named retry and ignore strategies. This replaces the removed top-level retryable_errors, retry_max_attempts, and retry_sleep_interval_sec attributes.',
     category: 'execution',
-    syntax: 'retryable_errors = [...]',
+    syntax: 'errors { ... }',
     attributes: [
       {
-        name: 'retryable_errors',
-        type: 'list',
+        name: 'retry',
+        type: 'block',
         required: false,
-        description: 'Regex patterns for errors that should be retried.',
-        example: '[".*RequestLimitExceeded.*"]',
+        description: 'Named retry strategy for matching transient errors.',
+        nestedAttributes: [
+          { name: 'retryable_errors', type: 'list', required: true, description: 'Regex patterns eligible for retry.', example: '[".*timeout.*"]' },
+          { name: 'max_attempts', type: 'number', required: true, description: 'Maximum number of attempts.', example: '3' },
+          { name: 'sleep_interval_sec', type: 'number', required: true, description: 'Delay between attempts in seconds.', example: '5' },
+        ],
+      },
+      {
+        name: 'ignore',
+        type: 'block',
+        required: false,
+        description: 'Named strategy for ignoring known safe errors.',
+        nestedAttributes: [
+          { name: 'ignorable_errors', type: 'list', required: true, description: 'Regex patterns eligible to be ignored.', example: '[".*safe warning.*"]' },
+          { name: 'message', type: 'string', required: false, description: 'Warning displayed when the error is ignored.' },
+          { name: 'signals', type: 'map', required: false, description: 'Values emitted to error-signals.json when a matching failure occurs.' },
+        ],
       },
     ],
     examples: [
       {
-        description: 'Retry AWS rate limiting errors',
-        code: `retryable_errors = [
-  ".*RequestLimitExceeded.*",
-  ".*Throttling.*",
-  ".*rate exceeded.*"
-]`,
+        description: 'Retry transient errors and ignore a known warning',
+        code: `errors {
+  retry "transient" {
+    retryable_errors   = [".*timeout.*"]
+    max_attempts       = 3
+    sleep_interval_sec = 5
+  }
+
+  ignore "safe_warning" {
+    ignorable_errors = [".*safe warning.*"]
+    message          = "Ignoring known safe warning"
+  }
+}`,
       },
     ],
-    relatedBlocks: ['retry_max_attempts', 'retry_sleep_interval_sec'],
-    docsUrl: 'https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/#retryable_errors',
-  },
-  {
-    name: 'retry_max_attempts',
-    displayName: 'Retry Max Attempts Attribute',
-    description: 'Maximum number of retry attempts for retryable errors. Works in conjunction with retryable_errors.',
-    category: 'execution',
-    syntax: 'retry_max_attempts = <number>',
-    attributes: [
-      {
-        name: 'retry_max_attempts',
-        type: 'number',
-        required: false,
-        description: 'Maximum number of retry attempts.',
-        defaultValue: 3,
-      },
-    ],
-    examples: [
-      {
-        description: 'Set maximum retry attempts',
-        code: `retry_max_attempts = 5`,
-      },
-    ],
-    relatedBlocks: ['retryable_errors', 'retry_sleep_interval_sec'],
-    docsUrl: 'https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/#retry_max_attempts',
-  },
-  {
-    name: 'retry_sleep_interval_sec',
-    displayName: 'Retry Sleep Interval Attribute',
-    description: 'Number of seconds to wait between retry attempts. Works in conjunction with retryable_errors.',
-    category: 'execution',
-    syntax: 'retry_sleep_interval_sec = <number>',
-    attributes: [
-      {
-        name: 'retry_sleep_interval_sec',
-        type: 'number',
-        required: false,
-        description: 'Seconds to wait between retries.',
-        defaultValue: 5,
-      },
-    ],
-    examples: [
-      {
-        description: 'Configure retry interval',
-        code: `retry_sleep_interval_sec = 30`,
-      },
-    ],
-    relatedBlocks: ['retryable_errors', 'retry_max_attempts'],
-    docsUrl: 'https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/#retry_sleep_interval_sec',
+    relatedBlocks: ['terraform'],
+    docsUrl: 'https://docs.terragrunt.com/reference/hcl/blocks/#errors',
   },
 
   // ============================================================================
@@ -841,6 +1092,52 @@ prevent_destroy = true`,
   // TERRAFORM CONFIGURATION
   // ============================================================================
   {
+    name: 'engine',
+    displayName: 'Engine Block',
+    description: 'Configures an experimental IaC engine that controls how Terragrunt executes infrastructure updates.',
+    category: 'terraform',
+    syntax: 'engine { ... }',
+    attributes: [
+      {
+        name: 'source',
+        type: 'string',
+        required: true,
+        description: 'Source of the Terragrunt engine implementation.',
+        example: '"github.com/gruntwork-io/terragrunt-engine-opentofu"',
+      },
+      {
+        name: 'version',
+        type: 'string',
+        required: false,
+        description: 'Version of the engine implementation to use.',
+        example: '"v0.1.0"',
+      },
+      {
+        name: 'type',
+        type: 'string',
+        required: false,
+        description: 'Engine type understood by the selected implementation.',
+      },
+      {
+        name: 'meta',
+        type: 'any',
+        required: false,
+        description: 'Engine-specific metadata passed to the implementation.',
+      },
+    ],
+    examples: [
+      {
+        description: 'Use the experimental OpenTofu engine',
+        code: `engine {
+  source  = "github.com/gruntwork-io/terragrunt-engine-opentofu"
+  version = "v0.1.0"
+}`,
+      },
+    ],
+    relatedBlocks: ['terraform'],
+    docsUrl: 'https://docs.terragrunt.com/reference/hcl/blocks/#engine',
+  },
+  {
     name: 'terraform_binary',
     displayName: 'Terraform Binary Attribute',
     description: 'Path to a custom Terraform binary. Useful when you need to use a specific version or a wrapper like Terraform Enterprise CLI.',
@@ -896,6 +1193,30 @@ prevent_destroy = true`,
     ],
     relatedBlocks: ['terraform_binary'],
     docsUrl: 'https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/#terraform_version_constraint',
+  },
+  {
+    name: 'terragrunt_version_constraint',
+    displayName: 'Terragrunt Version Constraint Attribute',
+    description: 'Restricts which Terragrunt CLI versions may use the configuration. Terragrunt exits when its version does not satisfy the constraint.',
+    category: 'terraform',
+    syntax: 'terragrunt_version_constraint = "<constraint>"',
+    attributes: [
+      {
+        name: 'terragrunt_version_constraint',
+        type: 'string',
+        required: false,
+        description: 'Terragrunt version constraint using semantic version constraint syntax.',
+        example: '">= 0.23"',
+      },
+    ],
+    examples: [
+      {
+        description: 'Require a minimum Terragrunt version',
+        code: `terragrunt_version_constraint = ">= 0.23"`,
+      },
+    ],
+    relatedBlocks: ['terraform_version_constraint'],
+    docsUrl: 'https://docs.terragrunt.com/reference/hcl/attributes/#terragrunt_version_constraint',
   },
   {
     name: 'download_dir',

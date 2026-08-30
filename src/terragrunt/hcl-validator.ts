@@ -49,6 +49,10 @@ export function validateHCL(config: string): HCLValidationResult {
   const interpolationErrors = checkInterpolationSyntax(config);
   errors.push(...interpolationErrors);
 
+  // Reject attributes removed in Terragrunt 1.0 while allowing their nested replacements.
+  const removedAttributeErrors = checkRemovedTopLevelAttributes(config);
+  errors.push(...removedAttributeErrors);
+
   // Check basic formatting (indentation consistency)
   const formattingWarnings = checkFormatting(config);
   warnings.push(...formattingWarnings);
@@ -419,16 +423,22 @@ function checkHCLStructure(config: string): string[] {
         'generate',
         'dependency',
         'dependencies',
-        'inputs',
         'locals',
         'include',
+        'catalog',
+        'engine',
+        'feature',
+        'exclude',
+        'errors',
+        'unit',
+        'stack',
+        'autoinclude',
+        'extra_arguments',
         'before_hook',
         'after_hook',
-        'retryable_errors',
-        'download_dir',
-        'iam_role',
-        'iam_assume_role_duration',
-        'iam_assume_role_session_name',
+        'error_hook',
+        'retry',
+        'ignore',
       ];
 
       if (!validBlocks.includes(blockName) && !blockName.startsWith('before_hook') && !blockName.startsWith('after_hook')) {
@@ -438,4 +448,77 @@ function checkHCLStructure(config: string): string[] {
   }
 
   return warnings;
+}
+
+/**
+ * Reject attributes removed from the top level in Terragrunt 1.0.
+ * Nested retryable_errors remains valid inside errors.retry blocks.
+ */
+function checkRemovedTopLevelAttributes(config: string): string[] {
+  const errors: string[] = [];
+  const replacements: Record<string, string> = {
+    skip: 'exclude block',
+    retryable_errors: 'errors.retry block',
+    retry_max_attempts: 'errors.retry.max_attempts',
+    retry_sleep_interval_sec: 'errors.retry.sleep_interval_sec',
+  };
+  let braceDepth = 0;
+  let heredocDelimiter: string | null = null;
+
+  for (const [index, sourceLine] of config.split('\n').entries()) {
+    const line = sourceLine.trim();
+
+    if (heredocDelimiter) {
+      if (line === heredocDelimiter) {
+        heredocDelimiter = null;
+      }
+      continue;
+    }
+
+    if (braceDepth === 0) {
+      const attributeMatch = line.match(/^([a-zA-Z_][a-zA-Z0-9_]*)\s*=/);
+      const replacement = attributeMatch ? replacements[attributeMatch[1]] : undefined;
+      if (attributeMatch && replacement) {
+        errors.push(`Line ${index + 1}: '${attributeMatch[1]}' was removed in Terragrunt 1.0; use the ${replacement} instead`);
+      }
+    }
+
+    let inString = false;
+    let stringChar: string | null = null;
+    let escaped = false;
+    for (let column = 0; column < sourceLine.length; column++) {
+      const char = sourceLine[column];
+      const nextChar = sourceLine[column + 1] ?? '';
+
+      if (escaped) {
+        escaped = false;
+        continue;
+      }
+      if (char === '\\' && inString) {
+        escaped = true;
+        continue;
+      }
+      if (char === '"' || char === "'") {
+        if (!inString) {
+          inString = true;
+          stringChar = char;
+        } else if (char === stringChar) {
+          inString = false;
+          stringChar = null;
+        }
+        continue;
+      }
+      if (inString) continue;
+      if (char === '#' || (char === '/' && nextChar === '/')) break;
+      const heredocMatch = sourceLine.slice(column).match(/^<<-?\s*([a-zA-Z_][a-zA-Z0-9_-]*)/);
+      if (heredocMatch) {
+        heredocDelimiter = heredocMatch[1];
+        break;
+      }
+      if (char === '{') braceDepth++;
+      if (char === '}') braceDepth = Math.max(0, braceDepth - 1);
+    }
+  }
+
+  return errors;
 }

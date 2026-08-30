@@ -356,15 +356,52 @@ describe('HCLBlocksManager', () => {
     });
 
     describe('getBlockCount', () => {
-        it('should return total number of blocks', () => {
-            const count = manager.getBlockCount();
-            expect(count).toBeGreaterThan(10);
+        it('should match the current Terragrunt block and attribute inventory', () => {
+            const expectedNames = [
+                'terraform',
+                'remote_state',
+                'include',
+                'locals',
+                'dependency',
+                'dependencies',
+                'generate',
+                'catalog',
+                'engine',
+                'feature',
+                'exclude',
+                'errors',
+                'unit',
+                'stack',
+                'inputs',
+                'download_dir',
+                'prevent_destroy',
+                'iam_role',
+                'iam_assume_role_duration',
+                'iam_assume_role_session_name',
+                'iam_web_identity_token',
+                'terraform_binary',
+                'terraform_version_constraint',
+                'terragrunt_version_constraint',
+            ];
+            const actualNames = manager.listBlocks().map(block => block.name);
+
+            expect(actualNames).toHaveLength(expectedNames.length);
+            expect(actualNames).toEqual(expect.arrayContaining(expectedNames));
         });
 
         it('should match listBlocks length', () => {
             const count = manager.getBlockCount();
             const blocks = manager.listBlocks();
             expect(count).toBe(blocks.length);
+        });
+
+        it.each([
+            'skip',
+            'retryable_errors',
+            'retry_max_attempts',
+            'retry_sleep_interval_sec',
+        ])('should not expose removed top-level %s attribute', attribute => {
+            expect(manager.getBlock(attribute)).toBeNull();
         });
     });
 
@@ -435,6 +472,12 @@ describe('HCLBlocksManager', () => {
                 expect(extraArgs?.nestedAttributes).toBeDefined();
             });
 
+            it.each(['exclude_from_copy', 'copy_terraform_lock_file', 'mutable'])('should have current %s attribute', attributeName => {
+                const block = manager.getBlock('terraform')!;
+
+                expect(block.attributes.some(attribute => attribute.name === attributeName)).toBe(true);
+            });
+
             it('should have before_hook nested block', () => {
                 const block = manager.getBlock('terraform')!;
                 const hook = block.attributes.find(a => a.name === 'before_hook');
@@ -472,6 +515,12 @@ describe('HCLBlocksManager', () => {
                 
                 expect(generate).toBeDefined();
                 expect(generate?.nestedAttributes).toBeDefined();
+            });
+
+            it('should have encryption attribute', () => {
+                const block = manager.getBlock('remote_state')!;
+
+                expect(block.attributes.some(attribute => attribute.name === 'encryption')).toBe(true);
             });
         });
 
@@ -536,6 +585,50 @@ describe('HCLBlocksManager', () => {
                 
                 expect(contents).toBeDefined();
                 expect(contents?.required).toBe(true);
+            });
+
+            it.each(['if_disabled', 'disable'])('should have current %s attribute', attributeName => {
+                const block = manager.getBlock('generate')!;
+
+                expect(block.attributes.some(attribute => attribute.name === attributeName)).toBe(true);
+            });
+        });
+
+        describe('current Terragrunt blocks', () => {
+            it.each([
+                ['catalog', 'urls'],
+                ['engine', 'source'],
+                ['feature', 'default'],
+                ['exclude', 'if'],
+                ['errors', 'retry'],
+                ['unit', 'source'],
+                ['stack', 'source'],
+                ['terragrunt_version_constraint', 'terragrunt_version_constraint'],
+            ])('should expose %s with its primary attribute', (blockName, attributeName) => {
+                const block = manager.getBlock(blockName);
+
+                expect(block).not.toBeNull();
+                expect(block?.attributes.some(attribute => attribute.name === attributeName)).toBe(true);
+            });
+
+            it('should document retryable_errors only inside errors.retry', () => {
+                const errorsBlock = manager.getBlock('errors')!;
+                const retryBlock = errorsBlock.attributes.find(attribute => attribute.name === 'retry');
+
+                expect(retryBlock?.nestedAttributes?.some(attribute => attribute.name === 'retryable_errors')).toBe(true);
+            });
+
+            it('should relate prevent_destroy to exclude instead of removed skip', () => {
+                const preventDestroy = manager.getBlock('prevent_destroy')!;
+
+                expect(preventDestroy.relatedBlocks).toContain('exclude');
+                expect(preventDestroy.relatedBlocks).not.toContain('skip');
+            });
+
+            it.each(['unit', 'stack'])('should document autoinclude inside %s', blockName => {
+                const block = manager.getBlock(blockName)!;
+
+                expect(block.attributes.some(attribute => attribute.name === 'autoinclude')).toBe(true);
             });
         });
     });

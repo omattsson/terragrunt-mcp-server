@@ -94,7 +94,7 @@ Get command help OR list commands - unified tool for Terragrunt CLI command docu
 Get documentation for HCL configuration blocks used in `terragrunt.hcl` files.
 
 - **Parameters**:
-  - `config` (string, optional): Block name (e.g., "terraform", "remote_state", "dependency", "inputs", "generate", "locals")
+  - `config` (string, optional): Block or attribute name (e.g., "terraform", "remote_state", "exclude", "errors", "unit", "stack", "terragrunt_version_constraint")
   - `category` (string, optional): Filter blocks by category (`core`, `modules`, `generation`, `execution`, `iam`, `terraform`)
   - `listBlocks` (boolean, optional): List all available HCL blocks (default: false)
 - **Returns**: HCL block documentation with syntax, attributes, examples, and usage patterns
