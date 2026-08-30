@@ -5,6 +5,7 @@ import { fileURLToPath } from 'url';
 import { gzip, gunzip } from 'zlib';
 import { promisify } from 'util';
 import { LRUCache } from 'lru-cache';
+import { TERRAGRUNT_DOC_MANIFEST } from './docs-manifest.js';
 
 const gzipAsync = promisify(gzip);
 const gunzipAsync = promisify(gunzip);
@@ -103,6 +104,19 @@ export const SECTION_MAP: Array<{ pattern: RegExp; section: string; urlPrefix: s
   // Features (catch-all for remaining titles)
   { pattern: /./i, section: 'features', urlPrefix: '/features' },
 ];
+
+const manifestTitleCounts = new Map<string, number>();
+for (const [title] of TERRAGRUNT_DOC_MANIFEST) {
+  manifestTitleCounts.set(title, (manifestTitleCounts.get(title) ?? 0) + 1);
+}
+
+const sourcePaths = new Map<string, string>();
+for (const [title, sourcePath, description] of TERRAGRUNT_DOC_MANIFEST) {
+  const key = manifestTitleCounts.get(title) === 1
+    ? title
+    : `${title}\n${description ?? ''}`;
+  sourcePaths.set(key, sourcePath);
+}
 
 /**
  * Convert a title string to a URL-friendly slug.
@@ -1033,7 +1047,6 @@ export class TerragruntDocsManager {
     }
 
     const sections = sectionChunks.filter(s => s.trim());
-
     const docs: TerragruntDoc[] = [];
     const seenSlugs = new Set<string>();
     const parseTimestamp = new Date().toISOString();
@@ -1048,6 +1061,12 @@ export class TerragruntDocsManager {
       const title = headerMatch[1].trim();
       // Content is everything after the H1 line
       const content = section.slice(headerMatch[0].length).trim();
+      const firstContentLine = content.split('\n').find(line => line.trim());
+      const description = firstContentLine?.match(/^>\s*(.+)$/)?.[1].trim() ?? '';
+      const sourceKey = manifestTitleCounts.get(title) === 1
+        ? title
+        : `${title}\n${description}`;
+      const sourcePath = sourcePaths.get(sourceKey);
 
       // Infer section and URL prefix from SECTION_MAP
       const mapping = this.inferSection(title);
@@ -1064,12 +1083,15 @@ export class TerragruntDocsManager {
       }
       seenSlugs.add(uniqueSlug);
 
-      const url = `${this.baseUrl}${mapping.urlPrefix}/${uniqueSlug}/`;
+      const url = sourcePath
+        ? `${this.baseUrl}${sourcePath}`
+        : `${this.baseUrl}${mapping.urlPrefix}/${uniqueSlug}/`;
+      const canonicalSection = sourcePath?.split('/')[1];
 
       docs.push({
         title,
         content,
-        section: mapping.section,
+        section: canonicalSection ?? mapping.section,
         url,
         lastUpdated: parseTimestamp,
       });
