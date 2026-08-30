@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
+import { readFile } from 'fs/promises';
 import type { TerragruntDoc } from '../../src/terragrunt/docs.js';
 import { 
   TerragruntFunctionsManager, 
@@ -25,8 +26,8 @@ class FailingDocsManager {
 
 describe('STATIC_BUILTIN_FUNCTIONS', () => {
   describe('Static definitions completeness', () => {
-    it('should contain exactly 30 functions', () => {
-      expect(STATIC_BUILTIN_FUNCTIONS.length).toBe(30);
+    it('should contain exactly 32 functions', () => {
+      expect(STATIC_BUILTIN_FUNCTIONS.length).toBe(32);
     });
 
     it('should have unique function names', () => {
@@ -101,15 +102,16 @@ describe('STATIC_BUILTIN_FUNCTIONS', () => {
       }
     });
 
-    it('should have all expected file functions (4)', () => {
+    it('should have all expected file functions (5)', () => {
       const fileFunctions = STATIC_BUILTIN_FUNCTIONS.filter(f => f.category === 'file');
-      expect(fileFunctions.length).toBe(4);
+      expect(fileFunctions.length).toBe(5);
       
       const expectedFileFunctions = [
         'read_terragrunt_config',
         'read_tfvars_file',
         'sops_decrypt_file',
-        'mark_as_read'
+        'mark_as_read',
+        'mark_glob_as_read'
       ];
       
       const actualNames = fileFunctions.map(f => f.name);
@@ -124,14 +126,15 @@ describe('STATIC_BUILTIN_FUNCTIONS', () => {
       expect(execFunctions[0].name).toBe('run_cmd');
     });
 
-    it('should have all expected utility functions (3)', () => {
+    it('should have all expected utility functions (4)', () => {
       const utilFunctions = STATIC_BUILTIN_FUNCTIONS.filter(f => f.category === 'utility');
-      expect(utilFunctions.length).toBe(3);
+      expect(utilFunctions.length).toBe(4);
       
       const expectedUtilFunctions = [
         'get_terragrunt_source_cli_flag',
         'get_default_retryable_errors',
-        'constraint_check'
+        'constraint_check',
+        'deep_merge'
       ];
       
       const actualNames = utilFunctions.map(f => f.name);
@@ -236,6 +239,62 @@ describe('STATIC_BUILTIN_FUNCTIONS', () => {
         expect(fn.returnType).toBe('string');
       }
     });
+
+    it('deep_merge documents variadic experimental behavior', () => {
+      const fn = STATIC_BUILTIN_FUNCTIONS.find(f => f.name === 'deep_merge');
+      expect(fn).toBeDefined();
+      expect(fn!.signature).toBe('deep_merge(map1, map2, ...maps)');
+      expect(fn!.parameters).toEqual(expect.arrayContaining([
+        expect.objectContaining({ name: 'map1', required: true }),
+        expect.objectContaining({ name: 'map2', required: true }),
+        expect.objectContaining({ name: 'maps', type: 'map...', required: false }),
+      ]));
+      expect(fn!.returnType).toBe('map');
+      expect(fn!.stability).toBe('experimental');
+      expect(fn!.experiment).toBe('deep-merge');
+      expect(fn!.description).toContain('nested maps merge recursively');
+      expect(fn!.description).toContain('lists append');
+      expect(fn!.description).toContain('null arguments are ignored');
+      expect(fn!.examples.some(example => example.code.includes(']...'))).toBe(true);
+    });
+
+    it('mark_glob_as_read documents stable boundary and queue behavior', () => {
+      const fn = STATIC_BUILTIN_FUNCTIONS.find(f => f.name === 'mark_glob_as_read');
+      expect(fn).toBeDefined();
+      expect(fn!.signature).toBe('mark_glob_as_read([--terragrunt-boundary=<path>], pattern)');
+      expect(fn!.parameters).toEqual([
+        expect.objectContaining({ name: 'boundary', required: false }),
+        expect.objectContaining({ name: 'pattern', required: true }),
+      ]);
+      expect(fn!.returnType).toBe('list(string)');
+      expect(fn!.stability).toBe('stable');
+      expect(fn!.experiment).toBeUndefined();
+      expect(fn!.description).toContain('empty list');
+      expect(fn!.description).toContain('forward slashes');
+      expect(fn!.description).toContain('call it from locals');
+      expect(fn!.description).toContain('Git repository root');
+      expect(fn!.description).toContain('try(...)');
+      expect(fn!.examples.some(example => example.code.includes('--terragrunt-boundary='))).toBe(true);
+    });
+  });
+
+  it('matches the function inventory in the pinned upstream fixture', async () => {
+    const fixtureContent = await readFile(
+      new URL('../../fixtures/terragrunt-docs-fixture.json', import.meta.url),
+      'utf-8'
+    );
+    const docs: TerragruntDoc[] = JSON.parse(fixtureContent);
+    const functionsDoc = docs.find(doc => doc.url.endsWith('/reference/hcl/functions/'));
+    expect(functionsDoc).toBeDefined();
+
+    const structuralHeadings = new Set(['examples', 'boundary']);
+    const documentedNames = [...functionsDoc!.content.matchAll(/## ([a-z0-9_\\]+) \[Section titled/gi)]
+      .map(match => match[1].replaceAll('\\_', '_'))
+      .filter(name => !structuralHeadings.has(name.toLowerCase()))
+      .sort();
+    const staticNames = STATIC_BUILTIN_FUNCTIONS.map(fn => fn.name).sort();
+
+    expect(staticNames).toEqual(documentedNames);
   });
 });
 
@@ -247,15 +306,15 @@ describe('TerragruntFunctionsManager with static functions', () => {
   });
 
   describe('getStaticFunctions()', () => {
-    it('returns all 30 static functions', () => {
+    it('returns all 32 static functions', () => {
       const staticFns = mgr.getStaticFunctions();
-      expect(staticFns.length).toBe(30);
+      expect(staticFns.length).toBe(32);
     });
 
     it('returns a copy, not the original array', () => {
       const staticFns = mgr.getStaticFunctions();
       staticFns.push({} as TerragruntFunction);
-      expect(mgr.getStaticFunctions().length).toBe(30);
+      expect(mgr.getStaticFunctions().length).toBe(32);
     });
   });
 
@@ -264,6 +323,8 @@ describe('TerragruntFunctionsManager with static functions', () => {
       expect(mgr.isStaticFunction('find_in_parent_folders')).toBe(true);
       expect(mgr.isStaticFunction('get_env')).toBe(true);
       expect(mgr.isStaticFunction('run_cmd')).toBe(true);
+      expect(mgr.isStaticFunction('deep_merge')).toBe(true);
+      expect(mgr.isStaticFunction('mark_glob_as_read')).toBe(true);
     });
 
     it('returns true case-insensitively', () => {
@@ -283,10 +344,10 @@ describe('TerragruntFunctionsManager with static functions', () => {
   });
 
   describe('loadFunctions() with static definitions', () => {
-    it('loads all 30 static functions when docs are empty', async () => {
+    it('loads all 32 static functions when docs are empty', async () => {
       await mgr.loadFunctions();
       const functions = mgr.listFunctions();
-      expect(functions.length).toBe(30);
+      expect(functions.length).toBe(32);
     });
 
     it('includes find_in_parent_folders after loading', async () => {
@@ -312,7 +373,9 @@ describe('TerragruntFunctionsManager with static functions', () => {
       const failingMgr = new TerragruntFunctionsManager(new FailingDocsManager() as any);
       await failingMgr.loadFunctions();
       const functions = failingMgr.listFunctions();
-      expect(functions.length).toBe(30);
+      expect(functions.length).toBe(32);
+      expect(failingMgr.getFunction('deep_merge')?.stability).toBe('experimental');
+      expect(failingMgr.getFunction('mark_glob_as_read')?.stability).toBe('stable');
     });
   });
 

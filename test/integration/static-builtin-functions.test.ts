@@ -17,9 +17,9 @@ describe('Static Built-in Functions Integration', () => {
   }, 60000); // Allow time for potential network calls
 
   describe('Complete function coverage', () => {
-    it('should have all 30 built-in functions available', () => {
+    it('should have all 32 built-in functions available', () => {
       const functions = functionsManager.listFunctions();
-      expect(functions.length).toBeGreaterThanOrEqual(30);
+      expect(functions.length).toBeGreaterThanOrEqual(32);
       
       // Verify all static functions are present
       for (const staticFn of STATIC_BUILTIN_FUNCTIONS) {
@@ -141,18 +141,32 @@ describe('Static Built-in Functions Integration', () => {
       expect(fn).not.toBeNull();
       expect(fn!.returnType).toBe('bool');
     });
+
+    it('exposes current deep merge and glob tracking functions', () => {
+      const deepMerge = functionsManager.getFunction('deep_merge');
+      expect(deepMerge).not.toBeNull();
+      expect(deepMerge!.stability).toBe('experimental');
+      expect(deepMerge!.experiment).toBe('deep-merge');
+
+      const markGlobAsRead = functionsManager.getFunction('mark_glob_as_read');
+      expect(markGlobAsRead).not.toBeNull();
+      expect(markGlobAsRead!.stability).toBe('stable');
+      expect(markGlobAsRead!.returnType).toBe('list(string)');
+    });
   });
 
   describe('Static function helpers', () => {
     it('getStaticFunctions returns all static definitions', () => {
       const staticFns = functionsManager.getStaticFunctions();
-      expect(staticFns.length).toBe(30);
+      expect(staticFns.length).toBe(32);
     });
 
     it('isStaticFunction correctly identifies static functions', () => {
       expect(functionsManager.isStaticFunction('find_in_parent_folders')).toBe(true);
       expect(functionsManager.isStaticFunction('get_env')).toBe(true);
       expect(functionsManager.isStaticFunction('run_cmd')).toBe(true);
+      expect(functionsManager.isStaticFunction('deep_merge')).toBe(true);
+      expect(functionsManager.isStaticFunction('mark_glob_as_read')).toBe(true);
       expect(functionsManager.isStaticFunction('nonexistent')).toBe(false);
     });
 
