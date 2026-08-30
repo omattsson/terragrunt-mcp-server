@@ -2,7 +2,7 @@
   "$schema": "../backend-schema.json",
   "id": "s3",
   "name": "AWS S3 Backend",
-  "description": "Stores state as a given key in a given bucket on Amazon S3. This backend also supports state locking and consistency checking via DynamoDB.",
+  "description": "Stores state as a given key in a given bucket on Amazon S3. S3 native lockfile locking is recommended; deprecated DynamoDB locking remains available for compatibility and migration.",
   "provider": "aws",
   "backend": "s3",
   "terraformDocsUrl": "https://developer.hashicorp.com/terraform/language/backend/s3",

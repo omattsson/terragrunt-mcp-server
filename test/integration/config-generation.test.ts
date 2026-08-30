@@ -117,6 +117,77 @@ describe('Config Generation Integration Tests', () => {
       expect(Array.isArray(result.additionalOptions)).toBe(true);
     }, 10000);
 
+    it('should expose S3 native locking and dual-lock migration options', async () => {
+      const nativeLocking = await toolHandler.executeTool('build_config', {
+        useCase: 'remote_state',
+        backend: 's3',
+        options: {
+          bucket: 'test-terraform-state',
+          key: 'terraform.tfstate',
+          region: 'us-east-1',
+          encrypt: true
+        }
+      });
+
+      expect(nativeLocking.success).toBe(true);
+      expect(nativeLocking.config).toContain('use_lockfile = true');
+      expect(nativeLocking.config).not.toContain('dynamodb_table');
+      expect(nativeLocking.nextSteps).toContain('Grant read, write, and delete permissions for the S3 lock file');
+      expect(nativeLocking.nextSteps.join(' ')).not.toContain('DynamoDB');
+
+      const migration = await toolHandler.executeTool('build_config', {
+        useCase: 'remote_state',
+        backend: 's3',
+        options: {
+          bucket: 'test-terraform-state',
+          key: 'terraform.tfstate',
+          region: 'us-east-1',
+          use_lockfile: true,
+          dynamodb_table: 'terraform-locks'
+        }
+      });
+
+      expect(migration.success).toBe(true);
+      expect(migration.config).toContain('use_lockfile = true');
+      expect(migration.config).toContain('dynamodb_table = "terraform-locks"');
+      expect(migration.nextSteps.join(' ')).toContain('S3 lock file');
+      expect(migration.nextSteps.join(' ')).toContain('DynamoDB table');
+      validateNoPlaceholders(migration.config);
+      validateBalancedBraces(migration.config);
+
+      const dynamoOnly = await toolHandler.executeTool('build_config', {
+        useCase: 'remote_state',
+        backend: 's3',
+        options: {
+          bucket: 'test-terraform-state',
+          key: 'terraform.tfstate',
+          region: 'us-east-1',
+          dynamodb_table: 'terraform-locks'
+        }
+      });
+
+      expect(dynamoOnly.success).toBe(true);
+      expect(dynamoOnly.config).toContain('use_lockfile = false');
+      expect(dynamoOnly.nextSteps.join(' ')).not.toContain('S3 lock file');
+      expect(dynamoOnly.nextSteps.join(' ')).toContain('DynamoDB table');
+
+      const lockingDisabled = await toolHandler.executeTool('build_config', {
+        useCase: 'remote_state',
+        backend: 's3',
+        options: {
+          bucket: 'test-terraform-state',
+          key: 'terraform.tfstate',
+          region: 'us-east-1',
+          use_lockfile: false
+        }
+      });
+
+      expect(lockingDisabled.success).toBe(true);
+      expect(lockingDisabled.config).toContain('use_lockfile = false');
+      expect(lockingDisabled.nextSteps.join(' ')).not.toContain('S3 lock file');
+      expect(lockingDisabled.nextSteps.join(' ')).not.toContain('DynamoDB table');
+    }, 10000);
+
     it('should generate complete Azure Blob remote state config', async () => {
       const result = await toolHandler.executeTool('build_config', {
         useCase: 'remote_state',

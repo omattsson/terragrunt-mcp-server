@@ -17,6 +17,8 @@ import { ConfigTemplate, ConfigVariable } from '../types/templates.js';
 export interface TemplateGenerationOptions {
   /** Whether to include deprecated attributes in the template */
   includeDeprecated?: boolean;
+  /** Deprecated attributes that remain supported for migration workflows */
+  includeDeprecatedAttributes?: string[];
   /** Custom template ID prefix (default: schema.id) */
   templateIdPrefix?: string;
   /** Additional tags to add to the template */
@@ -113,8 +115,17 @@ export class SchemaToTemplateGenerator {
     options: TemplateGenerationOptions = {}
   ): ConfigVariable[] {
     return attributes
-      .filter(attr => options.includeDeprecated || !attr.deprecated)
+      .filter(attr => this.shouldIncludeAttribute(attr, options))
       .map(attr => this.mapAttributeToVariable(attr));
+  }
+
+  private shouldIncludeAttribute(
+    attribute: BackendAttribute,
+    options: TemplateGenerationOptions
+  ): boolean {
+    return options.includeDeprecated
+      || !attribute.deprecated
+      || options.includeDeprecatedAttributes?.includes(attribute.name) === true;
   }
 
   /**
@@ -190,9 +201,7 @@ export class SchemaToTemplateGenerator {
    * Generate HCL template with Mustache conditionals
    */
   generateHcl(schema: BackendSchema, options: TemplateGenerationOptions = {}): string {
-    const attributes = options.includeDeprecated
-      ? schema.attributes
-      : schema.attributes.filter(attr => !attr.deprecated);
+    const attributes = schema.attributes.filter(attr => this.shouldIncludeAttribute(attr, options));
 
     const requiredAttrs = attributes.filter(attr => attr.required);
     const optionalAttrs = attributes.filter(attr => !attr.required);

@@ -42,7 +42,7 @@ describe('Advanced Backend Templates', () => {
       const azureAdvanced = await templatesManager.getTemplate('azure-blob-backend-advanced');
       const gcpAdvanced = await templatesManager.getTemplate('gcp-gcs-backend-advanced');
 
-      expect(awsAdvanced?.variables).toHaveLength(12);
+      expect(awsAdvanced?.variables).toHaveLength(13);
       expect(azureAdvanced?.variables).toHaveLength(12);
       expect(gcpAdvanced?.variables).toHaveLength(9);
     });
@@ -960,7 +960,7 @@ describe('Advanced Backend Templates', () => {
       
       expect(template).toBeDefined();
       expect(template?.name).toBe('AWS S3 Remote State Backend');
-      expect(template?.variables).toHaveLength(5);
+      expect(template?.variables).toHaveLength(6);
     });
 
     it('should still load essential Azure template', async () => {

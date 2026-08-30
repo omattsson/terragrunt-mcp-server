@@ -591,11 +591,11 @@ The tool accepts these removed names for migration help. Current Terragrunt does
   - `"hooks"` - Before/after hooks for automation
   - `"inputs"` - Input variables configuration
 - **`backend`** (string, optional): Backend type for `remote_state` use case:
-  - `"s3"` - AWS S3 with DynamoDB locking
+  - `"s3"` - AWS S3 with native lockfile locking
   - `"azurerm"` - Azure Blob Storage with Azure AD
   - `"gcs"` - Google Cloud Storage
 - **`options`** (object, optional): Configuration options (varies by use case):
-  - **For S3**: `bucket`, `key`, `region`, `dynamodb_table`, `encrypt`
+  - **For S3**: `bucket`, `key`, `region`, `use_lockfile`, `dynamodb_table`, `encrypt`. Native `use_lockfile` locking is enabled for new configurations when neither locking option is specified. Deprecated `dynamodb_table` remains available for migration and clients that do not support S3 lockfiles.
   - **For Azure**: `storage_account_name`, `container_name`, `key`, `resource_group_name`
   - **For GCS**: `bucket`, `prefix`, `project`, `credentials`
   - **For hooks**: `name`, `commands`, `execute`, `working_dir`, `run_on_error`
@@ -656,11 +656,10 @@ Generates and writes in one operation. Useful for:
 
 ```json
 {
-  "config": "remote_state {\n  backend = \"s3\"\n  config = {\n    bucket         = \"my-terraform-state\"\n    key            = \"${path_relative_to_include()}/terraform.tfstate\"\n    region         = \"us-east-1\"\n    encrypt        = true\n    dynamodb_table = \"terraform-locks\"\n  }\n}",
-  "explanation": "This configuration sets up AWS S3 as your remote state backend with DynamoDB for state locking. The state file will be stored in the 'my-terraform-state' bucket in us-east-1, with encryption enabled and state locking via the 'terraform-locks' DynamoDB table.",
+  "config": "remote_state {\n  backend = \"s3\"\n  config = {\n    bucket       = \"my-terraform-state\"\n    key          = \"${path_relative_to_include()}/terraform.tfstate\"\n    region       = \"us-east-1\"\n    encrypt      = true\n    use_lockfile = true\n  }\n}",
+  "explanation": "This configuration sets up AWS S3 as your remote state backend with S3 native lockfile locking. The state file will be stored in the 'my-terraform-state' bucket in us-east-1, with encryption enabled.",
   "nextSteps": [
     "Create the S3 bucket: aws s3 mb s3://my-terraform-state",
-    "Create the DynamoDB table: aws dynamodb create-table --table-name terraform-locks ...",
     "Add this configuration to your root terragrunt.hcl",
     "Run terragrunt init to initialize the backend"
   ],
@@ -737,7 +736,7 @@ Single command to generate and write configuration:
       "bucket": "my-terraform-state",
       "region": "us-east-1",
       "key": "terraform.tfstate",
-      "dynamodb_table": "terraform-locks"
+      "use_lockfile": true
     },
     "write": true,
     "path": "/home/user/terraform/terragrunt.hcl"

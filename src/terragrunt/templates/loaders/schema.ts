@@ -10,6 +10,7 @@ import { SchemaToTemplateGenerator } from '../../schema-generator.js';
 import { loadBackendSchema } from '../../schema-loader.js';
 import { readdir } from 'fs/promises';
 import { join } from 'path';
+import { fileURLToPath } from 'url';
 
 /**
  * Load schema-based templates from JSON schema files
@@ -27,7 +28,7 @@ export class SchemaTemplateLoader implements TemplateLoader {
    * @param schemaDir - Directory containing backend schema JSON files (default: schemas/backends)
    */
   constructor(schemaDir?: string) {
-    this.schemaDir = schemaDir || join(process.cwd(), 'schemas', 'backends');
+    this.schemaDir = schemaDir || fileURLToPath(new URL('../../../../schemas/backends', import.meta.url));
     this.generator = new SchemaToTemplateGenerator();
   }
 
@@ -46,7 +47,9 @@ export class SchemaTemplateLoader implements TemplateLoader {
         try {
           const schemaPath = join(this.schemaDir, file);
           const schema = await loadBackendSchema(schemaPath);
-          const template = this.generator.generateTemplate(schema);
+          const template = this.generator.generateTemplate(schema, {
+            includeDeprecatedAttributes: schema.backend === 's3' ? ['dynamodb_table'] : [],
+          });
           
           templates.push(template);
         } catch (error) {

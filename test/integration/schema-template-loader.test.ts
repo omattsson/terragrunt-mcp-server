@@ -27,6 +27,18 @@ describe('SchemaTemplateLoader Integration Tests', () => {
       expect(templates.length).toBeGreaterThan(0);
     });
 
+    it('should load default schemas independently of the working directory', async () => {
+      const originalCwd = process.cwd();
+
+      try {
+        process.chdir('..');
+        const templates = await new SchemaTemplateLoader().loadTemplates();
+        expect(templates).toHaveLength(4);
+      } finally {
+        process.chdir(originalCwd);
+      }
+    });
+
     it('should generate templates with correct structure', async () => {
       const loader = new SchemaTemplateLoader();
       const templates = await loader.loadTemplates();
@@ -223,6 +235,17 @@ describe('SchemaTemplateLoader Integration Tests', () => {
       // Complete templates should have conditional blocks for optional attributes
       const hasConditionals = template?.templateHcl.includes('{{#') && template?.templateHcl.includes('{{/');
       expect(hasConditionals).toBe(true);
+    });
+
+    it('should expose native and migration locking in S3 templates', async () => {
+      const template = await templatesManager.getTemplate('s3');
+
+      expect(template).toBeDefined();
+      expect(template?.variables.map(variable => variable.name)).toEqual(
+        expect.arrayContaining(['use_lockfile', 'dynamodb_table'])
+      );
+      expect(template?.templateHcl).toContain('use_lockfile = {{use_lockfile}}');
+      expect(template?.templateHcl).toContain('dynamodb_table = "{{dynamodb_table}}"');
     });
 
     it('should have variables with correct types', async () => {
