@@ -209,7 +209,7 @@ Common commands tested:
 - Deprecated alias `run-all` ✅
 
 Format variations:
-- **Hyphens in deprecated aliases**: `run-all` ✅
+- **Hyphens in removed command lookup names**: `run-all` ✅
 - **Uppercase**: `PLAN` (may not find, case-sensitive)
 
 **Key Findings**:

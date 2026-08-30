@@ -42,6 +42,9 @@ export class CLICommandsManager {
       for (const alias of cmd.aliases) {
         this.aliasMap.set(this.normalizeCommandName(alias), normalizedName);
       }
+      for (const legacyName of cmd.legacyNames ?? []) {
+        this.aliasMap.set(this.normalizeCommandName(legacyName), normalizedName);
+      }
     }
 
     this.initialized = true;
@@ -91,6 +94,11 @@ export class CLICommandsManager {
       // Alias match
       if (cmd.aliases.some(alias => this.normalizeCommandName(alias) === normalized)) {
         results.push({ command: cmd, score: 0.95, matchType: 'alias' });
+        continue;
+      }
+
+      if (cmd.legacyNames?.some(name => this.normalizeCommandName(name) === normalized)) {
+        results.push({ command: cmd, score: 0.9, matchType: 'legacy' });
         continue;
       }
 
@@ -207,6 +215,14 @@ export class CLICommandsManager {
     if (cmd.aliases.length > 0) {
       lines.push('## Aliases');
       lines.push(cmd.aliases.map(a => `- \`${a}\``).join('\n'));
+      lines.push('');
+    }
+
+    if (cmd.legacyNames && cmd.legacyNames.length > 0) {
+      lines.push('## Removed Command Names');
+      lines.push(cmd.legacyNames.map(name => `- \`${name}\``).join('\n'));
+      lines.push('');
+      lines.push('These names are accepted by this reference tool for migration help, but current Terragrunt does not execute them.');
       lines.push('');
     }
     
@@ -335,7 +351,8 @@ export class CLICommandsManager {
   private getRunCommand(): CLICommand {
     return {
       name: 'run',
-      aliases: ['run-all'],
+      aliases: [],
+      legacyNames: ['run-all'],
       category: 'main',
       description: 'Run one or more Terraform/OpenTofu commands against a single unit or a stack of units.',
       usage: 'terragrunt run [flags] -- [terraform command]',
@@ -363,8 +380,8 @@ dependencies defined in terragrunt.hcl files.`,
           command: 'terragrunt run --all --filter=vpc,database -- plan',
         },
         {
-          description: 'Generate execution graph',
-          command: 'terragrunt run --all --graph -- plan',
+          description: 'Run plan following dependency graph order',
+          command: 'terragrunt run --graph -- plan',
         },
         {
           description: 'Run with parallelism limit',
@@ -392,8 +409,7 @@ dependencies defined in terragrunt.hcl files.`,
       },
       {
         flag: '--graph',
-        shortFlag: '-g',
-        description: 'Generate a visual dependency graph instead of running the command',
+        description: 'Run the command following the dependency DAG. Cannot be combined with --all.',
         type: 'boolean',
         defaultValue: 'false',
       },
@@ -405,7 +421,6 @@ dependencies defined in terragrunt.hcl files.`,
       },
       {
         flag: '--filter',
-        shortFlag: '-f',
         description: 'Filter units and stacks using Terragrunt filter expressions. Repeat the flag to form a union.',
         type: 'list',
         example: '--filter "./prod/** | name=app"',
@@ -419,7 +434,6 @@ dependencies defined in terragrunt.hcl files.`,
       },
       {
         flag: '--parallelism',
-        shortFlag: '-p',
         description: 'Maximum number of modules to process in parallel',
         type: 'integer',
         defaultValue: '10',
@@ -443,13 +457,6 @@ dependencies defined in terragrunt.hcl files.`,
         type: 'boolean',
         defaultValue: 'false',
         envVar: 'TG_QUEUE_IGNORE_ERRORS',
-      },
-      {
-        flag: '--queue-exclude-external',
-        description: 'Ignore external dependencies (modules outside current tree)',
-        type: 'boolean',
-        defaultValue: 'false',
-        envVar: 'TG_QUEUE_EXCLUDE_EXTERNAL',
       },
       {
         flag: '--queue-include-external',
@@ -753,33 +760,33 @@ For GCP, this creates the GCS bucket. For Azure, it creates the storage account 
       name: 'backend delete',
       aliases: [],
       category: 'backend',
-      description: 'Delete the remote state backend resources.',
+      description: 'Delete OpenTofu/Terraform state from the configured remote backend.',
       usage: 'terragrunt backend delete [flags]',
-      details: `Removes the backend resources created by Terragrunt. Use with caution as this 
-will delete the state storage. Make sure to back up any important state files first.`,
+      details: `Deletes the state object for the current unit, or for discovered units with --all.
+    It does not delete the backing bucket. Terragrunt refuses deletion when backend versioning is disabled unless --force is provided.`,
       options: [
         {
           flag: '--force',
-          description: 'Skip confirmation prompt',
+          description: 'Delete state even when backend versioning is disabled.',
           type: 'boolean',
           defaultValue: 'false',
         },
       ],
       examples: [
         {
-          description: 'Delete backend resources with confirmation',
+          description: 'Delete state after versioning safety checks',
           command: 'terragrunt backend delete',
         },
         {
-          description: 'Force delete without confirmation',
+          description: 'Delete state even when the backend is not versioned',
           command: 'terragrunt backend delete --force',
         },
       ],
       relatedCommands: ['backend bootstrap', 'backend migrate'],
       documentationUrl: 'https://terragrunt.gruntwork.io/docs/reference/cli/commands/backend/delete/',
       notes: [
-        '⚠️ This is a destructive operation - ensure state is backed up',
-        'Will prompt for confirmation unless --force is used',
+        '⚠️ This permanently deletes remote state; ensure it is backed up.',
+        '--force bypasses the backend-versioning safety check.',
       ],
     };
   }
@@ -790,26 +797,23 @@ will delete the state storage. Make sure to back up any important state files fi
       aliases: [],
       category: 'backend',
       description: 'Migrate state from one backend to another.',
-      usage: 'terragrunt backend migrate [flags]',
+      usage: 'terragrunt backend migrate [flags] <src-unit> <dst-unit>',
       details: `Migrates Terraform state from the current backend to a new backend configuration.
 This is useful when moving state between different storage backends or reconfiguring
 backend settings.`,
       options: [
         {
-          flag: '--from',
-          description: 'Source backend configuration',
-          type: 'string',
-        },
-        {
-          flag: '--to',
-          description: 'Destination backend configuration',
-          type: 'string',
+          flag: '--force',
+          description: 'Migrate state even when the source backend is not versioned.',
+          type: 'boolean',
+          defaultValue: 'false',
+          envVar: 'TG_FORCE',
         },
       ],
       examples: [
         {
           description: 'Migrate state to new backend',
-          command: 'terragrunt backend migrate',
+          command: 'terragrunt backend migrate ./old-unit ./new-unit',
         },
       ],
       relatedCommands: ['backend bootstrap', 'backend delete'],
@@ -942,7 +946,7 @@ Generation includes validation by default.`,
       options: [],
       examples: [
         {
-          description: 'Clean cache from all modules',
+          description: 'Remove the generated stack',
           command: 'terragrunt stack clean',
         },
       ],
@@ -1017,11 +1021,9 @@ in the catalog. This generates the necessary terragrunt.hcl with all inputs
 and configuration pre-filled based on the module's interface.`,
       options: [
         {
-          flag: '--output',
-          shortFlag: '-o',
+          flag: '--output-folder',
           description: 'Output directory for the scaffolded configuration',
           type: 'path',
-          defaultValue: '.',
         },
         {
           flag: '--var',
@@ -1208,7 +1210,8 @@ units and stacks. The command requires the browse-tui experiment.`,
   private getHclFmtCommand(): CLICommand {
     return {
       name: 'hcl fmt',
-      aliases: ['hclfmt', 'fmt'],
+      aliases: ['fmt'],
+      legacyNames: ['hclfmt'],
       category: 'configuration',
       description: 'Format Terragrunt HCL configuration files.',
       usage: 'terragrunt hcl fmt [flags] [path]',
@@ -1379,27 +1382,14 @@ configuration issues and understanding the effective configuration.`,
   private getDagGraphCommand(): CLICommand {
     return {
       name: 'dag graph',
-      aliases: ['graph'],
+      aliases: [],
+      legacyNames: ['graph'],
       category: 'configuration',
       description: 'Generate a visual dependency graph of Terragrunt modules.',
       usage: 'terragrunt dag graph [flags]',
-      details: `Generates a DOT format graph showing the dependencies between Terragrunt
-modules. The output can be rendered using Graphviz or other DOT viewers.
-Useful for understanding and documenting infrastructure dependencies.`,
-      options: [
-        {
-          flag: '--format',
-          description: 'Output format (dot, json, mermaid)',
-          type: 'string',
-          defaultValue: 'dot',
-        },
-        {
-          flag: '--output',
-          shortFlag: '-o',
-          description: 'Output file path',
-          type: 'path',
-        },
-      ],
+      details: `Generates a DOT graph showing Terragrunt dependencies. It is equivalent to
+list --format=dot --dag --dependencies --external. Pipe the output to a DOT renderer to create an image.`,
+      options: [],
       examples: [
         {
           description: 'Generate DOT graph',
@@ -1408,10 +1398,6 @@ Useful for understanding and documenting infrastructure dependencies.`,
         {
           description: 'Generate and render with Graphviz',
           command: 'terragrunt dag graph | dot -Tpng -o graph.png',
-        },
-        {
-          description: 'Output as Mermaid diagram',
-          command: 'terragrunt dag graph --format=mermaid',
         },
       ],
       relatedCommands: ['list', 'find', 'run --graph'],
@@ -1428,14 +1414,7 @@ Useful for understanding and documenting infrastructure dependencies.`,
       usage: 'terragrunt info print [flags]',
       details: `Displays detailed information about the current Terragrunt configuration,
 including paths, versions, environment variables, and resolved configuration values.`,
-      options: [
-        {
-          flag: '--json',
-          description: 'Output in JSON format',
-          type: 'boolean',
-          defaultValue: 'false',
-        },
-      ],
+      options: this.getRunCommandOptions(),
       examples: [
         {
           description: 'Print configuration info',
@@ -1453,6 +1432,10 @@ including paths, versions, environment variables, and resolved configuration val
 
   // ==================== SHORTCUT COMMANDS ====================
 
+  private getShortcutCommandOptions(options: CLIOption[]): CLIOption[] {
+    return [...this.getRunCommandOptions(), ...options];
+  }
+
   private getPlanCommand(): CLICommand {
     return {
       name: 'plan',
@@ -1463,13 +1446,7 @@ including paths, versions, environment variables, and resolved configuration val
       details: `A convenience shortcut equivalent to 'terragrunt run -- plan'. 
 Runs terraform plan with all Terragrunt configuration applied, including
 input variables, backend configuration, and any before/after hooks.`,
-      options: [
-        {
-          flag: '--all',
-          description: 'Run plan on all modules in the stack',
-          type: 'boolean',
-          defaultValue: 'false',
-        },
+      options: this.getShortcutCommandOptions([
         {
           flag: '-out',
           description: 'Save the plan to a file',
@@ -1494,7 +1471,7 @@ input variables, backend configuration, and any before/after hooks.`,
           type: 'path',
           example: '-var-file=prod.tfvars',
         },
-      ],
+      ]),
       examples: [
         {
           description: 'Run plan on current module',
@@ -1517,6 +1494,7 @@ input variables, backend configuration, and any before/after hooks.`,
       documentationUrl: 'https://terragrunt.gruntwork.io/docs/reference/cli/',
       notes: [
         'Equivalent to: terragrunt run -- plan',
+        'With --all, equivalent to: terragrunt run --all -- plan',
         'Terragrunt automatically runs init if needed',
         'Use -out to save plan for later apply',
       ],
@@ -1533,13 +1511,7 @@ input variables, backend configuration, and any before/after hooks.`,
       details: `A convenience shortcut equivalent to 'terragrunt run -- apply'.
 Applies Terraform changes with all Terragrunt configuration applied.
 Can apply a saved plan file or run interactively.`,
-      options: [
-        {
-          flag: '--all',
-          description: 'Apply on all modules in the stack',
-          type: 'boolean',
-          defaultValue: 'false',
-        },
+      options: this.getShortcutCommandOptions([
         {
           flag: '-auto-approve',
           description: 'Skip interactive approval',
@@ -1562,7 +1534,7 @@ Can apply a saved plan file or run interactively.`,
           type: 'integer',
           defaultValue: '10',
         },
-      ],
+      ]),
       examples: [
         {
           description: 'Apply changes interactively',
@@ -1585,6 +1557,7 @@ Can apply a saved plan file or run interactively.`,
       documentationUrl: 'https://terragrunt.gruntwork.io/docs/reference/cli/',
       notes: [
         'Equivalent to: terragrunt run -- apply',
+        'With --all, equivalent to: terragrunt run --all -- apply',
         'Always review plan before applying in production',
         'Use -auto-approve only in CI/CD with proper safeguards',
       ],
@@ -1601,13 +1574,7 @@ Can apply a saved plan file or run interactively.`,
       details: `A convenience shortcut equivalent to 'terragrunt run -- destroy'.
 Destroys all resources managed by Terraform in the module.
 Use with extreme caution as this is destructive.`,
-      options: [
-        {
-          flag: '--all',
-          description: 'Destroy all modules in the stack',
-          type: 'boolean',
-          defaultValue: 'false',
-        },
+      options: this.getShortcutCommandOptions([
         {
           flag: '-auto-approve',
           description: 'Skip interactive approval',
@@ -1619,7 +1586,7 @@ Use with extreme caution as this is destructive.`,
           description: 'Target specific resources',
           type: 'string',
         },
-      ],
+      ]),
       examples: [
         {
           description: 'Destroy resources interactively',
@@ -1638,6 +1605,7 @@ Use with extreme caution as this is destructive.`,
       documentationUrl: 'https://terragrunt.gruntwork.io/docs/reference/cli/',
       notes: [
         '⚠️ Destructive operation - use with caution',
+        'Equivalent to terragrunt run -- destroy, or terragrunt run --all -- destroy with --all.',
         'When using --all, modules are destroyed in reverse dependency order',
         'Always verify what will be destroyed with plan -destroy first',
       ],
@@ -1653,7 +1621,7 @@ Use with extreme caution as this is destructive.`,
       usage: 'terragrunt output [flags] [name]',
       details: `A convenience shortcut equivalent to 'terragrunt run -- output'.
 Shows the outputs from the Terraform state for the current module.`,
-      options: [
+      options: this.getShortcutCommandOptions([
         {
           flag: '-json',
           description: 'Output in JSON format',
@@ -1666,7 +1634,7 @@ Shows the outputs from the Terraform state for the current module.`,
           type: 'boolean',
           defaultValue: 'false',
         },
-      ],
+      ]),
       examples: [
         {
           description: 'Show all outputs',
@@ -1700,7 +1668,7 @@ Shows the outputs from the Terraform state for the current module.`,
       details: `A convenience shortcut equivalent to 'terragrunt run -- init'.
 Initializes the Terraform working directory, downloading providers
 and configuring the backend.`,
-      options: [
+      options: this.getShortcutCommandOptions([
         {
           flag: '-upgrade',
           description: 'Upgrade provider versions',
@@ -1719,7 +1687,7 @@ and configuring the backend.`,
           type: 'boolean',
           defaultValue: 'false',
         },
-      ],
+      ]),
       examples: [
         {
           description: 'Initialize the module',

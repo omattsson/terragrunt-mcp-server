@@ -56,6 +56,8 @@ export interface CLICommand {
   name: string;
   /** Alternative names/aliases, including deprecated aliases where supported */
   aliases: string[];
+  /** Removed command names retained only for migration-oriented lookup */
+  legacyNames?: string[];
   /** Category of the command */
   category: CLICommandCategory;
   /** Brief description of the command */
@@ -89,7 +91,7 @@ export interface CLICommandSearchResult {
   /** Relevance score (0-1) */
   score: number;
   /** How the match was found */
-  matchType: 'exact' | 'alias' | 'partial' | 'fuzzy';
+  matchType: 'exact' | 'alias' | 'legacy' | 'partial' | 'fuzzy';
 }
 
 /**

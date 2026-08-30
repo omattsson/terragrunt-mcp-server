@@ -572,9 +572,10 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
       });
 
       expect(result).toBeDefined();
-      // run-all resolves to run command
+      // Removed command names resolve to current migration guidance.
       expect(result.command).toBe('run');
-      expect(result.aliases).toContain('run-all');
+      expect(result.aliases).not.toContain('run-all');
+      expect(result.legacyNames).toContain('run-all');
     });
 
     it('should handle command with uppercase', async () => {
@@ -587,14 +588,15 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
       expect(result.command).toBe('plan');
     });
 
-    it('should resolve hclfmt alias to hcl fmt', async () => {
+    it('should resolve removed hclfmt name to hcl fmt migration help', async () => {
       const result = await toolHandler.executeTool('cli_reference', {
         command: 'hclfmt'
       });
 
       expect(result).toBeDefined();
       expect(result.command).toBe('hcl fmt');
-      expect(result.aliases).toContain('hclfmt');
+      expect(result.aliases).not.toContain('hclfmt');
+      expect(result.legacyNames).toContain('hclfmt');
     });
 
     it('should return comprehensive options for run command', async () => {

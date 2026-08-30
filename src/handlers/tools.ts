@@ -1269,6 +1269,7 @@ export class ToolHandler {
             return {
                 command: structuredCmd.name,
                 aliases: structuredCmd.aliases,
+                legacyNames: structuredCmd.legacyNames,
                 category: structuredCmd.category,
                 description: structuredCmd.description,
                 usage: structuredCmd.usage,
@@ -1348,6 +1349,7 @@ export class ToolHandler {
                 results: paginatedResults.map(r => ({
                     name: r.command.name,
                     aliases: r.command.aliases,
+                    legacyNames: r.command.legacyNames,
                     category: r.command.category,
                     description: r.command.description,
                     usage: r.command.usage,
@@ -1372,6 +1374,7 @@ export class ToolHandler {
                 commands: paginatedResults.map(cmd => ({
                     name: cmd.name,
                     aliases: cmd.aliases,
+                    legacyNames: cmd.legacyNames,
                     description: cmd.description,
                     usage: cmd.usage
                 })),
@@ -1392,6 +1395,7 @@ export class ToolHandler {
             commands: paginatedCommands.map(cmd => ({
                 name: cmd.name,
                 aliases: cmd.aliases,
+                legacyNames: cmd.legacyNames,
                 category: cmd.category,
                 description: cmd.description,
                 usage: cmd.usage

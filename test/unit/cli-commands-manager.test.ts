@@ -85,19 +85,21 @@ describe('CLICommandsManager', () => {
             });
         });
 
-        describe('alias resolution', () => {
-            it('should resolve run-all alias to run command', () => {
+        describe('alias and migration lookup resolution', () => {
+            it('should resolve removed run-all name to run command', () => {
                 const cmd = manager.getCommand('run-all');
                 expect(cmd).not.toBeNull();
                 expect(cmd?.name).toBe('run');
-                expect(cmd?.aliases).toContain('run-all');
+                expect(cmd?.aliases).not.toContain('run-all');
+                expect(cmd?.legacyNames).toContain('run-all');
             });
 
-            it('should resolve hclfmt alias to hcl fmt command', () => {
+            it('should resolve removed hclfmt name to hcl fmt command', () => {
                 const cmd = manager.getCommand('hclfmt');
                 expect(cmd).not.toBeNull();
                 expect(cmd?.name).toBe('hcl fmt');
-                expect(cmd?.aliases).toContain('hclfmt');
+                expect(cmd?.aliases).not.toContain('hclfmt');
+                expect(cmd?.legacyNames).toContain('hclfmt');
             });
 
             it('should resolve fmt alias to hcl fmt command', () => {
@@ -141,11 +143,11 @@ describe('CLICommandsManager', () => {
             expect(results[0].matchType).toBe('exact');
         });
 
-        it('should find alias matches', () => {
+        it('should identify removed command name matches', () => {
             const results = manager.searchCommands('run-all');
             expect(results.length).toBeGreaterThan(0);
             expect(results[0].command.name).toBe('run');
-            expect(results[0].matchType).toBe('alias');
+            expect(results[0].matchType).toBe('legacy');
         });
 
         it('should find partial matches in command names', () => {
@@ -372,7 +374,9 @@ describe('CLICommandsManager', () => {
             const help = manager.formatCommandHelp(cmd!);
             
             expect(help).toContain('## Aliases');
-            expect(help).toContain('hclfmt');
+            expect(help).toContain('`fmt`');
+            expect(help).toContain('## Removed Command Names');
+            expect(help).toContain('`hclfmt`');
         });
 
         it('should include related commands', () => {
@@ -459,8 +463,20 @@ describe('CLICommandsManager', () => {
                 expect(cmd?.examples.length).toBeGreaterThan(3);
             });
 
-            it('should have run-all alias', () => {
-                expect(cmd?.aliases).toContain('run-all');
+            it('should retain run-all only as a migration lookup name', () => {
+                expect(cmd?.aliases).not.toContain('run-all');
+                expect(cmd?.legacyNames).toContain('run-all');
+            });
+
+            it('should not advertise unsupported short flags or hidden deprecated queue flags', () => {
+                const graph = cmd?.options.find(option => option.flag === '--graph');
+                const filter = cmd?.options.find(option => option.flag === '--filter');
+                const parallelism = cmd?.options.find(option => option.flag === '--parallelism');
+
+                expect(graph?.shortFlag).toBeUndefined();
+                expect(filter?.shortFlag).toBeUndefined();
+                expect(parallelism?.shortFlag).toBeUndefined();
+                expect(cmd?.options.some(option => option.flag === '--queue-exclude-external')).toBe(false);
             });
         });
 
@@ -481,9 +497,9 @@ describe('CLICommandsManager', () => {
                 expect(flagNames).not.toContain('--write');
             });
 
-            it('should have hclfmt and fmt aliases', () => {
-                expect(cmd?.aliases).toContain('hclfmt');
+            it('should distinguish the fmt alias from removed hclfmt command', () => {
                 expect(cmd?.aliases).toContain('fmt');
+                expect(cmd?.legacyNames).toContain('hclfmt');
             });
 
             it('should include CI/CD usage note', () => {
@@ -546,6 +562,62 @@ describe('CLICommandsManager', () => {
 
             it('should mention equivalence to run -- plan', () => {
                 expect(cmd?.notes?.some(n => n.includes('run -- plan'))).toBe(true);
+                expect(cmd?.notes?.some(n => n.includes('run --all -- plan'))).toBe(true);
+            });
+
+            it('should inherit current run options', () => {
+                const flagNames = cmd?.options.map(option => option.flag);
+
+                expect(flagNames).toContain('--filter');
+                expect(flagNames).toContain('--provider-cache');
+                expect(flagNames).toContain('--report-file');
+            });
+        });
+
+        describe('corrected command metadata', () => {
+            it('should document backend delete safety semantics', () => {
+                const cmd = manager.getCommand('backend delete');
+                const force = cmd?.options.find(option => option.flag === '--force');
+
+                expect(cmd?.description).toContain('state');
+                expect(cmd?.details).toContain('does not delete the backing bucket');
+                expect(force?.description).toContain('versioning');
+            });
+
+            it('should document backend migrate positional arguments', () => {
+                const cmd = manager.getCommand('backend migrate');
+
+                expect(cmd?.usage).toContain('<src-unit> <dst-unit>');
+                expect(cmd?.options.map(option => option.flag)).not.toEqual(expect.arrayContaining(['--from', '--to']));
+                expect(cmd?.examples[0].command).toContain('./old-unit ./new-unit');
+            });
+
+            it('should describe stack clean as generated-stack cleanup', () => {
+                const cmd = manager.getCommand('stack clean');
+
+                expect(cmd?.examples[0].description).toBe('Remove the generated stack');
+            });
+
+            it('should use the current scaffold output-folder option', () => {
+                const cmd = manager.getCommand('scaffold');
+
+                expect(cmd?.options.some(option => option.flag === '--output-folder')).toBe(true);
+                expect(cmd?.options.some(option => option.flag === '--output')).toBe(false);
+            });
+
+            it('should document dag graph as fixed DOT output', () => {
+                const cmd = manager.getCommand('dag graph');
+
+                expect(cmd?.options).toEqual([]);
+                expect(cmd?.details).toContain('DOT graph');
+                expect(cmd?.examples.some(example => example.command.includes('mermaid'))).toBe(false);
+            });
+
+            it('should not advertise an unsupported info print json flag', () => {
+                const cmd = manager.getCommand('info print');
+
+                expect(cmd?.options.some(option => option.flag === '--json')).toBe(false);
+                expect(cmd?.options.some(option => option.flag === '--filter')).toBe(true);
             });
         });
 

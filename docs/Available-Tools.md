@@ -333,9 +333,9 @@ inputs = {
 - Supports search queries
 - Includes pagination
 
-### Deprecated Aliases
+### Removed Command Lookups
 
-The tool resolves these legacy aliases while returning the current command:
+The tool accepts these removed names for migration help. Current Terragrunt does not execute them:
 
 | Input | Resolves To |
 |-------|-------------|
@@ -421,7 +421,10 @@ The tool resolves these legacy aliases while returning the current command:
     }
   ],
   "relatedCommands": ["apply", "destroy", "run", "hcl validate"],
-  "notes": ["Equivalent to: terragrunt run -- plan"],
+  "notes": [
+    "Equivalent to: terragrunt run -- plan",
+    "With --all, equivalent to: terragrunt run --all -- plan"
+  ],
   "documentationUrl": "https://terragrunt.gruntwork.io/docs/reference/cli/",
   "formattedHelp": "# plan\n\nShortcut for running terraform plan..."
 }
@@ -441,7 +444,8 @@ The tool resolves these legacy aliases while returning the current command:
     },
     {
       "name": "run",
-      "aliases": ["run-all"],
+      "aliases": [],
+      "legacyNames": ["run-all"],
       "category": "main",
       "description": "Execute a Terraform command through Terragrunt.",
       "usage": "terragrunt run [flags] -- <terraform command>"
@@ -478,7 +482,8 @@ The tool resolves these legacy aliases while returning the current command:
   "commands": [
     {
       "name": "hcl fmt",
-      "aliases": ["hclfmt", "fmt"],
+      "aliases": ["fmt"],
+      "legacyNames": ["hclfmt"],
       "description": "Format Terragrunt HCL configuration files.",
       "usage": "terragrunt hcl fmt [flags] [path]"
     },
