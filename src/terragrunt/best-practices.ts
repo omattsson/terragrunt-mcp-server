@@ -834,34 +834,34 @@ vpc -> subnet -> route-table -> nat-gateway -> security-group -> eks -> nodegrou
   // ============ CI/CD ============
   {
     id: 'cd-001',
-    practice: 'Use run-all with --terragrunt-parallelism for efficient CI/CD pipelines',
-    rationale: 'The run-all command applies changes to multiple modules respecting dependencies. Parallelism speeds up execution while staying within API rate limits.',
+    practice: 'Use run --all with bounded parallelism for efficient CI/CD pipelines',
+    rationale: 'The run --all command applies changes to multiple units while respecting dependencies. Bounded parallelism speeds up execution while staying within API rate limits.',
     category: 'ci_cd',
     priority: 'recommended',
     experienceLevel: 'intermediate',
     examples: [
       `# Apply all modules in dependency order with parallelism
-terragrunt run-all apply --terragrunt-parallelism 5
+terragrunt run --all --parallelism 5 -- apply
 
 # Plan all and save output
-terragrunt run-all plan --terragrunt-parallelism 10 -out=tfplan`,
+terragrunt run --all --parallelism 10 --out-dir tfplans -- plan`,
       `# GitHub Actions example
 - name: Terragrunt Apply
   run: |
     cd live/prod
-    terragrunt run-all apply \\
-      --terragrunt-parallelism 5 \\
-      --terragrunt-non-interactive \\
-      -auto-approve`
+    terragrunt run --all \
+      --parallelism 5 \
+      --non-interactive \
+      -- apply -auto-approve`
     ],
     antipatterns: [
       'Applying modules one at a time in scripts',
       'Unlimited parallelism (API rate limiting)',
-      'Not using --terragrunt-non-interactive in CI'
+      'Not using --non-interactive in CI'
     ],
     tradeoffs: [
       'Higher parallelism = faster but more API calls',
-      'run-all applies might be harder to debug'
+      'run --all applies might be harder to debug'
     ],
     relatedDocs: ['https://terragrunt.gruntwork.io/docs/features/execute-terraform-commands-on-multiple-modules-at-once/']
   },
@@ -878,8 +878,7 @@ plan:
   stage: plan
   script:
     - cd live/\${ENVIRONMENT}
-    - terragrunt run-all plan -out=tfplan
-    - terragrunt run-all show -json tfplan > plan.json
+    - terragrunt run --all --out-dir tfplans -- plan
   artifacts:
     paths:
       - live/\${ENVIRONMENT}/**/tfplan
@@ -892,7 +891,7 @@ apply:
   when: manual
   script:
     - cd live/\${ENVIRONMENT}
-    - terragrunt run-all apply tfplan`
+    - terragrunt run --all --out-dir tfplans -- apply`
     ],
     antipatterns: [
       'Running plan and apply in the same job',
@@ -1008,20 +1007,20 @@ plugin_cache_dir = "$HOME/.terraform.d/plugin-cache"`
   },
   {
     id: 'pf-002',
-    practice: 'Use run-all with appropriate parallelism based on provider rate limits',
+    practice: 'Use run --all with appropriate parallelism based on provider rate limits',
     rationale: 'Too much parallelism can hit API rate limits; too little wastes time. Tune based on your cloud provider and module count.',
     category: 'performance',
     priority: 'recommended',
     experienceLevel: 'advanced',
     examples: [
       `# AWS: Generally safe with 5-10 parallel operations
-terragrunt run-all apply --terragrunt-parallelism 5
+terragrunt run --all --parallelism 5 -- apply
 
 # For many small modules, can go higher
-terragrunt run-all plan --terragrunt-parallelism 20
+terragrunt run --all --parallelism 20 -- plan
 
 # For rate-limited APIs or large state files, go lower
-terragrunt run-all apply --terragrunt-parallelism 2`
+terragrunt run --all --parallelism 2 -- apply`
     ],
     antipatterns: [
       'Unlimited parallelism causing rate limit errors',
@@ -1060,7 +1059,7 @@ terraform {
 terraform {
   before_hook "hcl_validate" {
     commands = ["apply", "plan"]
-    execute  = ["terragrunt", "hclfmt", "--terragrunt-check"]
+    execute  = ["terragrunt", "hcl", "fmt", "--check"]
   }
 }`
     ],
@@ -1077,22 +1076,22 @@ terraform {
   },
   {
     id: 'ts-002',
-    practice: 'Use terragrunt validate-inputs to catch input errors early',
-    rationale: 'The validate-inputs command checks that all required inputs are provided and types match, catching configuration errors before plan/apply.',
+    practice: 'Use terragrunt hcl validate --inputs to catch input errors early',
+    rationale: 'The hcl validate --inputs command checks that configured inputs align with variables defined by OpenTofu or Terraform, catching configuration errors before plan/apply.',
     category: 'testing',
     priority: 'recommended',
     experienceLevel: 'beginner',
     examples: [
       `# Validate inputs for a single module
-terragrunt validate-inputs
+terragrunt hcl validate --inputs
 
-# Validate all modules
-terragrunt run-all validate-inputs`,
+# Validate recursively with strict input checks
+terragrunt hcl validate --inputs --strict`,
       `# In CI pipeline
 - name: Validate Inputs
   run: |
     cd live/prod
-    terragrunt run-all validate-inputs --terragrunt-parallelism 10`
+    terragrunt hcl validate --inputs --strict`
     ],
     antipatterns: [
       'Discovering missing inputs during apply',
@@ -1103,7 +1102,7 @@ terragrunt run-all validate-inputs`,
       'Adds step to workflow',
       'Requires accurate variable definitions in modules'
     ],
-    relatedDocs: ['https://terragrunt.gruntwork.io/docs/reference/cli-options/#validate-inputs']
+    relatedDocs: ['https://docs.terragrunt.com/reference/cli/commands/hcl/validate/']
   }
 ];
 

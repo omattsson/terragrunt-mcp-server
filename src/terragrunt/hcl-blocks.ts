@@ -403,7 +403,7 @@ include "env" {
   {
     name: 'dependency',
     displayName: 'Dependency Block',
-    description: 'Declares a dependency on another Terragrunt module, allowing access to its outputs. Terragrunt ensures dependencies are applied in the correct order when using run-all commands.',
+    description: 'Declares a dependency on another Terragrunt unit, allowing access to its outputs. Terragrunt ensures dependencies are applied in the correct order when using run --all commands.',
     category: 'modules',
     syntax: 'dependency "<label>" { ... }',
     requiresLabel: true,

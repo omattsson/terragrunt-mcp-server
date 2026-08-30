@@ -206,10 +206,10 @@ Common commands tested:
 - `apply` ✅
 - `init` (may not have docs)
 - `validate` (may not have docs)
-- `run-all` ✅
+- Removed command lookup name `run-all` ✅
 
 Format variations:
-- **Hyphens**: `run-all` ✅
+- **Hyphens in removed command lookup names**: `run-all` ✅
 - **Uppercase**: `PLAN` (may not find, case-sensitive)
 
 **Key Findings**:

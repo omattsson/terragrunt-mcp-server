@@ -209,7 +209,7 @@ Error: No Terraform configuration files found in directory
 **Solutions:**
 1. Verify you're in the correct directory
 2. Check that terragrunt.hcl has proper terraform source block
-3. Run with `--terragrunt-working-dir` flag
+3. Run with the `--working-dir` flag
 
 ### 6. Authentication Errors
 

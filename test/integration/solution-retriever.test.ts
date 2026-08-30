@@ -128,9 +128,9 @@ terragrunt init -reconfigure
   describe('validateCommand', () => {
     it('should identify safe commands', () => {
       expect(retriever.validateCommand('terragrunt plan')).toBe('safe');
-      expect(retriever.validateCommand('terragrunt validate-inputs')).toBe('safe');
+      expect(retriever.validateCommand('terragrunt hcl validate --inputs')).toBe('safe');
       expect(retriever.validateCommand('terraform version')).toBe('safe');
-      expect(retriever.validateCommand('terragrunt graph-dependencies')).toBe('safe');
+      expect(retriever.validateCommand('terragrunt dag graph')).toBe('safe');
     });
 
     it('should identify destructive commands', () => {
@@ -162,7 +162,7 @@ terragrunt init -reconfigure
 
 1. Check your terragrunt.hcl configuration
 2. Verify backend credentials
-3. Run \`terragrunt validate-inputs\`
+3. Run \`terragrunt hcl validate --inputs\`
 `;
 
       const steps = retriever.extractTroubleshootingSteps(content);

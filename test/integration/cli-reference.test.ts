@@ -43,22 +43,24 @@ describe('cli_reference Unified Tool - Comprehensive Integration', () => {
       expect(result.category).toBeDefined(); // Category varies by implementation
     });
 
-    it('should handle command aliases - "run-all" resolves to "run"', async () => {
+    it('should provide migration help for removed run-all command', async () => {
       const result = await toolHandler.executeTool('cli_reference', {
         command: 'run-all'
       });
 
       expect(result.command).toBe('run');
-      expect(result.aliases).toContain('run-all');
+      expect(result.aliases).not.toContain('run-all');
+      expect(result.legacyNames).toContain('run-all');
     });
 
-    it('should handle command aliases - "hclfmt" resolves to "hcl fmt"', async () => {
+    it('should provide migration help for removed hclfmt command', async () => {
       const result = await toolHandler.executeTool('cli_reference', {
         command: 'hclfmt'
       });
 
       expect(result.command).toBe('hcl fmt');
-      expect(result.aliases).toContain('hclfmt');
+      expect(result.aliases).not.toContain('hclfmt');
+      expect(result.legacyNames).toContain('hclfmt');
     });
 
     it('should handle "run" command with comprehensive options', async () => {

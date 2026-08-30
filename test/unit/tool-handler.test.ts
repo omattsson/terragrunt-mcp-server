@@ -501,13 +501,14 @@ describe('ToolHandler', () => {
       expect(result.documentationUrl).toBeDefined();
     });
 
-    it('should resolve command aliases', async () => {
+    it('should resolve removed command names for migration help', async () => {
       const result = await toolHandler.executeTool('cli_reference', {
         command: 'run-all'
       });
       
       expect(result.command).toBe('run');
-      expect(result.aliases).toContain('run-all');
+      expect(result.aliases).not.toContain('run-all');
+      expect(result.legacyNames).toContain('run-all');
     });
 
     it('should include examples in response', async () => {

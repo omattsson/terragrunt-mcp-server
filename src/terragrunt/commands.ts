@@ -73,15 +73,15 @@ export const validateTerragruntConfig = async (configPath: string): Promise<{
             result.valid = false;
         }
 
-        // Run terragrunt validate-inputs if available
+        // Validate Terragrunt inputs against OpenTofu/Terraform variables.
         try {
-            const validateResult = await runTerragruntCommand('validate-inputs', [], path.dirname(configPath));
+            const validateResult = await runTerragruntCommand('hcl validate', ['--inputs'], path.dirname(configPath));
             if (!validateResult.success) {
                 result.errors.push(`Terragrunt validation failed: ${validateResult.error}`);
                 result.valid = false;
             }
         } catch {
-            result.warnings.push('Could not run terragrunt validate-inputs');
+            result.warnings.push('Could not run terragrunt hcl validate --inputs');
         }
 
     } catch (error) {
@@ -172,11 +172,11 @@ export const planModule = async (modulePath: string): Promise<TerragruntCommandR
 };
 
 export const applyModule = async (modulePath: string, autoApprove = false): Promise<TerragruntCommandResult> => {
-    const args = autoApprove ? ['--terragrunt-non-interactive'] : [];
+    const args = autoApprove ? ['--non-interactive'] : [];
     return runTerragruntCommand('apply', args, modulePath);
 };
 
 export const destroyModule = async (modulePath: string, autoApprove = false): Promise<TerragruntCommandResult> => {
-    const args = autoApprove ? ['--terragrunt-non-interactive'] : [];
+    const args = autoApprove ? ['--non-interactive'] : [];
     return runTerragruntCommand('destroy', args, modulePath);
 };

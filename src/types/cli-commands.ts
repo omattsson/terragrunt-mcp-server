@@ -6,7 +6,7 @@
  * Represents a CLI option/flag for a command
  */
 export interface CLIOption {
-  /** The flag name (e.g., '--all', '--terragrunt-config') */
+  /** The flag name (e.g., '--all', '--config') */
   flag: string;
   /** Short flag if available (e.g., '-a') */
   shortFlag?: string;
@@ -54,8 +54,10 @@ export type CLICommandCategory =
 export interface CLICommand {
   /** Command name (e.g., 'run', 'hcl fmt') */
   name: string;
-  /** Alternative names/aliases (e.g., ['run-all', 'hclfmt']) */
+  /** Alternative names/aliases, including deprecated aliases where supported */
   aliases: string[];
+  /** Removed command names retained only for migration-oriented lookup */
+  legacyNames?: string[];
   /** Category of the command */
   category: CLICommandCategory;
   /** Brief description of the command */
@@ -89,7 +91,7 @@ export interface CLICommandSearchResult {
   /** Relevance score (0-1) */
   score: number;
   /** How the match was found */
-  matchType: 'exact' | 'alias' | 'partial' | 'fuzzy';
+  matchType: 'exact' | 'alias' | 'legacy' | 'partial' | 'fuzzy';
 }
 
 /**

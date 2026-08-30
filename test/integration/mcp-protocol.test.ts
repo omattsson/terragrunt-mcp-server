@@ -275,8 +275,8 @@ describe('MCP Protocol Compliance', () => {
       expect(Array.isArray(result.results)).toBe(true);
       
       const names = result.results.map((r: any) => r.name);
-      expect(names).toContain('validate-inputs');
       expect(names).toContain('hcl validate');
+      expect(names).not.toContain('validate-inputs');
     });
 
     it('should return structured response for HCL config tool', async () => {
