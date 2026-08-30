@@ -432,6 +432,7 @@ function checkHCLStructure(config: string): string[] {
         'errors',
         'unit',
         'stack',
+        'expansion',
         'autoinclude',
         'extra_arguments',
         'before_hook',

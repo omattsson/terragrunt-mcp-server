@@ -33,8 +33,15 @@ const HCL_BLOCKS: HCLBlock[] = [
         name: 'source',
         type: 'string',
         required: true,
-        description: 'The source URL for the Terraform module. Supports local paths, Git URLs, S3, GCS, and Terraform Registry.',
+        description: 'The source URL for the Terraform module. Supports local paths, Git URLs, S3, GCS, Terraform Registry (tfr://), and OCI registry (oci://) sources. OCI sources require the oci experiment.',
         example: '"git::https://github.com/gruntwork-io/terragrunt.git//modules/vpc?ref=v0.1.0"',
+      },
+      {
+        name: 'version',
+        type: 'string',
+        required: false,
+        description: 'Version constraint for a tfr:// Terraform Registry source. Requires the version-attribute experiment and cannot be combined with an inline ?version= query parameter.',
+        example: '"~> 1.2"',
       },
       {
         name: 'include_in_copy',
@@ -58,10 +65,17 @@ const HCL_BLOCKS: HCLBlock[] = [
         defaultValue: true,
       },
       {
+        name: 'update_source_with_cas',
+        type: 'boolean',
+        required: false,
+        description: 'Rewrite a relative source path when Terragrunt materializes the module through the content-addressable store (CAS).',
+        defaultValue: false,
+      },
+      {
         name: 'mutable',
         type: 'boolean',
         required: false,
-        description: 'Make source content materialized from the experimental content-addressable store writable.',
+        description: 'Copy content materialized from the content-addressable store (CAS) into the working directory instead of hard-linking it, so the source can be modified.',
         defaultValue: false,
       },
       {
@@ -451,6 +465,16 @@ include "env" {
         description: 'How to merge mock outputs with actual state outputs.',
         validValues: ['no_merge', 'shallow', 'deep'],
       },
+      {
+        name: 'expansion',
+        type: 'block',
+        required: false,
+        description: 'Expand this dependency into multiple instances. Requires the block-iteration experiment, accepts either for_each or count, and supports at most 1,000,000 instances.',
+        nestedAttributes: [
+          { name: 'for_each', type: 'any', required: false, description: 'Map, object, or set used to create instances. Cannot be combined with count; use each.key and each.value in the expanded block.' },
+          { name: 'count', type: 'number', required: false, description: 'Non-negative number of indexed instances to create. Cannot be combined with for_each; use count.index in the expanded block.' },
+        ],
+      },
     ],
     examples: [
       {
@@ -597,7 +621,7 @@ inputs = {
         name: 'source',
         type: 'string',
         required: true,
-        description: 'Source containing the Terragrunt configuration for the unit.',
+        description: 'Source containing the Terragrunt configuration for the unit. Supports oci:// sources when the oci experiment is enabled.',
         example: '"git::git@github.com:acme/units.git//vpc?ref=v1.0.0"',
       },
       {
@@ -612,6 +636,37 @@ inputs = {
         type: 'map',
         required: false,
         description: 'Values written to terragrunt.values.hcl for the generated unit.',
+      },
+      {
+        name: 'enabled',
+        type: 'boolean',
+        required: false,
+        description: 'Whether to generate this unit. Requires the block-iteration experiment.',
+        defaultValue: true,
+      },
+      {
+        name: 'update_source_with_cas',
+        type: 'boolean',
+        required: false,
+        description: 'Rewrite a relative source path when Terragrunt materializes the unit through the content-addressable store (CAS).',
+        defaultValue: false,
+      },
+      {
+        name: 'mutable',
+        type: 'boolean',
+        required: false,
+        description: 'Copy CAS content instead of hard-linking it, so the generated unit source can be modified.',
+        defaultValue: false,
+      },
+      {
+        name: 'expansion',
+        type: 'block',
+        required: false,
+        description: 'Expand this unit into multiple instances. Requires the block-iteration experiment, accepts either for_each or count, and supports at most 1,000,000 instances.',
+        nestedAttributes: [
+          { name: 'for_each', type: 'any', required: false, description: 'Map, object, or set used to create instances. Cannot be combined with count; use each.key and each.value in the expanded block.' },
+          { name: 'count', type: 'number', required: false, description: 'Non-negative number of indexed instances to create. Cannot be combined with for_each; use count.index in the expanded block.' },
+        ],
       },
       {
         name: 'autoinclude',
@@ -662,7 +717,7 @@ inputs = {
         name: 'source',
         type: 'string',
         required: true,
-        description: 'Source containing the nested terragrunt.stack.hcl configuration.',
+        description: 'Source containing the nested terragrunt.stack.hcl configuration. Supports oci:// sources when the oci experiment is enabled.',
         example: '"github.com/acme/stacks//services?ref=v1.0.0"',
       },
       {
@@ -677,6 +732,37 @@ inputs = {
         type: 'map',
         required: false,
         description: 'Values made available to the generated stack through terragrunt.values.hcl.',
+      },
+      {
+        name: 'enabled',
+        type: 'boolean',
+        required: false,
+        description: 'Whether to generate this stack. Requires the block-iteration experiment.',
+        defaultValue: true,
+      },
+      {
+        name: 'update_source_with_cas',
+        type: 'boolean',
+        required: false,
+        description: 'Rewrite a relative source path when Terragrunt materializes the stack through the content-addressable store (CAS).',
+        defaultValue: false,
+      },
+      {
+        name: 'mutable',
+        type: 'boolean',
+        required: false,
+        description: 'Copy CAS content instead of hard-linking it, so the generated stack source can be modified.',
+        defaultValue: false,
+      },
+      {
+        name: 'expansion',
+        type: 'block',
+        required: false,
+        description: 'Expand this stack into multiple instances. Requires the block-iteration experiment, accepts either for_each or count, and supports at most 1,000,000 instances.',
+        nestedAttributes: [
+          { name: 'for_each', type: 'any', required: false, description: 'Map, object, or set used to create instances. Cannot be combined with count; use each.key and each.value in the expanded block.' },
+          { name: 'count', type: 'number', required: false, description: 'Non-negative number of indexed instances to create. Cannot be combined with for_each; use count.index in the expanded block.' },
+        ],
       },
       {
         name: 'autoinclude',
@@ -777,6 +863,18 @@ inputs = {
         required: false,
         description: 'Disable this generate block and apply its if_disabled behavior.',
         defaultValue: false,
+      },
+      {
+        name: 'hcl_fmt',
+        type: 'boolean',
+        required: false,
+        description: 'Format generated HCL before writing it. When omitted, formatting is enabled for .hcl, .tf, and .tofu files. Requires the mutable-generate experiment.',
+      },
+      {
+        name: 'mutable',
+        type: 'boolean',
+        required: false,
+        description: 'Write a directly writable generated file instead of a read-only CAS hard link. Requires the mutable-generate experiment.',
       },
     ],
     examples: [

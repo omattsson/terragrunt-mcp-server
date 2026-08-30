@@ -368,6 +368,10 @@ unit "vpc" {
 stack "services" {
   source = "../stacks/services"
   path   = "services"
+
+  expansion {
+    for_each = toset(["api", "worker"])
+  }
 }
 `;
       const result = validateHCL(config);
