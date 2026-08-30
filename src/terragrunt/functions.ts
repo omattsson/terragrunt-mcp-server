@@ -33,6 +33,8 @@ export interface TerragruntFunction {
   category: string;
   examples: FunctionExample[];
   relatedFunctions: string[];
+  stability?: 'stable' | 'experimental';
+  experiment?: string;
 }
 
 /**
@@ -349,7 +351,7 @@ export const STATIC_BUILTIN_FUNCTIONS: TerragruntFunction[] = [
   },
 
   // ============================================================================
-  // FILE FUNCTIONS (4)
+  // FILE FUNCTIONS (5)
   // ============================================================================
   {
     name: 'read_terragrunt_config',
@@ -413,6 +415,24 @@ export const STATIC_BUILTIN_FUNCTIONS: TerragruntFunction[] = [
     ],
     relatedFunctions: ['read_terragrunt_config']
   },
+  {
+    name: 'mark_glob_as_read',
+    signature: 'mark_glob_as_read([--terragrunt-boundary=<path>], pattern)',
+    description: 'Expands a glob and marks every matching file as read for reading-based filter expressions. Returns absolute matching paths, or an empty list when nothing matches. Use forward slashes even on Windows and call it from locals so files affect run --all queue construction. Expansion is confined to the Git repository root by default; use a leading --terragrunt-boundary=<path> argument to change the boundary. Boundary errors can be handled with try(...).',
+    parameters: [
+      { name: 'boundary', type: 'string', required: false, description: 'Optional leading --terragrunt-boundary=<path> argument that limits or widens the glob walk', default: undefined },
+      { name: 'pattern', type: 'string', required: true, description: 'Glob pattern using forward slashes and gobwas/glob syntax' }
+    ],
+    returnType: 'list(string)',
+    category: 'file',
+    examples: [
+      { code: 'locals {\n  configs = mark_glob_as_read("${get_terragrunt_dir()}/config/{*.yaml,**/*.yaml}")\n}', description: 'Track configuration files at any depth before the run queue is built', useCase: 'reading-filter' },
+      { code: 'locals {\n  configs = mark_glob_as_read("--terragrunt-boundary=/etc/terragrunt", "/etc/terragrunt/{*.yaml}")\n}', description: 'Restrict glob expansion to an explicit boundary', useCase: 'bounded-glob' },
+      { code: 'locals {\n  configs = sort(try(mark_glob_as_read("${local.dir}/{*.yaml,*.yml,*.json}"), []))\n}', description: 'Recover from an invalid or out-of-bound glob with an empty list', useCase: 'boundary-fallback' }
+    ],
+    relatedFunctions: ['mark_as_read', 'get_repo_root'],
+    stability: 'stable'
+  },
 
   // ============================================================================
   // EXECUTION FUNCTIONS (1)
@@ -438,8 +458,27 @@ export const STATIC_BUILTIN_FUNCTIONS: TerragruntFunction[] = [
   },
 
   // ============================================================================
-  // UTILITY FUNCTIONS (3)
+  // UTILITY FUNCTIONS (4)
   // ============================================================================
+  {
+    name: 'deep_merge',
+    signature: 'deep_merge(map1, map2, ...maps)',
+    description: 'Deeply merges two or more maps or objects. Later values override earlier scalar values, nested maps merge recursively, lists append, and null arguments are ignored. This function requires the deep-merge experiment and returns an error when the experiment is not enabled.',
+    parameters: [
+      { name: 'map1', type: 'map', required: true, description: 'First map or object to merge' },
+      { name: 'map2', type: 'map', required: true, description: 'Second map or object whose values take precedence' },
+      { name: 'maps', type: 'map...', required: false, description: 'Additional maps or objects merged in order; null values are ignored', default: undefined }
+    ],
+    returnType: 'map',
+    category: 'utility',
+    examples: [
+      { code: 'locals {\n  config = deep_merge(\n    { service = { retries = 1, mode = "safe" } },\n    { service = { retries = 3 }, tags = { env = "dev" } },\n  )\n}', description: 'Recursively merge nested service configuration', useCase: 'nested-map-merge' },
+      { code: 'locals {\n  files = sort(fileset(get_terragrunt_dir(), "*.json"))\n  config = deep_merge([for path in local.files : jsondecode(file(path))]...)\n}', description: 'Expand a list of decoded JSON maps into positional arguments', useCase: 'variadic-file-merge' }
+    ],
+    relatedFunctions: ['read_terragrunt_config'],
+    stability: 'experimental',
+    experiment: 'deep-merge'
+  },
   {
     name: 'get_terragrunt_source_cli_flag',
     signature: 'get_terragrunt_source_cli_flag()',

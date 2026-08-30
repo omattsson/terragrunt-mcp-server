@@ -1952,7 +1952,9 @@ export class ToolHandler {
                 category: fn.category,
                 parameterCount: fn.parameters.length,
                 exampleCount: fn.examples.length,
-                relatedFunctions: fn.relatedFunctions
+                relatedFunctions: fn.relatedFunctions,
+                ...(fn.stability && { stability: fn.stability }),
+                ...(fn.experiment && { experiment: fn.experiment })
             };
         }
 
@@ -1966,6 +1968,8 @@ export class ToolHandler {
             category: fn.category,
             examples: includeExamples ? fn.examples : [],
             relatedFunctions: fn.relatedFunctions,
+            ...(fn.stability && { stability: fn.stability }),
+            ...(fn.experiment && { experiment: fn.experiment }),
             relatedDocs: [] // TODO: Extract from documentation in future enhancement
         };
     }
@@ -2066,7 +2070,9 @@ export class ToolHandler {
                 name: fn.name,
                 category: fn.category,
                 shortDescription: this.getShortDescription(fn.description),
-                signature: fn.signature
+                signature: fn.signature,
+                ...(fn.stability && { stability: fn.stability }),
+                ...(fn.experiment && { experiment: fn.experiment })
             })),
             categories: categories,  // All categories, not just from filtered results
             pagination

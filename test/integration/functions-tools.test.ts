@@ -100,6 +100,31 @@ describe('Function Lookup Tools Integration Tests', () => {
     });
 
     describe('Metadata validation', () => {
+      it('should expose function stability and experiment gates', async () => {
+        const deepMerge = await toolHandler.executeTool('function_reference', {
+          function_name: 'deep_merge',
+          mode: 'full'
+        });
+        expect(deepMerge.stability).toBe('experimental');
+        expect(deepMerge.experiment).toBe('deep-merge');
+
+        const markGlobAsRead = await toolHandler.executeTool('function_reference', {
+          function_name: 'mark_glob_as_read',
+          mode: 'summary'
+        });
+        expect(markGlobAsRead.stability).toBe('stable');
+        expect(markGlobAsRead.experiment).toBeUndefined();
+
+        const listResult = await toolHandler.executeTool('function_reference', {
+          search: 'deep_merge'
+        });
+        expect(listResult.functions).toContainEqual(expect.objectContaining({
+          name: 'deep_merge',
+          stability: 'experimental',
+          experiment: 'deep-merge'
+        }));
+      });
+
       it('should include properly formatted examples when available', async () => {
         const result = await toolHandler.executeTool('function_reference', {
           function_name: 'get_env'
