@@ -90,7 +90,7 @@ Examples of questions you can ask GitHub Copilot:
 - "How do I configure remote state in Terragrunt?"
 - "What are Terragrunt's global flags?"
 - "Show me Terragrunt dependency examples"
-- "How do I use terragrunt run-all?"
+- "How do I use terragrunt run --all?"
 - "What HCL blocks are available in terragrunt.hcl?"
 - "Find examples of before_hook configuration"
 

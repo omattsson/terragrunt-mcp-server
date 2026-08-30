@@ -79,7 +79,7 @@ Get function details OR list all functions - unified tool for Terragrunt built-i
 Get command help OR list commands - unified tool for Terragrunt CLI command documentation.
 
 - **Get Mode** (when `command` provided):
-  - `command` (string): Command name (e.g., "plan", "apply", "run-all", "hclfmt")
+  - `command` (string): Command name (e.g., "plan", "apply", "run", "hcl fmt", "browse")
   - **Returns**: Command documentation with usage, options, and examples
 - **List Mode** (when no `command`):
   - `category` (string, optional): Filter by category (`main`, `backend`, `stack`, `catalog`, `discovery`, `configuration`, `shortcut`)
@@ -427,9 +427,9 @@ Once configured, interact with Terragrunt documentation directly through Copilot
 #### CLI Command Help
 
 - *"What options are available for the terragrunt plan command?"*
-- *"How do I use terragrunt run-all?"*
-- *"Show me help for the hclfmt command"*
-- *"What does terragrunt validate-inputs do?"*
+- *"How do I use terragrunt run --all?"*
+- *"Show me help for the hcl fmt command"*
+- *"How do I validate Terragrunt inputs?"*
 
 #### HCL Configuration Reference
 

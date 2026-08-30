@@ -446,9 +446,9 @@ export class TerragruntConfigGenerator {
       ],
       dependencies: [
         'Ensure dependency modules exist and are accessible',
-        'Run `terragrunt graph-dependencies` to visualize the dependency graph',
+        'Run `terragrunt dag graph` to visualize the dependency graph',
         'Apply dependencies first with `terragrunt apply` in dependency directories',
-        'Use `terragrunt run-all apply` to apply all modules in correct order',
+        'Use `terragrunt run --all -- apply` to apply all units in dependency order',
       ],
       hooks: [
         'Test your hook commands independently',
@@ -459,7 +459,7 @@ export class TerragruntConfigGenerator {
       inputs: [
         'Add the inputs block to your terragrunt.hcl',
         'Verify input values match expected types in your Terraform module',
-        'Run `terragrunt run-all validate` to check configuration',
+        'Run `terragrunt run --all -- validate` to check configuration',
         'Apply with `terragrunt apply`',
       ],
     };

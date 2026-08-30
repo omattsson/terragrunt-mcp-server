@@ -548,7 +548,7 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
 
   describe('CLI Command Help Edge Cases', () => {
     it('should handle common CLI commands', async () => {
-      const commands = ['plan', 'apply', 'init', 'validate-inputs', 'run-all'];
+      const commands = ['plan', 'apply', 'init', 'hcl validate', 'browse', 'run-all'];
       
       for (const cmd of commands) {
         const result = await toolHandler.executeTool('cli_reference', {

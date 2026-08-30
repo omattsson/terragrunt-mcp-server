@@ -225,19 +225,19 @@ Expected: Should list available Terragrunt documentation and configuration tools
 ```
 **Expected:** Returns detailed help for the `plan` command including options and usage.
 
-#### Test 3.1.2: Run-All Command
+#### Test 3.1.2: Run --all Command
 **Prompt:**
 ```
-@terragrunt Explain the run-all command
+@terragrunt Explain the run --all command
 ```
-**Expected:** Returns documentation for `run-all` including parallelism options.
+**Expected:** Returns documentation for `run --all` including parallelism options.
 
 #### Test 3.1.3: Format Command
 **Prompt:**
 ```
-@terragrunt How do I use hclfmt?
+@terragrunt How do I use hcl fmt?
 ```
-**Expected:** Returns help for the `hclfmt` command.
+**Expected:** Returns help for the `hcl fmt` command and identifies `hclfmt` as a deprecated alias.
 
 ---
 

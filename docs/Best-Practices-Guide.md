@@ -216,7 +216,7 @@ remote_state {
 2. **Enable mock outputs** for faster planning in development
 3. **Minimize dependency chains** to reduce complexity
 4. **Document dependencies** clearly in module READMEs
-5. **Use run-all carefully** when working with dependencies
+5. **Use run --all carefully** when working with dependencies
 
 **Common Patterns**:
 ```hcl
@@ -382,7 +382,7 @@ inputs = {
 
 **Performance Optimization Techniques**:
 ```hcl
-# Enable parallelism for run-all operations
+# Configure OpenTofu/Terraform command parallelism
 terraform {
   extra_arguments "parallelism" {
     commands = ["apply", "plan", "destroy"]
@@ -401,12 +401,12 @@ dependency "vpc" {
 ```
 
 **Command Optimization**:
-- `terragrunt run-all plan --terragrunt-parallelism N` - Parallel planning
-- Use `--terragrunt-modules-that-include` to target specific modules
-- `--terragrunt-exclude-dir` to skip unnecessary directories
+- `terragrunt run --all --parallelism N -- plan` - Parallel planning
+- Use `--filter` expressions to target specific units
+- Use negated `--filter` expressions to skip unnecessary directories
 
 **Antipatterns to Avoid**:
-- Running `run-all` when only a few modules changed
+- Running `run --all` when only a few units changed
 - Deep dependency chains (more than 3 levels)
 - Not using mock outputs in development
 - Over-parallelization causing rate limiting
@@ -439,12 +439,12 @@ dependency "vpc" {
 4. **Use policy-as-code tools** (OPA, Sentinel)
 5. **Test module changes** in isolation first
 6. **Implement smoke tests** after deployment
-7. **Use terragrunt hclfmt** for consistent formatting
+7. **Use terragrunt hcl fmt** for consistent formatting
 
 **Testing Layers**:
 ```text
-1. Syntax validation (terragrunt validate)
-2. Format checking (terragrunt hclfmt --check)
+1. Syntax and input validation (terragrunt hcl validate --inputs)
+2. Format checking (terragrunt hcl fmt --check)
 3. Static analysis (tflint, checkov)
 4. Plan validation (review plan output)
 5. Test environment deployment
@@ -455,9 +455,9 @@ dependency "vpc" {
 **Common Testing Patterns**:
 ```bash
 # Pre-commit validation workflow
-terragrunt hclfmt --check
-terragrunt validate-all
-terragrunt run-all plan --terragrunt-non-interactive
+terragrunt hcl fmt --check
+terragrunt hcl validate --inputs --strict
+terragrunt run --all --non-interactive -- plan
 
 # CI/CD testing pipeline
 validate -> format -> plan -> policy-check -> apply-to-test -> integration-tests
@@ -721,9 +721,9 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Format Check
-        run: terragrunt hclfmt --check
+        run: terragrunt hcl fmt --check
       - name: Validate All
-        run: terragrunt validate-all
+        run: terragrunt hcl validate --inputs --strict
 
   plan:
     needs: validate
@@ -732,9 +732,10 @@ jobs:
       - uses: actions/checkout@v3
       - name: Plan All
         run: |
-          terragrunt run-all plan \
-            --terragrunt-non-interactive \
-            --terragrunt-parallelism 10
+          terragrunt run --all \
+            --non-interactive \
+            --parallelism 10 \
+            -- plan
 
   apply:
     needs: plan
@@ -745,9 +746,10 @@ jobs:
       - uses: actions/checkout@v3
       - name: Apply All
         run: |
-          terragrunt run-all apply \
-            --terragrunt-non-interactive \
-            --terragrunt-parallelism 5
+          terragrunt run --all \
+            --non-interactive \
+            --parallelism 5 \
+            -- apply
 ```
 
 ### Example 3: Secure Dependency Management

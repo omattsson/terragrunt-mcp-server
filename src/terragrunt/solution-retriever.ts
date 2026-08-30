@@ -754,7 +754,7 @@ export class SolutionRetriever {
       case 'configuration':
         steps.push({
           action: 'Validate the terragrunt.hcl syntax',
-          verificationCommand: 'terragrunt validate-inputs',
+          verificationCommand: 'terragrunt hcl validate --inputs',
           explanation: 'Checks for syntax errors and missing required inputs'
         });
         steps.push({
@@ -785,7 +785,7 @@ export class SolutionRetriever {
       case 'dependency':
         steps.push({
           action: 'Verify dependency paths are correct',
-          verificationCommand: 'terragrunt graph-dependencies',
+          verificationCommand: 'terragrunt dag graph',
           explanation: 'Visualize the dependency graph to find issues'
         });
         steps.push({

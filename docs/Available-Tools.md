@@ -314,7 +314,7 @@ inputs = {
 
 ### Parameters — cli_reference
 
-- **`command`** (string, optional): Specific command for detailed help (e.g., "plan", "apply", "run-all", "hcl fmt")
+- **`command`** (string, optional): Specific command for detailed help (e.g., "plan", "apply", "run", "hcl fmt", "browse")
 - **`category`** (string, optional, list mode): Filter by category (`main`, `backend`, `stack`, `catalog`, `discovery`, `configuration`, `shortcut`)
 - **`search`** (string, optional, list mode): Search query to filter commands
 - **`page`** (number, optional, list mode): Page number for pagination (default: 1)
@@ -333,9 +333,9 @@ inputs = {
 - Supports search queries
 - Includes pagination
 
-### Supported Aliases
+### Deprecated Aliases
 
-The tool automatically resolves common aliases:
+The tool resolves these legacy aliases while returning the current command:
 
 | Input | Resolves To |
 |-------|-------------|
@@ -352,11 +352,11 @@ The tool automatically resolves common aliases:
 |----------|-------------|------------------|
 | `main` | Primary execution commands | `run`, `exec` |
 | `shortcut` | Terraform command shortcuts | `plan`, `apply`, `destroy`, `init` |
-| `configuration` | HCL and config tools | `hcl fmt`, `hcl validate`, `render`, `validate-inputs` |
+| `configuration` | HCL and config tools | `hcl fmt`, `hcl validate`, `render`, `info print` |
 | `backend` | State backend management | `backend bootstrap`, `backend delete`, `backend migrate` |
 | `stack` | Multi-module operations | `stack run`, `stack output`, `stack clean` |
 | `catalog` | Module catalogs | `catalog`, `scaffold` |
-| `discovery` | Module discovery | `find`, `list` |
+| `discovery` | Unit and stack discovery | `find`, `list`, `browse` |
 
 ### Use Cases — cli_reference
 
@@ -374,8 +374,8 @@ The tool automatically resolves common aliases:
 ```text
 "How do I use the terragrunt plan command?"
 "What options are available for terragrunt run with --all?"
-"Show me help for the hclfmt command"
-"Explain the terragrunt validate-inputs command"
+"Show me help for the hcl fmt command"
+"How do I validate Terragrunt inputs?"
 ```
 
 **List Mode:**
@@ -420,7 +420,7 @@ The tool automatically resolves common aliases:
       "command": "terragrunt plan --all"
     }
   ],
-  "relatedCommands": ["apply", "destroy", "run", "validate-inputs"],
+  "relatedCommands": ["apply", "destroy", "run", "hcl validate"],
   "notes": ["Equivalent to: terragrunt run -- plan"],
   "documentationUrl": "https://terragrunt.gruntwork.io/docs/reference/cli/",
   "formattedHelp": "# plan\n\nShortcut for running terraform plan..."
@@ -483,10 +483,10 @@ The tool automatically resolves common aliases:
       "usage": "terragrunt hcl fmt [flags] [path]"
     },
     {
-      "name": "validate-inputs",
+      "name": "hcl validate",
       "aliases": [],
-      "description": "Validate that all required inputs are provided and match expected types.",
-      "usage": "terragrunt validate-inputs [flags]"
+      "description": "Validate Terragrunt HCL, optionally checking configured inputs.",
+      "usage": "terragrunt hcl validate --inputs [flags]"
     }
   ],
   "pagination": {
@@ -886,8 +886,8 @@ See [File Writing Guide](File-Writing-Guide.md) for detailed security configurat
     }
   ],
   "debuggingSteps": [
-    "Run with --terragrunt-debug flag for verbose output",
-    "Check terragrunt.hcl syntax with terragrunt validate-inputs"
+    "Run with --inputs-debug to emit input debugging information",
+    "Check terragrunt.hcl syntax and inputs with terragrunt hcl validate --inputs"
   ],
   "relatedErrors": ["State Lock Error", "Backend Access Denied"],
   "generalAdvice": [

@@ -206,10 +206,10 @@ Common commands tested:
 - `apply` ✅
 - `init` (may not have docs)
 - `validate` (may not have docs)
-- `run-all` ✅
+- Deprecated alias `run-all` ✅
 
 Format variations:
-- **Hyphens**: `run-all` ✅
+- **Hyphens in deprecated aliases**: `run-all` ✅
 - **Uppercase**: `PLAN` (may not find, case-sensitive)
 
 **Key Findings**:

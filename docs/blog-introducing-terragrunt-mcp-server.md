@@ -42,7 +42,7 @@ Terragrunt solves this with a `terragrunt.hcl` file that:
 - Declares dependencies on other modules
 - Passes outputs between them automatically
 
-Run `terragrunt run-all apply` and it handles the dependency graph for you.
+Run `terragrunt run --all -- apply` and it handles the dependency graph for you.
 
 But Terragrunt has its own syntax, 50+ built-in functions, and configuration patterns to learn.
 
@@ -89,7 +89,7 @@ Instead of one generic "search docs" function, the MCP server provides specializ
 - **function_reference** — Details on 50+ built-in functions
   - "What does path_relative_to_include return?"
 - **cli_reference** — CLI command syntax and options
-  - "What flags does terragrunt run-all accept?"
+  - "What flags does terragrunt run --all accept?"
 - **get_hcl_config_reference** — HCL block syntax
   - "Show me the generate block syntax"
 - **get_guidance** — Best practices and patterns

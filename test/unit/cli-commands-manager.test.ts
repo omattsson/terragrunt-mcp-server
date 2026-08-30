@@ -53,10 +53,15 @@ describe('CLICommandsManager', () => {
                 expect(cmd?.category).toBe('configuration');
             });
 
-            it('should get validate-inputs command', () => {
-                const cmd = manager.getCommand('validate-inputs');
+            it('should get browse command', () => {
+                const cmd = manager.getCommand('browse');
                 expect(cmd).not.toBeNull();
-                expect(cmd?.name).toBe('validate-inputs');
+                expect(cmd?.name).toBe('browse');
+                expect(cmd?.category).toBe('discovery');
+            });
+
+            it('should not expose removed validate-inputs command', () => {
+                expect(manager.getCommand('validate-inputs')).toBeNull();
             });
 
             it('should be case-insensitive', () => {
@@ -146,9 +151,7 @@ describe('CLICommandsManager', () => {
         it('should find partial matches in command names', () => {
             const results = manager.searchCommands('validate');
             expect(results.length).toBeGreaterThan(0);
-            // Should find validate-inputs, hcl validate, etc.
             const names = results.map(r => r.command.name);
-            expect(names).toContain('validate-inputs');
             expect(names).toContain('hcl validate');
         });
 
@@ -245,7 +248,6 @@ describe('CLICommandsManager', () => {
             expect(names).toContain('hcl fmt');
             expect(names).toContain('hcl validate');
             expect(names).toContain('render');
-            expect(names).toContain('validate-inputs');
         });
 
         it('should return backend commands', () => {
@@ -283,6 +285,7 @@ describe('CLICommandsManager', () => {
             const names = commands.map(c => c.name);
             expect(names).toContain('find');
             expect(names).toContain('list');
+            expect(names).toContain('browse');
         });
 
         it('should return empty array for invalid category', () => {
@@ -419,7 +422,29 @@ describe('CLICommandsManager', () => {
                 expect(flagNames).toContain('--graph');
                 expect(flagNames).toContain('--filter');
                 expect(flagNames).toContain('--parallelism');
-                expect(flagNames).toContain('--terragrunt-config');
+                expect(flagNames).toContain('--config');
+                expect(flagNames).toContain('--no-cas');
+                expect(flagNames).toContain('--cas-clone-depth');
+                expect(flagNames).toContain('--discovery-boundary');
+                expect(flagNames).toContain('--graph-root');
+                expect(flagNames).toContain('--no-dependency-outputs');
+                expect(flagNames).toContain('--out-dir');
+                expect(flagNames).toContain('--provider-cache');
+                expect(flagNames).toContain('--provider-cache-token');
+                expect(flagNames).toContain('--dependency-fetch-output-from-state');
+                expect(flagNames).toContain('--no-hooks');
+                expect(flagNames).toContain('--destroy-dependencies-check');
+                expect(flagNames).toContain('--report-file');
+                expect(flagNames).toContain('--report-schema-file');
+                expect(flagNames).not.toContain('--terragrunt-config');
+            });
+
+            it('should use current TG_ environment variables', () => {
+                const optionsWithEnv = cmd?.options.filter(option => option.envVar) ?? [];
+
+                expect(optionsWithEnv.length).toBeGreaterThan(0);
+                expect(optionsWithEnv.every(option => option.envVar?.startsWith('TG_'))).toBe(true);
+                expect(optionsWithEnv.map(option => option.envVar)).toContain('TG_CONFIG');
             });
 
             it('should have --all option with correct properties', () => {
@@ -450,7 +475,10 @@ describe('CLICommandsManager', () => {
                 const flagNames = cmd?.options.map(o => o.flag);
                 expect(flagNames).toContain('--check');
                 expect(flagNames).toContain('--diff');
-                expect(flagNames).toContain('--write');
+                expect(flagNames).toContain('--file');
+                expect(flagNames).toContain('--stdin');
+                expect(flagNames).toContain('--exclude-dir');
+                expect(flagNames).not.toContain('--write');
             });
 
             it('should have hclfmt and fmt aliases', () => {
@@ -463,29 +491,38 @@ describe('CLICommandsManager', () => {
             });
         });
 
-        describe('validate-inputs command', () => {
-            let cmd: CLICommand | null;
+        describe('browse command', () => {
+            it('should document the required experiment', () => {
+                const cmd = manager.getCommand('browse');
 
-            beforeEach(() => {
-                cmd = manager.getCommand('validate-inputs');
+                expect(cmd?.usage).toContain('--experiment browse-tui');
+                expect(cmd?.notes).toContain('Requires the browse-tui experiment.');
+                expect(cmd?.relatedCommands).toEqual(expect.arrayContaining(['find', 'list']));
+                expect(cmd?.options.map(option => option.envVar)).toEqual(expect.arrayContaining([
+                    'TG_BROWSE_FEATURE',
+                    'TG_BROWSE_NO_DISCOVERY_AUTH_PROVIDER_CMD',
+                ]));
             });
+        });
 
-            it('should exist', () => {
-                expect(cmd).not.toBeNull();
+        describe('hcl validate command', () => {
+            it('should replace validate-inputs with the inputs flag', () => {
+                const cmd = manager.getCommand('hcl validate');
+                const flagNames = cmd?.options.map(option => option.flag);
+
+                expect(flagNames).toContain('--inputs');
+                expect(cmd?.examples.some(example => example.command.includes('--inputs'))).toBe(true);
             });
+        });
 
-            it('should be in configuration category', () => {
-                expect(cmd?.category).toBe('configuration');
-            });
+        describe('catalog command', () => {
+            it('should document current output formats and experiment gate', () => {
+                const cmd = manager.getCommand('catalog');
+                const format = cmd?.options.find(option => option.flag === '--format');
 
-            it('should have validation options', () => {
-                const flagNames = cmd?.options.map(o => o.flag);
-                expect(flagNames).toContain('--strict');
-            });
-
-            it('should have related commands', () => {
-                expect(cmd?.relatedCommands).toContain('hcl validate');
-                expect(cmd?.relatedCommands).toContain('plan');
+                expect(format?.description).toContain('jsonl');
+                expect(format?.description).toContain('md');
+                expect(cmd?.notes?.some(note => note.includes('catalog-format'))).toBe(true);
             });
         });
 

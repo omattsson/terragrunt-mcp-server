@@ -15,7 +15,7 @@ Recognize these patterns and use Terragrunt MCP tools:
 - **File patterns**: `terragrunt.hcl`, `*.hcl` files, `root.hcl`, `common.hcl`
 - **HCL blocks**: `remote_state`, `dependency`, `dependencies`, `generate`, `terraform`, `inputs`, `include`, `locals`
 - **Functions**: `find_in_parent_folders()`, `read_terragrunt_config()`, `path_relative_to_include()`, `get_env()`, `run_cmd()`
-- **CLI commands**: `terragrunt run-all`, `terragrunt plan`, `terragrunt apply`, `terragrunt init`, `terragrunt validate`
+- **CLI commands**: `terragrunt run --all`, `terragrunt plan`, `terragrunt apply`, `terragrunt hcl validate`, `terragrunt browse`
 - **Concepts**: DRY infrastructure, Terraform wrapper, multi-environment setup, mono-repo structure, infrastructure-as-code organization
 
 ### Tool Selection Guide
@@ -24,7 +24,7 @@ Recognize these patterns and use Terragrunt MCP tools:
 |-------------|------------------|---------------|
 | Search documentation | `search_docs` | "How does terragrunt handle dependencies?" |
 | Understand a function | `function_reference` | "What does find_in_parent_folders do?" |
-| Get CLI help | `cli_reference` | "How do I use terragrunt run-all?" |
+| Get CLI help | `cli_reference` | "How do I use terragrunt run --all?" |
 | HCL block syntax | `get_hcl_config_reference` | "Show me remote_state block syntax" |
 | Best practices | `get_guidance` | "What's the best way to organize Terragrunt?" |
 | Generate config | `build_config` | "Create a terragrunt.hcl for S3 backend" |
@@ -43,7 +43,7 @@ For complex questions, combine tools in sequence:
 
 - **search_docs**: Search Terragrunt documentation for HCL blocks, CLI commands, functions, and IaC patterns
 - **function_reference**: Get details on built-in functions like `find_in_parent_folders`, `dependency`, `read_terragrunt_config`
-- **cli_reference**: Get help for CLI commands like `terragrunt run-all`, `plan`, `apply`, `init`, `validate`
+- **cli_reference**: Get help for CLI commands like `terragrunt run --all`, `plan`, `apply`, `hcl validate`, and `browse`
 - **get_hcl_config_reference**: Get HCL block documentation for `remote_state`, `dependency`, `dependencies`, `generate`, `terraform`, `inputs`, `include`, `locals`
 - **get_guidance**: Get best practices, block comparisons (e.g., dependency vs dependencies), or DRY patterns
 - **build_config**: Generate Terragrunt HCL configuration files for remote_state backends, provider generation, dependency blocks, hooks, and inputs

@@ -563,7 +563,7 @@ export class ToolHandler {
             },
             {
                 name: 'cli_reference',
-                description: 'Get Terragrunt CLI command help (terragrunt run-all, plan, apply, init, validate, etc.) or list commands by category.',
+                description: 'Get current Terragrunt CLI command help (run --all, browse, plan, apply, hcl validate, etc.) or list commands by category.',
                 inputSchema: {
                     type: 'object',
                     properties: {

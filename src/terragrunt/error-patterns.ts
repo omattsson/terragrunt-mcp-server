@@ -520,8 +520,8 @@ export class ErrorPatternMatcher {
    */
   private getDebuggingSteps(): string[] {
     return [
-      'Run with --terragrunt-debug flag for verbose output',
-      'Check terragrunt.hcl syntax with terragrunt validate-inputs',
+      'Run with --inputs-debug to emit input debugging information',
+      'Check terragrunt.hcl syntax and inputs with terragrunt hcl validate --inputs',
       'Verify backend configuration is correct',
       'Clear cache with terragrunt clear-cache',
       'Try running terraform directly to isolate Terragrunt-specific issues'

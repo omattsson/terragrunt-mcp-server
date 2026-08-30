@@ -6,7 +6,7 @@
  * Represents a CLI option/flag for a command
  */
 export interface CLIOption {
-  /** The flag name (e.g., '--all', '--terragrunt-config') */
+  /** The flag name (e.g., '--all', '--config') */
   flag: string;
   /** Short flag if available (e.g., '-a') */
   shortFlag?: string;
@@ -54,7 +54,7 @@ export type CLICommandCategory =
 export interface CLICommand {
   /** Command name (e.g., 'run', 'hcl fmt') */
   name: string;
-  /** Alternative names/aliases (e.g., ['run-all', 'hclfmt']) */
+  /** Alternative names/aliases, including deprecated aliases where supported */
   aliases: string[];
   /** Category of the command */
   category: CLICommandCategory;

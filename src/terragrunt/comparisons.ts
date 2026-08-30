@@ -628,7 +628,7 @@ inputs = {
         'Passing values between Terragrunt modules',
         'Creating execution order based on data flow',
         'Reading VPC IDs, ARNs, or other outputs from infrastructure',
-        'Building a dependency graph for run-all commands',
+        'Building a dependency graph for run --all commands',
       ],
     },
     commonMistakes: [

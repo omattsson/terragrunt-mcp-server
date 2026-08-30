@@ -84,6 +84,19 @@ describe('BestPracticesAnalyzer', () => {
     analyzer = new BestPracticesAnalyzer(new MockDocsManager(mockDocs) as any);
   });
 
+  describe('Static CLI Guidance', () => {
+    it('uses current Terragrunt command forms', () => {
+      const guidance = JSON.stringify(analyzer.getStaticPractices());
+
+      expect(guidance).not.toMatch(/terragrunt run-all/);
+      expect(guidance).not.toMatch(/terragrunt validate-inputs/);
+      expect(guidance).not.toMatch(/terragrunt hclfmt/);
+      expect(guidance).not.toMatch(/--terragrunt-(parallelism|non-interactive|check)/);
+      expect(guidance).toContain('terragrunt run --all');
+      expect(guidance).toContain('terragrunt hcl validate --inputs');
+    });
+  });
+
   describe('Pattern Extraction', () => {
     it('extracts best practices from documentation', async () => {
       await analyzer.extractBestPractices();
