@@ -702,7 +702,7 @@ terraform {
       const fixturePaths = docs.map(doc => new URL(doc.url).pathname).sort();
       const canonicalPaths = TERRAGRUNT_DOC_MANIFEST.map(([, path]) => path).sort();
 
-      expect(docs).toHaveLength(124);
+      expect(docs).toHaveLength(TERRAGRUNT_DOC_MANIFEST.length);
       expect(new Set(fixturePaths).size).toBe(docs.length);
       expect(fixturePaths).toEqual(canonicalPaths);
     });
