@@ -484,6 +484,7 @@ function checkRemovedTopLevelAttributes(config: string): string[] {
     }
 
     let inString = false;
+    let stringChar: string | null = null;
     let escaped = false;
     for (let column = 0; column < sourceLine.length; column++) {
       const char = sourceLine[column];
@@ -497,8 +498,14 @@ function checkRemovedTopLevelAttributes(config: string): string[] {
         escaped = true;
         continue;
       }
-      if (char === '"') {
-        inString = !inString;
+      if (char === '"' || char === "'") {
+        if (!inString) {
+          inString = true;
+          stringChar = char;
+        } else if (char === stringChar) {
+          inString = false;
+          stringChar = null;
+        }
         continue;
       }
       if (inString) continue;
