@@ -885,13 +885,13 @@ terraform {
       const markdown = [
         '# Overview',
         '',
-        '> Get a high level overview of the most important Terragrunt features.',
+        '>Get a high level overview of the most important Terragrunt features.',
         '',
         'Getting started content.',
         '',
         '# Overview',
         '',
-        '> Overview of the Terralith to Terragrunt guide',
+        '>Overview of the Terralith to Terragrunt guide',
         '',
         'Migration guide content.',
         '',
@@ -921,6 +921,22 @@ terraform {
       ]);
       expect(new Set(docs.map(doc => doc.url)).size).toBe(3);
       expect(docs.every(doc => !doc.url.includes('overview-'))).toBe(true);
+    });
+
+    it('should not treat later blockquotes as source descriptions', () => {
+      const markdown = [
+        '# Overview',
+        '',
+        'Introductory content.',
+        '',
+        '> Learn how to use the --filter flag to target specific infrastructure',
+      ].join('\n');
+
+      const docs = manager.parseLlmsMarkdown(markdown);
+
+      expect(docs).toHaveLength(1);
+      expect(docs[0].url).toBe('https://docs.terragrunt.com/getting-started/overview/');
+      expect(docs[0].section).toBe('getting-started');
     });
 
     it('should apply canonical metadata to the complete upstream inventory', () => {

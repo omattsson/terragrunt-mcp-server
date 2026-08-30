@@ -1061,7 +1061,8 @@ export class TerragruntDocsManager {
       const title = headerMatch[1].trim();
       // Content is everything after the H1 line
       const content = section.slice(headerMatch[0].length).trim();
-      const description = content.match(/^> (.+)$/m)?.[1].trim() ?? '';
+      const firstContentLine = content.split('\n').find(line => line.trim());
+      const description = firstContentLine?.match(/^>\s*(.+)$/)?.[1].trim() ?? '';
       const sourceKey = manifestTitleCounts.get(title) === 1
         ? title
         : `${title}\n${description}`;
