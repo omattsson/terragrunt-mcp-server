@@ -31,7 +31,11 @@ export function parseExperiments(goSource: string): { active: string[]; complete
   // 2. Slice the NewExperiments() body so unrelated struct literals are ignored.
   const start = goSource.indexOf('func NewExperiments()');
   if (start === -1) throw new Error('no experiments: NewExperiments() not found');
-  const body = goSource.slice(start);
+  // Bound the scan to the function body so struct literals elsewhere in the file
+  // cannot be absorbed. gofmt puts the function's closing brace at column 0.
+  const rest = goSource.slice(start);
+  const endRel = rest.search(/\n\}/);
+  const body = endRel === -1 ? rest : rest.slice(0, endRel);
 
   // 3. Each entry is `{ Name: Ident }` or `{ Name: Ident, Status: StatusCompleted }`.
   const active = new Set<string>();
