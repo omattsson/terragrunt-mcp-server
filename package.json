@@ -34,6 +34,7 @@
     "test:ui": "vitest --ui",
     "check-schema-drift": "tsx scripts/check-schema-drift.ts",
     "update-fixture": "tsx scripts/update-fixture.ts",
+    "update-experiments-fixture": "tsx scripts/update-experiments-fixture.ts",
     "docker:build": "docker build -t terragrunt-mcp-server:latest .",
     "docker:run": "docker run -i terragrunt-mcp-server:latest",
     "docker:compose:up": "docker-compose up -d",

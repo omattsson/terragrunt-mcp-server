@@ -1,0 +1,41 @@
+{
+  "upstreamRevision": "2a4802eb604cc7175d9937a9d5303d66656b86ed",
+  "upstreamDate": "2026-08-29",
+  "generatedAt": "2026-08-31T06:40:18.884Z",
+  "source": "internal/experiment/experiment.go",
+  "active": [
+    "azure-backend",
+    "block-iteration",
+    "bounded-discovery",
+    "browse-tui",
+    "catalog-format",
+    "deep-merge",
+    "dependency-fetch-output-from-state",
+    "hook-context-env",
+    "iac-engine",
+    "mutable-generate",
+    "oci",
+    "optional-dependency-outputs",
+    "optional-hooks",
+    "otel-logs",
+    "profiling",
+    "slow-task-reporting",
+    "symlinks",
+    "tg-login",
+    "version-attribute"
+  ],
+  "completed": [
+    "auto-provider-cache-dir",
+    "cas",
+    "catalog-redesign",
+    "cli-redesign",
+    "dag-queue-display",
+    "filter-flag",
+    "mark-many-as-read",
+    "opt-out-auth",
+    "report",
+    "runner-pool",
+    "stack-dependencies",
+    "stacks"
+  ]
+}
