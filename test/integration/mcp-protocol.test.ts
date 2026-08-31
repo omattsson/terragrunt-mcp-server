@@ -1174,5 +1174,15 @@ describe('MCP Protocol Compliance', () => {
       const result = await toolHandler.executeTool('cli_reference', { command: 'browse' });
       expect(result.experiment).toMatchObject({ name: 'browse-tui', status: 'active' });
     });
+
+    it('lists experiments via get_guidance type=experiments', async () => {
+      const result = await toolHandler.executeTool('get_guidance', { type: 'experiments' });
+      expect(result.howToEnable.flag).toContain('--experiment');
+      expect(result.howToEnable.envVar).toContain('TG_EXPERIMENT');
+      const activeNames = result.active.map((e: any) => e.name);
+      expect(activeNames).toContain('block-iteration');
+      const completedNames = result.completed.map((e: any) => e.name);
+      expect(completedNames).toContain('cas');
+    });
   });
 });

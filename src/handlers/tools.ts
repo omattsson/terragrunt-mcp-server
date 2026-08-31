@@ -30,7 +30,7 @@
 import { performance } from 'perf_hooks';
 import { TerragruntDocsManager } from '../terragrunt/docs.js';
 import { TerragruntFunctionsManager } from '../terragrunt/functions.js';
-import { describeGate } from '../terragrunt/experiments.js';
+import { describeGate, experimentsGuidance } from '../terragrunt/experiments.js';
 import { BestPracticesAnalyzer } from '../terragrunt/best-practices.js';
 import { TerragruntConfigGenerator } from '../terragrunt/generator.js';
 import { ConfigTemplateLibrary, UseCase } from '../terragrunt/library.js';
@@ -633,7 +633,7 @@ export class ToolHandler {
                         },
                         type: {
                             type: 'string',
-                            enum: ['best-practices', 'comparison', 'pattern'],
+                            enum: ['best-practices', 'comparison', 'pattern', 'experiments'],
                             description: 'Guidance type'
                         },
                         mode: {
@@ -2406,11 +2406,16 @@ export class ToolHandler {
      */
     private async getGuidance(
         query?: string,
-        type?: 'best-practices' | 'comparison' | 'pattern',
+        type?: 'best-practices' | 'comparison' | 'pattern' | 'experiments',
         mode: 'summary' | 'full' = 'summary',
         level?: 'beginner' | 'intermediate' | 'advanced',
         listAll: boolean = false
     ): Promise<any> {
+        // Experiment inventory does not depend on the guidance managers.
+        if (type === 'experiments') {
+            return experimentsGuidance();
+        }
+
         // Check if BestPracticesAnalyzer is available
         const bestPracticesAnalyzer = this.checkManager(this.bestPracticesAnalyzer, 'BestPracticesAnalyzer');
         if ('error' in bestPracticesAnalyzer) return bestPracticesAnalyzer;

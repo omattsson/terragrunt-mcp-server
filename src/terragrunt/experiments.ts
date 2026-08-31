@@ -93,3 +93,18 @@ export function describeGate(name: string): ExperimentGate {
     enable: experimentEnablement(name),
   };
 }
+
+/** Shape returned by the get_guidance `experiments` topic. */
+export function experimentsGuidance() {
+  const shape = (e: Experiment) => ({ name: e.name, summary: e.summary });
+  return {
+    revision: EXPERIMENT_REVISION,
+    howToEnable: {
+      flag: '--experiment <name>',
+      envVar: 'TG_EXPERIMENT=<name>',
+      note: 'Active experiments are opt-in. Completed experiments are enabled by default and need no flag.',
+    },
+    active: EXPERIMENTS.filter((e) => e.status === 'active').map(shape),
+    completed: EXPERIMENTS.filter((e) => e.status === 'completed').map(shape),
+  };
+}
