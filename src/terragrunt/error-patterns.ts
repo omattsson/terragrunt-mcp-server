@@ -16,7 +16,8 @@ import {
  * This class analyzes error messages from Terragrunt and matches them against
  * known error patterns to provide helpful solutions and debugging steps.
  * 
- * **Database contains 66 error patterns across 7 categories**
+ * **Database contains 102 error patterns across 11 categories**
+ * (counts are computed by getPatternStats and guarded against drift by tests)
  * 
  * Features:
  * - Pattern matching with regex support
@@ -26,13 +27,17 @@ import {
  * - Solution retrieval from documentation
  * 
  * Supported error categories (patterns are thematically organized within these):
- * - configuration: Syntax errors, missing blocks, invalid values, hooks, includes, locals, generate blocks (38 patterns)
+ * - configuration: Syntax errors, missing blocks, invalid values, hooks, includes, locals, generate, block expansion (46 patterns)
  * - state: State locking, backend issues (3 patterns)
  * - dependency: Circular dependencies, missing modules, module sources (13 patterns)
- * - backend: S3, GCS, Azure backend errors (4 patterns)
+ * - backend: S3, GCS, Azure backend and managed azurerm state errors (8 patterns)
  * - terraform: Version mismatches, provider issues (3 patterns)
  * - authentication: AWS, Azure, GCP credential issues (3 patterns)
  * - network: Connectivity, timeout issues (2 patterns)
+ * - stack: Typed stack validation failures (6 patterns)
+ * - oci: OCI source and credential errors (11 patterns)
+ * - engine: IaC engine lifecycle failures (6 patterns)
+ * - experiment: Experiment-not-enabled failures (1 pattern)
  */
 export class ErrorPatternMatcher {
   private readonly docsManager: TerragruntDocsManager;
@@ -100,10 +105,87 @@ export class ErrorPatternMatcher {
       ...this.getHookErrorPatterns(),
       ...this.getIncludeErrorPatterns(),
       ...this.getLocalsErrorPatterns(),
-      ...this.getGenerateErrorPatterns()
+      ...this.getGenerateErrorPatterns(),
+      ...this.getStackErrorPatterns(),
+      ...this.getExpansionErrorPatterns(),
+      ...this.getOCIErrorPatterns(),
+      ...this.getEngineErrorPatterns(),
+      ...this.getExperimentErrorPatterns(),
+      ...this.getAzureManagedStateErrorPatterns()
     ];
 
     this.patternsLoaded = true;
+  }
+
+  /**
+   * Report pattern counts computed from the loaded array.
+   *
+   * The patterns array is the single source of truth for the documented
+   * pattern and category counts. A drift-guard test cross-checks the counts
+   * quoted in README.md, the blog post, and this file's JSDoc against this.
+   *
+   * @returns Total pattern count and a per-category breakdown
+   * @throws If two patterns share an id
+   */
+  async getPatternStats(): Promise<{ total: number; byCategory: Record<string, number> }> {
+    await this.loadPatterns();
+
+    const byCategory: Record<string, number> = {};
+    const ids = new Set<string>();
+
+    for (const pattern of this.patterns) {
+      if (ids.has(pattern.id)) {
+        throw new Error(`Duplicate error pattern id: ${pattern.id}`);
+      }
+      ids.add(pattern.id);
+      byCategory[pattern.category] = (byCategory[pattern.category] ?? 0) + 1;
+    }
+
+    return { total: this.patterns.length, byCategory };
+  }
+
+  /**
+   * Mask credential-bearing tokens in text derived from an error message.
+   *
+   * Diagnosis output must not echo secrets that appear in OCI or cloud
+   * credential failures. This masks the secret value only, keeping the
+   * surrounding label so the diagnosis stays readable.
+   *
+   * @param text Text that may contain a secret
+   * @returns The text with secret values replaced by ***
+   */
+  private redactSecrets(text: string): string {
+    // Match a credential key with an optional surrounding quote (JSON/HCL keys
+    // are quoted), then mask the whole value: a complete quoted string, or an
+    // unquoted token consumed up to the next delimiter.
+    const key = '(["\']?(?:password|token|secret[\\w-]*)["\']?\\s*[:=]\\s*)';
+    return text
+      .replace(new RegExp(`${key}"[^"]*"`, 'gi'), '$1"***"')
+      .replace(new RegExp(`${key}'[^']*'`, 'gi'), "$1'***'")
+      .replace(new RegExp(`${key}[^\\s,;"'}]+`, 'gi'), '$1***')
+      .replace(/Authorization:\s*Bearer\s+\S+/gi, 'Authorization: Bearer ***')
+      .replace(/AKIA[0-9A-Z]{16}/g, '***');
+  }
+
+  /**
+   * Redact every string-valued field of an error context.
+   *
+   * Applied once, at the point where extracted and caller-supplied context are
+   * merged, so no path (including the raw stack trace or a caller-provided
+   * filePath) can echo a credential in the diagnosis output.
+   *
+   * @param context The merged error context
+   * @returns A copy with all string values passed through redactSecrets
+   */
+  private redactContext(context: ErrorContext): ErrorContext {
+    const redacted: ErrorContext = { ...context };
+    for (const key of Object.keys(redacted) as Array<keyof ErrorContext>) {
+      const value = redacted[key];
+      if (typeof value === 'string') {
+        (redacted[key] as string) = this.redactSecrets(value);
+      }
+    }
+    return redacted;
   }
 
   /**
@@ -164,29 +246,36 @@ export class ErrorPatternMatcher {
     const enableFuzzyMatching = options?.enableFuzzyMatching ?? true;
     const enrichWithDocs = options?.enrichWithDocs ?? false;
 
+    // The context is request-specific (caller-supplied filePath, module, stack
+    // trace), but the match cache is keyed on the message and options only.
+    // Compute the redacted context fresh on every call and never cache it, so a
+    // later request with the same message cannot receive an earlier request's
+    // context (or leak its own into the cache).
+    const extractedContext = this.extractErrorContext(truncatedMessage);
+    const fullContext = this.redactContext({ ...extractedContext, ...context });
+
     // Check cache first (include options in cache key)
     const cacheKey = this.getCacheKey(truncatedMessage, maxMatches, minConfidence, enableFuzzyMatching);
     const cachedMatches = this.matchCache.get(cacheKey);
-    
+
     let matches: ErrorMatch[];
-    
+
     if (cachedMatches) {
       matches = cachedMatches;
     } else {
-      // Extract context from error message
-      const extractedContext = this.extractErrorContext(truncatedMessage);
-      const fullContext = { ...extractedContext, ...context };
-
       // Find all matching patterns
       matches = this.matchError(truncatedMessage, fullContext, {
         maxMatches,
         minConfidence,
         enableFuzzyMatching
       });
-      
-      // Cache the results
-      this.matchCache.set(cacheKey, matches);
+
+      // Cache context-independent match data only; context is re-attached below.
+      this.matchCache.set(cacheKey, matches.map(m => ({ ...m, context: {} as ErrorContext })));
     }
+
+    // Attach the fresh, request-specific redacted context to every match.
+    matches = matches.map(m => ({ ...m, context: fullContext }));
 
     // Calculate overall confidence
     const overallConfidence = matches.length > 0
@@ -1968,6 +2057,760 @@ export class ErrorPatternMatcher {
         ],
         documentationRefs: [
           'https://docs.terragrunt.com/reference/hcl/blocks/#generate'
+        ]
+      }
+    ];
+  }
+
+  /**
+   * Typed stack validation error patterns (category: stack, 6 patterns)
+   *
+   * Anchored to pkg/config/stack_validation.go and pkg/config/errors.go at the
+   * pinned upstream revision.
+   */
+  private getStackErrorPatterns(): ErrorPattern[] {
+    return [
+      {
+        id: 'stack-config-nil',
+        name: 'Stack config is nil',
+        category: 'stack',
+        regex: /stack\s+config\s+cannot\s+be\s+nil/i,
+        description: 'The stack configuration decoded to nothing',
+        likelyCauses: [
+          'terragrunt.stack.hcl is empty or all blocks were filtered out',
+          'The stack file failed to parse before validation',
+          'A generated stack produced no units or stacks'
+        ],
+        solutions: [
+          { step: 1, explanation: 'Add at least one unit or stack block to terragrunt.stack.hcl' },
+          { step: 2, command: 'terragrunt stack generate', explanation: 'Regenerate the stack and inspect the output' },
+          { step: 3, explanation: 'Check for a parse error earlier in the stack file' }
+        ],
+        documentationRefs: [
+          'https://docs.terragrunt.com/reference/hcl/blocks/#stack'
+        ]
+      },
+      {
+        id: 'stack-component-field-empty',
+        name: 'Stack component missing a required field',
+        category: 'stack',
+        regex: /\b(?:unit|stack)\b[^\n]*has\s+empty\s+(?:name|source|path)/i,
+        description: 'A unit or stack block is missing a required name, source, or path',
+        likelyCauses: [
+          'A required attribute was left blank',
+          'An interpolation resolved to an empty string',
+          'A copied block was not fully filled in'
+        ],
+        solutions: [
+          { step: 1, explanation: 'Set a non-empty name, source, and path on the reported component' },
+          { step: 2, explanation: 'Check that any interpolated value resolves to a concrete string' },
+          { step: 3, command: 'terragrunt stack generate', explanation: 'Regenerate the stack to see resolved fields' }
+        ],
+        documentationRefs: [
+          'https://docs.terragrunt.com/reference/hcl/blocks/#unit'
+        ]
+      },
+      {
+        id: 'stack-duplicate-name',
+        name: 'Duplicate stack component name',
+        category: 'stack',
+        regex: /duplicate\s+(?:unit|stack)\s+name\s+found/i,
+        description: 'Two units or stacks resolve to the same name or address',
+        likelyCauses: [
+          'Two unit or stack blocks share a name',
+          'Expansion keys produce colliding addresses',
+          'A copied block was not renamed'
+        ],
+        solutions: [
+          { step: 1, explanation: 'Give each unit and stack block a unique name' },
+          { step: 2, explanation: 'Check that expansion keys do not produce colliding addresses' },
+          { step: 3, command: 'terragrunt stack generate', explanation: 'Regenerate the stack to see resolved addresses' }
+        ],
+        documentationRefs: [
+          'https://docs.terragrunt.com/reference/hcl/blocks/#stack'
+        ]
+      },
+      {
+        id: 'stack-duplicate-path',
+        name: 'Duplicate stack component path',
+        category: 'stack',
+        regex: /duplicate\s+(?:unit|stack)\s+path\s+found/i,
+        description: 'Two components of the same kind generate into the same path',
+        likelyCauses: [
+          'Two components declare the same path',
+          'Expansion produces the same generated path twice',
+          'Default paths collide because names match'
+        ],
+        solutions: [
+          { step: 1, explanation: 'Give each component a distinct path' },
+          { step: 2, explanation: 'Include the expansion key in the path so instances stay unique' },
+          { step: 3, command: 'terragrunt stack generate', explanation: 'Regenerate the stack to see generated paths' }
+        ],
+        documentationRefs: [
+          'https://docs.terragrunt.com/reference/hcl/blocks/#stack'
+        ]
+      },
+      {
+        id: 'stack-cross-kind-path-collision',
+        name: 'Unit and stack generate into the same path',
+        category: 'stack',
+        regex: /duplicate\s+path\s+found\s+across\s+unit\s+and\s+stack/i,
+        description: 'A unit and a stack generate into the same on-disk directory',
+        likelyCauses: [
+          'A unit and a stack share a generated path',
+          'Both a unit and a stack default to the same directory',
+          'Paths overlap after expansion'
+        ],
+        solutions: [
+          { step: 1, explanation: 'Give the unit and the stack distinct paths' },
+          { step: 2, explanation: 'Move one component into its own subdirectory' },
+          { step: 3, command: 'terragrunt stack generate', explanation: 'Regenerate the stack to confirm paths no longer overlap' }
+        ],
+        documentationRefs: [
+          'https://docs.terragrunt.com/reference/hcl/blocks/#stack'
+        ]
+      },
+      {
+        id: 'stack-output-fetch-failed',
+        name: 'Stack unit output fetch failed',
+        category: 'stack',
+        regex: /stack\s+unit\s+.+\s+output\s+fetch\s+failed/i,
+        description: 'Terragrunt could not read a stack unit output',
+        likelyCauses: [
+          'The referenced unit has not been applied',
+          'The unit state is missing or inaccessible',
+          'The output name does not exist on the unit'
+        ],
+        solutions: [
+          { step: 1, explanation: 'Apply the referenced unit before the one that reads its output' },
+          { step: 2, explanation: 'Verify the output name exists on the source unit' },
+          { step: 3, explanation: 'Check that the unit state backend is reachable' }
+        ],
+        documentationRefs: [
+          'https://docs.terragrunt.com/reference/hcl/blocks/#dependency'
+        ]
+      }
+    ];
+  }
+
+  /**
+   * Block expansion error patterns (category: configuration, 8 patterns)
+   *
+   * Anchored to pkg/config/hclparse/errors.go at the pinned upstream revision.
+   * Expansion is a parse-time concern, so these stay in the configuration
+   * category; the meta-argument cases require the block-iteration experiment.
+   */
+  private getExpansionErrorPatterns(): ErrorPattern[] {
+    return [
+      {
+        id: 'expansion-duplicate-block',
+        name: 'More than one expansion block',
+        category: 'configuration',
+        regex: /declares\s+more\s+than\s+one\s+expansion\s+block/i,
+        description: 'A block declares more than one expansion block',
+        likelyCauses: [
+          'Two expansion blocks in one unit or stack block',
+          'A merge added a second expansion block'
+        ],
+        solutions: [
+          { step: 1, explanation: 'Keep at most one expansion block per unit or stack block' },
+          { step: 2, explanation: 'Combine the iteration into a single expansion block' }
+        ],
+        documentationRefs: [
+          'https://docs.terragrunt.com/reference/experiments/'
+        ]
+      },
+      {
+        id: 'expansion-conflicting-meta-args',
+        name: 'Expansion sets both for_each and count',
+        category: 'configuration',
+        regex: /expansion\s+block\s+sets\s+both\s+for_each\s+and\s+count/i,
+        description: 'An expansion block sets both for_each and count',
+        likelyCauses: [
+          'Both meta-arguments are present',
+          'A merge combined two expansion styles'
+        ],
+        solutions: [
+          { step: 1, explanation: 'Set exactly one of for_each or count on the expansion block' },
+          { step: 2, explanation: 'Use for_each for keyed instances, count for indexed instances' }
+        ],
+        documentationRefs: [
+          'https://docs.terragrunt.com/reference/experiments/'
+        ]
+      },
+      {
+        id: 'expansion-missing-meta-arg',
+        name: 'Expansion sets neither for_each nor count',
+        category: 'configuration',
+        regex: /expansion\s+block\s+sets\s+neither\s+for_each\s+nor\s+count/i,
+        description: 'An expansion block sets neither for_each nor count',
+        likelyCauses: [
+          'The expansion block is empty',
+          'The meta-argument was removed by a merge'
+        ],
+        solutions: [
+          { step: 1, explanation: 'Set exactly one of for_each or count on the expansion block' },
+          { step: 2, explanation: 'Remove the expansion block if the component is not iterated' }
+        ],
+        documentationRefs: [
+          'https://docs.terragrunt.com/reference/experiments/'
+        ]
+      },
+      {
+        id: 'expansion-invalid-count',
+        name: 'Expansion count is not a whole number',
+        category: 'configuration',
+        regex: /count\s+must\s+be\s+a\s+whole\s+number/i,
+        description: 'The expansion count did not evaluate to a whole number',
+        likelyCauses: [
+          'count evaluated to a fraction or a string',
+          'A function returned a non-integer value'
+        ],
+        solutions: [
+          { step: 1, explanation: 'Make count evaluate to a whole number' },
+          { step: 2, explanation: 'Wrap the expression in tonumber() or floor() if appropriate' }
+        ],
+        documentationRefs: [
+          'https://docs.terragrunt.com/reference/experiments/'
+        ]
+      },
+      {
+        id: 'expansion-negative-count',
+        name: 'Expansion count is negative',
+        category: 'configuration',
+        regex: /count\s+is\s+-\d+;\s+it\s+must\s+not\s+be\s+negative/i,
+        description: 'The expansion count evaluated to a negative number',
+        likelyCauses: [
+          'An expression produced a negative count',
+          'A subtraction underflowed'
+        ],
+        solutions: [
+          { step: 1, explanation: 'Make count evaluate to zero or a positive whole number' },
+          { step: 2, explanation: 'Guard the expression with max(0, ...) if it can go negative' }
+        ],
+        documentationRefs: [
+          'https://docs.terragrunt.com/reference/experiments/'
+        ]
+      },
+      {
+        id: 'expansion-limit-exceeded',
+        name: 'Expansion exceeds the instance limit',
+        category: 'configuration',
+        regex: /expands\s+to\s+\d+\s+instances?,\s+which\s+is\s+above\s+the\s+limit\s+of/i,
+        description: 'An expansion asked for more instances than the ceiling allows',
+        likelyCauses: [
+          'for_each or count resolved to a very large collection',
+          'An unbounded input drove the instance count'
+        ],
+        solutions: [
+          { step: 1, explanation: 'Reduce the size of the for_each collection or count value' },
+          { step: 2, explanation: 'Split the work across more units instead of one large expansion' }
+        ],
+        documentationRefs: [
+          'https://docs.terragrunt.com/reference/experiments/'
+        ]
+      },
+      {
+        id: 'expansion-non-concrete-value',
+        name: 'Expansion value is not concrete',
+        category: 'configuration',
+        regex: /is\s+(?:not\s+known\s+at\s+parse\s+time|null);\s+it\s+must\s+resolve\s+to\s+a\s+concrete\s+value/i,
+        description: 'A for_each or count value was unknown or null at parse time',
+        likelyCauses: [
+          'The meta-argument depends on a value not known until apply',
+          'The expression resolved to null'
+        ],
+        solutions: [
+          { step: 1, explanation: 'Drive the expansion from a value known at parse time' },
+          { step: 2, explanation: 'Avoid dependency outputs or unknown values in for_each and count' }
+        ],
+        documentationRefs: [
+          'https://docs.terragrunt.com/reference/experiments/'
+        ]
+      },
+      {
+        id: 'expansion-unsupported-foreach',
+        name: 'Unsupported for_each type',
+        category: 'configuration',
+        regex: /for_each\s+(?:must\s+be\s+a\s+set\s+or\s+a\s+map|keys\s+must\s+be\s+strings\s+or\s+numbers),\s+but\s+got/i,
+        description: 'for_each received an unsupported type or key type',
+        likelyCauses: [
+          'for_each was given a list or a scalar instead of a set or map',
+          'A for_each key was not a string or a number'
+        ],
+        solutions: [
+          { step: 1, explanation: 'Give for_each a set or a map value' },
+          { step: 2, explanation: 'Convert a list with toset() before using it in for_each' },
+          { step: 3, explanation: 'Use string or number keys for for_each entries' }
+        ],
+        documentationRefs: [
+          'https://docs.terragrunt.com/reference/experiments/'
+        ]
+      }
+    ];
+  }
+
+  /**
+   * OCI source and credential error patterns (category: oci, 10 patterns)
+   *
+   * Anchored to internal/getter/oci.go and internal/getter/errors.go at the
+   * pinned upstream revision. Solutions never instruct pasting credentials.
+   */
+  private getOCIErrorPatterns(): ErrorPattern[] {
+    return [
+      {
+        id: 'oci-missing-registry',
+        name: 'OCI source missing a registry domain',
+        category: 'oci',
+        regex: /oci\s+source\s+is\s+missing\s+a\s+registry\s+domain/i,
+        description: 'The OCI source URL has no registry domain',
+        likelyCauses: [
+          'The oci:// URL omits the registry host',
+          'A leading slash pushed the host into the path'
+        ],
+        solutions: [
+          { step: 1, explanation: 'Write the source as oci://<registry>/<repository>' },
+          { step: 2, explanation: 'Check the registry host is not empty' }
+        ],
+        documentationRefs: [
+          'https://docs.terragrunt.com/reference/hcl/blocks/#terraform'
+        ]
+      },
+      {
+        id: 'oci-missing-repository',
+        name: 'OCI source missing a repository name',
+        category: 'oci',
+        regex: /oci\s+source\s+is\s+missing\s+a\s+repository\s+name/i,
+        description: 'The OCI source URL has no repository name',
+        likelyCauses: [
+          'The oci:// URL omits the repository path',
+          'Only a registry host was given'
+        ],
+        solutions: [
+          { step: 1, explanation: 'Write the source as oci://<registry>/<repository>' },
+          { step: 2, explanation: 'Add the repository path after the registry host' }
+        ],
+        documentationRefs: [
+          'https://docs.terragrunt.com/reference/hcl/blocks/#terraform'
+        ]
+      },
+      {
+        id: 'oci-invalid-repository',
+        name: 'Invalid OCI repository name',
+        category: 'oci',
+        regex: /invalid\s+oci\s+repository\s+name/i,
+        description: 'The OCI repository name is not valid',
+        likelyCauses: [
+          'The repository name has invalid characters',
+          'Uppercase or unsupported separators were used'
+        ],
+        solutions: [
+          { step: 1, explanation: 'Use a lowercase repository name matching the OCI naming rules' },
+          { step: 2, explanation: 'Check the registry documentation for allowed characters' }
+        ],
+        documentationRefs: [
+          'https://docs.terragrunt.com/reference/hcl/blocks/#terraform'
+        ]
+      },
+      {
+        id: 'oci-invalid-digest',
+        name: 'Invalid OCI digest',
+        category: 'oci',
+        regex: /invalid\s+digest\s+"?[^"\s]*"?:/i,
+        description: 'The OCI digest reference is not valid',
+        likelyCauses: [
+          'The digest is not a sha256:<hex> value',
+          'The digest was truncated or mistyped'
+        ],
+        solutions: [
+          { step: 1, explanation: 'Use a digest of the form sha256:<64 hex characters>' },
+          { step: 2, explanation: 'Copy the digest from the registry rather than typing it' }
+        ],
+        documentationRefs: [
+          'https://docs.terragrunt.com/reference/hcl/blocks/#terraform'
+        ]
+      },
+      {
+        id: 'oci-invalid-tag',
+        name: 'Invalid OCI tag',
+        category: 'oci',
+        regex: /invalid\s+tag\s+"?[^"\s]*"?:/i,
+        description: 'The OCI tag reference is not valid',
+        likelyCauses: [
+          'The tag has invalid characters',
+          'The tag is empty'
+        ],
+        solutions: [
+          { step: 1, explanation: 'Use a tag matching the OCI tag rules' },
+          { step: 2, explanation: 'Reference the artifact by a digest instead of a tag for immutability' }
+        ],
+        documentationRefs: [
+          'https://docs.terragrunt.com/reference/hcl/blocks/#terraform'
+        ]
+      },
+      {
+        id: 'oci-tag-digest-conflict',
+        name: 'OCI source sets both tag and digest',
+        category: 'oci',
+        regex: /cannot\s+set\s+both\s+"tag"\s+and\s+"digest"\s+arguments/i,
+        description: 'The OCI source pins both a tag and a digest, which are mutually exclusive',
+        likelyCauses: [
+          'Both tag and digest were given on the oci:// source',
+          'A digest was added without removing the tag'
+        ],
+        solutions: [
+          { step: 1, explanation: 'Set either tag or digest on the OCI source, not both' },
+          { step: 2, explanation: 'Prefer a digest for an immutable, reproducible reference' }
+        ],
+        documentationRefs: [
+          'https://docs.terragrunt.com/reference/hcl/blocks/#terraform'
+        ]
+      },
+      {
+        id: 'oci-helper-malformed',
+        name: 'OCI credential helper returned malformed output',
+        category: 'oci',
+        regex: /oci\s+credential\s+helper\s+returned\s+malformed\s+output/i,
+        description: 'The configured OCI credential helper produced unparseable output',
+        likelyCauses: [
+          'The helper printed extra text alongside the credential JSON',
+          'The helper is a wrong or outdated binary'
+        ],
+        solutions: [
+          { step: 1, explanation: 'Confirm the helper returns only the expected credential JSON' },
+          { step: 2, explanation: 'Run the helper by hand to inspect its output; do not share the result' }
+        ],
+        documentationRefs: [
+          'https://docs.terragrunt.com/reference/hcl/blocks/#terraform'
+        ]
+      },
+      {
+        id: 'oci-credential-helper-failed',
+        name: 'OCI credential helper failed',
+        category: 'oci',
+        regex: /oci\s+credential\s+helper\s+"[^"]*"\s+for\s+/i,
+        description: 'The OCI credential helper exited with an error',
+        likelyCauses: [
+          'The helper binary is missing or not on PATH',
+          'The registry rejected the credential request',
+          'The helper timed out'
+        ],
+        solutions: [
+          { step: 1, explanation: 'Verify the credential helper binary exists and is on PATH' },
+          { step: 2, explanation: 'Confirm the registry is reachable and the identity is authorized' },
+          { step: 3, explanation: 'Check the helper configuration; keep any secret values out of logs' }
+        ],
+        documentationRefs: [
+          'https://docs.terragrunt.com/reference/hcl/blocks/#terraform'
+        ]
+      },
+      {
+        id: 'oci-incomplete-basic-cred',
+        name: 'Incomplete OCI basic credential',
+        category: 'oci',
+        regex: /oci_credentials\s+basic\s+auth\s+requires\s+both\s+a\s+username\s+and\s+a\s+password/i,
+        description: 'An oci_credentials basic auth block is missing the username or password',
+        likelyCauses: [
+          'Only one of username or password was set',
+          'An env-var reference resolved to empty'
+        ],
+        solutions: [
+          { step: 1, explanation: 'Set both username and password on the oci_credentials block' },
+          { step: 2, explanation: 'Provide the values through environment variables and confirm they resolve' }
+        ],
+        documentationRefs: [
+          'https://docs.terragrunt.com/reference/hcl/blocks/#terraform'
+        ]
+      },
+      {
+        id: 'oci-multiple-credential-styles',
+        name: 'OCI credentials set more than one style',
+        category: 'oci',
+        regex: /oci_credentials\s+block\s+must\s+configure\s+at\s+most\s+one\s+credential\s+style/i,
+        description: 'An oci_credentials block mixes more than one credential style',
+        likelyCauses: [
+          'Both basic auth and a helper were configured',
+          'A merge combined two credential styles'
+        ],
+        solutions: [
+          { step: 1, explanation: 'Configure exactly one credential style per oci_credentials block' },
+          { step: 2, explanation: 'Split styles into separate blocks scoped to different registries' }
+        ],
+        documentationRefs: [
+          'https://docs.terragrunt.com/reference/hcl/blocks/#terraform'
+        ]
+      },
+      {
+        id: 'oci-layer-count',
+        name: 'Unexpected OCI layer count',
+        category: 'oci',
+        regex: /expected\s+exactly\s+one\s+"[^"]*"\s+layer,\s+found\s+\d+/i,
+        description: 'The OCI artifact did not contain exactly one module layer',
+        likelyCauses: [
+          'The artifact is not a Terragrunt module package',
+          'The artifact was built with the wrong media type',
+          'The wrong repository or tag was referenced'
+        ],
+        solutions: [
+          { step: 1, explanation: 'Reference an artifact packaged as a Terragrunt module' },
+          { step: 2, explanation: 'Rebuild the artifact with a single module zip layer' }
+        ],
+        documentationRefs: [
+          'https://docs.terragrunt.com/reference/hcl/blocks/#terraform'
+        ]
+      }
+    ];
+  }
+
+  /**
+   * IaC engine lifecycle error patterns (category: engine, 6 patterns)
+   *
+   * Anchored to internal/engine/engine.go and internal/engine/verification.go
+   * at the pinned upstream revision.
+   */
+  private getEngineErrorPatterns(): ErrorPattern[] {
+    return [
+      {
+        id: 'engine-init-failed',
+        name: 'Engine init failed',
+        category: 'engine',
+        regex: /engine\s+init\s+failed/i,
+        description: 'The IaC engine failed to initialize',
+        likelyCauses: [
+          'The engine binary is incompatible with this Terragrunt version',
+          'The engine returned a non-zero exit code during init',
+          'Required engine configuration is missing'
+        ],
+        solutions: [
+          { step: 1, explanation: 'Check the engine version is compatible with Terragrunt' },
+          { step: 2, explanation: 'Review the engine block configuration in terragrunt.hcl' },
+          { step: 3, explanation: 'Read the engine log lines that precede the failure' }
+        ],
+        documentationRefs: [
+          'https://docs.terragrunt.com/reference/hcl/blocks/#engine'
+        ]
+      },
+      {
+        id: 'engine-shutdown-failed',
+        name: 'Engine shutdown failed',
+        category: 'engine',
+        regex: /engine\s+shutdown\s+failed/i,
+        description: 'The IaC engine failed to shut down cleanly',
+        likelyCauses: [
+          'The engine process crashed before shutdown',
+          'A shutdown hook returned an error',
+          'The engine was killed externally'
+        ],
+        solutions: [
+          { step: 1, explanation: 'Check for an earlier engine crash in the logs' },
+          { step: 2, explanation: 'Retry the command; a clean run usually shuts down without error' },
+          { step: 3, explanation: 'Report a reproducible shutdown failure to the engine maintainer' }
+        ],
+        documentationRefs: [
+          'https://docs.terragrunt.com/reference/hcl/blocks/#engine'
+        ]
+      },
+      {
+        id: 'engine-source-empty',
+        name: 'Engine source is empty',
+        category: 'engine',
+        regex: /engine\s+source\s+is\s+empty,\s+cannot\s+create\s+engine/i,
+        description: 'The engine block has no source',
+        likelyCauses: [
+          'The source attribute is missing or blank',
+          'An interpolation resolved the source to empty'
+        ],
+        solutions: [
+          { step: 1, explanation: 'Set the source attribute on the engine block' },
+          { step: 2, explanation: 'Confirm any interpolated source resolves to a concrete value' }
+        ],
+        documentationRefs: [
+          'https://docs.terragrunt.com/reference/hcl/blocks/#engine'
+        ]
+      },
+      {
+        id: 'engine-download-assets',
+        name: 'Failed to download engine assets',
+        category: 'engine',
+        regex: /failed\s+to\s+download\s+engine\s+assets/i,
+        description: 'Terragrunt could not download the engine assets',
+        likelyCauses: [
+          'Network connectivity to the engine source failed',
+          'The engine version or asset does not exist',
+          'Authentication to a private engine source is missing'
+        ],
+        solutions: [
+          { step: 1, explanation: 'Check network access to the engine source' },
+          { step: 2, explanation: 'Verify the engine source and version reference an existing asset' },
+          { step: 3, explanation: 'Provide credentials for a private engine registry if required' }
+        ],
+        documentationRefs: [
+          'https://docs.terragrunt.com/reference/hcl/blocks/#engine'
+        ]
+      },
+      {
+        id: 'engine-integrity',
+        name: 'Engine checksum verification failed',
+        category: 'engine',
+        regex: /checksum\s+list\s+has\s+no\s+entry\s+for/i,
+        description: 'The engine checksum list has no entry for a downloaded file',
+        likelyCauses: [
+          'The checksum list is out of date for this engine version',
+          'The downloaded asset was tampered with or corrupted',
+          'The wrong checksum file was used'
+        ],
+        solutions: [
+          { step: 1, explanation: 'Re-download the engine assets and retry' },
+          { step: 2, explanation: 'Confirm the engine version matches its checksum list' },
+          { step: 3, explanation: 'Do not disable verification; investigate the mismatch instead' }
+        ],
+        documentationRefs: [
+          'https://docs.terragrunt.com/reference/hcl/blocks/#engine'
+        ]
+      },
+      {
+        id: 'engine-plugin-spawn',
+        name: 'Engine plugin spawn failed',
+        category: 'engine',
+        regex: /engine\s+plugin\s+spawn/i,
+        description: 'Terragrunt could not spawn the engine plugin process',
+        likelyCauses: [
+          'The engine binary is not executable',
+          'The host blocks spawning the plugin process',
+          'The engine binary is built for a different platform'
+        ],
+        solutions: [
+          { step: 1, explanation: 'Confirm the engine binary is executable on this host' },
+          { step: 2, explanation: 'Check the engine binary matches the host OS and architecture' },
+          { step: 3, explanation: 'Review any sandbox or security policy that blocks child processes' }
+        ],
+        documentationRefs: [
+          'https://docs.terragrunt.com/reference/hcl/blocks/#engine'
+        ]
+      }
+    ];
+  }
+
+  /**
+   * Experiment-gate error patterns (category: experiment, 1 pattern)
+   *
+   * Every gate in Terragrunt uses the same phrasing, so one pattern matches
+   * them all and separates experiment-not-enabled failures from malformed
+   * configuration. Names cited in tests are cross-checked against the #252
+   * EXPERIMENTS inventory. Anchored to internal/cli/commands/browse/errors.go,
+   * pkg/config/errors.go, and internal/remotestate/backend/azurerm/errors.go.
+   */
+  private getExperimentErrorPatterns(): ErrorPattern[] {
+    return [
+      {
+        id: 'experiment-required',
+        name: 'Feature requires an experiment',
+        category: 'experiment',
+        regex: /requires\s+the\s+'[\w-]+'\s+experiment/i,
+        description: 'A command, block, or attribute is gated behind a Terragrunt experiment that is not enabled',
+        likelyCauses: [
+          'The feature is still experimental and off by default',
+          'The experiment name is not in the --experiment list',
+          'TG_EXPERIMENT does not include the required experiment'
+        ],
+        solutions: [
+          { step: 1, explanation: 'Read the experiment name in single quotes from the error message' },
+          { step: 2, command: 'terragrunt <cmd> --experiment <name>', explanation: 'Enable the experiment on the command line' },
+          { step: 3, command: 'export TG_EXPERIMENT=<name>', explanation: 'Or enable it through the environment for the session' }
+        ],
+        documentationRefs: [
+          'https://docs.terragrunt.com/reference/experiments/'
+        ]
+      }
+    ];
+  }
+
+  /**
+   * Managed azurerm state error patterns (category: backend, 4 patterns)
+   *
+   * Anchored to pkg/config/dependency_state_azurerm.go and
+   * internal/remotestate/backend/azurerm/errors.go at the pinned upstream
+   * revision. The azure-backend experiment gate is covered by
+   * experiment-required and is not duplicated here.
+   */
+  private getAzureManagedStateErrorPatterns(): ErrorPattern[] {
+    return [
+      {
+        id: 'azurerm-dependency-state-open',
+        name: 'Cannot open azurerm dependency state',
+        category: 'backend',
+        regex: /opening\s+dependency\s+state\s+at\s+azurerm:\/\//i,
+        description: 'Terragrunt could not read a dependency output directly from azurerm state',
+        likelyCauses: [
+          'The state blob does not exist yet',
+          'The identity cannot read the storage container',
+          'The storage account or container name is wrong'
+        ],
+        solutions: [
+          { step: 1, explanation: 'Confirm the dependency has been applied and its state blob exists' },
+          { step: 2, explanation: 'Grant the identity read access to the state container' },
+          { step: 3, explanation: 'Verify the storage account, container, and key in the backend config' }
+        ],
+        documentationRefs: [
+          'https://docs.terragrunt.com/features/units/state-backend/'
+        ]
+      },
+      {
+        id: 'azurerm-coordinates-permission',
+        name: 'azurerm state coordinates or permissions invalid',
+        category: 'backend',
+        regex: /verify\s+that\s+resource_group_name,\s+storage_account_name,\s+and\s+subscription_id/i,
+        description: 'The azurerm backend could not resolve the state client from the given coordinates',
+        likelyCauses: [
+          'resource_group_name, storage_account_name, or subscription_id points to a missing resource',
+          'The identity may not list storage account keys',
+          'The wrong subscription is selected'
+        ],
+        solutions: [
+          { step: 1, explanation: 'Confirm the resource group, storage account, and subscription exist' },
+          { step: 2, explanation: 'Grant the identity permission to list storage account keys, or use use_azuread_auth' },
+          { step: 3, command: 'az account set --subscription <id>', explanation: 'Select the correct subscription' }
+        ],
+        documentationRefs: [
+          'https://docs.terragrunt.com/features/units/state-backend/'
+        ]
+      },
+      {
+        id: 'azurerm-cross-migration',
+        name: 'azurerm cross-account or cross-cloud migration unsupported',
+        category: 'backend',
+        regex: /cross-(?:account|cloud)\s+state\s+migration.*not\s+supported\s+by\s+the\s+azurerm\s+backend/i,
+        description: 'The azurerm backend does not support migrating state across accounts or clouds in place',
+        likelyCauses: [
+          'The storage account changed between runs',
+          'The Azure environment or cloud changed between runs'
+        ],
+        solutions: [
+          { step: 1, explanation: 'Migrate via separate init, pull, and push steps' },
+          { step: 2, explanation: 'Or keep both units on the same storage account and environment' }
+        ],
+        documentationRefs: [
+          'https://docs.terragrunt.com/features/units/state-backend/'
+        ]
+      },
+      {
+        id: 'azurerm-state-client-setup',
+        name: 'Building azurerm state client failed',
+        category: 'backend',
+        regex: /building\s+azurerm\s+state\s+client/i,
+        description: 'Terragrunt failed to build the azurerm state client',
+        likelyCauses: [
+          'Azure authentication failed',
+          'The backend configuration is incomplete',
+          'The storage endpoint is unreachable'
+        ],
+        solutions: [
+          { step: 1, command: 'az login', explanation: 'Authenticate to Azure' },
+          { step: 2, explanation: 'Confirm the remote_state backend config is complete' },
+          { step: 3, explanation: 'Check network access to the storage account endpoint' }
+        ],
+        documentationRefs: [
+          'https://docs.terragrunt.com/features/units/state-backend/'
         ]
       }
     ];

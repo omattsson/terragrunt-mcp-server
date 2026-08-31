@@ -21,14 +21,18 @@ export interface Dependency {
 /**
  * Error category types for pattern matching
  */
-export type ErrorCategory = 
+export type ErrorCategory =
     | 'configuration'
     | 'state'
     | 'dependency'
     | 'backend'
     | 'terraform'
     | 'authentication'
-    | 'network';
+    | 'network'
+    | 'stack'
+    | 'engine'
+    | 'oci'
+    | 'experiment';
 
 /**
  * Represents a known error pattern that can be matched against
