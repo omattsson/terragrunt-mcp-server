@@ -17,9 +17,29 @@ rotting.
 | Built-in functions | `hcl/functions` page in the docs fixture | `test/unit/static-builtin-functions.test.ts` |
 | Experiments (active/completed) | `fixtures/terragrunt-experiments.json` | `test/unit/experiments-fixture.test.ts`, function cross-check |
 | Error diagnosis (Azure/unit/stack) | in-code patterns | `test/unit/error-patterns.test.ts` |
+| Modern diagnosis patterns | in-code patterns anchored to upstream `Error()` strings | `test/unit/error-patterns-modern.test.ts` |
+| Diagnosis pattern/category counts | `getPatternStats()` (single source of truth) | `test/unit/error-pattern-stats.test.ts` |
 
-OCI and CAS diagnosis patterns are tracked in #253 and appear as `it.todo`
-placeholders until then.
+The modern diagnosis patterns (#253) cover typed stack validation, block
+expansion, OCI sources and credentials, the IaC engine, experiment gates, and
+managed `azurerm` state. Each pattern regex anchors on a verbatim upstream
+`Error()` string, read at the pinned revision, in these files:
+
+- `pkg/config/stack_validation.go`, `pkg/config/errors.go`
+- `pkg/config/hclparse/errors.go`
+- `internal/getter/oci.go`, `internal/getter/errors.go`
+- `internal/engine/engine.go`, `internal/engine/verification.go`
+- `internal/cli/commands/browse/errors.go` and the other experiment gates
+- `pkg/config/dependency_state_azurerm.go`,
+  `internal/remotestate/backend/azurerm/errors.go`
+
+CAS (content-addressable store) diagnosis is out of scope for #253 and remains
+an `it.todo` placeholder.
+
+The documented pattern and category counts come from one source of truth:
+`ErrorPatternMatcher.getPatternStats()` computes them from the pattern array,
+and `test/unit/error-pattern-stats.test.ts` fails if the counts quoted in
+`README.md`, the blog post, or the class JSDoc drift from it.
 
 ## Experiment inventory
 
@@ -58,3 +78,9 @@ checkout), so align them by revision:
 6. Review each parity failure. A failure is a real drift signal: update the
    curated data in `src/terragrunt/*` by hand. Do not edit ignore lists or
    alias maps to hide a genuine new command, block, or function.
+7. For diagnosis patterns, re-read the upstream evidence files listed above. If
+   an `Error()` string changed, update the matching regex in
+   `src/terragrunt/error-patterns.ts` and its verbatim anchor in
+   `test/unit/error-patterns-modern.test.ts`. If you add or remove a pattern,
+   the count guard in `test/unit/error-pattern-stats.test.ts` fails until you
+   update `README.md`, the blog post, and the class JSDoc to the new totals.

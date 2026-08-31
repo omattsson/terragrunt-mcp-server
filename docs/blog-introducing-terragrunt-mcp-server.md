@@ -105,7 +105,7 @@ Instead of one generic "search docs" function, the MCP server provides specializ
 
 ## Error Diagnosis That Actually Helps
 
-The `diagnose_terragrunt_error` tool includes 66 error patterns across 7 categories with confidence scoring and fuzzy matching.
+The `diagnose_terragrunt_error` tool includes 101 error patterns across 11 categories with confidence scoring and fuzzy matching.
 
 Paste an error message like:
 > "Error acquiring the state lock. Lock Info: ID: abc-123..."
