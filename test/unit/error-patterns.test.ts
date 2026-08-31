@@ -452,7 +452,9 @@ describe('ErrorPatternMatcher', () => {
       const result = await matcher.diagnoseError(
         'Error reading unit configuration in terragrunt.stack.hcl',
       );
-      expect(Array.isArray(result.matches)).toBe(true);
+      // A non-empty match list is the "usable diagnosis" contract; asserting
+      // only that it is an array would pass even when nothing is diagnosed.
+      expect(result.matches.length).toBeGreaterThan(0);
     });
 
     // OCI and CAS diagnosis patterns do not exist yet. Adding them is issue #253.

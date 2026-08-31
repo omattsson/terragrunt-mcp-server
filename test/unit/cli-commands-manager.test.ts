@@ -711,6 +711,11 @@ describe('CLICommandsManager', () => {
             .filter((slug) => slug !== 'opentofu-shortcuts')
             .map((slug) => slug.split('/').join(' '));
 
+        // Commands the manager exposes that upstream documents under the single
+        // opentofu-shortcuts page rather than their own command pages. Excluded
+        // from the reverse (removal-drift) check below.
+        const SHORTCUTS = new Set(['plan', 'apply', 'destroy', 'output', 'init']);
+
         it('resolves every documented command in the manager', () => {
             // Guard against a vacuous pass: if the manifest shape/paths changed
             // and no command pages were discovered, `missing` would be empty and
@@ -719,6 +724,17 @@ describe('CLICommandsManager', () => {
             const manager = new CLICommandsManager();
             const missing = documentedCommands.filter((name) => manager.getCommand(name) === null);
             expect(missing, `Documented upstream commands missing from CLICommandsManager: ${missing.join(', ')}`).toEqual([]);
+        });
+
+        it('does not retain commands upstream no longer documents', () => {
+            // Reverse direction: a command removed or renamed upstream would leave
+            // a stale manager entry that the forward check cannot see.
+            const manager = new CLICommandsManager();
+            const extra = manager.getAllCommands()
+                .map((cmd) => cmd.name)
+                .filter((name) => !SHORTCUTS.has(name) && !documentedCommands.includes(name))
+                .sort();
+            expect(extra, `Manager commands not documented upstream (removal/rename drift, or add to SHORTCUTS): ${extra.join(', ')}`).toEqual([]);
         });
 
         it('provides the OpenTofu shortcut commands', () => {

@@ -69,10 +69,13 @@ async function main(): Promise<void> {
   const goSource = await fs.readFile(path.join(repo, EXPERIMENT_GO), 'utf-8');
   const { active, completed } = parseExperiments(goSource);
   const upstreamRevision = execFileSync('git', ['-C', repo, 'rev-parse', 'HEAD']).toString().trim();
+  // Committer date of the checked-out commit (YYYY-MM-DD), so a refresh against a
+  // newer checkout records that commit's date rather than a stale literal.
+  const upstreamDate = execFileSync('git', ['-C', repo, 'show', '-s', '--format=%cs', 'HEAD']).toString().trim();
 
   const fixture = {
     upstreamRevision,
-    upstreamDate: '2026-08-29',
+    upstreamDate,
     generatedAt: new Date().toISOString(),
     source: 'internal/experiment/experiment.go',
     active,

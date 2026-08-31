@@ -1433,18 +1433,30 @@ including paths, versions, environment variables, and resolved configuration val
       aliases: [],
       category: 'configuration',
       description: 'List and inspect strict controls.',
-      usage: 'terragrunt info strict [control]',
-      details: `Lists the available strict controls and their status, or inspects a single
-control by name. Strict controls turn specific deprecation warnings into errors.`,
-      options: [],
+      usage: 'terragrunt info strict list [--all] [name]',
+      details: `Strict controls turn specific deprecation warnings into errors. Bare
+\`info strict\` prints help; the \`list\` subcommand lists the active controls,
+\`--all\` also includes completed ones, and passing a control name inspects
+that control and its subcontrols.`,
+      options: [
+        {
+          flag: '--all',
+          description: 'Show all controls, including completed ones (the default lists only active controls).',
+          type: 'boolean',
+        },
+      ],
       examples: [
         {
-          description: 'List all strict controls',
-          command: 'terragrunt info strict',
+          description: 'List active strict controls',
+          command: 'terragrunt info strict list',
         },
         {
-          description: 'Inspect a single strict control',
-          command: 'terragrunt info strict root-terragrunt-hcl',
+          description: 'Include completed controls',
+          command: 'terragrunt info strict list --all',
+        },
+        {
+          description: 'Inspect a single strict control by name',
+          command: 'terragrunt info strict list <name>',
         },
       ],
       relatedCommands: ['info print'],
