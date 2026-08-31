@@ -623,7 +623,7 @@ export class ToolHandler {
             },
             {
                 name: 'get_guidance',
-                description: 'Get Terragrunt best practices, block comparisons (dependency vs dependencies), or DRY patterns for infrastructure-as-code organization.',
+                description: 'Get Terragrunt best practices, block comparisons (dependency vs dependencies), DRY patterns, or experiment status (type=experiments lists active/completed experiments and how to enable them) for infrastructure-as-code organization.',
                 inputSchema: {
                     type: 'object',
                     properties: {
