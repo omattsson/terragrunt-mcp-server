@@ -5,6 +5,7 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
+import { readFile } from 'fs/promises';
 import { HCLBlocksManager } from '../../src/terragrunt/hcl-blocks.js';
 import type { HCLBlock, HCLBlockCategory, HCLBlockSearchResult } from '../../src/types/hcl-blocks.js';
 
@@ -723,4 +724,65 @@ describe('HCLBlocksManager', () => {
             expect(results[2][0]?.block.name).toBe('include');
         });
     });
+});
+
+describe('upstream HCL block parity', () => {
+  // The /reference/hcl/blocks/ page documents each top-level block as an H2
+  // heading; H3/H4 headings are prose or sub-sections. `autoinclude` has its
+  // own H2 but is a nested block used inside unit/stack (modeled here as a
+  // nested `autoinclude` attribute on the unit and stack blocks), not a
+  // top-level block. Tied to revision
+  // 2a4802eb604cc7175d9937a9d5303d66656b86ed; revisit on refresh.
+  const NESTED_NOT_TOPLEVEL = new Set(['autoinclude']);
+
+  it('covers every documented top-level block', async () => {
+    const raw = await readFile(new URL('../../fixtures/terragrunt-docs-fixture.json', import.meta.url), 'utf-8');
+    const docs: Array<{ url: string; content: string }> = JSON.parse(raw);
+    const blocksDoc = docs.find((d) => d.url.endsWith('/reference/hcl/blocks/'));
+    expect(blocksDoc).toBeDefined();
+
+    // H2 headings only (exclude H3/H4); unescape markdown \_ in names.
+    const documented = [...blocksDoc!.content.matchAll(/(?<!#)##(?!#)\s+(.+?)\s+\[Section titled/g)]
+      .map((m) => m[1].trim().replace(/\\_/g, '_').toLowerCase())
+      .filter((name) => !NESTED_NOT_TOPLEVEL.has(name));
+
+    const manager = new HCLBlocksManager();
+    const inCode = new Set(manager.listBlocks().map((b) => b.name));
+    const missing = [...new Set(documented)].filter((name) => !inCode.has(name)).sort();
+    expect(missing, `Documented upstream blocks missing from HCL_BLOCKS: ${missing.join(', ')}`).toEqual([]);
+  });
+});
+
+describe('modern HCL surface baseline (issue #244 AC4)', () => {
+  const manager = new HCLBlocksManager();
+
+  it('models the expansion nested block on dependency and unit', () => {
+    for (const blockName of ['dependency', 'unit']) {
+      const block = manager.getBlock(blockName);
+      expect(block, blockName).not.toBeNull();
+      const expansion = block?.attributes.find((a) => a.name === 'expansion');
+      expect(expansion, `${blockName}.expansion`).toBeDefined();
+      expect(expansion?.description).toContain('block-iteration');
+    }
+  });
+
+  it('keeps unit and stack as top-level blocks', () => {
+    expect(manager.getBlock('unit')).not.toBeNull();
+    expect(manager.getBlock('stack')).not.toBeNull();
+  });
+
+  it('models the autoinclude nested block on unit and stack', () => {
+    for (const blockName of ['unit', 'stack']) {
+      const block = manager.getBlock(blockName);
+      expect(block, blockName).not.toBeNull();
+      const autoinclude = block?.attributes.find((a) => a.name === 'autoinclude');
+      expect(autoinclude, `${blockName}.autoinclude`).toBeDefined();
+    }
+  });
+
+  it('does not expose removed top-level attributes as blocks', () => {
+    for (const removed of ['skip', 'retryable_errors', 'retry_max_attempts', 'retry_sleep_interval_sec']) {
+      expect(manager.getBlock(removed), removed).toBeNull();
+    }
+  });
 });
