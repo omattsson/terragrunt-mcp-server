@@ -22,6 +22,8 @@ export interface CLIOption {
   required?: boolean;
   /** Example value */
   example?: string;
+  /** Experiment name that gates this option, if any */
+  experiment?: string;
 }
 
 /**
@@ -80,6 +82,8 @@ export interface CLICommand {
   deprecated?: string;
   /** Notes or warnings */
   notes?: string[];
+  /** Experiment name that gates this command, if any */
+  experiment?: string;
 }
 
 /**

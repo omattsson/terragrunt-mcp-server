@@ -46,6 +46,8 @@ export interface HCLAttribute {
   validValues?: string[];
   /** For nested blocks, the attributes within */
   nestedAttributes?: HCLAttribute[];
+  /** Experiment name that gates this attribute, if any */
+  experiment?: string;
 }
 
 /**
@@ -84,6 +86,8 @@ export interface HCLBlock {
   requiresLabel?: boolean;
   /** Link to official Terragrunt documentation */
   docsUrl?: string;
+  /** Experiment name that gates this block, if any */
+  experiment?: string;
 }
 
 /**
