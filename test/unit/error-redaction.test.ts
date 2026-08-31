@@ -5,19 +5,24 @@ import { TerragruntDocsManager } from '../../src/terragrunt/docs.js';
 const matcher = new ErrorPatternMatcher(new TerragruntDocsManager());
 
 describe('secret preservation in diagnosis', () => {
-  it('does not echo credentials from an OCI credential-helper failure', async () => {
+  it('redacts a secret carried in caller-supplied context', async () => {
+    // The caller-supplied context is merged into the diagnosis and echoed on
+    // each match, so a secret in it must be redacted. This fails if redaction
+    // is removed, unlike a check that only inspects the raw (never-echoed) input.
     const errorText =
-      'oci credential helper "docker-credential-ecr" for registry.example.com: ' +
-      'exit status 1: password=SUPERSECRET123 token=abcTOKEN Authorization: Bearer zzzBEARER';
-
-    const result = await matcher.diagnoseError(errorText, {}, { enableFuzzyMatching: false });
+      'oci credential helper "docker-credential-ecr" for registry.example.com: exit status 1';
+    const result = await matcher.diagnoseError(
+      errorText,
+      { module: 'password=SUPERSECRET123', filePath: 'token=abcTOKEN' },
+      { enableFuzzyMatching: false },
+    );
     const serialized = JSON.stringify(result);
 
+    expect(result.matches[0]?.pattern.id).toBe('oci-credential-helper-failed');
     expect(serialized).not.toContain('SUPERSECRET123');
     expect(serialized).not.toContain('abcTOKEN');
-    expect(serialized).not.toContain('zzzBEARER');
-    // The diagnosis itself still lands on the OCI helper pattern.
-    expect(result.matches[0]?.pattern.id).toBe('oci-credential-helper-failed');
+    expect(serialized).toContain('password=***');
+    expect(serialized).toContain('token=***');
   });
 
   it('redacts a secret carried in an extracted context field', async () => {
@@ -30,5 +35,14 @@ describe('secret preservation in diagnosis', () => {
     expect(result.matches[0]?.pattern.id).toBe('state-lock-error');
     expect(serialized).not.toContain('HUNTER2SECRET');
     expect(serialized).toContain('password=***');
+  });
+
+  it('redacts a secret carried in an extracted stack trace', async () => {
+    const errorText = 'engine init failed\nStack trace:\n    at token=SECRETLINE runEngine';
+    const result = await matcher.diagnoseError(errorText, {}, { enableFuzzyMatching: false });
+    const serialized = JSON.stringify(result);
+
+    expect(result.matches[0]?.pattern.id).toBe('engine-init-failed');
+    expect(serialized).not.toContain('SECRETLINE');
   });
 });

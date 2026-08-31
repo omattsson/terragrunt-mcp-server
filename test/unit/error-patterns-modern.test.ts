@@ -136,6 +136,35 @@ describe('modern diagnosis: experiment gates', () => {
   });
 });
 
+describe('modern diagnosis: enrichment labels new categories correctly', () => {
+  it('labels related engine errors as engine, not configuration', async () => {
+    const result = await matcher.diagnoseError(
+      'engine init failed',
+      {},
+      { enableFuzzyMatching: false, enrichWithDocs: true },
+    );
+    expect('relatedErrorDetails' in result).toBe(true);
+    const related = (result as { relatedErrorDetails: Array<{ category: string }> }).relatedErrorDetails;
+    expect(related.length).toBeGreaterThan(0);
+    for (const r of related) {
+      expect(r.category).toBe('engine');
+    }
+  });
+
+  it('does not mislabel an OCI credential related error as authentication', async () => {
+    const result = await matcher.diagnoseError(
+      'oci credential helper "docker-credential-ecr" for registry.example.com: exit status 1',
+      {},
+      { enableFuzzyMatching: false, enrichWithDocs: true },
+    );
+    const related = (result as { relatedErrorDetails: Array<{ category: string }> }).relatedErrorDetails;
+    expect(related.length).toBeGreaterThan(0);
+    for (const r of related) {
+      expect(r.category).toBe('oci');
+    }
+  });
+});
+
 describe('modern diagnosis: exact modern patterns outrank fuzzy matches', () => {
   it('keeps the exact modern match ranked above every fuzzy match', async () => {
     const result = await matcher.diagnoseError('engine init failed', {}, { enableFuzzyMatching: true });

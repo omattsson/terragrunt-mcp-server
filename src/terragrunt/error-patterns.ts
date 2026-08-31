@@ -162,6 +162,27 @@ export class ErrorPatternMatcher {
   }
 
   /**
+   * Redact every string-valued field of an error context.
+   *
+   * Applied once, at the point where extracted and caller-supplied context are
+   * merged, so no path (including the raw stack trace or a caller-provided
+   * filePath) can echo a credential in the diagnosis output.
+   *
+   * @param context The merged error context
+   * @returns A copy with all string values passed through redactSecrets
+   */
+  private redactContext(context: ErrorContext): ErrorContext {
+    const redacted: ErrorContext = { ...context };
+    for (const key of Object.keys(redacted) as Array<keyof ErrorContext>) {
+      const value = redacted[key];
+      if (typeof value === 'string') {
+        (redacted[key] as string) = this.redactSecrets(value);
+      }
+    }
+    return redacted;
+  }
+
+  /**
    * Match an error message against known patterns and provide diagnosis.
    * 
    * @param errorMessage The error message to analyze
@@ -228,9 +249,11 @@ export class ErrorPatternMatcher {
     if (cachedMatches) {
       matches = cachedMatches;
     } else {
-      // Extract context from error message
+      // Extract context from error message, then redact secrets from the merged
+      // result so neither extracted values, a raw stack trace, nor caller-supplied
+      // context can echo a credential in the diagnosis output.
       const extractedContext = this.extractErrorContext(truncatedMessage);
-      const fullContext = { ...extractedContext, ...context };
+      const fullContext = this.redactContext({ ...extractedContext, ...context });
 
       // Find all matching patterns
       matches = this.matchError(truncatedMessage, fullContext, {
@@ -372,7 +395,7 @@ export class ErrorPatternMatcher {
     // Extract command
     const commandMatch = errorMessage.match(/terragrunt\s+([\w-]+)/i);
     if (commandMatch) {
-      context.command = this.redactSecrets(`terragrunt ${commandMatch[1]}`);
+      context.command = `terragrunt ${commandMatch[1]}`;
     }
 
     // Extract version
@@ -384,7 +407,7 @@ export class ErrorPatternMatcher {
     // Extract file path
     const fileMatch = errorMessage.match(/(?:in|at|file)\s+([^\s:]+\.(?:hcl|tf|tfvars))/i);
     if (fileMatch) {
-      context.filePath = this.redactSecrets(fileMatch[1]);
+      context.filePath = fileMatch[1];
     }
 
     // Extract line number
@@ -403,7 +426,7 @@ export class ErrorPatternMatcher {
     // Extract module/component
     const moduleMatch = errorMessage.match(/module[:\s]+([^\s,]+)/i);
     if (moduleMatch) {
-      context.module = this.redactSecrets(moduleMatch[1]);
+      context.module = moduleMatch[1];
     }
 
     // Extract backend type
@@ -2244,7 +2267,7 @@ export class ErrorPatternMatcher {
         id: 'expansion-negative-count',
         name: 'Expansion count is negative',
         category: 'configuration',
-        regex: /count\s+is\s+-?\d+;\s+it\s+must\s+not\s+be\s+negative/i,
+        regex: /count\s+is\s+-\d+;\s+it\s+must\s+not\s+be\s+negative/i,
         description: 'The expansion count evaluated to a negative number',
         likelyCauses: [
           'An expression produced a negative count',

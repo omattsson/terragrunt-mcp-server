@@ -847,6 +847,51 @@ export class SolutionRetriever {
           explanation: 'HTTP_PROXY and HTTPS_PROXY may need to be set'
         });
         break;
+
+      case 'stack':
+        steps.push({
+          action: 'Regenerate the stack to inspect resolved components',
+          verificationCommand: 'terragrunt stack generate',
+          explanation: 'Shows the resolved names, sources, and generated paths'
+        });
+        steps.push({
+          action: 'Give each unit and stack a unique name and path',
+          explanation: 'Duplicate names or paths collide during stack validation'
+        });
+        break;
+
+      case 'oci':
+        steps.push({
+          action: 'Verify the OCI source is oci://<registry>/<repository>',
+          explanation: 'A missing registry domain or repository name is a common cause'
+        });
+        steps.push({
+          action: 'Check the OCI credential configuration; keep secrets out of logs',
+          explanation: 'Confirm the credential helper or oci_credentials block resolves without echoing values'
+        });
+        break;
+
+      case 'engine':
+        steps.push({
+          action: 'Confirm the engine source and version reference an existing asset',
+          explanation: 'A missing source or download failure blocks engine init'
+        });
+        steps.push({
+          action: 'Check the engine binary matches the host OS and architecture',
+          explanation: 'A wrong-platform binary fails to spawn'
+        });
+        break;
+
+      case 'experiment':
+        steps.push({
+          action: 'Read the experiment name in single quotes from the error message',
+          explanation: 'The gated feature names the experiment it requires'
+        });
+        steps.push({
+          action: 'Enable the experiment with --experiment <name> or TG_EXPERIMENT=<name>',
+          explanation: 'The feature is off by default until the experiment is enabled'
+        });
+        break;
     }
 
     return steps;
@@ -998,14 +1043,23 @@ export class SolutionRetriever {
    */
   private inferCategoryFromName(name: string): ErrorMatch['pattern']['category'] {
     const lowerName = name.toLowerCase();
-    
+
+    // Modern categories first: their names ("OCI credential helper", "azurerm
+    // state client") also contain generic keywords, so match the specific
+    // category before the broader ones below.
+    if (lowerName.includes('experiment')) return 'experiment';
+    if (lowerName.includes('oci')) return 'oci';
+    if (lowerName.includes('engine')) return 'engine';
+    if (lowerName.includes('azurerm')) return 'backend';
+    if (lowerName.includes('stack')) return 'stack';
+
     if (lowerName.includes('state') || lowerName.includes('lock')) return 'state';
     if (lowerName.includes('dependency') || lowerName.includes('module')) return 'dependency';
     if (lowerName.includes('backend') || lowerName.includes('s3') || lowerName.includes('gcs')) return 'backend';
     if (lowerName.includes('terraform') || lowerName.includes('provider')) return 'terraform';
     if (lowerName.includes('auth') || lowerName.includes('credential')) return 'authentication';
     if (lowerName.includes('network') || lowerName.includes('timeout')) return 'network';
-    
+
     return 'configuration';
   }
 
