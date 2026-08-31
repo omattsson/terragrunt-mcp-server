@@ -336,7 +336,8 @@ export class CLICommandsManager {
       this.getRenderCommand(),
       this.getDagGraphCommand(),
       this.getInfoPrintCommand(),
-      
+      this.getInfoStrictCommand(),
+
       // Shortcut Commands
       this.getPlanCommand(),
       this.getApplyCommand(),
@@ -1420,13 +1421,46 @@ including paths, versions, environment variables, and resolved configuration val
           description: 'Print configuration info',
           command: 'terragrunt info print',
         },
-        {
-          description: 'Print info as JSON',
-          command: 'terragrunt info print --json',
-        },
       ],
       relatedCommands: ['render'],
       documentationUrl: 'https://docs.terragrunt.com/reference/cli/commands/info/print/',
+    };
+  }
+
+  private getInfoStrictCommand(): CLICommand {
+    return {
+      name: 'info strict',
+      aliases: [],
+      category: 'configuration',
+      description: 'List and inspect strict controls.',
+      usage: 'terragrunt info strict list [--all] [name]',
+      details: `Strict controls turn specific deprecation warnings into errors. Bare
+\`info strict\` prints help; the \`list\` subcommand lists the active controls,
+\`--all\` also includes completed ones, and passing a control name inspects
+that control and its subcontrols.`,
+      options: [
+        {
+          flag: '--all',
+          description: 'Show all controls, including completed ones (the default lists only active controls).',
+          type: 'boolean',
+        },
+      ],
+      examples: [
+        {
+          description: 'List active strict controls',
+          command: 'terragrunt info strict list',
+        },
+        {
+          description: 'Include completed controls',
+          command: 'terragrunt info strict list --all',
+        },
+        {
+          description: 'Inspect a single strict control by name',
+          command: 'terragrunt info strict list <name>',
+        },
+      ],
+      relatedCommands: ['info print'],
+      documentationUrl: 'https://docs.terragrunt.com/reference/cli/commands/info/strict/',
     };
   }
 

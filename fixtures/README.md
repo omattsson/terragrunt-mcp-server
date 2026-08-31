@@ -13,6 +13,19 @@ A snapshot of Terragrunt documentation that serves as a fallback when:
 
 This ensures tests remain deterministic and don't fail due to network issues.
 
+### `terragrunt-experiments.json`
+
+Holds the inventory of active and completed Terragrunt experiments, pinned via
+its `upstreamRevision` field to stay synchronized with the Terragrunt upstream.
+Experiments data is extracted from the Terragrunt Go checkout to ensure parity
+tests can verify which experiments are available. Refresh with:
+
+```bash
+TERRAGRUNT_REPO=<path-to-terragrunt> npm run update-experiments-fixture
+```
+
+See [docs/upstream-parity.md](../docs/upstream-parity.md) for the full refresh procedure.
+
 ## Fallback Strategy
 
 The documentation fetching follows this priority:
