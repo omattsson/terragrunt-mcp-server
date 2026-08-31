@@ -26,7 +26,8 @@ placeholders until then.
 The two fixtures come from two upstream sources (the live docs site and the Go
 checkout), so align them by revision:
 
-1. Check out `gruntwork-io/terragrunt` at the revision in `fixtures/README.md`.
+1. Check out `gruntwork-io/terragrunt` at the revision in `UPSTREAM_REVISION`
+   (`src/terragrunt/docs-manifest.ts`), the single source of truth for the pin.
 2. `npm run update-fixture` (reads the docs site).
 3. `TERRAGRUNT_REPO=<path-to-terragrunt> npm run update-experiments-fixture`
    (reads the Go checkout).

@@ -746,6 +746,11 @@ describe('upstream HCL block parity', () => {
       .map((m) => m[1].trim().replace(/\\_/g, '_').toLowerCase())
       .filter((name) => !NESTED_NOT_TOPLEVEL.has(name));
 
+    // Guard against a vacuous pass: if the docs fixture format changed and the
+    // regex extracted nothing, `documented` would be empty and every block
+    // would appear "present". The pinned revision has 14 top-level blocks.
+    expect(documented.length, 'no top-level block headings extracted — docs fixture format may have changed').toBeGreaterThanOrEqual(10);
+
     const manager = new HCLBlocksManager();
     const inCode = new Set(manager.listBlocks().map((b) => b.name));
     const missing = [...new Set(documented)].filter((name) => !inCode.has(name)).sort();

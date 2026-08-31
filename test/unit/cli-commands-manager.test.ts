@@ -712,6 +712,10 @@ describe('CLICommandsManager', () => {
             .map((slug) => slug.split('/').join(' '));
 
         it('resolves every documented command in the manager', () => {
+            // Guard against a vacuous pass: if the manifest shape/paths changed
+            // and no command pages were discovered, `missing` would be empty and
+            // the test would pass without checking. The pinned revision has 20.
+            expect(documentedCommands.length, 'no documented command pages found — manifest shape may have changed').toBeGreaterThanOrEqual(15);
             const manager = new CLICommandsManager();
             const missing = documentedCommands.filter((name) => manager.getCommand(name) === null);
             expect(missing, `Documented upstream commands missing from CLICommandsManager: ${missing.join(', ')}`).toEqual([]);
