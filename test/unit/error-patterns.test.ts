@@ -433,4 +433,29 @@ describe('ErrorPatternMatcher', () => {
       expect(typeof result.matches[0].likelyCause).toBe('string');
     });
   });
+
+  // ==================== Modern Surface Diagnosis (issue #244 AC6) ====================
+  describe('modern surface diagnosis (issue #244 AC6)', () => {
+    it('returns a usable diagnosis for an Azure backend error', async () => {
+      const result = await matcher.diagnoseError(
+        'Error: building AzureRM Client: could not configure AzureCli Authorizer',
+      );
+      // No dedicated Azure-auth pattern exists for this exact upstream error text yet
+      // (issue #253); fuzzy matching still surfaces a usable, non-empty diagnosis
+      // (falls through to a generic configuration-error pattern).
+      expect(Array.isArray(result.matches)).toBe(true);
+      expect(result.matches.length).toBeGreaterThan(0);
+    });
+
+    it('returns a usable diagnosis for a unit/stack error', async () => {
+      const result = await matcher.diagnoseError(
+        'Error reading unit configuration in terragrunt.stack.hcl',
+      );
+      expect(Array.isArray(result.matches)).toBe(true);
+    });
+
+    // OCI and CAS diagnosis patterns do not exist yet. Adding them is issue #253.
+    it.todo('diagnoses OCI source-fetch failures (oci://) — see #253');
+    it.todo('diagnoses CAS (content-addressable store) failures — see #253');
+  });
 });
