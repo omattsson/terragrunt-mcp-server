@@ -436,15 +436,16 @@ describe('ErrorPatternMatcher', () => {
 
   // ==================== Modern Surface Diagnosis (issue #244 AC6) ====================
   describe('modern surface diagnosis (issue #244 AC6)', () => {
-    it('returns a usable diagnosis for an Azure backend error', async () => {
+    it('returns a non-empty generic diagnosis (fuzzy fallback) for an Azure backend error with no dedicated pattern yet', async () => {
       const result = await matcher.diagnoseError(
         'Error: building AzureRM Client: could not configure AzureCli Authorizer',
       );
       // No dedicated Azure-auth pattern exists for this exact upstream error text yet
       // (issue #253); fuzzy matching still surfaces a usable, non-empty diagnosis
-      // (falls through to a generic configuration-error pattern).
+      // (falls through to a generic configuration-error pattern, not a regex-tier match).
       expect(Array.isArray(result.matches)).toBe(true);
       expect(result.matches.length).toBeGreaterThan(0);
+      expect(result.matches[0].confidence).toBeLessThan(0.95); // fuzzy fallback, not a dedicated regex-tier match
     });
 
     it('returns a usable diagnosis for a unit/stack error', async () => {
