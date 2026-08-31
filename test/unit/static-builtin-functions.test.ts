@@ -529,3 +529,22 @@ describe('Doc enrichment of static functions', () => {
     expect(count).toBe(1); // Should not be duplicated
   });
 });
+
+describe('function experiment parity', () => {
+  it('references only active experiments for experimental functions', async () => {
+    const raw = await readFile(new URL('../../fixtures/terragrunt-experiments.json', import.meta.url), 'utf-8');
+    const { active } = JSON.parse(raw) as { active: string[] };
+
+    const experimental = STATIC_BUILTIN_FUNCTIONS.filter((fn) => fn.experiment);
+    expect(experimental.length).toBeGreaterThan(0); // at least deep_merge
+    for (const fn of experimental) {
+      expect(active, `${fn.name} -> ${fn.experiment}`).toContain(fn.experiment);
+      expect(fn.stability, fn.name).toBe('experimental');
+    }
+  });
+
+  it('classifies deep_merge under the deep-merge experiment', () => {
+    const fn = STATIC_BUILTIN_FUNCTIONS.find((f) => f.name === 'deep_merge');
+    expect(fn?.experiment).toBe('deep-merge');
+  });
+});
