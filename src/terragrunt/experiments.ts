@@ -44,7 +44,7 @@ export const EXPERIMENTS: readonly Experiment[] = [
   { name: 'browse-tui', status: 'active', summary: 'Add the terragrunt browse command for interactive infrastructure browsing.' },
   { name: 'mutable-generate', status: 'active', summary: 'Deduplicate generate-block files via content-addressable storage, with a mutable attribute.' },
   { name: 'optional-dependency-outputs', status: 'active', summary: 'Skip all dependency output resolution during a run.' },
-  { name: 'tg-login', status: 'active', summary: 'Sign in to the Gruntwork Developer Portal from the CLI (tg login).' },
+  { name: 'tg-login', status: 'active', summary: 'Reserves the tg-login flow for signing in to the Gruntwork Developer Portal from the CLI; no command is wired up at the pinned revision.' },
   // Completed experiments — now stable and enabled by default.
   { name: 'cli-redesign', status: 'completed', summary: 'The redesigned Terragrunt CLI.' },
   { name: 'stacks', status: 'completed', summary: 'Terragrunt stacks (terragrunt.stack.hcl).' },
@@ -78,7 +78,18 @@ export function experimentEnablement(name: string): { flag: string; envVar: stri
  */
 export function describeGate(name: string): ExperimentGate {
   const exp = getExperiment(name);
-  if (exp && exp.status === 'completed') {
+  if (!exp) {
+    // Not in the pinned inventory — a stale or mistyped gate name. Make the gap
+    // explicit rather than emitting an empty, silent gate.
+    return {
+      name,
+      status: 'active',
+      summary: `Unknown experiment "${name}"; not in the pinned inventory.`,
+      enable: experimentEnablement(name),
+      note: 'This experiment name is not in the pinned inventory and may be stale or mistyped.',
+    };
+  }
+  if (exp.status === 'completed') {
     return {
       name,
       status: 'completed',
@@ -89,7 +100,7 @@ export function describeGate(name: string): ExperimentGate {
   return {
     name,
     status: 'active',
-    summary: exp?.summary ?? '',
+    summary: exp.summary,
     enable: experimentEnablement(name),
   };
 }
@@ -97,11 +108,14 @@ export function describeGate(name: string): ExperimentGate {
 /** Shape returned by the get_guidance `experiments` topic. */
 export function experimentsGuidance() {
   const shape = (e: Experiment) => ({ name: e.name, summary: e.summary });
+  // Derive the placeholder form from the single enablement helper so the flag
+  // and env-var syntax cannot drift from the per-gate responses.
+  const placeholder = experimentEnablement('<name>');
   return {
     revision: EXPERIMENT_REVISION,
     howToEnable: {
-      flag: '--experiment <name>',
-      envVar: 'TG_EXPERIMENT=<name>',
+      flag: placeholder.flag,
+      envVar: placeholder.envVar,
       note: 'Active experiments are opt-in. Completed experiments are enabled by default and need no flag.',
     },
     active: EXPERIMENTS.filter((e) => e.status === 'active').map(shape),

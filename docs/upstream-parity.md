@@ -36,7 +36,8 @@ CLI options, HCL blocks, and HCL attributes (surfaced in `cli_reference`,
 `get_hcl_config_reference`, and `function_reference` responses) and the
 `get_guidance` `experiments` topic. Active experiments are enabled with
 `--experiment <name>` or `TG_EXPERIMENT=<name>`; completed experiments are
-default and need no flag. To refresh: after `npm run update-experiments-fixture`
+default and need no flag. To refresh: after
+`TERRAGRUNT_REPO=<path-to-terragrunt> npm run update-experiments-fixture`
 (see below), reconcile `EXPERIMENTS` in `experiments.ts` with the fixture (the
 cross-check test fails on any drift) and refresh summaries from the upstream
 `.mdx` files.

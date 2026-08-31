@@ -33,6 +33,19 @@ describe('experiment gates on data', () => {
     expect(hcl.getBlock('engine')?.experiment).toBe('iac-engine');
   });
 
+  it('gates the unit and stack enabled attributes on block-iteration', () => {
+    for (const blockName of ['unit', 'stack']) {
+      const enabled = hcl.getBlock(blockName)?.attributes.find((a) => a.name === 'enabled');
+      expect(enabled?.experiment, `${blockName}.enabled`).toBe('block-iteration');
+    }
+  });
+
+  it('does not gate generate hcl_fmt (only mutable requires mutable-generate)', () => {
+    const generate = hcl.getBlock('generate');
+    expect(generate?.attributes.find((a) => a.name === 'hcl_fmt')?.experiment).toBeUndefined();
+    expect(generate?.attributes.find((a) => a.name === 'mutable')?.experiment).toBe('mutable-generate');
+  });
+
   it('only references known experiment names', () => {
     const names: (string | undefined)[] = [];
     for (const c of cli.getAllCommands()) {

@@ -644,6 +644,7 @@ inputs = {
         type: 'boolean',
         required: false,
         description: 'Whether to generate this unit. Requires the block-iteration experiment.',
+        experiment: 'block-iteration',
         defaultValue: true,
       },
       {
@@ -741,6 +742,7 @@ inputs = {
         type: 'boolean',
         required: false,
         description: 'Whether to generate this stack. Requires the block-iteration experiment.',
+        experiment: 'block-iteration',
         defaultValue: true,
       },
       {
@@ -872,8 +874,7 @@ inputs = {
         name: 'hcl_fmt',
         type: 'boolean',
         required: false,
-        description: 'Format generated HCL before writing it. When omitted, formatting is enabled for .hcl, .tf, and .tofu files. Requires the mutable-generate experiment.',
-        experiment: 'mutable-generate',
+        description: 'Format generated HCL before writing it. When omitted, formatting is enabled for .hcl, .tf, and .tofu files.',
         defaultValue: 'true for .hcl, .tf, and .tofu files; false otherwise',
       },
       {

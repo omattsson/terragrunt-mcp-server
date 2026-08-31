@@ -55,4 +55,10 @@ describe('EXPERIMENTS inventory', () => {
     expect(gate.enable).toBeUndefined();
     expect(gate.note).toMatch(/default/i);
   });
+
+  it('flags an unknown experiment name explicitly instead of a silent empty gate', () => {
+    const gate = describeGate('totally-made-up');
+    expect(gate.summary).toMatch(/unknown/i);
+    expect(gate.note).toMatch(/not in the pinned inventory/i);
+  });
 });
