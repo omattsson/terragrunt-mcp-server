@@ -58,6 +58,7 @@ describe('modern diagnosis: OCI', () => {
     ['invalid oci repository name "Foo": must be lowercase', 'oci-invalid-repository'],
     ['invalid digest "sha256:xx": encoding/hex: invalid byte', 'oci-invalid-digest'],
     ['invalid tag "bad!tag": tag is not valid', 'oci-invalid-tag'],
+    ['cannot set both "tag" and "digest" arguments', 'oci-tag-digest-conflict'],
     ['oci credential helper returned malformed output', 'oci-helper-malformed'],
     ['oci credential helper "docker-credential-ecr" for registry.example.com: exit status 1', 'oci-credential-helper-failed'],
     ['oci_credentials basic auth requires both a username and a password', 'oci-incomplete-basic-cred'],

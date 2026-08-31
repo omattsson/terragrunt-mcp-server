@@ -105,7 +105,7 @@ Instead of one generic "search docs" function, the MCP server provides specializ
 
 ## Error Diagnosis That Actually Helps
 
-The `diagnose_terragrunt_error` tool includes 101 error patterns across 11 categories with confidence scoring and fuzzy matching.
+The `diagnose_terragrunt_error` tool includes 102 error patterns across 11 categories with confidence scoring and fuzzy matching.
 
 Paste an error message like:
 > "Error acquiring the state lock. Lock Info: ID: abc-123..."
@@ -137,7 +137,7 @@ Fair question. Here's what the MCP server provides that generic AI assistants ca
 | | Generic AI | MCP Server |
 |---|---|---|
 | **Documentation freshness** | Training data cutoff | 24-hour refresh from official docs |
-| **Error pattern matching** | Generic troubleshooting | 66 specialized patterns with confidence scores |
+| **Error pattern matching** | Generic troubleshooting | 102 specialized patterns with confidence scores |
 | **Configuration validation** | May hallucinate syntax | Templates validated against schemas |
 | **Offline support** | Requires internet | Multi-tier fallback (always works) |
 | **Function signatures** | May be outdated | Live reference for 50+ functions |

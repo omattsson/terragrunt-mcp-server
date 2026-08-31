@@ -8,7 +8,7 @@ const matcher = new ErrorPatternMatcher(new TerragruntDocsManager());
 describe('getPatternStats', () => {
   it('reports the total and a per-category breakdown computed from the array', async () => {
     const stats = await matcher.getPatternStats();
-    expect(stats.total).toBe(101);
+    expect(stats.total).toBe(102);
     expect(stats.byCategory).toMatchObject({
       configuration: 46,
       state: 3,
@@ -18,7 +18,7 @@ describe('getPatternStats', () => {
       authentication: 3,
       network: 2,
       stack: 6,
-      oci: 10,
+      oci: 11,
       engine: 6,
       experiment: 1,
     });

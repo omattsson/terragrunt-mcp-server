@@ -1101,7 +1101,12 @@ export class SolutionRetriever {
       .join('|');
     
     const optionsKey = `${options.includeDestructiveCommands ?? true}_${options.maxSolutions ?? 5}`;
-    return `diag_${matchIds}_${diagnosis.overallConfidence.toFixed(2)}_${optionsKey}`;
+    // The enriched result embeds request-specific context (for example a
+    // filePath in a debugging step), so key on the (already redacted) context
+    // too. Without it, two same-match requests with different context would
+    // share one cached result. All matches carry the same context object.
+    const contextSig = JSON.stringify(diagnosis.matches[0]?.context ?? {});
+    return `diag_${matchIds}_${diagnosis.overallConfidence.toFixed(2)}_${optionsKey}_${contextSig}`;
   }
 
   /**

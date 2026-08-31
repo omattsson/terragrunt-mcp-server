@@ -16,7 +16,7 @@ import {
  * This class analyzes error messages from Terragrunt and matches them against
  * known error patterns to provide helpful solutions and debugging steps.
  * 
- * **Database contains 101 error patterns across 11 categories**
+ * **Database contains 102 error patterns across 11 categories**
  * (counts are computed by getPatternStats and guarded against drift by tests)
  * 
  * Features:
@@ -35,7 +35,7 @@ import {
  * - authentication: AWS, Azure, GCP credential issues (3 patterns)
  * - network: Connectivity, timeout issues (2 patterns)
  * - stack: Typed stack validation failures (6 patterns)
- * - oci: OCI source and credential errors (10 patterns)
+ * - oci: OCI source and credential errors (11 patterns)
  * - engine: IaC engine lifecycle failures (6 patterns)
  * - experiment: Experiment-not-enabled failures (1 pattern)
  */
@@ -155,8 +155,14 @@ export class ErrorPatternMatcher {
    * @returns The text with secret values replaced by ***
    */
   private redactSecrets(text: string): string {
+    // Match a credential key with an optional surrounding quote (JSON/HCL keys
+    // are quoted), then mask the whole value: a complete quoted string, or an
+    // unquoted token consumed up to the next delimiter.
+    const key = '(["\']?(?:password|token|secret[\\w-]*)["\']?\\s*[:=]\\s*)';
     return text
-      .replace(/(password|token|secret[\w-]*)\s*[:=]\s*\S+/gi, '$1=***')
+      .replace(new RegExp(`${key}"[^"]*"`, 'gi'), '$1"***"')
+      .replace(new RegExp(`${key}'[^']*'`, 'gi'), "$1'***'")
+      .replace(new RegExp(`${key}[^\\s,;"'}]+`, 'gi'), '$1***')
       .replace(/Authorization:\s*Bearer\s+\S+/gi, 'Authorization: Bearer ***')
       .replace(/AKIA[0-9A-Z]{16}/g, '***');
   }
@@ -240,31 +246,36 @@ export class ErrorPatternMatcher {
     const enableFuzzyMatching = options?.enableFuzzyMatching ?? true;
     const enrichWithDocs = options?.enrichWithDocs ?? false;
 
+    // The context is request-specific (caller-supplied filePath, module, stack
+    // trace), but the match cache is keyed on the message and options only.
+    // Compute the redacted context fresh on every call and never cache it, so a
+    // later request with the same message cannot receive an earlier request's
+    // context (or leak its own into the cache).
+    const extractedContext = this.extractErrorContext(truncatedMessage);
+    const fullContext = this.redactContext({ ...extractedContext, ...context });
+
     // Check cache first (include options in cache key)
     const cacheKey = this.getCacheKey(truncatedMessage, maxMatches, minConfidence, enableFuzzyMatching);
     const cachedMatches = this.matchCache.get(cacheKey);
-    
+
     let matches: ErrorMatch[];
-    
+
     if (cachedMatches) {
       matches = cachedMatches;
     } else {
-      // Extract context from error message, then redact secrets from the merged
-      // result so neither extracted values, a raw stack trace, nor caller-supplied
-      // context can echo a credential in the diagnosis output.
-      const extractedContext = this.extractErrorContext(truncatedMessage);
-      const fullContext = this.redactContext({ ...extractedContext, ...context });
-
       // Find all matching patterns
       matches = this.matchError(truncatedMessage, fullContext, {
         maxMatches,
         minConfidence,
         enableFuzzyMatching
       });
-      
-      // Cache the results
-      this.matchCache.set(cacheKey, matches);
+
+      // Cache context-independent match data only; context is re-attached below.
+      this.matchCache.set(cacheKey, matches.map(m => ({ ...m, context: {} as ErrorContext })));
     }
+
+    // Attach the fresh, request-specific redacted context to every match.
+    matches = matches.map(m => ({ ...m, context: fullContext }));
 
     // Calculate overall confidence
     const overallConfidence = matches.length > 0
@@ -2432,6 +2443,24 @@ export class ErrorPatternMatcher {
         solutions: [
           { step: 1, explanation: 'Use a tag matching the OCI tag rules' },
           { step: 2, explanation: 'Reference the artifact by a digest instead of a tag for immutability' }
+        ],
+        documentationRefs: [
+          'https://docs.terragrunt.com/reference/hcl/blocks/#terraform'
+        ]
+      },
+      {
+        id: 'oci-tag-digest-conflict',
+        name: 'OCI source sets both tag and digest',
+        category: 'oci',
+        regex: /cannot\s+set\s+both\s+"tag"\s+and\s+"digest"\s+arguments/i,
+        description: 'The OCI source pins both a tag and a digest, which are mutually exclusive',
+        likelyCauses: [
+          'Both tag and digest were given on the oci:// source',
+          'A digest was added without removing the tag'
+        ],
+        solutions: [
+          { step: 1, explanation: 'Set either tag or digest on the OCI source, not both' },
+          { step: 2, explanation: 'Prefer a digest for an immutable, reproducible reference' }
         ],
         documentationRefs: [
           'https://docs.terragrunt.com/reference/hcl/blocks/#terraform'

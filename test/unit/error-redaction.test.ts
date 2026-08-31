@@ -45,4 +45,27 @@ describe('secret preservation in diagnosis', () => {
     expect(result.matches[0]?.pattern.id).toBe('engine-init-failed');
     expect(serialized).not.toContain('SECRETLINE');
   });
+
+  it('redacts JSON and HCL quoted-key credential forms', async () => {
+    const result = await matcher.diagnoseError(
+      'engine init failed',
+      { module: '{"Secret":"sensitiveJSONval"}', stackTrace: 'password = "sensitiveHCLval"' },
+      { enableFuzzyMatching: false },
+    );
+    const serialized = JSON.stringify(result);
+
+    expect(serialized).not.toContain('sensitiveJSONval');
+    expect(serialized).not.toContain('sensitiveHCLval');
+  });
+
+  it('does not serve one request context from another cached request', async () => {
+    // Same message and options hit the match cache, but the caller context is
+    // request-specific and must not be shared across requests.
+    const message = 'engine init failed';
+    const first = await matcher.diagnoseError(message, { filePath: 'first.hcl' }, { enableFuzzyMatching: false });
+    const second = await matcher.diagnoseError(message, { filePath: 'second.hcl' }, { enableFuzzyMatching: false });
+
+    expect(first.matches[0]?.context.filePath).toBe('first.hcl');
+    expect(second.matches[0]?.context.filePath).toBe('second.hcl');
+  });
 });
