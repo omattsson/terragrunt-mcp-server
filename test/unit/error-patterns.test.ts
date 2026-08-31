@@ -440,9 +440,10 @@ describe('ErrorPatternMatcher', () => {
       const result = await matcher.diagnoseError(
         'Error: building AzureRM Client: could not configure AzureCli Authorizer',
       );
-      // No dedicated Azure-auth pattern exists for this exact upstream error text yet
-      // (issue #253); fuzzy matching still surfaces a usable, non-empty diagnosis
-      // (falls through to a generic configuration-error pattern, not a regex-tier match).
+      // This is a Terraform AzureRM provider auth error, not a Terragrunt-owned
+      // failure, so it has no dedicated regex pattern; the managed azurerm state
+      // patterns from #253 target "building azurerm state client", not this text.
+      // Fuzzy matching still surfaces a usable, non-empty diagnosis.
       expect(Array.isArray(result.matches)).toBe(true);
       expect(result.matches.length).toBeGreaterThan(0);
       expect(result.matches[0].confidence).toBeLessThan(0.95); // fuzzy fallback, not a dedicated regex-tier match
@@ -457,8 +458,18 @@ describe('ErrorPatternMatcher', () => {
       expect(result.matches.length).toBeGreaterThan(0);
     });
 
-    // OCI and CAS diagnosis patterns do not exist yet. Adding them is issue #253.
-    it.todo('diagnoses OCI source-fetch failures (oci://) — see #253');
-    it.todo('diagnoses CAS (content-addressable store) failures — see #253');
+    it('diagnoses OCI source failures with a dedicated pattern (issue #253)', async () => {
+      const result = await matcher.diagnoseError(
+        'oci source is missing a registry domain',
+        {},
+        { enableFuzzyMatching: false },
+      );
+      expect(result.matches[0].pattern.category).toBe('oci');
+      expect(result.matches[0].confidence).toBe(0.95);
+    });
+
+    // CAS (content-addressable store) diagnosis is out of scope for #253; the CAS
+    // experiment is completed and its failures are not covered here yet.
+    it.todo('diagnoses CAS (content-addressable store) failures — future work');
   });
 });
