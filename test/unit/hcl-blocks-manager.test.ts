@@ -638,7 +638,6 @@ describe('HCLBlocksManager', () => {
                 expect(mutable.defaultValue).toBe(false);
                 expect(mutable.description).toContain('CAS hard link');
                 expect(mutable.description).toContain('mutable-generate');
-                expect(mutable.description).toContain('mutable-generate');
             });
         });
 
