@@ -30,6 +30,7 @@
 import { performance } from 'perf_hooks';
 import { TerragruntDocsManager } from '../terragrunt/docs.js';
 import { TerragruntFunctionsManager } from '../terragrunt/functions.js';
+import { describeGate } from '../terragrunt/experiments.js';
 import { BestPracticesAnalyzer } from '../terragrunt/best-practices.js';
 import { TerragruntConfigGenerator } from '../terragrunt/generator.js';
 import { ConfigTemplateLibrary, UseCase } from '../terragrunt/library.js';
@@ -1270,6 +1271,7 @@ export class ToolHandler {
             // Return comprehensive structured documentation
             return {
                 command: structuredCmd.name,
+                ...(structuredCmd.experiment && { experiment: describeGate(structuredCmd.experiment) }),
                 aliases: structuredCmd.aliases,
                 legacyNames: structuredCmd.legacyNames,
                 category: structuredCmd.category,
@@ -1278,6 +1280,7 @@ export class ToolHandler {
                 details: structuredCmd.details,
                 options: structuredCmd.options.map(opt => ({
                     flag: opt.flag,
+                    ...(opt.experiment && { experiment: describeGate(opt.experiment) }),
                     shortFlag: opt.shortFlag,
                     type: opt.type,
                     description: opt.description,
@@ -1375,6 +1378,7 @@ export class ToolHandler {
                 category,
                 commands: paginatedResults.map(cmd => ({
                     name: cmd.name,
+                    ...(cmd.experiment && { experiment: describeGate(cmd.experiment) }),
                     aliases: cmd.aliases,
                     legacyNames: cmd.legacyNames,
                     description: cmd.description,
@@ -1396,6 +1400,7 @@ export class ToolHandler {
         return {
             commands: paginatedCommands.map(cmd => ({
                 name: cmd.name,
+                ...(cmd.experiment && { experiment: describeGate(cmd.experiment) }),
                 aliases: cmd.aliases,
                 legacyNames: cmd.legacyNames,
                 category: cmd.category,
@@ -1431,6 +1436,7 @@ export class ToolHandler {
             return {
                 blocks: blocks.map(block => ({
                     name: block.name,
+                    ...(block.experiment && { experiment: describeGate(block.experiment) }),
                     displayName: block.displayName,
                     description: block.description,
                     category: block.category,
@@ -1478,6 +1484,7 @@ export class ToolHandler {
                 if (searchResults.length > 1) {
                     additionalProps.otherMatches = searchResults.slice(1, 4).map(r => ({
                         name: r.block.name,
+                        ...(r.block.experiment && { experiment: describeGate(r.block.experiment) }),
                         displayName: r.block.displayName,
                         score: r.score,
                         matchType: r.matchType
@@ -1545,12 +1552,14 @@ export class ToolHandler {
     ): Record<string, unknown> {
         const response: Record<string, unknown> = {
             config: block.name,
+            ...(block.experiment && { experiment: describeGate(block.experiment) }),
             displayName: block.displayName,
             description: block.description,
             category: block.category,
             syntax: block.syntax,
             attributes: block.attributes.map(attr => ({
                 name: attr.name,
+                ...(attr.experiment && { experiment: describeGate(attr.experiment) }),
                 type: attr.type,
                 required: attr.required,
                 description: attr.description,
@@ -1956,7 +1965,7 @@ export class ToolHandler {
                 exampleCount: fn.examples.length,
                 relatedFunctions: fn.relatedFunctions,
                 ...(fn.stability && { stability: fn.stability }),
-                ...(fn.experiment && { experiment: fn.experiment })
+                ...(fn.experiment && { experiment: describeGate(fn.experiment) })
             };
         }
 
@@ -1971,7 +1980,7 @@ export class ToolHandler {
             examples: includeExamples ? fn.examples : [],
             relatedFunctions: fn.relatedFunctions,
             ...(fn.stability && { stability: fn.stability }),
-            ...(fn.experiment && { experiment: fn.experiment }),
+            ...(fn.experiment && { experiment: describeGate(fn.experiment) }),
             relatedDocs: [] // TODO: Extract from documentation in future enhancement
         };
     }
@@ -2074,7 +2083,7 @@ export class ToolHandler {
                 shortDescription: this.getShortDescription(fn.description),
                 signature: fn.signature,
                 ...(fn.stability && { stability: fn.stability }),
-                ...(fn.experiment && { experiment: fn.experiment })
+                ...(fn.experiment && { experiment: describeGate(fn.experiment) })
             })),
             categories: categories,  // All categories, not just from filtered results
             pagination
