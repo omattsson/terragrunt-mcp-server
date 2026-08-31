@@ -279,6 +279,18 @@ describe('MCP Protocol Compliance', () => {
       expect(names).not.toContain('validate-inputs');
     });
 
+    it('exposes modern commands via cli_reference search', async () => {
+      const stack = await toolHandler.executeTool('cli_reference', { search: 'stack' });
+      const stackNames = stack.results.map((r: any) => r.name);
+      expect(stackNames).toContain('stack run');
+
+      for (const query of ['browse', 'find', 'list']) {
+        const result = await toolHandler.executeTool('cli_reference', { search: query });
+        const names = result.results.map((r: any) => r.name);
+        expect(names, query).toContain(query);
+      }
+    });
+
     it('should return structured response for HCL config tool', async () => {
       const result = await toolHandler.executeTool('get_hcl_config_reference', {
         config: 'terraform'
