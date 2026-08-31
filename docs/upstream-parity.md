@@ -21,6 +21,27 @@ rotting.
 OCI and CAS diagnosis patterns are tracked in #253 and appear as `it.todo`
 placeholders until then.
 
+## Experiment inventory
+
+`src/terragrunt/experiments.ts` is the typed experiment inventory (19 active,
+12 completed) used to surface experiment gates. It is pinned to
+`UPSTREAM_REVISION` (`EXPERIMENT_REVISION`), and its names and active/completed
+split are cross-checked against `fixtures/terragrunt-experiments.json`
+(`test/unit/experiments.test.ts`). Names and status come from the Go source
+(`internal/experiment/experiment.go`, via the fixture); summaries come from
+`docs/src/data/experiments/<name>.mdx`.
+
+The inventory drives the structured `experiment` gate on gated CLI commands,
+CLI options, HCL blocks, and HCL attributes (surfaced in `cli_reference`,
+`get_hcl_config_reference`, and `function_reference` responses) and the
+`get_guidance` `experiments` topic. Active experiments are enabled with
+`--experiment <name>` or `TG_EXPERIMENT=<name>`; completed experiments are
+default and need no flag. To refresh: after
+`TERRAGRUNT_REPO=<path-to-terragrunt> npm run update-experiments-fixture`
+(see below), reconcile `EXPERIMENTS` in `experiments.ts` with the fixture (the
+cross-check test fails on any drift) and refresh summaries from the upstream
+`.mdx` files.
+
 ## Refresh procedure
 
 The two fixtures come from two upstream sources (the live docs site and the Go

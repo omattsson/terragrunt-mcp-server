@@ -1158,4 +1158,37 @@ describe('MCP Protocol Compliance', () => {
       expect(server).toBeDefined();
     });
   });
+
+  describe('experiment gates in responses (issue #252)', () => {
+    it('surfaces a structured experiment gate on a gated HCL attribute', async () => {
+      const result = await toolHandler.executeTool('get_hcl_config_reference', { config: 'dependency' });
+      const expansion = result.attributes.find((a: any) => a.name === 'expansion');
+      expect(expansion.experimentGate).toMatchObject({
+        name: 'block-iteration',
+        status: 'active',
+        enable: { flag: '--experiment block-iteration', envVar: 'TG_EXPERIMENT=block-iteration' },
+      });
+    });
+
+    it('surfaces a structured experiment gate on the browse command', async () => {
+      const result = await toolHandler.executeTool('cli_reference', { command: 'browse' });
+      expect(result.experimentGate).toMatchObject({ name: 'browse-tui', status: 'active' });
+    });
+
+    it('surfaces the experiment gate on cli_reference search results', async () => {
+      const result = await toolHandler.executeTool('cli_reference', { search: 'browse' });
+      const browse = result.results.find((r: any) => r.name === 'browse');
+      expect(browse.experimentGate).toMatchObject({ name: 'browse-tui', status: 'active' });
+    });
+
+    it('lists experiments via get_guidance type=experiments', async () => {
+      const result = await toolHandler.executeTool('get_guidance', { type: 'experiments' });
+      expect(result.howToEnable.flag).toContain('--experiment');
+      expect(result.howToEnable.envVar).toContain('TG_EXPERIMENT');
+      const activeNames = result.active.map((e: any) => e.name);
+      expect(activeNames).toContain('block-iteration');
+      const completedNames = result.completed.map((e: any) => e.name);
+      expect(completedNames).toContain('cas');
+    });
+  });
 });

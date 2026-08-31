@@ -41,6 +41,7 @@ const HCL_BLOCKS: HCLBlock[] = [
         type: 'string',
         required: false,
         description: 'Version constraint for a tfr:// Terraform Registry source. Requires the version-attribute experiment and cannot be combined with an inline ?version= query parameter.',
+        experiment: 'version-attribute',
         example: '"~> 1.2"',
       },
       {
@@ -467,6 +468,7 @@ include "env" {
       },
       {
         name: 'expansion',
+        experiment: 'block-iteration',
         type: 'block',
         required: false,
         description: 'Expand this dependency into multiple instances. Requires the block-iteration experiment, accepts either for_each or count, and supports at most 1,000,000 instances.',
@@ -642,6 +644,7 @@ inputs = {
         type: 'boolean',
         required: false,
         description: 'Whether to generate this unit. Requires the block-iteration experiment.',
+        experiment: 'block-iteration',
         defaultValue: true,
       },
       {
@@ -660,6 +663,7 @@ inputs = {
       },
       {
         name: 'expansion',
+        experiment: 'block-iteration',
         type: 'block',
         required: false,
         description: 'Expand this unit into multiple instances. Requires the block-iteration experiment, accepts either for_each or count, and supports at most 1,000,000 instances.',
@@ -738,6 +742,7 @@ inputs = {
         type: 'boolean',
         required: false,
         description: 'Whether to generate this stack. Requires the block-iteration experiment.',
+        experiment: 'block-iteration',
         defaultValue: true,
       },
       {
@@ -756,6 +761,7 @@ inputs = {
       },
       {
         name: 'expansion',
+        experiment: 'block-iteration',
         type: 'block',
         required: false,
         description: 'Expand this stack into multiple instances. Requires the block-iteration experiment, accepts either for_each or count, and supports at most 1,000,000 instances.',
@@ -868,7 +874,7 @@ inputs = {
         name: 'hcl_fmt',
         type: 'boolean',
         required: false,
-        description: 'Format generated HCL before writing it. When omitted, formatting is enabled for .hcl, .tf, and .tofu files. Requires the mutable-generate experiment.',
+        description: 'Format generated HCL before writing it. When omitted, formatting is enabled for .hcl, .tf, and .tofu files.',
         defaultValue: 'true for .hcl, .tf, and .tofu files; false otherwise',
       },
       {
@@ -876,6 +882,7 @@ inputs = {
         type: 'boolean',
         required: false,
         description: 'Write a directly writable generated file instead of a read-only CAS hard link. Requires the mutable-generate experiment.',
+        experiment: 'mutable-generate',
         defaultValue: false,
       },
     ],
@@ -1193,6 +1200,7 @@ prevent_destroy = true`,
   // ============================================================================
   {
     name: 'engine',
+    experiment: 'iac-engine',
     displayName: 'Engine Block',
     description: 'Configures an experimental IaC engine that controls how Terragrunt executes infrastructure updates.',
     category: 'terraform',

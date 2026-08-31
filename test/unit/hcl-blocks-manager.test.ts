@@ -632,7 +632,8 @@ describe('HCLBlocksManager', () => {
                 expect(hclFmt.type).toBe('boolean');
                 expect(hclFmt.defaultValue).toBe('true for .hcl, .tf, and .tofu files; false otherwise');
                 expect(hclFmt.description).toContain('.tofu');
-                expect(hclFmt.description).toContain('mutable-generate');
+                // hcl_fmt is not gated by mutable-generate upstream (only `mutable` is).
+                expect(hclFmt.description).not.toContain('mutable-generate');
                 expect(mutable.type).toBe('boolean');
                 expect(mutable.defaultValue).toBe(false);
                 expect(mutable.description).toContain('CAS hard link');

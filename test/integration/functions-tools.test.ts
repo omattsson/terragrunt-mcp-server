@@ -107,6 +107,7 @@ describe('Function Lookup Tools Integration Tests', () => {
         });
         expect(deepMerge.stability).toBe('experimental');
         expect(deepMerge.experiment).toBe('deep-merge');
+        expect(deepMerge.experimentGate).toMatchObject({ name: 'deep-merge', status: 'active' });
 
         const markGlobAsRead = await toolHandler.executeTool('function_reference', {
           function_name: 'mark_glob_as_read',
@@ -121,7 +122,8 @@ describe('Function Lookup Tools Integration Tests', () => {
         expect(listResult.functions).toContainEqual(expect.objectContaining({
           name: 'deep_merge',
           stability: 'experimental',
-          experiment: 'deep-merge'
+          experiment: 'deep-merge',
+          experimentGate: expect.objectContaining({ name: 'deep-merge', status: 'active' })
         }));
       });
 

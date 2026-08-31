@@ -30,6 +30,7 @@
 import { performance } from 'perf_hooks';
 import { TerragruntDocsManager } from '../terragrunt/docs.js';
 import { TerragruntFunctionsManager } from '../terragrunt/functions.js';
+import { describeGate, experimentsGuidance } from '../terragrunt/experiments.js';
 import { BestPracticesAnalyzer } from '../terragrunt/best-practices.js';
 import { TerragruntConfigGenerator } from '../terragrunt/generator.js';
 import { ConfigTemplateLibrary, UseCase } from '../terragrunt/library.js';
@@ -622,7 +623,7 @@ export class ToolHandler {
             },
             {
                 name: 'get_guidance',
-                description: 'Get Terragrunt best practices, block comparisons (dependency vs dependencies), or DRY patterns for infrastructure-as-code organization.',
+                description: 'Get Terragrunt best practices, block comparisons (dependency vs dependencies), DRY patterns, or experiment status (type=experiments lists active/completed experiments and how to enable them) for infrastructure-as-code organization.',
                 inputSchema: {
                     type: 'object',
                     properties: {
@@ -632,7 +633,7 @@ export class ToolHandler {
                         },
                         type: {
                             type: 'string',
-                            enum: ['best-practices', 'comparison', 'pattern'],
+                            enum: ['best-practices', 'comparison', 'pattern', 'experiments'],
                             description: 'Guidance type'
                         },
                         mode: {
@@ -1270,6 +1271,7 @@ export class ToolHandler {
             // Return comprehensive structured documentation
             return {
                 command: structuredCmd.name,
+                ...(structuredCmd.experiment && { experimentGate: describeGate(structuredCmd.experiment) }),
                 aliases: structuredCmd.aliases,
                 legacyNames: structuredCmd.legacyNames,
                 category: structuredCmd.category,
@@ -1278,6 +1280,7 @@ export class ToolHandler {
                 details: structuredCmd.details,
                 options: structuredCmd.options.map(opt => ({
                     flag: opt.flag,
+                    ...(opt.experiment && { experimentGate: describeGate(opt.experiment) }),
                     shortFlag: opt.shortFlag,
                     type: opt.type,
                     description: opt.description,
@@ -1350,6 +1353,7 @@ export class ToolHandler {
                 search,
                 results: paginatedResults.map(r => ({
                     name: r.command.name,
+                    ...(r.command.experiment && { experimentGate: describeGate(r.command.experiment) }),
                     aliases: r.command.aliases,
                     legacyNames: r.command.legacyNames,
                     category: r.command.category,
@@ -1375,6 +1379,7 @@ export class ToolHandler {
                 category,
                 commands: paginatedResults.map(cmd => ({
                     name: cmd.name,
+                    ...(cmd.experiment && { experimentGate: describeGate(cmd.experiment) }),
                     aliases: cmd.aliases,
                     legacyNames: cmd.legacyNames,
                     description: cmd.description,
@@ -1396,6 +1401,7 @@ export class ToolHandler {
         return {
             commands: paginatedCommands.map(cmd => ({
                 name: cmd.name,
+                ...(cmd.experiment && { experimentGate: describeGate(cmd.experiment) }),
                 aliases: cmd.aliases,
                 legacyNames: cmd.legacyNames,
                 category: cmd.category,
@@ -1431,6 +1437,7 @@ export class ToolHandler {
             return {
                 blocks: blocks.map(block => ({
                     name: block.name,
+                    ...(block.experiment && { experimentGate: describeGate(block.experiment) }),
                     displayName: block.displayName,
                     description: block.description,
                     category: block.category,
@@ -1478,6 +1485,7 @@ export class ToolHandler {
                 if (searchResults.length > 1) {
                     additionalProps.otherMatches = searchResults.slice(1, 4).map(r => ({
                         name: r.block.name,
+                        ...(r.block.experiment && { experimentGate: describeGate(r.block.experiment) }),
                         displayName: r.block.displayName,
                         score: r.score,
                         matchType: r.matchType
@@ -1545,12 +1553,14 @@ export class ToolHandler {
     ): Record<string, unknown> {
         const response: Record<string, unknown> = {
             config: block.name,
+            ...(block.experiment && { experimentGate: describeGate(block.experiment) }),
             displayName: block.displayName,
             description: block.description,
             category: block.category,
             syntax: block.syntax,
             attributes: block.attributes.map(attr => ({
                 name: attr.name,
+                ...(attr.experiment && { experimentGate: describeGate(attr.experiment) }),
                 type: attr.type,
                 required: attr.required,
                 description: attr.description,
@@ -1956,7 +1966,7 @@ export class ToolHandler {
                 exampleCount: fn.examples.length,
                 relatedFunctions: fn.relatedFunctions,
                 ...(fn.stability && { stability: fn.stability }),
-                ...(fn.experiment && { experiment: fn.experiment })
+                ...(fn.experiment && { experiment: fn.experiment, experimentGate: describeGate(fn.experiment) })
             };
         }
 
@@ -1971,7 +1981,7 @@ export class ToolHandler {
             examples: includeExamples ? fn.examples : [],
             relatedFunctions: fn.relatedFunctions,
             ...(fn.stability && { stability: fn.stability }),
-            ...(fn.experiment && { experiment: fn.experiment }),
+            ...(fn.experiment && { experiment: fn.experiment, experimentGate: describeGate(fn.experiment) }),
             relatedDocs: [] // TODO: Extract from documentation in future enhancement
         };
     }
@@ -2074,7 +2084,7 @@ export class ToolHandler {
                 shortDescription: this.getShortDescription(fn.description),
                 signature: fn.signature,
                 ...(fn.stability && { stability: fn.stability }),
-                ...(fn.experiment && { experiment: fn.experiment })
+                ...(fn.experiment && { experiment: fn.experiment, experimentGate: describeGate(fn.experiment) })
             })),
             categories: categories,  // All categories, not just from filtered results
             pagination
@@ -2397,11 +2407,16 @@ export class ToolHandler {
      */
     private async getGuidance(
         query?: string,
-        type?: 'best-practices' | 'comparison' | 'pattern',
+        type?: 'best-practices' | 'comparison' | 'pattern' | 'experiments',
         mode: 'summary' | 'full' = 'summary',
         level?: 'beginner' | 'intermediate' | 'advanced',
         listAll: boolean = false
     ): Promise<any> {
+        // Experiment inventory does not depend on the guidance managers.
+        if (type === 'experiments') {
+            return experimentsGuidance();
+        }
+
         // Check if BestPracticesAnalyzer is available
         const bestPracticesAnalyzer = this.checkManager(this.bestPracticesAnalyzer, 'BestPracticesAnalyzer');
         if ('error' in bestPracticesAnalyzer) return bestPracticesAnalyzer;

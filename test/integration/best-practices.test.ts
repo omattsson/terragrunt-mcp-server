@@ -35,7 +35,8 @@ describe('Best Practices Integration Tests', () => {
       expect(tool?.inputSchema.properties.type.enum).toEqual([
         'best-practices',
         'comparison',
-        'pattern'
+        'pattern',
+        'experiments'
       ]);
       
       // Level should have enum constraint
