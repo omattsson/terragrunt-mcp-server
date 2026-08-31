@@ -6,6 +6,7 @@
 
 import { describe, it, expect, beforeEach } from 'vitest';
 import { CLICommandsManager } from '../../src/terragrunt/cli-commands.js';
+import { TERRAGRUNT_DOC_MANIFEST } from '../../src/terragrunt/docs-manifest.js';
 import type { CLICommand, CLICommandCategory } from '../../src/types/cli-commands.js';
 
 describe('CLICommandsManager', () => {
@@ -691,10 +692,47 @@ describe('CLICommandsManager', () => {
 
         it('should have at least one example per command', () => {
             const commands = manager.getAllCommands();
-            
+
             for (const cmd of commands) {
                 expect(cmd.examples.length).toBeGreaterThan(0);
             }
+        });
+    });
+
+    describe('upstream CLI command parity', () => {
+        // Documented command pages become space-joined command names:
+        //   /reference/cli/commands/backend/migrate/ -> "backend migrate"
+        //   /reference/cli/commands/info/strict/     -> "info strict"
+        // opentofu-shortcuts is a page for the shortcut commands, checked separately.
+        const documentedCommands = TERRAGRUNT_DOC_MANIFEST
+            .map((entry) => entry[1])
+            .filter((p) => p.startsWith('/reference/cli/commands/'))
+            .map((p) => p.replace('/reference/cli/commands/', '').replace(/\/$/, ''))
+            .filter((slug) => slug !== 'opentofu-shortcuts')
+            .map((slug) => slug.split('/').join(' '));
+
+        it('resolves every documented command in the manager', () => {
+            const manager = new CLICommandsManager();
+            const missing = documentedCommands.filter((name) => manager.getCommand(name) === null);
+            expect(missing, `Documented upstream commands missing from CLICommandsManager: ${missing.join(', ')}`).toEqual([]);
+        });
+
+        it('provides the OpenTofu shortcut commands', () => {
+            const manager = new CLICommandsManager();
+            for (const shortcut of ['plan', 'apply', 'destroy']) {
+                expect(manager.getCommand(shortcut), shortcut).not.toBeNull();
+            }
+        });
+    });
+
+    describe('info strict command', () => {
+        it('exposes info strict with the strict-controls description', () => {
+            const manager = new CLICommandsManager();
+            const cmd = manager.getCommand('info strict');
+            expect(cmd).not.toBeNull();
+            expect(cmd?.category).toBe('configuration');
+            expect(cmd?.description.toLowerCase()).toContain('strict controls');
+            expect(cmd?.documentationUrl).toContain('/reference/cli/commands/info/strict/');
         });
     });
 });

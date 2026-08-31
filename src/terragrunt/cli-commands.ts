@@ -336,7 +336,8 @@ export class CLICommandsManager {
       this.getRenderCommand(),
       this.getDagGraphCommand(),
       this.getInfoPrintCommand(),
-      
+      this.getInfoStrictCommand(),
+
       // Shortcut Commands
       this.getPlanCommand(),
       this.getApplyCommand(),
@@ -1420,13 +1421,34 @@ including paths, versions, environment variables, and resolved configuration val
           description: 'Print configuration info',
           command: 'terragrunt info print',
         },
-        {
-          description: 'Print info as JSON',
-          command: 'terragrunt info print --json',
-        },
       ],
       relatedCommands: ['render'],
       documentationUrl: 'https://docs.terragrunt.com/reference/cli/commands/info/print/',
+    };
+  }
+
+  private getInfoStrictCommand(): CLICommand {
+    return {
+      name: 'info strict',
+      aliases: [],
+      category: 'configuration',
+      description: 'List and inspect strict controls.',
+      usage: 'terragrunt info strict [control]',
+      details: `Lists the available strict controls and their status, or inspects a single
+control by name. Strict controls turn specific deprecation warnings into errors.`,
+      options: [],
+      examples: [
+        {
+          description: 'List all strict controls',
+          command: 'terragrunt info strict',
+        },
+        {
+          description: 'Inspect a single strict control',
+          command: 'terragrunt info strict root-terragrunt-hcl',
+        },
+      ],
+      relatedCommands: ['info print'],
+      documentationUrl: 'https://docs.terragrunt.com/reference/cli/commands/info/strict/',
     };
   }
 
