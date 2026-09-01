@@ -4,13 +4,14 @@ The Terragrunt Configuration Generator (`generate_terragrunt_config` tool) helps
 
 ## Overview
 
-The generator provides **12 templates** covering **5 use cases** across multiple cloud providers:
+The generator provides **15 templates** covering **6 use cases** across multiple cloud providers:
 
 - **Remote State Management**: AWS S3, Azure Blob Storage, Google Cloud Storage (Essential + Advanced tiers)
 - **Provider Generation**: AWS provider blocks with account validation
 - **Dependencies**: Module dependency configurations with mock outputs
 - **Hooks**: Before/after hooks for automation and validation
 - **Inputs**: Variable configuration for Terraform modules
+- **CI/CD**: Non-interactive pipeline config for GitHub Actions, GitLab CI, Azure DevOps
 - **Version Constraints**: Terraform version requirements
 
 ### Template Tiers
@@ -421,8 +422,8 @@ inputs = {
 
 The `cicd` use case generates an opinionated `terraform` block for running
 Terragrunt in a pipeline: non-interactive runs (`-input=false`,
-`TF_IN_AUTOMATION`), a plan-output hook, and an optional auto-approve block. The
-`backend` parameter selects the platform.
+`TF_IN_AUTOMATION`) and an optional auto-approve block. The `backend` parameter
+selects the platform.
 
 ```text
 Generate a cicd config for github-actions
@@ -431,18 +432,19 @@ Generate a cicd config for github-actions
 Parameters:
 
 - `backend`: `github-actions`, `gitlab`, or `azure-devops`
-- `options.plan_file` (optional, default `tfplan`): plan file the after_hook renders as JSON
-- `options.auto_approve` (optional): provide it (e.g. `auto_approve=true`) to add an
-  auto-approve block for `apply`/`destroy`. Omit it to require manual approval. Enable
-  only for trusted, gated pipelines.
+- `options.auto_approve` (optional): set `auto_approve=true` to add an auto-approve
+  block for `apply`/`destroy`. Omit it or set `false` to require manual approval.
+  Enable only for trusted, gated pipelines.
 
 The generated config is platform-agnostic Terragrunt HCL; the pipeline itself
 runs Terragrunt. Cloud credentials come from the pipeline environment — the
 config never hard-codes them.
 
-The config injects `-out=<plan_file>` on `plan` (via an `extra_arguments`
-block), so a plain `terragrunt plan` writes the plan file that the `after_hook`
-renders as JSON. The pipeline does not need to pass `-out` itself.
+Plan output and artifacts are left to the pipeline. A machine-readable plan
+(`tofu show -json`) can contain resource and output values in plaintext, so
+emit it deliberately to a protected artifact — not to the build log — and
+redact as needed. To capture a plan for a later apply, run `plan -out=tfplan`
+in your pipeline and apply that saved plan.
 
 **Sample GitHub Actions pipeline:**
 
@@ -458,19 +460,19 @@ jobs:
       - uses: opentofu/setup-opentofu@v1
       - uses: gruntwork-io/terragrunt-action@v3
         with:
-          tg_command: 'plan -input=false'
+          tg_command: 'plan'
 ```
 
-**Sample GitLab CI pipeline:**
+**Sample GitLab CI pipeline** (use an image that has Terragrunt and OpenTofu/Terraform):
 
 ```yaml
 # .gitlab-ci.yml
 terragrunt-plan:
-  image: alpine:3
+  image: devopsinfra/docker-terragrunt:tofu-1.9.0-terragrunt-0.72.6
   script:
-    # The generated config injects -out=tfplan, so plain `plan` writes the plan file.
-    - terragrunt plan
+    - terragrunt plan -out=tfplan
   artifacts:
+    # tfplan is the binary plan (for a later apply), not JSON. Protect it.
     paths: [tfplan]
 ```
 
@@ -479,7 +481,7 @@ terragrunt-plan:
 ```yaml
 # azure-pipelines.yml
 steps:
-  - script: terragrunt plan -input=false
+  - script: terragrunt plan
     displayName: 'Terragrunt plan'
     env:
       ARM_CLIENT_ID: $(ARM_CLIENT_ID)

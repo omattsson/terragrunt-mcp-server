@@ -682,7 +682,7 @@ Generates and writes in one operation. Useful for:
 
 ### Available Templates — build_config
 
-The tool provides **9 templates** covering **5 use cases**:
+The tool provides **12 templates** covering **6 use cases**:
 
 | Use Case | Templates | Cloud Providers |
 |----------|-----------|-----------------|
@@ -691,6 +691,7 @@ The tool provides **9 templates** covering **5 use cases**:
 | dependencies | 1 template | Multi-cloud |
 | hooks | 2 templates | Multi-cloud (before_hook, after_hook) |
 | inputs | 1 template | Multi-cloud |
+| cicd | 3 templates | GitHub Actions, GitLab CI, Azure DevOps |
 
 <!-- Note: The "configuration" template (Terraform version constraints) is included as part of the "inputs" use case. -->
 

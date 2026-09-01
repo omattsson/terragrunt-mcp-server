@@ -163,7 +163,13 @@ export class TerragruntConfigGenerator {
     
     for (const variable of template.variables) {
       const value = values[variable.name];
-      if (value !== undefined && value !== null && value !== '') {
+      let present = value !== undefined && value !== null && value !== '';
+      // Flag variables enable their conditional only on a truthy value, so an
+      // explicit false (e.g. auto_approve = false) does not enable the block.
+      if (present && variable.flag) {
+        present = value !== false && value !== 'false' && value !== 0 && value !== '0';
+      }
+      if (present) {
         // Variable has a value - make it truthy for conditionals
         // Use a unique placeholder that won't conflict with other content
         mustacheContext[variable.name] = `__PLACEHOLDER_${variable.name}__`;
@@ -381,7 +387,7 @@ export class TerragruntConfigGenerator {
       cicd: `## Next Steps for CI/CD:
 - Set the pipeline's cloud credentials as environment variables (the config does not hard-code them)
 - Gate applies behind a manual approval unless you enabled auto-approve
-- The config writes the plan file with -out, and the after_hook renders it as JSON; publish that JSON as a pipeline artifact or summary
+- Run plan and apply from your pipeline; the config keeps runs non-interactive
 - Cache the .terraform directory between jobs to speed up init`,
     };
 
@@ -485,8 +491,7 @@ export class TerragruntConfigGenerator {
       cicd: [
         'Merge this terraform block into your terragrunt.hcl',
         'Provide cloud credentials as pipeline environment variables',
-        'Run `terragrunt plan` in your pipeline; the config writes the plan file (via -out) that the after_hook renders as JSON',
-        'Publish that plan JSON as a pipeline artifact or summary',
+        'Run `terragrunt plan` and `terragrunt apply` from your pipeline (runs stay non-interactive)',
         'Gate `terragrunt apply` behind an approval step unless auto-approve is enabled',
       ],
     };

@@ -10,6 +10,14 @@ export interface ConfigVariable {
   defaultValue?: any;
   example?: string;
   sensitive?: boolean;
+  /**
+   * Treat this variable as an enable-flag in `{{#var}}` conditionals: only a
+   * truthy value (true, or a string other than "false"/"0"/"") enables the
+   * block. Without this, any provided non-empty value — including `false` —
+   * enables the block (needed by templates that render the value itself, e.g.
+   * `{{#encrypt}}encrypt = {{encrypt}}{{/encrypt}}`).
+   */
+  flag?: boolean;
 }
 
 /**

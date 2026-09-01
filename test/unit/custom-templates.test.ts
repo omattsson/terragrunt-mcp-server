@@ -172,6 +172,18 @@ describe('Template Validator', () => {
       expect(() => validator.validate(template)).toThrow('Invalid category');
     });
 
+    it('should accept the cicd category (#96)', () => {
+      const template = {
+        id: 'my-cicd',
+        name: 'My CI/CD',
+        description: 'Custom CI/CD template',
+        category: 'cicd',
+        templateHcl: 'terraform {}',
+      };
+
+      expect(() => validator.validate(template)).not.toThrow();
+    });
+
     it('should reject invalid cloudProvider', () => {
       const template = {
         id: 'test',

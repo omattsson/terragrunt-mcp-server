@@ -644,16 +644,16 @@ describe('MCP Protocol Compliance', () => {
         expect(result.error).toContain('useCase');
       });
 
-      it('should return error when options parameter is missing', async () => {
+      it('should return error listing required variables when options are missing', async () => {
         const result = await toolHandler.executeTool('build_config', {
           useCase: 'remote_state'
-          // Missing options
+          // Missing options -> generator reports the required variables it needs
         });
 
         expect(result).toBeDefined();
         expect(result.error).toBeDefined();
         expect(typeof result.error).toBe('string');
-        expect(result.error).toContain('options');
+        expect(result.error).toContain('required');
       });
 
       it('should handle optional backend parameter correctly', async () => {

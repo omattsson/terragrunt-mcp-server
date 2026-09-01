@@ -307,14 +307,16 @@ describe('Config Generation Integration Tests', () => {
       expect(result.error).toContain('useCase');
     }, 10000);
 
-    it('should return error for missing required options parameter', async () => {
+    it('should return error listing the missing required variables', async () => {
       const result = await toolHandler.executeTool('build_config', {
         useCase: 'remote_state'
-        // Missing options
+        // Missing options -> generator reports the required variables it needs
       });
 
+      expect(result.success).toBe(false);
       expect(result.error).toBeDefined();
-      expect(result.error).toContain('options');
+      expect(result.error).toContain('required');
+      expect(result.error).toContain('bucket');
     }, 10000);
 
     it('should return error for invalid backend with helpful message', async () => {

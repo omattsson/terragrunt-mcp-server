@@ -517,22 +517,10 @@ describe('Template Versioning', () => {
 
   describe('Builtin Templates Versioning', () => {
     it('all builtin templates should have version field', async () => {
-      // Import builtin templates dynamically
-      const { backendTemplates } = await import('../../src/terragrunt/templates/categories/backends.js');
-      const { configurationTemplates } = await import('../../src/terragrunt/templates/categories/configuration.js');
-      const { dependencyTemplates } = await import('../../src/terragrunt/templates/categories/dependencies.js');
-      const { hookTemplates } = await import('../../src/terragrunt/templates/categories/hooks.js');
-      const { providerTemplates } = await import('../../src/terragrunt/templates/categories/providers.js');
+      // Use the central registry so a new category cannot be omitted here.
+      const { allTemplates } = await import('../../src/terragrunt/templates/registry.js');
 
-      const allTemplates = [
-        ...backendTemplates,
-        ...configurationTemplates,
-        ...dependencyTemplates,
-        ...hookTemplates,
-        ...providerTemplates,
-      ];
-
-      expect(allTemplates.length).toBe(12);
+      expect(allTemplates.length).toBe(15); // 12 original + 3 cicd
 
       for (const template of allTemplates) {
         expect(template.version).toBeDefined();

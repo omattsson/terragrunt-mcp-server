@@ -129,7 +129,7 @@ Generate OR write OR generate+write Terragrunt configurations - unified tool for
 - **Generate Mode** (when `useCase` provided, no `content`):
   - `useCase` (string): Configuration type - `remote_state`, `provider_generation`, `dependencies`, `hooks`, `inputs`, or `cicd`
   - `options` (object): Template variables (varies by use case and backend)
-  - `backend` (string, optional): Backend type for remote_state - `s3`, `azurerm`, or `gcs`
+  - `backend` (string, optional): For `remote_state`, the backend type - `s3`, `azurerm`, or `gcs`. For `cicd`, the platform - `github-actions`, `gitlab`, or `azure-devops`
   - `tier` (string, optional): Template tier - `essential`, `advanced`, or `complete` (default: `essential`)
   - `strictValidation` (boolean, optional): Enable strict validation (default: false)
   - **Returns**: Generated HCL configuration with explanation and next steps

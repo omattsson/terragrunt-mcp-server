@@ -1163,13 +1163,9 @@ describe('TerragruntConfigGenerator', () => {
   });
 
   describe('cicd templates (#96)', () => {
-    const platforms: Array<[string, string]> = [
-      ['github-actions', 'plan_summary'],
-      ['gitlab', 'plan_artifact'],
-      ['azure-devops', 'plan_output'],
-    ];
+    const platforms = ['github-actions', 'gitlab', 'azure-devops'];
 
-    it.each(platforms)('generates a non-interactive %s config', async (platform, planHook) => {
+    it.each(platforms)('generates a non-interactive %s config (no options needed)', async (platform) => {
       const result = await generator.generateConfig({
         useCase: 'cicd',
         backend: platform,
@@ -1180,12 +1176,14 @@ describe('TerragruntConfigGenerator', () => {
       expect(result.config).toContain('extra_arguments "non_interactive"');
       expect(result.config).toContain('arguments = ["-input=false"]');
       expect(result.config).toContain('TF_IN_AUTOMATION = "true"');
-      expect(result.config).toContain(`after_hook "${planHook}"`);
+      // No plan-output hook (plan output is a pipeline concern; can leak secrets).
+      expect(result.config).not.toContain('after_hook');
+      expect(result.config).not.toContain('tofu');
       // auto-approve is omitted unless requested.
       expect(result.config).not.toContain('extra_arguments "auto_approve"');
     });
 
-    it('adds the auto-approve block only when auto_approve is provided', async () => {
+    it('adds the auto-approve block only when auto_approve is truthy', async () => {
       const result = await generator.generateConfig({
         useCase: 'cicd',
         backend: 'github-actions',
@@ -1196,26 +1194,15 @@ describe('TerragruntConfigGenerator', () => {
       expect(result.config).toContain('arguments = ["-auto-approve"]');
     });
 
-    it('substitutes the plan_file variable into the plan hook', async () => {
-      const result = await generator.generateConfig({
-        useCase: 'cicd',
-        backend: 'gitlab',
-        options: { plan_file: 'plan.out' },
-      });
-
-      expect(result.config).toContain('"-json", "plan.out"');
-    });
-
-    it('writes the plan file with -out so the after_hook can read it', async () => {
+    it('does NOT add auto-approve when auto_approve is false (flag honors false)', async () => {
       const result = await generator.generateConfig({
         useCase: 'cicd',
         backend: 'github-actions',
-        options: { plan_file: 'plan.out' },
+        options: { auto_approve: false },
       });
 
-      // plan does not persist a plan file by default; the config injects -out.
-      expect(result.config).toContain('extra_arguments "plan_out"');
-      expect(result.config).toContain('arguments = ["-out", "plan.out"]');
+      expect(result.config).not.toContain('extra_arguments "auto_approve"');
+      expect(result.config).not.toContain('-auto-approve');
     });
   });
 });

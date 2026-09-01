@@ -967,10 +967,11 @@ export class ToolHandler {
                     if (!args?.useCase) {
                         return { error: 'useCase is required. Valid values: remote_state, provider_generation, dependencies, hooks, inputs, cicd. Or provide content for write-only mode.' };
                     }
-                    if (!args?.options) {
-                        return { error: 'options parameter is required for the selected useCase. Pass template variables as key-value pairs (e.g., for remote_state: { bucket, region, key }).' };
-                    }
-                    
+                    // options is optional (some use cases, e.g. cicd, have no required
+                    // variables). Default to {}; the generator validates any required
+                    // template variables per use case.
+                    const buildOptions = args?.options ?? {};
+
                     // Validate write mode parameters early
                     if (args.write && !args.path) {
                         return { 
@@ -989,7 +990,7 @@ export class ToolHandler {
                         args.useCase,
                         args.backend,
                         args.tier,
-                        args.options,
+                        buildOptions,
                         args.strictValidation ?? false,
                         args.custom_template,  // Still supported for backward compatibility despite schema removal
                         args.write ?? false,

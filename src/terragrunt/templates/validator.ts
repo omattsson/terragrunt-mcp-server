@@ -91,7 +91,7 @@ export class TemplateValidator {
    */
   private validateFieldTypes(template: any): void {
     // Validate category enum
-    const validCategories = ['backend', 'provider', 'dependency', 'hooks', 'inputs', 'advanced', 'configuration'];
+    const validCategories = ['backend', 'provider', 'dependency', 'hooks', 'inputs', 'advanced', 'configuration', 'cicd'];
     if (!validCategories.includes(template.category)) {
       throw new TemplateValidationError(
         `Invalid category: ${template.category}. Must be one of: ${validCategories.join(', ')}`,
