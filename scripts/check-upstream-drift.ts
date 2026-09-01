@@ -238,8 +238,9 @@ async function main(): Promise<void> {
   process.exit(0);
 }
 
-// Run only when executed directly (not when imported by tests)
-if (process.argv[1] && process.argv[1].endsWith('check-upstream-drift.ts')) {
+// Run only when executed directly (not when imported by tests). Matches the
+// TypeScript source and any transpiled variant.
+if (process.argv[1] && /check-upstream-drift\.(?:ts|js|mjs|cjs)$/.test(process.argv[1])) {
   main().catch(error => {
     console.error('Fatal error:', error);
     process.exit(1);
