@@ -165,6 +165,12 @@ interface BuildConfigArgs {
     overwrite?: boolean;
     createBackup?: boolean;
     createParentDirs?: boolean;
+
+    // Preview/diff parameters (optional)
+    /** Dry-run: never write; return what would be written plus a diff. */
+    preview?: boolean;
+    /** Path of an existing file to diff the result against (defaults to path in preview mode). */
+    compareWith?: string;
 }
 
 export class ToolHandler {
@@ -714,6 +720,15 @@ export class ToolHandler {
                             type: 'boolean',
                             description: 'Create parent dirs',
                             default: true
+                        },
+                        preview: {
+                            type: 'boolean',
+                            description: 'Dry-run: never write; return what would be written plus a diff and overwrite/backup info',
+                            default: false
+                        },
+                        compareWith: {
+                            type: 'string',
+                            description: 'Path of an existing file to diff the result against (defaults to path in preview mode)'
                         }
                     },
                     required: []
@@ -921,12 +936,22 @@ export class ToolHandler {
                                 errorType: 'VALIDATION_ERROR'
                             };
                         }
+                        // Preview (dry-run): report what the write would do, no write
+                        if (args.preview) {
+                            return await this.previewTerragruntConfig(
+                                args.content,
+                                targetPath,
+                                args.compareWith,
+                                args.createBackup ?? true
+                            );
+                        }
                         return await this.writeTerragruntConfig(
                             args.content,
                             targetPath,
                             args.overwrite ?? false,
                             args.createBackup ?? true,
-                            args.createParentDirs ?? true
+                            args.createParentDirs ?? true,
+                            args.compareWith
                         );
                     }
                     
@@ -963,7 +988,9 @@ export class ToolHandler {
                         args.path,
                         args.overwrite ?? false,
                         args.createBackup ?? true,
-                        args.createParentDirs ?? true
+                        args.createParentDirs ?? true,
+                        args.preview ?? false,
+                        args.compareWith
                     );
 
                 case 'diagnose_terragrunt_error':
@@ -2131,18 +2158,20 @@ export class ToolHandler {
         path?: string,
         overwrite: boolean = false,
         createBackup: boolean = true,
-        createParentDirs: boolean = true
+        createParentDirs: boolean = true,
+        preview: boolean = false,
+        compareWith?: string
     ): Promise<any> {
         // Check if ConfigGenerator is available
         const configGenerator = this.checkManager(this.configGenerator, 'ConfigGenerator');
         if ('error' in configGenerator) return configGenerator;
-        
-        // Check if FileWriter is available when write is requested
-        if (write) {
+
+        // Check if FileWriter is available when write, preview, or a diff is requested
+        if (write || preview || compareWith) {
             const fileWriter = this.checkManager(this.fileWriter, 'FileWriter');
             if ('error' in fileWriter) return fileWriter;
         }
-        
+
         try {
             // Generate the configuration with correct parameter order (useCase, backend, tier, options)
             const generateResult = await this.generateTerragruntConfig(
@@ -2159,9 +2188,38 @@ export class ToolHandler {
                 return generateResult;
             }
 
-            // If write mode is disabled, return generation result only
+            // Preview (dry-run): never write. Report what a write would do plus a
+            // diff. Requires a path (the intended target) or a compareWith base.
+            if (preview) {
+                if (path) {
+                    const previewResult = await this.previewTerragruntConfig(
+                        generateResult.config,
+                        path,
+                        compareWith,
+                        createBackup
+                    );
+                    return { ...generateResult, preview: previewResult };
+                }
+                if (compareWith) {
+                    const diffResult = await this.computeConfigDiff(compareWith, generateResult.config);
+                    return { ...generateResult, ...diffResult };
+                }
+                return { ...generateResult, preview: { preview: true, message: 'Nothing to preview: provide path or compareWith' } };
+            }
+
+            // Compute the diff against the pre-write content when compareWith is set.
+            let diff: string | undefined;
+            if (compareWith) {
+                const diffResult = await this.computeConfigDiff(compareWith, generateResult.config);
+                if (diffResult.error) {
+                    return { ...generateResult, ...diffResult };
+                }
+                diff = diffResult.diff;
+            }
+
+            // If write mode is disabled, return generation result (with diff if requested)
             if (!write) {
-                return generateResult;
+                return diff !== undefined ? { ...generateResult, diff } : generateResult;
             }
 
             // Write the generated config to disk
@@ -2176,13 +2234,14 @@ export class ToolHandler {
             // Combine generation and write results with nested writeResult to avoid field collisions
             // Nesting prevents collisions between:
             // - generateResult.success vs writeResult.success
-            // - generateResult.error vs writeResult.error  
+            // - generateResult.error vs writeResult.error
             // - potential future fields like 'path', 'created', etc.
             return {
                 ...generateResult,
                 // Override success based on combined result
                 success: generateResult.success && writeResult.success,
-                writeResult: writeResult
+                writeResult: writeResult,
+                ...(diff !== undefined ? { diff } : {})
             };
         } catch (error) {
             return {
@@ -2279,13 +2338,24 @@ export class ToolHandler {
         filePath: string,
         overwrite: boolean,
         createBackup: boolean,
-        createParentDirs: boolean
+        createParentDirs: boolean,
+        compareWith?: string
     ): Promise<any> {
         // Check if FileWriter is available
         const fileWriter = this.checkManager(this.fileWriter, 'FileWriter');
         if ('error' in fileWriter) return fileWriter;
-        
+
         try {
+            // Capture the diff against the pre-write content when requested.
+            let diff: string | undefined;
+            if (compareWith) {
+                const diffResult = await this.computeConfigDiff(compareWith, content);
+                if (diffResult.error) {
+                    return { success: false, path: filePath, bytesWritten: 0, created: false, backedUp: false, ...diffResult };
+                }
+                diff = diffResult.diff;
+            }
+
             const result = await fileWriter.writeFile({
                 content,
                 filePath,
@@ -2294,7 +2364,7 @@ export class ToolHandler {
                 createParentDirs
             });
 
-            return result;
+            return diff !== undefined ? { ...result, diff } : result;
         } catch (error) {
             console.error('Error writing Terragrunt config:', error);
             return {
@@ -2305,6 +2375,53 @@ export class ToolHandler {
                 backedUp: false,
                 error: error instanceof Error ? error.message : 'Failed to write file',
                 errorType: 'UNKNOWN_ERROR'
+            };
+        }
+    }
+
+    /**
+     * Preview (dry-run) a write: report what would happen plus a diff, no write.
+     */
+    private async previewTerragruntConfig(
+        content: string,
+        filePath: string,
+        compareWith: string | undefined,
+        createBackup: boolean
+    ): Promise<any> {
+        const fileWriter = this.checkManager(this.fileWriter, 'FileWriter');
+        if ('error' in fileWriter) return fileWriter;
+
+        try {
+            return await fileWriter.previewWrite({ content, filePath, compareWith, createBackup });
+        } catch (error) {
+            return {
+                preview: true,
+                success: false,
+                error: error instanceof Error ? error.message : 'Failed to preview write',
+                errorType: 'UNKNOWN_ERROR'
+            };
+        }
+    }
+
+    /**
+     * Compute a unified diff of generated content against an existing file.
+     */
+    private async computeConfigDiff(basePath: string, content: string): Promise<any> {
+        const fileWriter = this.checkManager(this.fileWriter, 'FileWriter');
+        if ('error' in fileWriter) return fileWriter;
+
+        try {
+            const result = await fileWriter.computeDiff(basePath, content);
+            return {
+                diff: result.diff,
+                compareWith: result.basePath,
+                isNewFile: result.isNewFile,
+                unchanged: result.unchanged
+            };
+        } catch (error) {
+            return {
+                error: error instanceof Error ? error.message : 'Failed to compute diff',
+                errorType: 'DIFF_ERROR'
             };
         }
     }
