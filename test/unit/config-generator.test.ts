@@ -1161,4 +1161,49 @@ describe('TerragruntConfigGenerator', () => {
       expect(result.config).toContain('storage_custom_endpoint = "http://localhost:4443/storage/v1/"');
     });
   });
+
+  describe('cicd templates (#96)', () => {
+    const platforms: Array<[string, string]> = [
+      ['github-actions', 'plan_summary'],
+      ['gitlab', 'plan_artifact'],
+      ['azure-devops', 'plan_output'],
+    ];
+
+    it.each(platforms)('generates a non-interactive %s config', async (platform, planHook) => {
+      const result = await generator.generateConfig({
+        useCase: 'cicd',
+        backend: platform,
+        options: {},
+      });
+
+      // Non-interactive: extra_arguments with the required arguments + commands.
+      expect(result.config).toContain('extra_arguments "non_interactive"');
+      expect(result.config).toContain('arguments = ["-input=false"]');
+      expect(result.config).toContain('TF_IN_AUTOMATION = "true"');
+      expect(result.config).toContain(`after_hook "${planHook}"`);
+      // auto-approve is omitted unless requested.
+      expect(result.config).not.toContain('extra_arguments "auto_approve"');
+    });
+
+    it('adds the auto-approve block only when auto_approve is provided', async () => {
+      const result = await generator.generateConfig({
+        useCase: 'cicd',
+        backend: 'github-actions',
+        options: { auto_approve: true },
+      });
+
+      expect(result.config).toContain('extra_arguments "auto_approve"');
+      expect(result.config).toContain('arguments = ["-auto-approve"]');
+    });
+
+    it('substitutes the plan_file variable into the plan hook', async () => {
+      const result = await generator.generateConfig({
+        useCase: 'cicd',
+        backend: 'gitlab',
+        options: { plan_file: 'plan.out' },
+      });
+
+      expect(result.config).toContain('"-json", "plan.out"');
+    });
+  });
 });

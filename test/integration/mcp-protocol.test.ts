@@ -502,10 +502,10 @@ describe('MCP Protocol Compliance', () => {
         expect(typeof genTool?.inputSchema.properties).toBe('object');
       });
 
-      it('should define useCase parameter as enum with 5 valid values', () => {
+      it('should define useCase parameter as enum with 6 valid values', () => {
         const tools = toolHandler.getAvailableTools();
         const genTool = tools.find(t => t.name === 'build_config');
-        
+
         const useCaseProperty = genTool?.inputSchema.properties.useCase;
         expect(useCaseProperty).toBeDefined();
         expect(useCaseProperty.type).toBe('string');
@@ -516,7 +516,8 @@ describe('MCP Protocol Compliance', () => {
           'provider_generation',
           'dependencies',
           'hooks',
-          'inputs'
+          'inputs',
+          'cicd'
         ]);
       });
 

@@ -1046,7 +1046,7 @@ describe('Advanced Backend Templates', () => {
       const backendTemplates = await templatesManager.searchTemplates({ category: 'backend' });
       const advancedTemplates = await templatesManager.searchTemplates({ tags: ['advanced'] });
 
-      expect(allTemplates).toHaveLength(16); // 12 builtin + 4 schema-based
+      expect(allTemplates).toHaveLength(19); // 15 builtin (incl. 3 cicd) + 4 schema-based
       expect(backendTemplates).toHaveLength(10); // 6 builtin + 4 schema-based
       expect(advancedTemplates).toHaveLength(3);
     });
@@ -1278,7 +1278,7 @@ describe('Advanced Backend Templates', () => {
     it('should include advanced templates in getMetadata', async () => {
       const metadata = await templatesManager.getMetadata();
 
-      expect(metadata.totalTemplates).toBe(16); // 12 builtin + 4 schema-based
+      expect(metadata.totalTemplates).toBe(19); // 15 builtin (incl. 3 cicd) + 4 schema-based
       expect(metadata.categories).toContain('backend');
     });
 
