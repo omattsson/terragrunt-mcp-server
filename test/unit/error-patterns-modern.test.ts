@@ -105,6 +105,27 @@ describe('modern diagnosis: managed azurerm state', () => {
   });
 });
 
+describe('modern diagnosis: CAS', () => {
+  const cases: Array<[string, string]> = [
+    ['unit "vpc" in terragrunt.hcl sets update_source_with_cas = true, which requires the --no-cas flag to be unset', 'cas-update-source-requires-cas'],
+    ['update_source_with_cas does not support absolute sources', 'cas-source-absolute'],
+    ['update_source_with_cas source escapes repository root', 'cas-source-escapes-repo'],
+    ['update_source_with_cas requires a literal source string', 'cas-source-not-literal'],
+    ['CAS reference hash must be lowercase hex (40 characters for sha1, 64 for sha256)', 'cas-ref-invalid'],
+    ['CAS reference missing expected hash algorithm prefix', 'cas-ref-invalid'],
+    ['CAS reference has empty hash', 'cas-ref-invalid'],
+    ['failed to complete git clone', 'cas-git-clone-failed'],
+    ['tree not found in CAS store', 'cas-tree-not-found'],
+    ['object abc123 not present in central git store after fetching v1 from https://example.invalid/r.git', 'cas-git-store-object-missing'],
+  ];
+  it.each(cases)('matches %s -> %s at 0.95', async (text, id) => {
+    const m = await topMatch(text);
+    expect(m.pattern.id).toBe(id);
+    expect(m.pattern.category).toBe('cas');
+    expect(m.confidence).toBe(0.95);
+  });
+});
+
 describe('modern diagnosis: experiment gates', () => {
   const gated = [
     "the 'browse' command requires the 'browse-tui' experiment to be enabled (set --experiment browse-tui or TG_EXPERIMENT=browse-tui)",
