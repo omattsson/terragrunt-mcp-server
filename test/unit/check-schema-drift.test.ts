@@ -516,6 +516,106 @@ describe('SchemaComparator', () => {
       expect(drift.deprecated[0]).toBe('lock_table');
     });
   });
+
+  describe('compareDrift — nesting, tiering, and exceptions (#212)', () => {
+    const opts = {
+      complete: true,
+      blockPrefixes: ['endpoints', 'assume_role', 'assume_role_with_web_identity'],
+    };
+
+    it('resolves a nested doc child to the flattened schema attribute', () => {
+      const schema = {
+        id: 's3',
+        name: 'AWS S3',
+        attributes: [
+          { name: 'bucket', type: 'string', required: true },
+          { name: 'endpoints_s3', type: 'string', required: false },
+          { name: 'assume_role_policy', type: 'string', required: false },
+          { name: 'assume_role_with_web_identity_web_identity_token', type: 'string', required: false },
+        ],
+      };
+      const docAttributes = [
+        { name: 'bucket' },
+        { name: 's3' }, // nested under endpoints in the docs
+        { name: 'policy' }, // nested under assume_role
+        { name: 'web_identity_token' }, // nested under assume_role_with_web_identity
+      ];
+
+      const drift = comparator.compareDrift('aws-s3-complete.json', schema, docAttributes, opts);
+
+      expect(drift.missing).toEqual([]);
+      expect(drift.extra).toEqual([]);
+    });
+
+    it('does not report missing attributes for an essential (non-complete) schema', () => {
+      const schema = {
+        id: 's3',
+        name: 'AWS S3',
+        attributes: [{ name: 'bucket', type: 'string', required: true }],
+      };
+      const docAttributes = [
+        { name: 'bucket' },
+        { name: 'source_identity' },
+        { name: 'web_identity_token' },
+      ];
+
+      const drift = comparator.compareDrift('s3.json', schema, docAttributes, { ...opts, complete: false });
+
+      expect(drift.missing).toEqual([]);
+    });
+
+    it('excludes intentional schema-only attributes via knownExtra', () => {
+      const schema = {
+        id: 'azurerm',
+        name: 'Azure Blob Storage',
+        attributes: [
+          { name: 'storage_account_name', type: 'string', required: true },
+          { name: 'use_microsoft_graph', type: 'bool', required: false },
+        ],
+      };
+      const docAttributes = [{ name: 'storage_account_name' }];
+
+      const drift = comparator.compareDrift('azure-blob.json', schema, docAttributes, {
+        complete: true,
+        knownExtra: ['use_microsoft_graph'],
+      });
+
+      expect(drift.extra).toEqual([]);
+    });
+
+    it('does not flag a schema block-object attribute as extra', () => {
+      // s3.json models the endpoints block as a single `endpoints` object.
+      const schema = {
+        id: 's3',
+        name: 'AWS S3',
+        attributes: [
+          { name: 'bucket', type: 'string', required: true },
+          { name: 'endpoints', type: 'object', required: false },
+        ],
+      };
+      const docAttributes = [{ name: 'bucket' }, { name: 's3' }, { name: 'iam' }];
+
+      const drift = comparator.compareDrift('s3.json', schema, docAttributes, { ...opts, complete: false });
+
+      expect(drift.extra).toEqual([]);
+    });
+
+    it('still reports a genuinely unknown schema attribute as extra', () => {
+      const schema = {
+        id: 's3',
+        name: 'AWS S3',
+        attributes: [
+          { name: 'bucket', type: 'string', required: true },
+          { name: 'totally_made_up', type: 'string', required: false },
+        ],
+      };
+      const docAttributes = [{ name: 'bucket' }];
+
+      const drift = comparator.compareDrift('aws-s3-complete.json', schema, docAttributes, opts);
+
+      expect(drift.extra).toEqual(['totally_made_up']);
+    });
+  });
 });
 
 describe('formatMarkdown', () => {

@@ -18,11 +18,26 @@ import * as path from 'path';
 import { load } from 'cheerio';
 
 // Backend configuration mapping
+interface SchemaConfig {
+  file: string;
+  // A complete schema is checked for missing attributes; an essential/tiered
+  // schema is a deliberate subset, so only extra/deprecated are checked.
+  complete: boolean;
+  // Schema attributes intentionally kept though absent from the docs.
+  knownExtra?: string[];
+}
+
 interface BackendConfig {
   id: string;
   name: string;
   docsUrl: string;
-  schemaFiles: string[]; // Can have multiple schemas (essential, complete, etc.)
+  schemas: SchemaConfig[]; // Can have multiple schemas (essential, complete, etc.)
+  // Documentation blocks whose children the docs list as flat names while the
+  // schema flattens them as `<prefix>_<child>` (or a parent object attribute).
+  blockPrefixes?: string[];
+  // Documentation `<code>` that is not a real attribute (for example an RBAC
+  // role name mentioned in prose). Filtered case-insensitively.
+  ignoredDocAttributes?: string[];
 }
 
 const BACKENDS: BackendConfig[] = [
@@ -30,19 +45,28 @@ const BACKENDS: BackendConfig[] = [
     id: 's3',
     name: 'AWS S3',
     docsUrl: 'https://developer.hashicorp.com/terraform/language/settings/backends/s3',
-    schemaFiles: ['s3.json', 'aws-s3-complete.json']
+    blockPrefixes: ['endpoints', 'assume_role', 'assume_role_with_web_identity'],
+    schemas: [
+      { file: 's3.json', complete: false, knownExtra: ['assume_role_duration_seconds'] },
+      { file: 'aws-s3-complete.json', complete: true, knownExtra: ['assume_role_duration_seconds'] }
+    ]
   },
   {
     id: 'azurerm',
     name: 'Azure Blob Storage',
     docsUrl: 'https://developer.hashicorp.com/terraform/language/settings/backends/azurerm',
-    schemaFiles: ['azure-blob.json']
+    ignoredDocAttributes: ['reader'],
+    schemas: [
+      { file: 'azure-blob.json', complete: true, knownExtra: ['use_microsoft_graph'] }
+    ]
   },
   {
     id: 'gcs',
     name: 'Google Cloud Storage',
     docsUrl: 'https://developer.hashicorp.com/terraform/language/settings/backends/gcs',
-    schemaFiles: ['gcp-gcs-complete.json']
+    schemas: [
+      { file: 'gcp-gcs-complete.json', complete: true }
+    ]
   }
 ];
 
@@ -350,27 +374,65 @@ export class SchemaComparator {
   /**
    * Compare documentation attributes with schema
    */
+  /**
+   * A documentation attribute is covered by the schema when the schema has the
+   * same name, or a `<prefix>_<name>` form for a nested block (the docs list a
+   * block child as a flat name; the schema flattens it as `<prefix>_<child>`).
+   */
+  private isDocCoveredBySchema(docName: string, schemaSet: Set<string>, prefixes: string[]): boolean {
+    if (schemaSet.has(docName)) {
+      return true;
+    }
+    return prefixes.some(prefix => schemaSet.has(`${prefix}_${docName}`));
+  }
+
+  /**
+   * A schema attribute is covered by the docs when the docs have the same name,
+   * or the docs list the block child that a `<prefix>_<child>` schema name
+   * flattens.
+   */
+  private isSchemaCoveredByDocs(schemaName: string, docSet: Set<string>, prefixes: string[]): boolean {
+    if (docSet.has(schemaName)) {
+      return true;
+    }
+    // A schema attribute that is itself a block name (an `endpoints` or
+    // `assume_role` object holding the block's children) represents the whole
+    // block, which the docs describe through its children.
+    if (prefixes.includes(schemaName)) {
+      return true;
+    }
+    return prefixes.some(prefix =>
+      schemaName.startsWith(`${prefix}_`) && docSet.has(schemaName.slice(prefix.length + 1))
+    );
+  }
+
   compareDrift(
     schemaFile: string,
     schema: BackendSchema,
-    docAttributes: AttributeInfo[]
+    docAttributes: AttributeInfo[],
+    options: { complete: boolean; blockPrefixes?: string[]; knownExtra?: string[] } = { complete: true }
   ): DriftResult {
+    const prefixes = options.blockPrefixes ?? [];
+    const knownExtra = new Set(options.knownExtra ?? []);
     const schemaAttrNames = new Set(schema.attributes.map(a => a.name));
     const docAttrNames = new Set(docAttributes.map(a => a.name));
-    
-    // Find missing attributes (in docs, not in schema)
-    const missing = docAttributes.filter(attr => !schemaAttrNames.has(attr.name));
-    
-    // Find extra attributes (in schema, not in docs)
+
+    // Find missing attributes (in docs, not in schema). Only complete schemas are
+    // checked; an essential/tiered schema is a deliberate subset.
+    const missing = options.complete
+      ? docAttributes.filter(attr => !this.isDocCoveredBySchema(attr.name, schemaAttrNames, prefixes))
+      : [];
+
+    // Find extra attributes (in schema, not in docs), excluding intentional extras.
     const extra = schema.attributes
-      .filter(attr => !docAttrNames.has(attr.name))
+      .filter(attr => !this.isSchemaCoveredByDocs(attr.name, docAttrNames, prefixes) && !knownExtra.has(attr.name))
       .map(attr => attr.name);
-    
-    // Find deprecated attributes
+
+    // Find deprecated attributes (informational; does not contribute to drift).
     const deprecated = docAttributes
       .filter(attr => attr.deprecated && schemaAttrNames.has(attr.name))
       .map(attr => attr.name);
-    
+
     return {
       backend: schema.id,
       schemaFile,
@@ -396,9 +458,12 @@ export function formatMarkdown(report: DriftReport): string {
   
   for (const results of Object.values(report.backends)) {
     for (const result of results) {
-      const hasDrift = result.missing.length > 0 || result.extra.length > 0 || result.deprecated.length > 0;
-      
-      if (!hasDrift) continue;
+      // Report-level hasDrift (missing/extra only) already gates whether this
+      // report renders at all. Within a rendered report, still show a backend's
+      // deprecated attributes as informational context.
+      const hasContent = result.missing.length > 0 || result.extra.length > 0 || result.deprecated.length > 0;
+
+      if (!hasContent) continue;
       
       output += `## ${result.backend.toUpperCase()} - ${result.schemaFile}\n\n`;
       
@@ -553,26 +618,35 @@ async function main() {
     console.error(`\nChecking ${backend.name} (${backend.id})...`);
     
     try {
-      // Scrape documentation
-      const docAttributes = await scraper.scrapeBackendAttributes(backend.docsUrl);
-      
+      // Scrape documentation, then drop entries that are not real attributes
+      // (for example an RBAC role name the docs mention in prose).
+      const scraped = await scraper.scrapeBackendAttributes(backend.docsUrl);
+      const ignored = new Set((backend.ignoredDocAttributes ?? []).map(name => name.toLowerCase()));
+      const docAttributes = scraped.filter(attr => !ignored.has(attr.name.toLowerCase()));
+
       // Compare with each schema file
       const backendResults: DriftResult[] = [];
-      
-      for (const schemaFile of backend.schemaFiles) {
+
+      for (const schemaConfig of backend.schemas) {
+        const schemaFile = schemaConfig.file;
         try {
           console.error(`  Comparing with ${schemaFile}...`);
           const schema = await comparator.loadSchema(schemaFile);
-          const drift = comparator.compareDrift(schemaFile, schema, docAttributes);
-          
-          const hasDrift = drift.missing.length > 0 || drift.extra.length > 0 || drift.deprecated.length > 0;
+          const drift = comparator.compareDrift(schemaFile, schema, docAttributes, {
+            complete: schemaConfig.complete,
+            blockPrefixes: backend.blockPrefixes,
+            knownExtra: schemaConfig.knownExtra
+          });
+
+          // Deprecated attributes are informational and do not count as drift.
+          const hasDrift = drift.missing.length > 0 || drift.extra.length > 0;
           if (hasDrift) {
             report.hasDrift = true;
-            console.error(`  ⚠️  Drift detected: ${drift.missing.length} missing, ${drift.extra.length} extra, ${drift.deprecated.length} deprecated`);
+            console.error(`  ⚠️  Drift detected: ${drift.missing.length} missing, ${drift.extra.length} extra (${drift.deprecated.length} deprecated, informational)`);
           } else {
-            console.error(`  ✅ No drift`);
+            console.error(`  ✅ No drift${drift.deprecated.length > 0 ? ` (${drift.deprecated.length} deprecated, informational)` : ''}`);
           }
-          
+
           backendResults.push(drift);
         } catch (error) {
           const errMsg = error instanceof Error ? error.message : String(error);
