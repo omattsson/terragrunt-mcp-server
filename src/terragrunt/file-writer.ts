@@ -11,12 +11,16 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { existsSync } from 'fs';
+import { createPatch } from 'diff';
 import {
   FileWriteOptions,
   FileWriteResult,
   FileWriterConfig,
   FileWriteError,
-  FileWriteErrorType
+  FileWriteErrorType,
+  FilePreviewOptions,
+  DiffResult,
+  WritePreviewResult
 } from '../types/file-writer.js';
 
 /**
@@ -170,6 +174,130 @@ export class FileWriter {
         message: errorMessage,
         error: errorMessage,
         errorType: errorType
+      };
+    }
+  }
+
+  /**
+   * Compute a unified diff of an existing file against new content, without
+   * writing anything. Reads are subject to the same path-traversal and
+   * allowed-directory checks as writes, so arbitrary files cannot be read.
+   *
+   * A non-existent base file is treated as a new file (the diff is all
+   * additions), not an error. A traversal or out-of-allowlist path is an error.
+   *
+   * @param basePath Path of the existing file to compare against
+   * @param newContent The content that would be written
+   * @returns The unified diff and metadata about the base file
+   */
+  async computeDiff(basePath: string, newContent: string): Promise<DiffResult> {
+    if (this.detectPathTraversal(basePath)) {
+      throw new FileWriteError(
+        FileWriteErrorType.PATH_TRAVERSAL,
+        'Path validation failed: Path traversal detected',
+        basePath
+      );
+    }
+
+    const absoluteBase = path.resolve(basePath);
+    this.validatePath(absoluteBase);
+
+    const baseExists = existsSync(absoluteBase);
+    const baseContent = baseExists ? await fs.readFile(absoluteBase, 'utf8') : '';
+    const label = path.basename(absoluteBase);
+    const unchanged = baseExists && baseContent === newContent;
+
+    const diff = createPatch(
+      label,
+      baseContent,
+      newContent,
+      baseExists ? 'existing' : 'new file',
+      'generated'
+    );
+
+    return {
+      diff,
+      basePath: absoluteBase,
+      baseExists,
+      isNewFile: !baseExists,
+      unchanged
+    };
+  }
+
+  /**
+   * Preview a write (dry-run): run the same validation as writeFile and report
+   * what would happen, without writing. Optionally include a unified diff
+   * against an existing file (compareWith, defaulting to the target path).
+   *
+   * @param options Write options plus an optional compareWith path
+   * @returns What the write would do, and the diff when a base was compared
+   */
+  async previewWrite(options: FilePreviewOptions): Promise<WritePreviewResult> {
+    try {
+      if (!this.config.enabled) {
+        throw new FileWriteError(
+          FileWriteErrorType.DISABLED,
+          'File writing is disabled in configuration'
+        );
+      }
+
+      const createBackup = options.createBackup ?? this.config.autoBackup;
+
+      const contentSize = Buffer.byteLength(options.content, 'utf8');
+      if (contentSize > this.config.maxFileSize) {
+        throw new FileWriteError(
+          FileWriteErrorType.MAX_SIZE_EXCEEDED,
+          `File size (${contentSize} bytes) exceeds maximum allowed (${this.config.maxFileSize} bytes)`,
+          options.filePath
+        );
+      }
+
+      if (this.detectPathTraversal(options.filePath)) {
+        throw new FileWriteError(
+          FileWriteErrorType.PATH_TRAVERSAL,
+          'Path validation failed: Path traversal detected',
+          options.filePath
+        );
+      }
+
+      const absolutePath = path.resolve(options.filePath);
+      this.validatePath(absolutePath);
+
+      const targetExists = existsSync(absolutePath);
+      const base = options.compareWith ?? options.filePath;
+      const diffResult = await this.computeDiff(base, options.content);
+
+      return {
+        preview: true,
+        success: true,
+        targetPath: absolutePath,
+        targetExists,
+        wouldOverwrite: targetExists,
+        wouldBackup: targetExists && createBackup,
+        bytesToWrite: contentSize,
+        diff: diffResult.diff,
+        isNewFile: diffResult.isNewFile,
+        unchanged: diffResult.unchanged,
+        message: diffResult.unchanged
+          ? 'No changes: the generated content matches the existing file'
+          : targetExists
+            ? `Would overwrite ${absolutePath}${targetExists && createBackup ? ' (backup would be created)' : ''}`
+            : `Would create ${absolutePath}`
+      };
+    } catch (error) {
+      const isFwError = error instanceof FileWriteError;
+      const message = error instanceof Error ? error.message : 'Failed to preview write';
+      return {
+        preview: true,
+        success: false,
+        targetPath: path.resolve(options.filePath),
+        targetExists: false,
+        wouldOverwrite: false,
+        wouldBackup: false,
+        bytesToWrite: 0,
+        message,
+        error: message,
+        errorType: isFwError ? (error as FileWriteError).type : FileWriteErrorType.UNKNOWN
       };
     }
   }
