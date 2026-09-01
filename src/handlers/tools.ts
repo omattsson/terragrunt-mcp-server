@@ -936,9 +936,10 @@ export class ToolHandler {
                                 errorType: 'VALIDATION_ERROR'
                             };
                         }
-                        // Preview (dry-run): report what the write would do, no write
+                        // Preview (dry-run): report what the write would do, no write.
+                        // Same stable contract as generate-mode preview.
                         if (args.preview) {
-                            return await this.previewTerragruntConfig(
+                            const previewResult = await this.previewTerragruntConfig(
                                 args.content,
                                 targetPath,
                                 args.compareWith,
@@ -946,6 +947,11 @@ export class ToolHandler {
                                 args.overwrite ?? false,
                                 args.createParentDirs ?? true
                             );
+                            return {
+                                preview: true,
+                                success: previewResult?.success === true,
+                                previewResult
+                            };
                         }
                         return await this.writeTerragruntConfig(
                             args.content,
@@ -2192,6 +2198,8 @@ export class ToolHandler {
 
             // Preview (dry-run): never write. Report what a write would do plus a
             // diff. Requires a path (the intended target) or a compareWith base.
+            // Preview responses use one stable contract across every mode:
+            // { preview: true, success, previewResult: {...}, ...generate metadata }.
             if (preview) {
                 if (path) {
                     const previewResult = await this.previewTerragruntConfig(
@@ -2202,15 +2210,27 @@ export class ToolHandler {
                         overwrite,
                         createParentDirs
                     );
-                    // Reflect a preview validation failure (e.g. blocked write, bad
-                    // compareWith path) in the overall result.
-                    return { ...generateResult, success: generateResult.success && previewResult.success !== false, preview: previewResult };
+                    return {
+                        ...generateResult,
+                        preview: true,
+                        success: generateResult.success && previewResult?.success === true,
+                        previewResult
+                    };
                 }
                 if (compareWith) {
                     const diffResult = await this.computeConfigDiff(compareWith, generateResult.config);
-                    return { ...generateResult, ...(diffResult.error ? { success: false } : {}), ...diffResult };
+                    return {
+                        ...generateResult,
+                        preview: true,
+                        success: generateResult.success && !diffResult.error,
+                        previewResult: diffResult
+                    };
                 }
-                return { ...generateResult, preview: { preview: true, message: 'Nothing to preview: provide path or compareWith' } };
+                return {
+                    ...generateResult,
+                    preview: true,
+                    previewResult: { message: 'Nothing to preview: provide path or compareWith' }
+                };
             }
 
             // Compute the diff against the pre-write content when compareWith is set.

@@ -389,6 +389,37 @@ describe('FileWriter', () => {
         type: FileWriteErrorType.PATH_TRAVERSAL,
       });
     });
+
+    it('rejects a symlink inside the allowlist that points outside it', async () => {
+      // Target lives outside the allowed directory.
+      const outside = path.join(tmpdir(), `outside-${Date.now()}.hcl`);
+      await fs.writeFile(outside, 'secret = true\n', 'utf8');
+      const link = path.join(testDir, 'link.hcl');
+      await fs.symlink(outside, link);
+      try {
+        await expect(fileWriter.computeDiff(link, 'x')).rejects.toMatchObject({
+          type: FileWriteErrorType.OUTSIDE_ALLOWED_DIRS,
+        });
+      } finally {
+        await fs.rm(outside, { force: true });
+      }
+    });
+
+    it('rejects a comparison file larger than maxFileSize', async () => {
+      const smallWriter = new FileWriter({ allowedDirectories: [testDir], maxFileSize: 16 });
+      const big = path.join(testDir, 'big.hcl');
+      await fs.writeFile(big, 'x'.repeat(64), 'utf8');
+      await expect(smallWriter.computeDiff(big, 'y')).rejects.toMatchObject({
+        type: FileWriteErrorType.MAX_SIZE_EXCEEDED,
+      });
+    });
+
+    it('rejects when file access is disabled', async () => {
+      const disabled = new FileWriter({ allowedDirectories: [testDir], enabled: false });
+      await expect(disabled.computeDiff(path.join(testDir, 'x.hcl'), 'y')).rejects.toMatchObject({
+        type: FileWriteErrorType.DISABLED,
+      });
+    });
   });
 
   describe('previewWrite (#95)', () => {
@@ -438,6 +469,21 @@ describe('FileWriter', () => {
         content: 'inputs = {}\n',
         filePath,
         createParentDirs: false,
+      });
+
+      expect(result.success).toBe(false);
+      expect(result.errorType).toBe(FileWriteErrorType.INVALID_PATH);
+    });
+
+    it('reports a blocked write when the parent path exists as a file', async () => {
+      const parentAsFile = path.join(testDir, 'notdir');
+      await fs.writeFile(parentAsFile, 'x', 'utf8');
+      const filePath = path.join(parentAsFile, 'child.hcl');
+
+      const result = await fileWriter.previewWrite({
+        content: 'inputs = {}\n',
+        filePath,
+        createParentDirs: true,
       });
 
       expect(result.success).toBe(false);
