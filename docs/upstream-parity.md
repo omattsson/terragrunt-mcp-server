@@ -21,9 +21,10 @@ rotting.
 | Diagnosis pattern/category counts | `getPatternStats()` (single source of truth) | `test/unit/error-pattern-stats.test.ts` |
 
 The modern diagnosis patterns (#253) cover typed stack validation, block
-expansion, OCI sources and credentials, the IaC engine, experiment gates, and
-managed `azurerm` state. Each pattern regex anchors on a verbatim upstream
-`Error()` string, read at the pinned revision, in these files:
+expansion, OCI sources and credentials, the IaC engine, experiment gates,
+managed `azurerm` state, and the content-addressable store (CAS). Each pattern
+regex anchors on a verbatim upstream `Error()` string, read at the pinned
+revision, in these files:
 
 - `pkg/config/stack_validation.go`, `pkg/config/errors.go`
 - `pkg/config/hclparse/errors.go`
@@ -32,9 +33,7 @@ managed `azurerm` state. Each pattern regex anchors on a verbatim upstream
 - `internal/cli/commands/browse/errors.go` and the other experiment gates
 - `pkg/config/dependency_state_azurerm.go`,
   `internal/remotestate/backend/azurerm/errors.go`
-
-CAS (content-addressable store) diagnosis is out of scope for #253 and remains
-an `it.todo` placeholder.
+- `internal/cas/errors.go` (CAS / update_source_with_cas)
 
 The documented pattern and category counts come from one source of truth:
 `ErrorPatternMatcher.getPatternStats()` computes them from the pattern array,

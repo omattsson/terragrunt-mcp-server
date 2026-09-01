@@ -56,6 +56,7 @@ export const WATCHED_PATHS: WatchedPath[] = [
   { path: 'internal/cli/commands/run/flags.go', reason: 'experiment-gated run flag messages' },
   { path: 'internal/cli/flags/shared/filter.go', reason: 'bounded-discovery gate message' },
   { path: 'internal/filter/filters.go', reason: 'inline (dir) bounded-discovery gate message' },
+  { path: 'internal/cas/errors.go', reason: 'CAS (update_source_with_cas) diagnosis patterns' },
 ];
 
 export interface CommitInfo {
