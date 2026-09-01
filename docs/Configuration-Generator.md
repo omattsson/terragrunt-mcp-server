@@ -440,6 +440,10 @@ The generated config is platform-agnostic Terragrunt HCL; the pipeline itself
 runs Terragrunt. Cloud credentials come from the pipeline environment — the
 config never hard-codes them.
 
+The config injects `-out=<plan_file>` on `plan` (via an `extra_arguments`
+block), so a plain `terragrunt plan` writes the plan file that the `after_hook`
+renders as JSON. The pipeline does not need to pass `-out` itself.
+
 **Sample GitHub Actions pipeline:**
 
 ```yaml
@@ -464,7 +468,8 @@ jobs:
 terragrunt-plan:
   image: alpine:3
   script:
-    - terragrunt plan -input=false -out tfplan
+    # The generated config injects -out=tfplan, so plain `plan` writes the plan file.
+    - terragrunt plan
   artifacts:
     paths: [tfplan]
 ```

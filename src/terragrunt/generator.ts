@@ -381,7 +381,7 @@ export class TerragruntConfigGenerator {
       cicd: `## Next Steps for CI/CD:
 - Set the pipeline's cloud credentials as environment variables (the config does not hard-code them)
 - Gate applies behind a manual approval unless you enabled auto-approve
-- Publish the plan JSON emitted by the after_hook as a pipeline artifact or summary
+- The config writes the plan file with -out, and the after_hook renders it as JSON; publish that JSON as a pipeline artifact or summary
 - Cache the .terraform directory between jobs to speed up init`,
     };
 
@@ -485,7 +485,8 @@ export class TerragruntConfigGenerator {
       cicd: [
         'Merge this terraform block into your terragrunt.hcl',
         'Provide cloud credentials as pipeline environment variables',
-        'Run `terragrunt plan -input=false` in your pipeline and publish the plan JSON',
+        'Run `terragrunt plan` in your pipeline; the config writes the plan file (via -out) that the after_hook renders as JSON',
+        'Publish that plan JSON as a pipeline artifact or summary',
         'Gate `terragrunt apply` behind an approval step unless auto-approve is enabled',
       ],
     };

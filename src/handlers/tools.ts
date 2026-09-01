@@ -664,7 +664,7 @@ export class ToolHandler {
             },
             {
                 name: 'build_config',
-                description: 'Generate or write Terragrunt HCL configuration files (terragrunt.hcl). Use cases: remote_state backends (S3, GCS, Azure), provider generation, dependency blocks, hooks, and inputs.',
+                description: 'Generate or write Terragrunt HCL configuration files (terragrunt.hcl). Use cases: remote_state backends (S3, GCS, Azure), provider generation, dependency blocks, hooks, inputs, and cicd (CI/CD-ready config for GitHub Actions, GitLab, Azure DevOps).',
                 inputSchema: {
                     type: 'object',
                     properties: {

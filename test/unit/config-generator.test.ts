@@ -1205,5 +1205,17 @@ describe('TerragruntConfigGenerator', () => {
 
       expect(result.config).toContain('"-json", "plan.out"');
     });
+
+    it('writes the plan file with -out so the after_hook can read it', async () => {
+      const result = await generator.generateConfig({
+        useCase: 'cicd',
+        backend: 'github-actions',
+        options: { plan_file: 'plan.out' },
+      });
+
+      // plan does not persist a plan file by default; the config injects -out.
+      expect(result.config).toContain('extra_arguments "plan_out"');
+      expect(result.config).toContain('arguments = ["-out", "plan.out"]');
+    });
   });
 });

@@ -57,6 +57,12 @@ export const cicdTemplates: ConfigTemplate[] = [
     }
   }
 
+  # plan does not persist a plan file by default; write it so the after_hook can read it.
+  extra_arguments "plan_out" {
+    commands  = ["plan"]
+    arguments = ["-out", "{{plan_file}}"]
+  }
+
   # Emit the plan as JSON so a workflow step can post it to the job summary.
   after_hook "plan_summary" {
     commands     = ["plan"]
@@ -80,6 +86,11 @@ export const cicdTemplates: ConfigTemplate[] = [
     env_vars = {
       TF_IN_AUTOMATION = "true"
     }
+  }
+
+  extra_arguments "plan_out" {
+    commands  = ["plan"]
+    arguments = ["-out", "tfplan"]
   }
 
   after_hook "plan_summary" {
@@ -112,6 +123,12 @@ export const cicdTemplates: ConfigTemplate[] = [
     }
   }
 
+  # plan does not persist a plan file by default; write it so the after_hook can read it.
+  extra_arguments "plan_out" {
+    commands  = ["plan"]
+    arguments = ["-out", "{{plan_file}}"]
+  }
+
   # Emit the plan as JSON so the GitLab job can publish it as an artifact.
   after_hook "plan_artifact" {
     commands     = ["plan"]
@@ -135,6 +152,11 @@ export const cicdTemplates: ConfigTemplate[] = [
     env_vars = {
       TF_IN_AUTOMATION = "true"
     }
+  }
+
+  extra_arguments "plan_out" {
+    commands  = ["plan"]
+    arguments = ["-out", "tfplan"]
   }
 
   after_hook "plan_artifact" {
@@ -170,6 +192,12 @@ export const cicdTemplates: ConfigTemplate[] = [
     }
   }
 
+  # plan does not persist a plan file by default; write it so the after_hook can read it.
+  extra_arguments "plan_out" {
+    commands  = ["plan"]
+    arguments = ["-out", "{{plan_file}}"]
+  }
+
   # Emit the plan as JSON for the pipeline to publish.
   after_hook "plan_output" {
     commands     = ["plan"]
@@ -193,6 +221,11 @@ export const cicdTemplates: ConfigTemplate[] = [
     env_vars = {
       TF_IN_AUTOMATION = "true"
     }
+  }
+
+  extra_arguments "plan_out" {
+    commands  = ["plan"]
+    arguments = ["-out", "tfplan"]
   }
 
   after_hook "plan_output" {
