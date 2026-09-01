@@ -13,12 +13,9 @@ export default defineConfig({
       include: ['src/**/*.ts'],
       exclude: ['src/**/*.d.ts', 'src/types/**'],
     },
-    // Faster test execution for unit tests
+    // Faster test execution for unit tests: run each file in its own fork,
+    // in parallel. Parallel file execution is the Vitest 4 default, so the old
+    // poolOptions.forks.singleFork: false (removed in v4) needs no replacement.
     pool: 'forks',
-    poolOptions: {
-      forks: {
-        singleFork: false,
-      },
-    },
   },
 });
