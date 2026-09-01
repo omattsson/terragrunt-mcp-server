@@ -32,7 +32,8 @@ export type ErrorCategory =
     | 'stack'
     | 'engine'
     | 'oci'
-    | 'experiment';
+    | 'experiment'
+    | 'cas';
 
 /**
  * Represents a known error pattern that can be matched against
