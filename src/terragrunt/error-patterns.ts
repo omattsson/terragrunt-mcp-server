@@ -2822,7 +2822,7 @@ export class ErrorPatternMatcher {
    * CAS (content-addressable store) error patterns (category: cas, 8 patterns)
    *
    * Anchored to verbatim upstream Error() strings in internal/cas/errors.go at
-   * the pinned revision. CAS backs update_source_with_cas and the cas:// getter.
+   * the pinned revision. CAS backs update_source_with_cas and the cas:: getter.
    */
   private getCASErrorPatterns(): ErrorPattern[] {
     return [
@@ -2838,10 +2838,10 @@ export class ErrorPatternMatcher {
         ],
         solutions: [
           { step: 1, explanation: 'Unset the --no-cas flag (and TG_NO_CAS) so CAS is available' },
-          { step: 2, explanation: 'Or set update_source_with_cas = false on the reported block if CAS is not wanted' }
+          { step: 2, explanation: 'Or set update_source_with_cas = false and change the source to a standard resolvable source; the CAS-relative source has no meaning without CAS' }
         ],
         documentationRefs: [
-          'https://docs.terragrunt.com/reference/hcl/attributes/'
+          'https://docs.terragrunt.com/features/caching/cas/'
         ]
       },
       {
@@ -2855,11 +2855,11 @@ export class ErrorPatternMatcher {
           'The source starts with a leading slash'
         ],
         solutions: [
-          { step: 1, explanation: 'Use a source relative to the repository root' },
-          { step: 2, explanation: 'Remove the leading slash or drive prefix from the source' }
+          { step: 1, explanation: 'Rewrite the source as the path relative to the repository root that points at the intended module' },
+          { step: 2, explanation: 'Do not just strip the leading slash or drive prefix; compute the correct repository-relative path' }
         ],
         documentationRefs: [
-          'https://docs.terragrunt.com/reference/hcl/attributes/'
+          'https://docs.terragrunt.com/features/caching/cas/'
         ]
       },
       {
@@ -2877,7 +2877,7 @@ export class ErrorPatternMatcher {
           { step: 2, explanation: 'Vendor the external module into the repository if it must be used' }
         ],
         documentationRefs: [
-          'https://docs.terragrunt.com/reference/hcl/attributes/'
+          'https://docs.terragrunt.com/features/caching/cas/'
         ]
       },
       {
@@ -2895,7 +2895,7 @@ export class ErrorPatternMatcher {
           { step: 2, explanation: 'Move any dynamic value out of the source when CAS is enabled' }
         ],
         documentationRefs: [
-          'https://docs.terragrunt.com/reference/hcl/attributes/'
+          'https://docs.terragrunt.com/features/caching/cas/'
         ]
       },
       {
@@ -2910,11 +2910,11 @@ export class ErrorPatternMatcher {
           'The reference has an empty hash'
         ],
         solutions: [
-          { step: 1, explanation: 'Use a reference of the form <algorithm>:<lowercase-hex-hash>' },
+          { step: 1, explanation: 'Use a reference of the form cas::<algorithm>:<lowercase-hex-hash> (append //<subdir> for a module subdirectory)' },
           { step: 2, explanation: 'Copy the hash from a trusted source rather than typing it' }
         ],
         documentationRefs: [
-          'https://docs.terragrunt.com/reference/hcl/attributes/'
+          'https://docs.terragrunt.com/features/caching/cas/'
         ]
       },
       {
@@ -2934,7 +2934,7 @@ export class ErrorPatternMatcher {
           { step: 3, explanation: 'Verify the repository URL and ref are correct' }
         ],
         documentationRefs: [
-          'https://docs.terragrunt.com/reference/hcl/attributes/'
+          'https://docs.terragrunt.com/features/caching/cas/git/'
         ]
       },
       {
@@ -2949,10 +2949,10 @@ export class ErrorPatternMatcher {
         ],
         solutions: [
           { step: 1, explanation: 'Re-run so CAS repopulates the store from the source' },
-          { step: 2, command: 'terragrunt clear-cache', explanation: 'Clear the cache and let CAS rebuild if the store is stale' }
+          { step: 2, explanation: 'If the store is stale, stop Terragrunt and remove the CAS store directory (cas/store under the Terragrunt cache directory), then re-run' }
         ],
         documentationRefs: [
-          'https://docs.terragrunt.com/reference/hcl/attributes/'
+          'https://docs.terragrunt.com/features/caching/cas/'
         ]
       },
       {
@@ -2969,10 +2969,10 @@ export class ErrorPatternMatcher {
         solutions: [
           { step: 1, explanation: 'Verify the ref actually contains the requested commit or tree' },
           { step: 2, explanation: 'Retry; CAS falls back to a temporary clone when this happens' },
-          { step: 3, command: 'terragrunt clear-cache', explanation: 'Clear the cache if the central git store is corrupted' }
+          { step: 3, explanation: 'If the central git store is corrupted, stop Terragrunt and remove the CAS store directory (cas/store under the Terragrunt cache directory), then re-run' }
         ],
         documentationRefs: [
-          'https://docs.terragrunt.com/reference/hcl/attributes/'
+          'https://docs.terragrunt.com/features/caching/cas/git/'
         ]
       }
     ];

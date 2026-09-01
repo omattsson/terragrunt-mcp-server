@@ -899,8 +899,7 @@ export class SolutionRetriever {
           explanation: 'CAS rejects absolute paths, sources that escape the repo root, and non-literal sources'
         });
         steps.push({
-          action: 'Confirm CAS is enabled (the --no-cas flag is unset) and clear the cache if the CAS store is stale',
-          verificationCommand: 'terragrunt clear-cache',
+          action: 'Confirm CAS is enabled (the --no-cas flag is unset); if the CAS store is stale, stop Terragrunt and remove the CAS store directory (cas/store under the Terragrunt cache directory)',
           explanation: 'A disabled CAS or a stale/corrupted store causes most CAS failures'
         });
         break;
