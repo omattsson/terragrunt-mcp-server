@@ -892,6 +892,18 @@ export class SolutionRetriever {
           explanation: 'The feature is off by default until the experiment is enabled'
         });
         break;
+
+      case 'cas':
+        steps.push({
+          action: 'Check the update_source_with_cas source is a literal, relative path inside the repository',
+          explanation: 'CAS rejects absolute paths, sources that escape the repo root, and non-literal sources'
+        });
+        steps.push({
+          action: 'Confirm CAS is enabled (the --no-cas flag is unset) and clear the cache if the CAS store is stale',
+          verificationCommand: 'terragrunt clear-cache',
+          explanation: 'A disabled CAS or a stale/corrupted store causes most CAS failures'
+        });
+        break;
     }
 
     return steps;
@@ -1052,6 +1064,7 @@ export class SolutionRetriever {
     if (lowerName.includes('engine')) return 'engine';
     if (lowerName.includes('azurerm')) return 'backend';
     if (lowerName.includes('stack')) return 'stack';
+    if (lowerName.includes('cas')) return 'cas';
 
     if (lowerName.includes('state') || lowerName.includes('lock')) return 'state';
     if (lowerName.includes('dependency') || lowerName.includes('module')) return 'dependency';

@@ -173,6 +173,19 @@ describe('modern diagnosis: enrichment labels new categories correctly', () => {
     }
   });
 
+  it('labels related CAS errors as cas', async () => {
+    const result = await matcher.diagnoseError(
+      'tree not found in CAS store',
+      {},
+      { enableFuzzyMatching: false, enrichWithDocs: true },
+    );
+    const related = (result as { relatedErrorDetails: Array<{ category: string }> }).relatedErrorDetails;
+    expect(related.length).toBeGreaterThan(0);
+    for (const r of related) {
+      expect(r.category).toBe('cas');
+    }
+  });
+
   it('does not mislabel an OCI credential related error as authentication', async () => {
     const result = await matcher.diagnoseError(
       'oci credential helper "docker-credential-ecr" for registry.example.com: exit status 1',
