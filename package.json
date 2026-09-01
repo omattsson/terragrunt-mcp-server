@@ -56,7 +56,6 @@
     "typescript": "^5.0.0"
   },
   "devDependencies": {
-    "@types/diff": "^8.0.0",
     "@types/lru-cache": "^7.10.9",
     "@types/node": "^24.9.1",
     "@typescript-eslint/eslint-plugin": "^8.0.0",

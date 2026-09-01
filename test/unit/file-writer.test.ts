@@ -392,7 +392,7 @@ describe('FileWriter', () => {
   });
 
   describe('previewWrite (#95)', () => {
-    it('reports an overwrite without writing, and includes a diff', async () => {
+    it('reports a permitted overwrite (overwrite=true) without writing', async () => {
       const filePath = path.join(testDir, 'terragrunt.hcl');
       await fs.writeFile(filePath, 'inputs = {\n  a = 1\n}\n', 'utf8');
       const mtimeBefore = (await fs.stat(filePath)).mtimeMs;
@@ -400,6 +400,7 @@ describe('FileWriter', () => {
       const result = await fileWriter.previewWrite({
         content: 'inputs = {\n  a = 2\n}\n',
         filePath,
+        overwrite: true,
       });
 
       expect(result.preview).toBe(true);
@@ -411,6 +412,36 @@ describe('FileWriter', () => {
       // The file on disk is untouched.
       expect((await fs.stat(filePath)).mtimeMs).toBe(mtimeBefore);
       expect(await fs.readFile(filePath, 'utf8')).toBe('inputs = {\n  a = 1\n}\n');
+    });
+
+    it('reports a blocked write when the target exists and overwrite is disabled', async () => {
+      const filePath = path.join(testDir, 'existing.hcl');
+      await fs.writeFile(filePath, 'inputs = {\n  a = 1\n}\n', 'utf8');
+
+      const result = await fileWriter.previewWrite({
+        content: 'inputs = {\n  a = 2\n}\n',
+        filePath,
+        overwrite: false,
+      });
+
+      // A real write would be blocked, so preview reports it — but still shows the diff.
+      expect(result.success).toBe(false);
+      expect(result.errorType).toBe(FileWriteErrorType.FILE_EXISTS);
+      expect(result.wouldOverwrite).toBe(true);
+      expect(result.diff).toContain('+  a = 2');
+    });
+
+    it('reports a blocked write when a parent dir is missing and createParentDirs is disabled', async () => {
+      const filePath = path.join(testDir, 'nested', 'deep', 'new.hcl');
+
+      const result = await fileWriter.previewWrite({
+        content: 'inputs = {}\n',
+        filePath,
+        createParentDirs: false,
+      });
+
+      expect(result.success).toBe(false);
+      expect(result.errorType).toBe(FileWriteErrorType.INVALID_PATH);
     });
 
     it('reports a new-file create without writing', async () => {

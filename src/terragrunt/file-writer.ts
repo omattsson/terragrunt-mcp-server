@@ -263,13 +263,34 @@ export class FileWriter {
       const absolutePath = path.resolve(options.filePath);
       this.validatePath(absolutePath);
 
+      const overwrite = options.overwrite ?? false;
+      const createParentDirs = options.createParentDirs ?? true;
+
       const targetExists = existsSync(absolutePath);
       const base = options.compareWith ?? options.filePath;
       const diffResult = await this.computeDiff(base, options.content);
 
+      // Mirror writeFile's pre-write guards so preview reflects whether an actual
+      // write would proceed. The diff is still returned when a write is blocked.
+      const parentMissing = !createParentDirs && !existsSync(path.dirname(absolutePath));
+      let blockedError: FileWriteError | undefined;
+      if (targetExists && !overwrite) {
+        blockedError = new FileWriteError(
+          FileWriteErrorType.FILE_EXISTS,
+          `Write would be blocked: file exists and overwrite is disabled: ${absolutePath}`,
+          absolutePath
+        );
+      } else if (parentMissing) {
+        blockedError = new FileWriteError(
+          FileWriteErrorType.INVALID_PATH,
+          `Write would be blocked: parent directory does not exist and createParentDirs is disabled: ${path.dirname(absolutePath)}`,
+          absolutePath
+        );
+      }
+
       return {
         preview: true,
-        success: true,
+        success: !blockedError,
         targetPath: absolutePath,
         targetExists,
         wouldOverwrite: targetExists,
@@ -278,11 +299,15 @@ export class FileWriter {
         diff: diffResult.diff,
         isNewFile: diffResult.isNewFile,
         unchanged: diffResult.unchanged,
-        message: diffResult.unchanged
-          ? 'No changes: the generated content matches the existing file'
-          : targetExists
-            ? `Would overwrite ${absolutePath}${targetExists && createBackup ? ' (backup would be created)' : ''}`
-            : `Would create ${absolutePath}`
+        error: blockedError?.message,
+        errorType: blockedError?.type,
+        message: blockedError
+          ? blockedError.message
+          : diffResult.unchanged
+            ? 'No changes: the generated content matches the existing file'
+            : targetExists
+              ? `Would overwrite ${absolutePath}${targetExists && createBackup ? ' (backup would be created)' : ''}`
+              : `Would create ${absolutePath}`
       };
     } catch (error) {
       const isFwError = error instanceof FileWriteError;

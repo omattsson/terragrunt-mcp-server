@@ -942,7 +942,9 @@ export class ToolHandler {
                                 args.content,
                                 targetPath,
                                 args.compareWith,
-                                args.createBackup ?? true
+                                args.createBackup ?? true,
+                                args.overwrite ?? false,
+                                args.createParentDirs ?? true
                             );
                         }
                         return await this.writeTerragruntConfig(
@@ -2196,13 +2198,17 @@ export class ToolHandler {
                         generateResult.config,
                         path,
                         compareWith,
-                        createBackup
+                        createBackup,
+                        overwrite,
+                        createParentDirs
                     );
-                    return { ...generateResult, preview: previewResult };
+                    // Reflect a preview validation failure (e.g. blocked write, bad
+                    // compareWith path) in the overall result.
+                    return { ...generateResult, success: generateResult.success && previewResult.success !== false, preview: previewResult };
                 }
                 if (compareWith) {
                     const diffResult = await this.computeConfigDiff(compareWith, generateResult.config);
-                    return { ...generateResult, ...diffResult };
+                    return { ...generateResult, ...(diffResult.error ? { success: false } : {}), ...diffResult };
                 }
                 return { ...generateResult, preview: { preview: true, message: 'Nothing to preview: provide path or compareWith' } };
             }
@@ -2212,7 +2218,7 @@ export class ToolHandler {
             if (compareWith) {
                 const diffResult = await this.computeConfigDiff(compareWith, generateResult.config);
                 if (diffResult.error) {
-                    return { ...generateResult, ...diffResult };
+                    return { ...generateResult, success: false, ...diffResult };
                 }
                 diff = diffResult.diff;
             }
@@ -2386,13 +2392,15 @@ export class ToolHandler {
         content: string,
         filePath: string,
         compareWith: string | undefined,
-        createBackup: boolean
+        createBackup: boolean,
+        overwrite: boolean = false,
+        createParentDirs: boolean = true
     ): Promise<any> {
         const fileWriter = this.checkManager(this.fileWriter, 'FileWriter');
         if ('error' in fileWriter) return fileWriter;
 
         try {
-            return await fileWriter.previewWrite({ content, filePath, compareWith, createBackup });
+            return await fileWriter.previewWrite({ content, filePath, compareWith, createBackup, overwrite, createParentDirs });
         } catch (error) {
             return {
                 preview: true,
