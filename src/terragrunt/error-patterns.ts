@@ -16,7 +16,7 @@ import {
  * This class analyzes error messages from Terragrunt and matches them against
  * known error patterns to provide helpful solutions and debugging steps.
  * 
- * **Database contains 102 error patterns across 11 categories**
+ * **Database contains 110 error patterns across 12 categories**
  * (counts are computed by getPatternStats and guarded against drift by tests)
  * 
  * Features:
@@ -38,6 +38,7 @@ import {
  * - oci: OCI source and credential errors (11 patterns)
  * - engine: IaC engine lifecycle failures (6 patterns)
  * - experiment: Experiment-not-enabled failures (1 pattern)
+ * - cas: Content-addressable store (update_source_with_cas) failures (8 patterns)
  */
 export class ErrorPatternMatcher {
   private readonly docsManager: TerragruntDocsManager;
@@ -111,7 +112,8 @@ export class ErrorPatternMatcher {
       ...this.getOCIErrorPatterns(),
       ...this.getEngineErrorPatterns(),
       ...this.getExperimentErrorPatterns(),
-      ...this.getAzureManagedStateErrorPatterns()
+      ...this.getAzureManagedStateErrorPatterns(),
+      ...this.getCASErrorPatterns()
     ];
 
     this.patternsLoaded = true;
@@ -2811,6 +2813,166 @@ export class ErrorPatternMatcher {
         ],
         documentationRefs: [
           'https://docs.terragrunt.com/features/units/state-backend/'
+        ]
+      }
+    ];
+  }
+
+  /**
+   * CAS (content-addressable store) error patterns (category: cas, 8 patterns)
+   *
+   * Anchored to verbatim upstream Error() strings in internal/cas/errors.go at
+   * the pinned revision. CAS backs update_source_with_cas and the cas:: getter.
+   */
+  private getCASErrorPatterns(): ErrorPattern[] {
+    return [
+      {
+        id: 'cas-update-source-requires-cas',
+        name: 'update_source_with_cas requires CAS to be enabled',
+        category: 'cas',
+        regex: /sets\s+update_source_with_cas\s*=\s*true,\s+which\s+requires\s+the\s+--no-cas\s+flag\s+to\s+be\s+unset/i,
+        description: 'A block sets update_source_with_cas = true, but CAS is disabled by --no-cas',
+        likelyCauses: [
+          'The --no-cas flag (or TG_NO_CAS) is set while a block requires CAS',
+          'CAS was turned off globally but a unit still opts into it'
+        ],
+        solutions: [
+          { step: 1, explanation: 'Unset the --no-cas flag (and TG_NO_CAS) so CAS is available' },
+          { step: 2, explanation: 'Or set update_source_with_cas = false and change the source to a standard resolvable source; the CAS-relative source has no meaning without CAS' }
+        ],
+        documentationRefs: [
+          'https://docs.terragrunt.com/features/caching/cas/'
+        ]
+      },
+      {
+        id: 'cas-source-absolute',
+        name: 'update_source_with_cas source is absolute',
+        category: 'cas',
+        regex: /update_source_with_cas\s+does\s+not\s+support\s+absolute\s+sources/i,
+        description: 'An update_source_with_cas source is an absolute path, which CAS does not support',
+        likelyCauses: [
+          'The source is an absolute filesystem path',
+          'The source starts with a leading slash'
+        ],
+        solutions: [
+          { step: 1, explanation: 'Rewrite the source as the path relative to the repository root that points at the intended module' },
+          { step: 2, explanation: 'Do not just strip the leading slash or drive prefix; compute the correct repository-relative path' }
+        ],
+        documentationRefs: [
+          'https://docs.terragrunt.com/features/caching/cas/'
+        ]
+      },
+      {
+        id: 'cas-source-escapes-repo',
+        name: 'update_source_with_cas source escapes the repository',
+        category: 'cas',
+        regex: /update_source_with_cas\s+source\s+escapes\s+repository\s+root/i,
+        description: 'An update_source_with_cas source resolves outside the cloned repository',
+        likelyCauses: [
+          'The relative source uses ../ to climb above the repository root',
+          'The source points at a sibling checkout'
+        ],
+        solutions: [
+          { step: 1, explanation: 'Point the source at a path inside the repository' },
+          { step: 2, explanation: 'Vendor the external module into the repository if it must be used' }
+        ],
+        documentationRefs: [
+          'https://docs.terragrunt.com/features/caching/cas/'
+        ]
+      },
+      {
+        id: 'cas-source-not-literal',
+        name: 'update_source_with_cas source is not literal',
+        category: 'cas',
+        regex: /update_source_with_cas\s+requires\s+a\s+literal\s+source\s+string/i,
+        description: 'An update_source_with_cas source uses interpolation, a function, or a reference',
+        likelyCauses: [
+          'The source is built with ${...} interpolation',
+          'The source is a function call or a variable reference'
+        ],
+        solutions: [
+          { step: 1, explanation: 'Write the source as a literal string' },
+          { step: 2, explanation: 'Move any dynamic value out of the source when CAS is enabled' }
+        ],
+        documentationRefs: [
+          'https://docs.terragrunt.com/features/caching/cas/'
+        ]
+      },
+      {
+        id: 'cas-ref-invalid',
+        name: 'Invalid CAS reference',
+        category: 'cas',
+        regex: /CAS\s+reference\s+(?:hash\s+must\s+be\s+lowercase\s+hex|missing\s+expected\s+hash\s+algorithm\s+prefix|has\s+empty\s+hash)/i,
+        description: 'A CAS reference is malformed: wrong hash format, missing prefix, or empty hash',
+        likelyCauses: [
+          'The hash is not lowercase hex of the right length (40 for sha1, 64 for sha256)',
+          'The reference is missing the hash algorithm prefix',
+          'The reference has an empty hash'
+        ],
+        solutions: [
+          { step: 1, explanation: 'Use a reference of the form cas::<algorithm>:<lowercase-hex-hash> (append //<subdir> for a module subdirectory)' },
+          { step: 2, explanation: 'Copy the hash from a trusted source rather than typing it' }
+        ],
+        documentationRefs: [
+          'https://docs.terragrunt.com/features/caching/cas/'
+        ]
+      },
+      {
+        id: 'cas-git-clone-failed',
+        name: 'CAS git clone failed',
+        category: 'cas',
+        regex: /failed\s+to\s+complete\s+git\s+clone/i,
+        description: 'CAS could not complete the git clone of the source repository',
+        likelyCauses: [
+          'Network connectivity to the git remote failed',
+          'Authentication to a private repository is missing',
+          'The ref or repository URL is wrong'
+        ],
+        solutions: [
+          { step: 1, explanation: 'Check network access to the git remote' },
+          { step: 2, explanation: 'Confirm credentials for a private repository are configured' },
+          { step: 3, explanation: 'Verify the repository URL and ref are correct' }
+        ],
+        documentationRefs: [
+          'https://docs.terragrunt.com/features/caching/cas/git/'
+        ]
+      },
+      {
+        id: 'cas-tree-not-found',
+        name: 'CAS tree not found in store',
+        category: 'cas',
+        regex: /tree\s+not\s+found\s+in\s+CAS\s+store/i,
+        description: 'A tree hash was not found in any CAS store',
+        likelyCauses: [
+          'The CAS store was cleared or is on a different machine',
+          'The referenced tree was never written to the store'
+        ],
+        solutions: [
+          { step: 1, explanation: 'Re-run so CAS repopulates the store from the source' },
+          { step: 2, explanation: 'If the store is stale, stop Terragrunt and remove the CAS store directory (cas/store under the Terragrunt cache directory), then re-run' }
+        ],
+        documentationRefs: [
+          'https://docs.terragrunt.com/features/caching/cas/'
+        ]
+      },
+      {
+        id: 'cas-git-store-object-missing',
+        name: 'CAS git store object missing after fetch',
+        category: 'cas',
+        regex: /not\s+present\s+in\s+central\s+git\s+store\s+after\s+fetching/i,
+        description: 'A fetch into the central git store completed but the object is still unreachable',
+        likelyCauses: [
+          'The ref does not contain the requested object',
+          'The remote advertised a ref it cannot serve',
+          'The central git store is corrupted'
+        ],
+        solutions: [
+          { step: 1, explanation: 'Verify the ref actually contains the requested commit or tree' },
+          { step: 2, explanation: 'Retry; CAS falls back to a temporary clone when this happens' },
+          { step: 3, explanation: 'If the central git store is corrupted, stop Terragrunt and remove the CAS store directory (cas/store under the Terragrunt cache directory), then re-run' }
+        ],
+        documentationRefs: [
+          'https://docs.terragrunt.com/features/caching/cas/git/'
         ]
       }
     ];

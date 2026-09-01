@@ -468,8 +468,14 @@ describe('ErrorPatternMatcher', () => {
       expect(result.matches[0].confidence).toBe(0.95);
     });
 
-    // CAS (content-addressable store) diagnosis is out of scope for #253; the CAS
-    // experiment is completed and its failures are not covered here yet.
-    it.todo('diagnoses CAS (content-addressable store) failures — future work');
+    it('diagnoses CAS failures with a dedicated pattern (issue #268)', async () => {
+      const result = await matcher.diagnoseError(
+        'tree not found in CAS store',
+        {},
+        { enableFuzzyMatching: false },
+      );
+      expect(result.matches[0].pattern.category).toBe('cas');
+      expect(result.matches[0].confidence).toBe(0.95);
+    });
   });
 });

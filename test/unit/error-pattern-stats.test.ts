@@ -8,7 +8,7 @@ const matcher = new ErrorPatternMatcher(new TerragruntDocsManager());
 describe('getPatternStats', () => {
   it('reports the total and a per-category breakdown computed from the array', async () => {
     const stats = await matcher.getPatternStats();
-    expect(stats.total).toBe(102);
+    expect(stats.total).toBe(110);
     expect(stats.byCategory).toMatchObject({
       configuration: 46,
       state: 3,
@@ -21,6 +21,7 @@ describe('getPatternStats', () => {
       oci: 11,
       engine: 6,
       experiment: 1,
+      cas: 8,
     });
   });
 
@@ -30,9 +31,9 @@ describe('getPatternStats', () => {
     expect(summed).toBe(stats.total);
   });
 
-  it('exposes exactly 11 categories', async () => {
+  it('exposes exactly 12 categories', async () => {
     const stats = await matcher.getPatternStats();
-    expect(Object.keys(stats.byCategory).length).toBe(11);
+    expect(Object.keys(stats.byCategory).length).toBe(12);
   });
 
   it('has unique pattern ids (getPatternStats throws otherwise)', async () => {
