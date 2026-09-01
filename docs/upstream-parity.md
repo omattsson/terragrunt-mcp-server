@@ -62,6 +62,23 @@ default and need no flag. To refresh: after
 cross-check test fails on any drift) and refresh summaries from the upstream
 `.mdx` files.
 
+## Automated pin drift check
+
+The Upstream Revision Check workflow
+(`.github/workflows/upstream-check.yml`, weekly on Monday, or manual dispatch)
+runs `npm run check-upstream-drift`. The script compares the pinned
+`UPSTREAM_REVISION` against the `gruntwork-io/terragrunt` default branch, but
+reports drift only when commits since the pin touch a **watched path** — a file
+the curated data anchors on (the diagnosis evidence files above,
+`internal/experiment/experiment.go`, and `docs/src/data/{commands,flags,experiments}`).
+Upstream moving ahead by itself is not drift; that would flag forever.
+
+On drift the workflow opens or updates an issue labeled `upstream-drift` with
+the changed paths, why each matters, and the latest commit per path. The issue
+closes automatically once the pin is refreshed and no watched path has drifted.
+The watched-path list lives in `scripts/check-upstream-drift.ts`; a unit test
+cross-checks it against the evidence files listed in this document.
+
 ## Refresh procedure
 
 The two fixtures come from two upstream sources (the live docs site and the Go
