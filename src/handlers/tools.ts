@@ -133,7 +133,7 @@ interface BuildConfigArgs {
     content?: string;
     
     // Mode 1 & 3: Generate parameters (required for generate modes)
-    useCase?: 'remote_state' | 'provider_generation' | 'dependencies' | 'hooks' | 'inputs';
+    useCase?: 'remote_state' | 'provider_generation' | 'dependencies' | 'hooks' | 'inputs' | 'cicd';
     options?: Record<string, string | number | boolean | undefined>;
     
     // Generate-specific optional parameters
@@ -144,7 +144,7 @@ interface BuildConfigArgs {
         id: string;
         name: string;
         description: string;
-        category: 'backend' | 'provider' | 'dependency' | 'hooks' | 'inputs' | 'advanced' | 'configuration';
+        category: 'backend' | 'provider' | 'dependency' | 'hooks' | 'inputs' | 'advanced' | 'configuration' | 'cicd';
         cloudProvider?: 'aws' | 'azure' | 'gcp' | 'multi';
         templateHcl: string;
         variables?: Array<{
@@ -670,7 +670,7 @@ export class ToolHandler {
                     properties: {
                         useCase: {
                             type: 'string',
-                            enum: ['remote_state', 'provider_generation', 'dependencies', 'hooks', 'inputs'],
+                            enum: ['remote_state', 'provider_generation', 'dependencies', 'hooks', 'inputs', 'cicd'],
                             description: 'Use case'
                         },
                         options: {
@@ -965,7 +965,7 @@ export class ToolHandler {
                     
                     // Handle generate mode (with optional write)
                     if (!args?.useCase) {
-                        return { error: 'useCase is required. Valid values: remote_state, provider_generation, dependencies, hooks, inputs. Or provide content for write-only mode.' };
+                        return { error: 'useCase is required. Valid values: remote_state, provider_generation, dependencies, hooks, inputs, cicd. Or provide content for write-only mode.' };
                     }
                     if (!args?.options) {
                         return { error: 'options parameter is required for the selected useCase. Pass template variables as key-value pairs (e.g., for remote_state: { bucket, region, key }).' };

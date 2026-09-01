@@ -10,6 +10,7 @@ import {
   hookTemplates,
   dependencyTemplates,
   configurationTemplates,
+  cicdTemplates,
 } from './categories/index.js';
 
 /**
@@ -21,6 +22,7 @@ export const allTemplates: ConfigTemplate[] = [
   ...hookTemplates,
   ...dependencyTemplates,
   ...configurationTemplates,
+  ...cicdTemplates,
 ];
 
 /**
@@ -33,6 +35,7 @@ export function getTemplateCounts() {
     hooks: hookTemplates.length,
     dependencies: dependencyTemplates.length,
     configuration: configurationTemplates.length,
+    cicd: cicdTemplates.length,
     total: allTemplates.length,
   };
 }

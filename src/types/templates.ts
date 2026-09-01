@@ -52,7 +52,7 @@ export interface ConfigTemplate {
   id: string;
   name: string;
   description: string;
-  category: 'backend' | 'provider' | 'dependency' | 'hooks' | 'inputs' | 'advanced' | 'configuration';
+  category: 'backend' | 'provider' | 'dependency' | 'hooks' | 'inputs' | 'advanced' | 'configuration' | 'cicd';
   cloudProvider?: 'aws' | 'azure' | 'gcp' | 'multi';
   variables: ConfigVariable[];
   templateHcl: string;

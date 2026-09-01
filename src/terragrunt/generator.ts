@@ -378,6 +378,11 @@ export class TerragruntConfigGenerator {
 - Use locals for computed or derived values
 - Consider using dependency outputs as input values
 - Document required vs. optional inputs`,
+      cicd: `## Next Steps for CI/CD:
+- Set the pipeline's cloud credentials as environment variables (the config does not hard-code them)
+- Gate applies behind a manual approval unless you enabled auto-approve
+- Publish the plan JSON emitted by the after_hook as a pipeline artifact or summary
+- Cache the .terraform directory between jobs to speed up init`,
     };
 
     return guidance[useCase] || '';
@@ -396,6 +401,7 @@ export class TerragruntConfigGenerator {
       dependencies: ['dependency', 'dependencies', 'depend on'],
       hooks: ['hooks', 'before_hook', 'after_hook'],
       inputs: ['inputs', 'variables', 'input variables'],
+      cicd: ['ci', 'cd', 'cicd', 'automation', 'extra_arguments', 'non-interactive', 'pipeline'],
     };
 
     searchTerms.push(...(useCaseTerms[useCase] || []));
@@ -475,6 +481,12 @@ export class TerragruntConfigGenerator {
         'Verify input values match expected types in your Terraform module',
         'Run `terragrunt run --all -- validate` to check configuration',
         'Apply with `terragrunt apply`',
+      ],
+      cicd: [
+        'Merge this terraform block into your terragrunt.hcl',
+        'Provide cloud credentials as pipeline environment variables',
+        'Run `terragrunt plan -input=false` in your pipeline and publish the plan JSON',
+        'Gate `terragrunt apply` behind an approval step unless auto-approve is enabled',
       ],
     };
 
