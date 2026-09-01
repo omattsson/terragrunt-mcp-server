@@ -417,6 +417,72 @@ inputs = {
 - Keep environment-specific values in separate files
 - Leverage Terragrunt's built-in functions for dynamic values
 
+### 6. CI/CD Pipelines
+
+The `cicd` use case generates an opinionated `terraform` block for running
+Terragrunt in a pipeline: non-interactive runs (`-input=false`,
+`TF_IN_AUTOMATION`), a plan-output hook, and an optional auto-approve block. The
+`backend` parameter selects the platform.
+
+```text
+Generate a cicd config for github-actions
+```
+
+Parameters:
+
+- `backend`: `github-actions`, `gitlab`, or `azure-devops`
+- `options.plan_file` (optional, default `tfplan`): plan file the after_hook renders as JSON
+- `options.auto_approve` (optional): provide it (e.g. `auto_approve=true`) to add an
+  auto-approve block for `apply`/`destroy`. Omit it to require manual approval. Enable
+  only for trusted, gated pipelines.
+
+The generated config is platform-agnostic Terragrunt HCL; the pipeline itself
+runs Terragrunt. Cloud credentials come from the pipeline environment — the
+config never hard-codes them.
+
+**Sample GitHub Actions pipeline:**
+
+```yaml
+# .github/workflows/terragrunt.yml
+name: Terragrunt
+on: [push, pull_request]
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: opentofu/setup-opentofu@v1
+      - uses: gruntwork-io/terragrunt-action@v3
+        with:
+          tg_command: 'plan -input=false'
+```
+
+**Sample GitLab CI pipeline:**
+
+```yaml
+# .gitlab-ci.yml
+terragrunt-plan:
+  image: alpine:3
+  script:
+    - terragrunt plan -input=false -out tfplan
+  artifacts:
+    paths: [tfplan]
+```
+
+**Sample Azure DevOps pipeline:**
+
+```yaml
+# azure-pipelines.yml
+steps:
+  - script: terragrunt plan -input=false
+    displayName: 'Terragrunt plan'
+    env:
+      ARM_CLIENT_ID: $(ARM_CLIENT_ID)
+      ARM_CLIENT_SECRET: $(ARM_CLIENT_SECRET)
+      ARM_SUBSCRIPTION_ID: $(ARM_SUBSCRIPTION_ID)
+      ARM_TENANT_ID: $(ARM_TENANT_ID)
+```
+
 ## Available Templates
 
 ### Complete Template List

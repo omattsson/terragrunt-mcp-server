@@ -590,10 +590,12 @@ The tool accepts these removed names for migration help. Current Terragrunt does
   - `"dependencies"` - Module dependency configuration
   - `"hooks"` - Before/after hooks for automation
   - `"inputs"` - Input variables configuration
+  - `"cicd"` - CI/CD-ready Terragrunt config (non-interactive runs, plan output, optional auto-approve)
 - **`backend`** (string, optional): Backend type for `remote_state` use case:
   - `"s3"` - AWS S3 with native lockfile locking
   - `"azurerm"` - Azure Blob Storage with Azure AD
   - `"gcs"` - Google Cloud Storage
+  - For the `cicd` use case, `backend` selects the platform: `"github-actions"`, `"gitlab"`, or `"azure-devops"`
 - **`options`** (object, optional): Configuration options (varies by use case):
   - **For S3**: `bucket`, `key`, `region`, `use_lockfile`, `dynamodb_table`, `encrypt`. Native `use_lockfile` locking is enabled for new configurations when neither locking option is specified. Deprecated `dynamodb_table` remains available for migration and clients that do not support S3 lockfiles.
   - **For Azure**: `storage_account_name`, `container_name`, `key`, `resource_group_name`

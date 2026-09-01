@@ -127,7 +127,7 @@ Get best practices, comparisons, or patterns for Terragrunt usage.
 Generate OR write OR generate+write Terragrunt configurations - unified tool for configuration management.
 
 - **Generate Mode** (when `useCase` provided, no `content`):
-  - `useCase` (string): Configuration type - `remote_state`, `provider_generation`, `dependencies`, `hooks`, or `inputs`
+  - `useCase` (string): Configuration type - `remote_state`, `provider_generation`, `dependencies`, `hooks`, `inputs`, or `cicd`
   - `options` (object): Template variables (varies by use case and backend)
   - `backend` (string, optional): Backend type for remote_state - `s3`, `azurerm`, or `gcs`
   - `tier` (string, optional): Template tier - `essential`, `advanced`, or `complete` (default: `essential`)
