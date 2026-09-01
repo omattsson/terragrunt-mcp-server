@@ -55,6 +55,62 @@ export interface FileWriteResult {
 }
 
 /**
+ * Options for previewing a write (dry-run) with an optional diff.
+ */
+export interface FilePreviewOptions extends FileWriteOptions {
+  /** Path of an existing file to diff the content against (defaults to filePath) */
+  compareWith?: string;
+}
+
+/**
+ * Result of a diff computation against an existing file.
+ */
+export interface DiffResult {
+  /** Unified diff of the base file against the new content */
+  diff: string;
+  /** Absolute path of the base file that was compared against */
+  basePath: string;
+  /** Whether the base file exists on disk */
+  baseExists: boolean;
+  /** True when the base file does not exist (diff is all additions) */
+  isNewFile: boolean;
+  /** True when the new content is identical to the base file */
+  unchanged: boolean;
+}
+
+/**
+ * Result of a preview (dry-run) write operation. No file is written.
+ */
+export interface WritePreviewResult {
+  /** Always true — marks this as a preview result */
+  preview: true;
+  /** Whether the preview validation succeeded */
+  success: boolean;
+  /** Absolute path the content would be written to */
+  targetPath: string;
+  /** Whether the target file already exists */
+  targetExists: boolean;
+  /** Whether writing would overwrite an existing file */
+  wouldOverwrite: boolean;
+  /** Whether writing would create a backup first */
+  wouldBackup: boolean;
+  /** Number of bytes the content would write */
+  bytesToWrite: number;
+  /** Unified diff against the base file, when a base was compared */
+  diff?: string;
+  /** True when the target/base does not exist (a new file) */
+  isNewFile?: boolean;
+  /** True when the content matches the base file (no changes) */
+  unchanged?: boolean;
+  /** Human-readable message */
+  message?: string;
+  /** Error message if preview validation failed */
+  error?: string;
+  /** Error type if preview validation failed */
+  errorType?: string;
+}
+
+/**
  * Configuration for the FileWriter
  */
 export interface FileWriterConfig {

@@ -143,6 +143,11 @@ Generate OR write OR generate+write Terragrunt configurations - unified tool for
 - **Generate+Write Mode** (when `useCase` + `write=true` + `path`):
   - Combines both modes - generates configuration and writes to disk in one operation
   - **Returns**: Generated config + write confirmation
+- **Preview/Diff (any mode)**:
+  - `preview` (boolean, optional): Dry-run. Never writes; returns what would be written plus `targetExists`, `wouldOverwrite`, `wouldBackup`, and a unified `diff` (default: false)
+  - `compareWith` (string, optional): Path of an existing file to diff the result against. In preview mode it defaults to `path`. Without `preview`, a write still happens and the response includes the `diff` against the pre-write content
+  - `compareWith` reads are restricted to the allowed directories, the same security model as writes
+  - **Returns**: `diff` (unified) and, in preview mode, a `preview` block; no file is written when `preview` is true
 - **Security**: File writing disabled by default, requires explicit configuration (see [File Writing Guide](docs/File-Writing-Guide.md))
 - **Use cases**: Quick project setup, learning HCL syntax, best practice configurations, saving generated configs, automating configuration updates
 

@@ -612,4 +612,150 @@ inputs = {
       ).resolves.toBeDefined();
     });
   });
+
+  describe('Preview and diff mode — write-only (#95)', () => {
+    it('previews a write without creating the file', async () => {
+      const targetPath = path.join(allowedDir, 'preview-new.hcl');
+
+      const result = await toolHandler.executeTool('build_config', {
+        content: 'inputs = {\n  a = 1\n}\n',
+        path: targetPath,
+        preview: true,
+      });
+
+      expect(result.preview).toBe(true);
+      expect(result.success).toBe(true);
+      expect(result.previewResult.targetExists).toBe(false);
+      expect(result.previewResult.wouldOverwrite).toBe(false);
+      // Nothing was written.
+      await expect(fs.access(targetPath)).rejects.toBeDefined();
+    });
+
+    it('previews a permitted overwrite (overwrite=true) without writing', async () => {
+      const targetPath = path.join(allowedDir, 'preview-existing.hcl');
+      await fs.writeFile(targetPath, 'inputs = {\n  a = 1\n}\n', 'utf8');
+
+      const result = await toolHandler.executeTool('build_config', {
+        content: 'inputs = {\n  a = 2\n}\n',
+        path: targetPath,
+        preview: true,
+        overwrite: true,
+      });
+
+      expect(result.preview).toBe(true);
+      expect(result.success).toBe(true);
+      expect(result.previewResult.targetExists).toBe(true);
+      expect(result.previewResult.wouldOverwrite).toBe(true);
+      expect(result.previewResult.diff).toContain('+  a = 2');
+      // The original file is untouched.
+      expect(await fs.readFile(targetPath, 'utf8')).toBe('inputs = {\n  a = 1\n}\n');
+    });
+
+    it('preview reports a blocked write when the target exists and overwrite is disabled', async () => {
+      const targetPath = path.join(allowedDir, 'preview-blocked.hcl');
+      await fs.writeFile(targetPath, 'inputs = {\n  a = 1\n}\n', 'utf8');
+
+      const result = await toolHandler.executeTool('build_config', {
+        content: 'inputs = {\n  a = 2\n}\n',
+        path: targetPath,
+        preview: true,
+      });
+
+      // preview honors overwrite (default false): a real write would be blocked.
+      expect(result.success).toBe(false);
+      expect(result.previewResult.errorType).toBe('FILE_EXISTS_NO_OVERWRITE');
+      expect(result.previewResult.diff).toContain('+  a = 2');
+      expect(await fs.readFile(targetPath, 'utf8')).toBe('inputs = {\n  a = 1\n}\n');
+    });
+
+    it('writes and returns a diff against compareWith', async () => {
+      const basePath = path.join(allowedDir, 'base.hcl');
+      const targetPath = path.join(allowedDir, 'written.hcl');
+      await fs.writeFile(basePath, 'inputs = {\n  a = 1\n}\n', 'utf8');
+
+      const result = await toolHandler.executeTool('build_config', {
+        content: 'inputs = {\n  a = 9\n}\n',
+        path: targetPath,
+        compareWith: basePath,
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.diff).toContain('+  a = 9');
+      // The file was actually written.
+      expect(await fs.readFile(targetPath, 'utf8')).toBe('inputs = {\n  a = 9\n}\n');
+    });
+  });
+
+  describe('Preview and diff mode — generate (useCase) (#95)', () => {
+    const generateArgs = {
+      useCase: 'remote_state',
+      backend: 's3',
+      options: {
+        bucket: 'my-terraform-state',
+        key: 'terraform.tfstate',
+        region: 'us-east-1',
+        dynamodb_table: 'terraform-locks',
+      },
+    };
+
+    it('previews a generated config against a target path without writing', async () => {
+      const targetPath = path.join(allowedDir, 'gen-preview.hcl');
+
+      const result = await toolHandler.executeTool('build_config', {
+        ...generateArgs,
+        preview: true,
+        path: targetPath,
+      });
+
+      expect(result.preview).toBe(true);
+      expect(result.success).toBe(true);
+      expect(result.config).toContain('remote_state');
+      expect(result.previewResult.targetExists).toBe(false);
+      expect(result.previewResult.diff).toContain('+');
+      await expect(fs.access(targetPath)).rejects.toBeDefined();
+    });
+
+    it('diffs a generated config against compareWith without a path (compare-only)', async () => {
+      const basePath = path.join(allowedDir, 'gen-base.hcl');
+      await fs.writeFile(basePath, 'remote_state {\n  backend = "local"\n}\n', 'utf8');
+
+      const result = await toolHandler.executeTool('build_config', {
+        ...generateArgs,
+        preview: true,
+        compareWith: basePath,
+      });
+
+      expect(result.preview).toBe(true);
+      expect(result.success).toBe(true);
+      expect(result.previewResult.diff).toContain('backend');
+    });
+
+    it('generate+write with compareWith writes and returns a diff', async () => {
+      const basePath = path.join(allowedDir, 'gen-old.hcl');
+      const targetPath = path.join(allowedDir, 'gen-written.hcl');
+      await fs.writeFile(basePath, 'remote_state {\n  backend = "local"\n}\n', 'utf8');
+
+      const result = await toolHandler.executeTool('build_config', {
+        ...generateArgs,
+        write: true,
+        path: targetPath,
+        compareWith: basePath,
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.diff).toContain('backend');
+      // The file was written.
+      expect((await fs.readFile(targetPath, 'utf8'))).toContain('remote_state');
+    });
+
+    it('surfaces a diff error (out-of-allowlist compareWith) as failure', async () => {
+      const result = await toolHandler.executeTool('build_config', {
+        ...generateArgs,
+        compareWith: '/etc/hosts',
+      });
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBeDefined();
+    });
+  });
 });

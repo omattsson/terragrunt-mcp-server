@@ -11,12 +11,16 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { existsSync } from 'fs';
+import { createPatch } from 'diff';
 import {
   FileWriteOptions,
   FileWriteResult,
   FileWriterConfig,
   FileWriteError,
-  FileWriteErrorType
+  FileWriteErrorType,
+  FilePreviewOptions,
+  DiffResult,
+  WritePreviewResult
 } from '../types/file-writer.js';
 
 /**
@@ -175,6 +179,207 @@ export class FileWriter {
   }
 
   /**
+   * Compute a unified diff of an existing file against new content, without
+   * writing anything. Reads are subject to the same path-traversal and
+   * allowed-directory checks as writes, so arbitrary files cannot be read.
+   *
+   * A non-existent base file is treated as a new file (the diff is all
+   * additions), not an error. A traversal or out-of-allowlist path is an error.
+   *
+   * @param basePath Path of the existing file to compare against
+   * @param newContent The content that would be written
+   * @returns The unified diff and metadata about the base file
+   */
+  async computeDiff(basePath: string, newContent: string): Promise<DiffResult> {
+    // Diff reads go through the same capability gate as writes.
+    if (!this.config.enabled) {
+      throw new FileWriteError(
+        FileWriteErrorType.DISABLED,
+        'File access is disabled in configuration'
+      );
+    }
+
+    // Cap the new content too, so a large generated/provided input cannot blow
+    // the heap during patch computation.
+    const newSize = Buffer.byteLength(newContent, 'utf8');
+    if (newSize > this.config.maxFileSize) {
+      throw new FileWriteError(
+        FileWriteErrorType.MAX_SIZE_EXCEEDED,
+        `Content size (${newSize} bytes) exceeds maximum allowed (${this.config.maxFileSize} bytes)`,
+        basePath
+      );
+    }
+
+    if (this.detectPathTraversal(basePath)) {
+      throw new FileWriteError(
+        FileWriteErrorType.PATH_TRAVERSAL,
+        'Path validation failed: Path traversal detected',
+        basePath
+      );
+    }
+
+    const absoluteBase = path.resolve(basePath);
+    this.validatePath(absoluteBase);
+
+    const baseExists = existsSync(absoluteBase);
+    let baseContent = '';
+    if (baseExists) {
+      // Resolve symlinks and re-validate the real path so a symlink inside an
+      // allowed directory cannot leak a file outside the allowlist. Both sides
+      // are canonicalized so a symlinked allowed root (e.g. /var -> /private/var
+      // on macOS) does not reject legitimate files.
+      const realBase = await fs.realpath(absoluteBase);
+      if (!(await this.isRealPathAllowed(realBase))) {
+        throw new FileWriteError(
+          FileWriteErrorType.OUTSIDE_ALLOWED_DIRS,
+          `Path resolves outside allowed directories via a symlink: ${absoluteBase}`,
+          absoluteBase
+        );
+      }
+
+      // Cap the base file size before reading it into memory.
+      const baseStat = await fs.stat(realBase);
+      if (baseStat.size > this.config.maxFileSize) {
+        throw new FileWriteError(
+          FileWriteErrorType.MAX_SIZE_EXCEEDED,
+          `Comparison file size (${baseStat.size} bytes) exceeds maximum allowed (${this.config.maxFileSize} bytes)`,
+          absoluteBase
+        );
+      }
+      baseContent = await fs.readFile(realBase, 'utf8');
+    }
+    const label = path.basename(absoluteBase);
+    const unchanged = baseExists && baseContent === newContent;
+
+    const diff = createPatch(
+      label,
+      baseContent,
+      newContent,
+      baseExists ? 'existing' : 'new file',
+      'generated'
+    );
+
+    return {
+      diff,
+      basePath: absoluteBase,
+      baseExists,
+      isNewFile: !baseExists,
+      unchanged
+    };
+  }
+
+  /**
+   * Preview a write (dry-run): run the same validation as writeFile and report
+   * what would happen, without writing. Optionally include a unified diff
+   * against an existing file (compareWith, defaulting to the target path).
+   *
+   * @param options Write options plus an optional compareWith path
+   * @returns What the write would do, and the diff when a base was compared
+   */
+  async previewWrite(options: FilePreviewOptions): Promise<WritePreviewResult> {
+    try {
+      if (!this.config.enabled) {
+        throw new FileWriteError(
+          FileWriteErrorType.DISABLED,
+          'File writing is disabled in configuration'
+        );
+      }
+
+      const createBackup = options.createBackup ?? this.config.autoBackup;
+
+      const contentSize = Buffer.byteLength(options.content, 'utf8');
+      if (contentSize > this.config.maxFileSize) {
+        throw new FileWriteError(
+          FileWriteErrorType.MAX_SIZE_EXCEEDED,
+          `File size (${contentSize} bytes) exceeds maximum allowed (${this.config.maxFileSize} bytes)`,
+          options.filePath
+        );
+      }
+
+      if (this.detectPathTraversal(options.filePath)) {
+        throw new FileWriteError(
+          FileWriteErrorType.PATH_TRAVERSAL,
+          'Path validation failed: Path traversal detected',
+          options.filePath
+        );
+      }
+
+      const absolutePath = path.resolve(options.filePath);
+      this.validatePath(absolutePath);
+
+      const overwrite = options.overwrite ?? false;
+      const createParentDirs = options.createParentDirs ?? true;
+
+      const targetExists = existsSync(absolutePath);
+      const base = options.compareWith ?? options.filePath;
+      const diffResult = await this.computeDiff(base, options.content);
+
+      // Mirror writeFile's pre-write guards so preview reflects whether an actual
+      // write would proceed. The diff is still returned when a write is blocked.
+      const parentDir = path.dirname(absolutePath);
+      const parentExists = existsSync(parentDir);
+      let blockedError: FileWriteError | undefined;
+      if (targetExists && !overwrite) {
+        blockedError = new FileWriteError(
+          FileWriteErrorType.FILE_EXISTS,
+          `Write would be blocked: file exists and overwrite is disabled: ${absolutePath}`,
+          absolutePath
+        );
+      } else if (parentExists && !(await fs.stat(parentDir)).isDirectory()) {
+        // A write would fail with ENOTDIR regardless of createParentDirs.
+        blockedError = new FileWriteError(
+          FileWriteErrorType.INVALID_PATH,
+          `Write would be blocked: parent path exists but is not a directory: ${parentDir}`,
+          absolutePath
+        );
+      } else if (!parentExists && !createParentDirs) {
+        blockedError = new FileWriteError(
+          FileWriteErrorType.INVALID_PATH,
+          `Write would be blocked: parent directory does not exist and createParentDirs is disabled: ${parentDir}`,
+          absolutePath
+        );
+      }
+
+      return {
+        preview: true,
+        success: !blockedError,
+        targetPath: absolutePath,
+        targetExists,
+        wouldOverwrite: targetExists,
+        wouldBackup: targetExists && createBackup,
+        bytesToWrite: contentSize,
+        diff: diffResult.diff,
+        isNewFile: diffResult.isNewFile,
+        unchanged: diffResult.unchanged,
+        error: blockedError?.message,
+        errorType: blockedError?.type,
+        message: blockedError
+          ? blockedError.message
+          : diffResult.unchanged
+            ? 'No changes: the generated content matches the existing file'
+            : targetExists
+              ? `Would overwrite ${absolutePath}${targetExists && createBackup ? ' (backup would be created)' : ''}`
+              : `Would create ${absolutePath}`
+      };
+    } catch (error) {
+      const isFwError = error instanceof FileWriteError;
+      const message = error instanceof Error ? error.message : 'Failed to preview write';
+      return {
+        preview: true,
+        success: false,
+        targetPath: path.resolve(options.filePath),
+        targetExists: false,
+        wouldOverwrite: false,
+        wouldBackup: false,
+        bytesToWrite: 0,
+        message,
+        error: message,
+        errorType: isFwError ? (error as FileWriteError).type : FileWriteErrorType.UNKNOWN
+      };
+    }
+  }
+
+  /**
    * Validate that a path is safe to write to
    */
   private validatePath(absolutePath: string): void {
@@ -197,12 +402,35 @@ export class FileWriter {
 
     return this.config.allowedDirectories.some(allowedDir => {
       const normalizedAllowed = path.normalize(allowedDir);
-      
+
       // Check if the path starts with the allowed directory
       // Add path separator to prevent partial matches (e.g., /home/user vs /home/user2)
       return normalizedPath === normalizedAllowed ||
              normalizedPath.startsWith(normalizedAllowed + path.sep);
     });
+  }
+
+  /**
+   * Containment check against the real (symlink-resolved) allowed roots. Both
+   * the target and each allowed directory are canonicalized so a symlinked root
+   * does not reject legitimate paths, while a symlink escaping the allowlist is
+   * still caught.
+   */
+  private async isRealPathAllowed(realPath: string): Promise<boolean> {
+    const normalizedReal = path.normalize(realPath);
+
+    for (const allowedDir of this.config.allowedDirectories) {
+      let root = path.normalize(allowedDir);
+      try {
+        root = path.normalize(await fs.realpath(allowedDir));
+      } catch {
+        // Allowed directory may not exist yet; fall back to the lexical path.
+      }
+      if (normalizedReal === root || normalizedReal.startsWith(root + path.sep)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   /**

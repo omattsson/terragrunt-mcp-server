@@ -350,4 +350,172 @@ describe('FileWriter', () => {
       expect(config.maxFileSize).toBe(1048576);
     });
   });
+
+  describe('computeDiff (#95)', () => {
+    it('produces a unified diff between an existing file and new content', async () => {
+      const filePath = path.join(testDir, 'terragrunt.hcl');
+      await fs.writeFile(filePath, 'remote_state {\n  backend = "s3"\n}\n', 'utf8');
+
+      const result = await fileWriter.computeDiff(filePath, 'remote_state {\n  backend = "gcs"\n}\n');
+
+      expect(result.baseExists).toBe(true);
+      expect(result.isNewFile).toBe(false);
+      expect(result.unchanged).toBe(false);
+      expect(result.diff).toContain('-  backend = "s3"');
+      expect(result.diff).toContain('+  backend = "gcs"');
+    });
+
+    it('reports unchanged when content matches the existing file', async () => {
+      const filePath = path.join(testDir, 'same.hcl');
+      const content = 'inputs = {\n  a = 1\n}\n';
+      await fs.writeFile(filePath, content, 'utf8');
+
+      const result = await fileWriter.computeDiff(filePath, content);
+
+      expect(result.unchanged).toBe(true);
+    });
+
+    it('treats a non-existent base as a new file', async () => {
+      const filePath = path.join(testDir, 'missing.hcl');
+      const result = await fileWriter.computeDiff(filePath, 'inputs = {}\n');
+
+      expect(result.baseExists).toBe(false);
+      expect(result.isNewFile).toBe(true);
+      expect(result.diff).toContain('+inputs = {}');
+    });
+
+    it('rejects a path-traversal base path', async () => {
+      await expect(fileWriter.computeDiff('../../etc/passwd', 'x')).rejects.toMatchObject({
+        type: FileWriteErrorType.PATH_TRAVERSAL,
+      });
+    });
+
+    it('rejects a symlink inside the allowlist that points outside it', async () => {
+      // Target lives outside the allowed directory.
+      const outside = path.join(tmpdir(), `outside-${Date.now()}.hcl`);
+      await fs.writeFile(outside, 'secret = true\n', 'utf8');
+      const link = path.join(testDir, 'link.hcl');
+      await fs.symlink(outside, link);
+      try {
+        await expect(fileWriter.computeDiff(link, 'x')).rejects.toMatchObject({
+          type: FileWriteErrorType.OUTSIDE_ALLOWED_DIRS,
+        });
+      } finally {
+        await fs.rm(outside, { force: true });
+      }
+    });
+
+    it('rejects a comparison file larger than maxFileSize', async () => {
+      const smallWriter = new FileWriter({ allowedDirectories: [testDir], maxFileSize: 16 });
+      const big = path.join(testDir, 'big.hcl');
+      await fs.writeFile(big, 'x'.repeat(64), 'utf8');
+      await expect(smallWriter.computeDiff(big, 'y')).rejects.toMatchObject({
+        type: FileWriteErrorType.MAX_SIZE_EXCEEDED,
+      });
+    });
+
+    it('rejects when file access is disabled', async () => {
+      const disabled = new FileWriter({ allowedDirectories: [testDir], enabled: false });
+      await expect(disabled.computeDiff(path.join(testDir, 'x.hcl'), 'y')).rejects.toMatchObject({
+        type: FileWriteErrorType.DISABLED,
+      });
+    });
+  });
+
+  describe('previewWrite (#95)', () => {
+    it('reports a permitted overwrite (overwrite=true) without writing', async () => {
+      const filePath = path.join(testDir, 'terragrunt.hcl');
+      await fs.writeFile(filePath, 'inputs = {\n  a = 1\n}\n', 'utf8');
+      const mtimeBefore = (await fs.stat(filePath)).mtimeMs;
+
+      const result = await fileWriter.previewWrite({
+        content: 'inputs = {\n  a = 2\n}\n',
+        filePath,
+        overwrite: true,
+      });
+
+      expect(result.preview).toBe(true);
+      expect(result.success).toBe(true);
+      expect(result.targetExists).toBe(true);
+      expect(result.wouldOverwrite).toBe(true);
+      expect(result.wouldBackup).toBe(true);
+      expect(result.diff).toContain('+  a = 2');
+      // The file on disk is untouched.
+      expect((await fs.stat(filePath)).mtimeMs).toBe(mtimeBefore);
+      expect(await fs.readFile(filePath, 'utf8')).toBe('inputs = {\n  a = 1\n}\n');
+    });
+
+    it('reports a blocked write when the target exists and overwrite is disabled', async () => {
+      const filePath = path.join(testDir, 'existing.hcl');
+      await fs.writeFile(filePath, 'inputs = {\n  a = 1\n}\n', 'utf8');
+
+      const result = await fileWriter.previewWrite({
+        content: 'inputs = {\n  a = 2\n}\n',
+        filePath,
+        overwrite: false,
+      });
+
+      // A real write would be blocked, so preview reports it — but still shows the diff.
+      expect(result.success).toBe(false);
+      expect(result.errorType).toBe(FileWriteErrorType.FILE_EXISTS);
+      expect(result.wouldOverwrite).toBe(true);
+      expect(result.diff).toContain('+  a = 2');
+    });
+
+    it('reports a blocked write when a parent dir is missing and createParentDirs is disabled', async () => {
+      const filePath = path.join(testDir, 'nested', 'deep', 'new.hcl');
+
+      const result = await fileWriter.previewWrite({
+        content: 'inputs = {}\n',
+        filePath,
+        createParentDirs: false,
+      });
+
+      expect(result.success).toBe(false);
+      expect(result.errorType).toBe(FileWriteErrorType.INVALID_PATH);
+    });
+
+    it('reports a blocked write when the parent path exists as a file', async () => {
+      const parentAsFile = path.join(testDir, 'notdir');
+      await fs.writeFile(parentAsFile, 'x', 'utf8');
+      const filePath = path.join(parentAsFile, 'child.hcl');
+
+      const result = await fileWriter.previewWrite({
+        content: 'inputs = {}\n',
+        filePath,
+        createParentDirs: true,
+      });
+
+      expect(result.success).toBe(false);
+      expect(result.errorType).toBe(FileWriteErrorType.INVALID_PATH);
+    });
+
+    it('reports a new-file create without writing', async () => {
+      const filePath = path.join(testDir, 'new.hcl');
+
+      const result = await fileWriter.previewWrite({ content: 'inputs = {}\n', filePath });
+
+      expect(result.success).toBe(true);
+      expect(result.targetExists).toBe(false);
+      expect(result.wouldOverwrite).toBe(false);
+      expect(result.isNewFile).toBe(true);
+      expect(existsSync(filePath)).toBe(false);
+    });
+
+    it('diffs against a separate compareWith file', async () => {
+      const target = path.join(testDir, 'target.hcl');
+      const base = path.join(testDir, 'base.hcl');
+      await fs.writeFile(base, 'inputs = {\n  a = 1\n}\n', 'utf8');
+
+      const result = await fileWriter.previewWrite({
+        content: 'inputs = {\n  a = 9\n}\n',
+        filePath: target,
+        compareWith: base,
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.diff).toContain('+  a = 9');
+      expect(existsSync(target)).toBe(false);
+    });
+  });
 });

@@ -48,6 +48,7 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.30.0",
     "@types/mustache": "^4.2.6",
+    "diff": "^8.0.4",
     "lru-cache": "^11.2.2",
     "mustache": "^4.2.0",
     "node-fetch": "^3.3.2",
