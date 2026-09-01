@@ -39,6 +39,9 @@ export const WATCHED_PATHS: WatchedPath[] = [
   // Reference surfaces (docs manifest fixture; CLI commands and flags)
   { path: 'docs/src/data/commands', reason: 'CLI command reference' },
   { path: 'docs/src/data/flags', reason: 'CLI flag reference' },
+  // HCL blocks, attributes, and built-in functions reference (drives the HCL
+  // block and function parity guards through the docs fixture)
+  { path: 'docs/src/content/docs/04-reference/01-hcl', reason: 'HCL blocks, attributes, and functions reference' },
   // Diagnosis pattern anchors (#253) — see docs/upstream-parity.md
   { path: 'pkg/config/stack_validation.go', reason: 'stack validation diagnosis patterns' },
   { path: 'pkg/config/errors.go', reason: 'stack and experiment-gate diagnosis patterns' },

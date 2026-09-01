@@ -16,6 +16,20 @@ describe('WATCHED_PATHS', () => {
     }
   });
 
+  it('watches every pinned reference surface, not only diagnosis anchors', () => {
+    const watched = new Set(WATCHED_PATHS.map(w => w.path));
+    // Each parity surface has an upstream source that must be watched:
+    for (const path of [
+      'internal/experiment/experiment.go', // experiment inventory
+      'docs/src/data/commands', // CLI commands
+      'docs/src/data/flags', // CLI flags
+      'docs/src/data/experiments', // experiment summaries
+      'docs/src/content/docs/04-reference/01-hcl', // HCL blocks, attributes, functions
+    ]) {
+      expect(watched.has(path), `${path} must be watched`).toBe(true);
+    }
+  });
+
   it('covers every evidence file listed in docs/upstream-parity.md', async () => {
     const doc = await readFile(new URL('../../docs/upstream-parity.md', import.meta.url), 'utf-8');
     // Backtick-quoted upstream Go paths in the modern-diagnosis evidence list.

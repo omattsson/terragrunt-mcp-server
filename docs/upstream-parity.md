@@ -70,7 +70,8 @@ runs `npm run check-upstream-drift`. The script compares the pinned
 `UPSTREAM_REVISION` against the `gruntwork-io/terragrunt` default branch, but
 reports drift only when commits since the pin touch a **watched path** — a file
 the curated data anchors on (the diagnosis evidence files above,
-`internal/experiment/experiment.go`, and `docs/src/data/{commands,flags,experiments}`).
+`internal/experiment/experiment.go`, `docs/src/data/{commands,flags,experiments}`,
+and the HCL reference sources under `docs/src/content/docs/04-reference/01-hcl`).
 Upstream moving ahead by itself is not drift; that would flag forever.
 
 On drift the workflow opens or updates an issue labeled `upstream-drift` with
