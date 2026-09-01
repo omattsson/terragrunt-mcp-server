@@ -235,3 +235,35 @@ jobs:
         if: steps.check.outputs.drift == 'false'
         run: |
           echo "✅ No schema drift detected. All schemas are up to date!"
+
+      - name: Close stale drift issues
+        if: steps.check.outputs.drift == 'false'
+        uses: actions/github-script@v9
+        with:
+          script: |
+            // Drift has cleared; close any open auto-generated drift issues.
+            // Paginate so more than one page of open issues is handled.
+            const issues = await github.paginate(github.rest.issues.listForRepo, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'schema-drift',
+              per_page: 100
+            });
+
+            for (const issue of issues) {
+              core.info(`Closing resolved schema-drift issue #${issue.number}`);
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                body: `✅ Schema drift check reported no drift on ${new Date().toISOString()}. Closing automatically.`
+              });
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                state: 'closed',
+                state_reason: 'completed'
+              });
+            }
