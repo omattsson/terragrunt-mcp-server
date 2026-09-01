@@ -55,6 +55,7 @@ export const WATCHED_PATHS: WatchedPath[] = [
   { path: 'pkg/config/dependency_state_azurerm.go', reason: 'azurerm dependency-state diagnosis pattern' },
   { path: 'internal/cli/commands/run/flags.go', reason: 'experiment-gated run flag messages' },
   { path: 'internal/cli/flags/shared/filter.go', reason: 'bounded-discovery gate message' },
+  { path: 'internal/filter/filters.go', reason: 'inline (dir) bounded-discovery gate message' },
 ];
 
 export interface CommitInfo {
@@ -161,10 +162,14 @@ export class GitHubClient {
     return cmp.ahead_by;
   }
 
-  /** Latest commit on the default branch touching the given path, if any. */
-  async latestCommitForPath(path: string, branch: string): Promise<CommitInfo | undefined> {
+  /**
+   * Latest commit reachable from the given ref touching the given path, if any.
+   * Pass the resolved head sha (not the branch name) so a commit landing
+   * upstream mid-run cannot make the report internally inconsistent.
+   */
+  async latestCommitForPath(path: string, ref: string): Promise<CommitInfo | undefined> {
     const commits = await this.get(
-      `/repos/${UPSTREAM_REPO}/commits?path=${encodeURIComponent(path)}&sha=${branch}&per_page=1`
+      `/repos/${UPSTREAM_REPO}/commits?path=${encodeURIComponent(path)}&sha=${ref}&per_page=1`
     ) as Array<{ sha: string; html_url: string; commit: { message: string; committer: { date: string } } }>;
 
     const latest = commits[0];
@@ -216,7 +221,7 @@ async function main(): Promise<void> {
       continue;
     }
 
-    const latestCommit = await client.latestCommitForPath(watched.path, branch);
+    const latestCommit = await client.latestCommitForPath(watched.path, upstreamHead);
     if (!latestCommit) {
       // Path no longer exists upstream at all; treat as drift so it gets reviewed.
       console.error(`  ⚠️  ${watched.path}: no commits found (path removed or renamed?)`);
