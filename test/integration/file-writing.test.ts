@@ -612,4 +612,58 @@ inputs = {
       ).resolves.toBeDefined();
     });
   });
+
+  describe('Preview and diff mode (#95)', () => {
+    it('previews a write without creating the file', async () => {
+      const targetPath = path.join(allowedDir, 'preview-new.hcl');
+
+      const result = await toolHandler.executeTool('build_config', {
+        content: 'inputs = {\n  a = 1\n}\n',
+        path: targetPath,
+        preview: true,
+      });
+
+      expect(result.preview).toBe(true);
+      expect(result.success).toBe(true);
+      expect(result.targetExists).toBe(false);
+      expect(result.wouldOverwrite).toBe(false);
+      // Nothing was written.
+      await expect(fs.access(targetPath)).rejects.toBeDefined();
+    });
+
+    it('previews an overwrite and reports it without writing', async () => {
+      const targetPath = path.join(allowedDir, 'preview-existing.hcl');
+      await fs.writeFile(targetPath, 'inputs = {\n  a = 1\n}\n', 'utf8');
+
+      const result = await toolHandler.executeTool('build_config', {
+        content: 'inputs = {\n  a = 2\n}\n',
+        path: targetPath,
+        preview: true,
+      });
+
+      expect(result.preview).toBe(true);
+      expect(result.targetExists).toBe(true);
+      expect(result.wouldOverwrite).toBe(true);
+      expect(result.diff).toContain('+  a = 2');
+      // The original file is untouched.
+      expect(await fs.readFile(targetPath, 'utf8')).toBe('inputs = {\n  a = 1\n}\n');
+    });
+
+    it('writes and returns a diff against compareWith', async () => {
+      const basePath = path.join(allowedDir, 'base.hcl');
+      const targetPath = path.join(allowedDir, 'written.hcl');
+      await fs.writeFile(basePath, 'inputs = {\n  a = 1\n}\n', 'utf8');
+
+      const result = await toolHandler.executeTool('build_config', {
+        content: 'inputs = {\n  a = 9\n}\n',
+        path: targetPath,
+        compareWith: basePath,
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.diff).toContain('+  a = 9');
+      // The file was actually written.
+      expect(await fs.readFile(targetPath, 'utf8')).toBe('inputs = {\n  a = 9\n}\n');
+    });
+  });
 });

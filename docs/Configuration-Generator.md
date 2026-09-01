@@ -42,6 +42,31 @@ The tool will return:
 - **relatedDocs**: Links to relevant Terragrunt documentation
 - **additionalOptions**: Other configuration options you might want
 
+### Preview and Diff
+
+Two optional parameters let you review a configuration before it lands on disk:
+
+- **`preview`** (boolean): dry-run. The tool never writes; it returns what a write
+  would do — `targetExists`, `wouldOverwrite`, `wouldBackup` — and a unified
+  `diff`. Use it to check an overwrite before committing to it.
+- **`compareWith`** (string): path of an existing file to diff the result
+  against. In preview mode it defaults to the target `path`. Without `preview`, a
+  write still happens and the response also includes the `diff` against the
+  pre-write content, so you can see exactly what changed.
+
+`compareWith` reads are restricted to the configured allowed directories, the
+same security model as writes, so the tool cannot read arbitrary files.
+
+Example: preview an overwrite of an existing `terragrunt.hcl`.
+
+```text
+Generate an S3 remote state config for us-east-1 and preview the changes
+against ./terragrunt.hcl before writing
+```
+
+The result includes a unified diff and `wouldOverwrite: true`, and no file is
+written.
+
 ## Use Cases
 
 ### 1. Remote State Management
