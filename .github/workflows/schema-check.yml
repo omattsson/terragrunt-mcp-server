@@ -242,14 +242,16 @@ jobs:
         with:
           script: |
             // Drift has cleared; close any open auto-generated drift issues.
-            const existingIssues = await github.rest.issues.listForRepo({
+            // Paginate so more than one page of open issues is handled.
+            const issues = await github.paginate(github.rest.issues.listForRepo, {
               owner: context.repo.owner,
               repo: context.repo.repo,
               state: 'open',
-              labels: 'schema-drift'
+              labels: 'schema-drift',
+              per_page: 100
             });
 
-            for (const issue of existingIssues.data) {
+            for (const issue of issues) {
               core.info(`Closing resolved schema-drift issue #${issue.number}`);
               await github.rest.issues.createComment({
                 owner: context.repo.owner,

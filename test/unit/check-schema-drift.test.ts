@@ -583,6 +583,25 @@ describe('SchemaComparator', () => {
       expect(drift.extra).toEqual([]);
     });
 
+    it('reports a deprecated doc child covered by a prefixed schema attribute', () => {
+      const schema = {
+        id: 's3',
+        name: 'AWS S3',
+        attributes: [
+          { name: 'bucket', type: 'string', required: true },
+          { name: 'endpoints_dynamodb', type: 'string', required: false },
+        ],
+      };
+      const docAttributes = [
+        { name: 'bucket' },
+        { name: 'dynamodb', deprecated: true }, // nested under endpoints, deprecated
+      ];
+
+      const drift = comparator.compareDrift('aws-s3-complete.json', schema, docAttributes, opts);
+
+      expect(drift.deprecated).toEqual(['dynamodb']);
+    });
+
     it('does not flag a schema block-object attribute as extra', () => {
       // s3.json models the endpoints block as a single `endpoints` object.
       const schema = {

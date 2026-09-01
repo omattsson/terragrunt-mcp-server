@@ -429,8 +429,10 @@ export class SchemaComparator {
       .map(attr => attr.name);
 
     // Find deprecated attributes (informational; does not contribute to drift).
+    // Use the same coverage logic as missing/extra so a deprecated nested child
+    // is still recognized when the schema holds it as `<prefix>_<child>`.
     const deprecated = docAttributes
-      .filter(attr => attr.deprecated && schemaAttrNames.has(attr.name))
+      .filter(attr => attr.deprecated && this.isDocCoveredBySchema(attr.name, schemaAttrNames, prefixes))
       .map(attr => attr.name);
 
     return {
