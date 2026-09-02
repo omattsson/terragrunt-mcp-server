@@ -421,9 +421,14 @@ inputs = {
 ### 6. CI/CD Pipelines
 
 The `cicd` use case generates an opinionated `terraform` block for running
-Terragrunt in a pipeline: non-interactive runs (`-input=false`,
-`TF_IN_AUTOMATION`) and an optional auto-approve block. The `backend` parameter
-selects the platform.
+Terragrunt in a pipeline: automation-friendly OpenTofu/Terraform runs
+(`-input=false`, `TF_IN_AUTOMATION`) and an optional auto-approve block. The
+`backend` parameter selects the platform.
+
+`-input=false` and `TF_IN_AUTOMATION` only affect OpenTofu/Terraform. To stop
+Terragrunt's own confirmation prompts, set `TG_NON_INTERACTIVE=true` (or pass
+`--non-interactive`) in the pipeline — the `terraform` block cannot configure
+that. The samples below set it.
 
 ```text
 Generate a cicd config for github-actions
@@ -455,6 +460,8 @@ on: [push, pull_request]
 jobs:
   plan:
     runs-on: ubuntu-latest
+    env:
+      TG_NON_INTERACTIVE: 'true'   # stop Terragrunt's own prompts
     steps:
       - uses: actions/checkout@v5
       - uses: opentofu/setup-opentofu@v1
@@ -469,6 +476,8 @@ jobs:
 # .gitlab-ci.yml
 terragrunt-plan:
   image: devopsinfra/docker-terragrunt:tofu-1.9.0-terragrunt-0.72.6
+  variables:
+    TG_NON_INTERACTIVE: 'true'   # stop Terragrunt's own prompts
   script:
     - terragrunt plan -out=tfplan
   artifacts:
@@ -484,6 +493,7 @@ steps:
   - script: terragrunt plan
     displayName: 'Terragrunt plan'
     env:
+      TG_NON_INTERACTIVE: 'true'   # stop Terragrunt's own prompts
       ARM_CLIENT_ID: $(ARM_CLIENT_ID)
       ARM_CLIENT_SECRET: $(ARM_CLIENT_SECRET)
       ARM_SUBSCRIPTION_ID: $(ARM_SUBSCRIPTION_ID)

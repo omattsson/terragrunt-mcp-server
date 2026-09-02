@@ -177,6 +177,15 @@ export class TemplateValidator {
           `variables[${i}].required`
         );
       }
+
+      // Optional flag field must be a real boolean; a truthy string like "false"
+      // would silently enable flag semantics in the generator's conditionals.
+      if (variable.flag !== undefined && typeof variable.flag !== 'boolean') {
+        throw new TemplateValidationError(
+          `Variable "${variable.name}" field "flag" must be a boolean`,
+          `variables[${i}].flag`
+        );
+      }
     }
   }
 

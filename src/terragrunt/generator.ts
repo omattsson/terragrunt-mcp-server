@@ -386,8 +386,8 @@ export class TerragruntConfigGenerator {
 - Document required vs. optional inputs`,
       cicd: `## Next Steps for CI/CD:
 - Set the pipeline's cloud credentials as environment variables (the config does not hard-code them)
+- Set TG_NON_INTERACTIVE=true (or pass --non-interactive) in the pipeline so Terragrunt does not prompt; the config only makes OpenTofu/Terraform automation-friendly
 - Gate applies behind a manual approval unless you enabled auto-approve
-- Run plan and apply from your pipeline; the config keeps runs non-interactive
 - Cache the .terraform directory between jobs to speed up init`,
     };
 
@@ -491,7 +491,7 @@ export class TerragruntConfigGenerator {
       cicd: [
         'Merge this terraform block into your terragrunt.hcl',
         'Provide cloud credentials as pipeline environment variables',
-        'Run `terragrunt plan` and `terragrunt apply` from your pipeline (runs stay non-interactive)',
+        'Set TG_NON_INTERACTIVE=true (or pass --non-interactive) in the pipeline so Terragrunt does not prompt',
         'Gate `terragrunt apply` behind an approval step unless auto-approve is enabled',
       ],
     };

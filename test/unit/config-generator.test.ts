@@ -1172,8 +1172,8 @@ describe('TerragruntConfigGenerator', () => {
         options: {},
       });
 
-      // Non-interactive: extra_arguments with the required arguments + commands.
-      expect(result.config).toContain('extra_arguments "non_interactive"');
+      // Automation-friendly OpenTofu args: extra_arguments with the required arguments + commands.
+      expect(result.config).toContain('extra_arguments "automation"');
       expect(result.config).toContain('arguments = ["-input=false"]');
       expect(result.config).toContain('TF_IN_AUTOMATION = "true"');
       // No plan-output hook (plan output is a pipeline concern; can leak secrets).

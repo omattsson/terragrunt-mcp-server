@@ -184,6 +184,22 @@ describe('Template Validator', () => {
       expect(() => validator.validate(template)).not.toThrow();
     });
 
+    it('should reject a non-boolean variable flag field (#96)', () => {
+      const template = {
+        id: 'my-cicd',
+        name: 'My CI/CD',
+        description: 'Custom CI/CD template',
+        category: 'cicd',
+        templateHcl: 'terraform {}',
+        variables: [
+          { name: 'auto_approve', type: 'boolean', required: false, flag: 'false' },
+        ],
+      };
+
+      expect(() => validator.validate(template)).toThrow(TemplateValidationError);
+      expect(() => validator.validate(template)).toThrow('flag');
+    });
+
     it('should reject invalid cloudProvider', () => {
       const template = {
         id: 'test',

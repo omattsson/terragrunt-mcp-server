@@ -2,10 +2,15 @@
  * CI/CD templates
  *
  * Opinionated Terragrunt configuration for running in CI/CD pipelines: it makes
- * runs non-interactive, signals automation to the CLI, and optionally adds an
- * auto-approve gate. Plan output and artifacts are a pipeline concern (they can
- * expose secrets in logs), so they live in the pipeline YAML documented in the
- * Configuration Generator guide, not in these templates.
+ * OpenTofu/Terraform runs automation-friendly (no variable prompts, automation
+ * output) and optionally adds an auto-approve gate. Plan output and artifacts
+ * are a pipeline concern (they can expose secrets in logs), so they live in the
+ * pipeline YAML documented in the Configuration Generator guide.
+ *
+ * Note: `-input=false` and `TF_IN_AUTOMATION` only affect OpenTofu/Terraform.
+ * To stop Terragrunt's own confirmation prompts, set `TG_NON_INTERACTIVE=true`
+ * (or pass `--non-interactive`) in the pipeline — that is not something the
+ * terraform block can configure.
  *
  * Syntax notes (verified against the pinned Terragrunt HCL reference):
  * - `extra_arguments` requires both `commands` and `arguments`; `env_vars` is
@@ -25,8 +30,10 @@ const autoApproveVariable = {
   example: 'true',
 };
 
-const nonInteractiveBlock = `  # Non-interactive CI runs: never prompt, and signal automation to the CLI.
-  extra_arguments "non_interactive" {
+const automationBlock = `  # Automation-friendly OpenTofu/Terraform: no variable prompts, automation output.
+  # This does not disable Terragrunt's own prompts — set TG_NON_INTERACTIVE=true
+  # (or pass --non-interactive) in the pipeline for that.
+  extra_arguments "automation" {
     commands  = ["init", "plan", "apply", "destroy"]
     arguments = ["-input=false"]
 
@@ -45,7 +52,7 @@ const autoApproveBlock = `{{#auto_approve}}
 {{/auto_approve}}`;
 
 const exampleHcl = `terraform {
-  extra_arguments "non_interactive" {
+  extra_arguments "automation" {
     commands  = ["init", "plan", "apply", "destroy"]
     arguments = ["-input=false"]
 
@@ -60,7 +67,7 @@ export const cicdTemplates: ConfigTemplate[] = [
   {
     id: 'cicd-github-actions',
     name: 'GitHub Actions CI/CD Configuration',
-    description: 'Terragrunt config for GitHub Actions: non-interactive runs, automation signalling, optional auto-approve',
+    description: 'Terragrunt config for GitHub Actions: automation-friendly OpenTofu args, optional auto-approve (set TG_NON_INTERACTIVE in the pipeline)',
     category: 'cicd',
     cloudProvider: 'multi',
     source: 'builtin',
@@ -68,7 +75,7 @@ export const cicdTemplates: ConfigTemplate[] = [
     tags: ['cicd', 'github-actions', 'automation'],
     variables: [autoApproveVariable],
     templateHcl: `terraform {
-${nonInteractiveBlock}
+${automationBlock}
 ${autoApproveBlock}
 }`,
     example: exampleHcl,
@@ -78,7 +85,7 @@ ${autoApproveBlock}
   {
     id: 'cicd-gitlab',
     name: 'GitLab CI/CD Configuration',
-    description: 'Terragrunt config for GitLab CI: non-interactive runs, automation signalling, optional auto-approve',
+    description: 'Terragrunt config for GitLab CI: automation-friendly OpenTofu args, optional auto-approve (set TG_NON_INTERACTIVE in the pipeline)',
     category: 'cicd',
     cloudProvider: 'multi',
     source: 'builtin',
@@ -86,7 +93,7 @@ ${autoApproveBlock}
     tags: ['cicd', 'gitlab', 'automation'],
     variables: [autoApproveVariable],
     templateHcl: `terraform {
-${nonInteractiveBlock}
+${automationBlock}
 ${autoApproveBlock}
 }`,
     example: exampleHcl,
@@ -96,7 +103,7 @@ ${autoApproveBlock}
   {
     id: 'cicd-azure-devops',
     name: 'Azure DevOps Pipeline Configuration',
-    description: 'Terragrunt config for Azure DevOps: non-interactive runs, automation signalling, optional auto-approve. ARM_* auth comes from the pipeline environment.',
+    description: 'Terragrunt config for Azure DevOps: automation-friendly OpenTofu args, optional auto-approve (set TG_NON_INTERACTIVE in the pipeline). ARM_* auth comes from the pipeline environment.',
     category: 'cicd',
     cloudProvider: 'azure',
     source: 'builtin',
@@ -107,7 +114,7 @@ ${autoApproveBlock}
   # The ARM_CLIENT_ID / ARM_CLIENT_SECRET / ARM_SUBSCRIPTION_ID / ARM_TENANT_ID
   # credentials come from the pipeline environment (service connection), not
   # hard-coded here.
-${nonInteractiveBlock}
+${automationBlock}
 ${autoApproveBlock}
 }`,
     example: exampleHcl,
