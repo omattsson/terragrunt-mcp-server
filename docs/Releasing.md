@@ -3,7 +3,7 @@
 How to cut a release of the Terragrunt MCP Server. Releases are driven by the
 **Create Release** workflow (`.github/workflows/release.yml`), a manual
 two-phase `workflow_dispatch`. You do not tag locally — you dispatch the
-workflow twice.
+workflow twice. This guide supersedes the older root-level `RELEASE.md`.
 
 ## Versioning
 
