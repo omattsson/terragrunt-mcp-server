@@ -684,7 +684,7 @@ export class ToolHandler {
                         },
                         backend: {
                             type: 'string',
-                            description: 'Backend type'
+                            description: 'For remote_state, the backend type (s3, azurerm, gcs). For cicd, the platform (github-actions, gitlab, azure-devops).'
                         },
                         tier: {
                             type: 'string',

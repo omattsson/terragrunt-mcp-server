@@ -551,4 +551,19 @@ describe('Config Generation Integration Tests', () => {
       // (depends on template definition)
     }, 10000);
   });
+
+  describe('CI/CD Configuration (#96)', () => {
+    it('generates a cicd config with options omitted (options defaults to {})', async () => {
+      const result = await toolHandler.executeTool('build_config', {
+        useCase: 'cicd',
+        backend: 'github-actions',
+        // options omitted — cicd has no required variables
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.config).toContain('extra_arguments "automation"');
+      // auto-approve omitted unless requested
+      expect(result.config).not.toContain('extra_arguments "auto_approve"');
+    }, 10000);
+  });
 });
