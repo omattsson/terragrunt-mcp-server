@@ -4,6 +4,12 @@ on:
   push:
     branches:
       - main
+    tags:
+      # Release tags publish versioned images (e.g. 1.2.0, 1.2, 1).
+      # Note: a tag pushed by another workflow using GITHUB_TOKEN does NOT
+      # trigger this workflow. For release-workflow-pushed tags, publish via the
+      # workflow_dispatch input below (or push the tag with a PAT).
+      - 'v*.*.*'
   workflow_dispatch:
     inputs:
       tag:
@@ -42,7 +48,10 @@ jobs:
           images: olofdevopsninja/terragrunt-mcp-server
           tags: |
             type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
-            type=sha,prefix=
+            type=sha,prefix=,enable=${{ startsWith(github.ref, 'refs/heads/') }}
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
             type=raw,value=${{ inputs.tag }},enable=${{ github.event_name == 'workflow_dispatch' && inputs.tag != 'latest' }}
       
       - name: Build and push Docker image
@@ -73,5 +82,5 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Pull command:**" >> $GITHUB_STEP_SUMMARY
           echo '```bash' >> $GITHUB_STEP_SUMMARY
-          echo "docker pull olofdevopsninja/terragrunt-mcp-server:${{ inputs.tag }}" >> $GITHUB_STEP_SUMMARY
+          echo "docker pull olofdevopsninja/terragrunt-mcp-server:${{ steps.meta.outputs.version }}" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
