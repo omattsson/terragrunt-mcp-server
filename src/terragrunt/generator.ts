@@ -163,7 +163,13 @@ export class TerragruntConfigGenerator {
     
     for (const variable of template.variables) {
       const value = values[variable.name];
-      if (value !== undefined && value !== null && value !== '') {
+      let present = value !== undefined && value !== null && value !== '';
+      // Flag variables enable their conditional only on a truthy value, so an
+      // explicit false (e.g. auto_approve = false) does not enable the block.
+      if (present && variable.flag) {
+        present = value !== false && value !== 'false' && value !== 0 && value !== '0';
+      }
+      if (present) {
         // Variable has a value - make it truthy for conditionals
         // Use a unique placeholder that won't conflict with other content
         mustacheContext[variable.name] = `__PLACEHOLDER_${variable.name}__`;
@@ -378,6 +384,11 @@ export class TerragruntConfigGenerator {
 - Use locals for computed or derived values
 - Consider using dependency outputs as input values
 - Document required vs. optional inputs`,
+      cicd: `## Next Steps for CI/CD:
+- Set the pipeline's cloud credentials as environment variables (the config does not hard-code them)
+- Set TG_NON_INTERACTIVE=true (or pass --non-interactive) in the pipeline so Terragrunt does not prompt; the config only makes OpenTofu/Terraform automation-friendly
+- Gate applies behind a manual approval unless you enabled auto-approve
+- Cache the .terraform directory between jobs to speed up init`,
     };
 
     return guidance[useCase] || '';
@@ -396,6 +407,7 @@ export class TerragruntConfigGenerator {
       dependencies: ['dependency', 'dependencies', 'depend on'],
       hooks: ['hooks', 'before_hook', 'after_hook'],
       inputs: ['inputs', 'variables', 'input variables'],
+      cicd: ['ci', 'cd', 'cicd', 'automation', 'extra_arguments', 'non-interactive', 'pipeline'],
     };
 
     searchTerms.push(...(useCaseTerms[useCase] || []));
@@ -475,6 +487,12 @@ export class TerragruntConfigGenerator {
         'Verify input values match expected types in your Terraform module',
         'Run `terragrunt run --all -- validate` to check configuration',
         'Apply with `terragrunt apply`',
+      ],
+      cicd: [
+        'Merge this terraform block into your terragrunt.hcl',
+        'Provide cloud credentials as pipeline environment variables',
+        'Set TG_NON_INTERACTIVE=true (or pass --non-interactive) in the pipeline so Terragrunt does not prompt',
+        'Gate `terragrunt apply` behind an approval step unless auto-approve is enabled',
       ],
     };
 

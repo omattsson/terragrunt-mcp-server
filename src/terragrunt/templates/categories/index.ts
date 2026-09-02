@@ -8,3 +8,4 @@ export { providerTemplates } from './providers.js';
 export { hookTemplates } from './hooks.js';
 export { dependencyTemplates } from './dependencies.js';
 export { configurationTemplates } from './configuration.js';
+export { cicdTemplates } from './cicd.js';

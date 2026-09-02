@@ -307,14 +307,16 @@ describe('Config Generation Integration Tests', () => {
       expect(result.error).toContain('useCase');
     }, 10000);
 
-    it('should return error for missing required options parameter', async () => {
+    it('should return error listing the missing required variables', async () => {
       const result = await toolHandler.executeTool('build_config', {
         useCase: 'remote_state'
-        // Missing options
+        // Missing options -> generator reports the required variables it needs
       });
 
+      expect(result.success).toBe(false);
       expect(result.error).toBeDefined();
-      expect(result.error).toContain('options');
+      expect(result.error).toContain('required');
+      expect(result.error).toContain('bucket');
     }, 10000);
 
     it('should return error for invalid backend with helpful message', async () => {
@@ -547,6 +549,21 @@ describe('Config Generation Integration Tests', () => {
       
       // dynamodb_table is optional, so if not provided, might be in additionalOptions
       // (depends on template definition)
+    }, 10000);
+  });
+
+  describe('CI/CD Configuration (#96)', () => {
+    it('generates a cicd config with options omitted (options defaults to {})', async () => {
+      const result = await toolHandler.executeTool('build_config', {
+        useCase: 'cicd',
+        backend: 'github-actions',
+        // options omitted — cicd has no required variables
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.config).toContain('extra_arguments "automation"');
+      // auto-approve omitted unless requested
+      expect(result.config).not.toContain('extra_arguments "auto_approve"');
     }, 10000);
   });
 });

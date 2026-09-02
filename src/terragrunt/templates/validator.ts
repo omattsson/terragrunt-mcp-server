@@ -91,7 +91,7 @@ export class TemplateValidator {
    */
   private validateFieldTypes(template: any): void {
     // Validate category enum
-    const validCategories = ['backend', 'provider', 'dependency', 'hooks', 'inputs', 'advanced', 'configuration'];
+    const validCategories = ['backend', 'provider', 'dependency', 'hooks', 'inputs', 'advanced', 'configuration', 'cicd'];
     if (!validCategories.includes(template.category)) {
       throw new TemplateValidationError(
         `Invalid category: ${template.category}. Must be one of: ${validCategories.join(', ')}`,
@@ -175,6 +175,15 @@ export class TemplateValidator {
         throw new TemplateValidationError(
           `Variable "${variable.name}" missing required field "required"`,
           `variables[${i}].required`
+        );
+      }
+
+      // Optional flag field must be a real boolean; a truthy string like "false"
+      // would silently enable flag semantics in the generator's conditionals.
+      if (variable.flag !== undefined && typeof variable.flag !== 'boolean') {
+        throw new TemplateValidationError(
+          `Variable "${variable.name}" field "flag" must be a boolean`,
+          `variables[${i}].flag`
         );
       }
     }

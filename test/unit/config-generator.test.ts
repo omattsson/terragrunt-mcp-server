@@ -1161,4 +1161,48 @@ describe('TerragruntConfigGenerator', () => {
       expect(result.config).toContain('storage_custom_endpoint = "http://localhost:4443/storage/v1/"');
     });
   });
+
+  describe('cicd templates (#96)', () => {
+    const platforms = ['github-actions', 'gitlab', 'azure-devops'];
+
+    it.each(platforms)('generates a non-interactive %s config (no options needed)', async (platform) => {
+      const result = await generator.generateConfig({
+        useCase: 'cicd',
+        backend: platform,
+        options: {},
+      });
+
+      // Automation-friendly OpenTofu args: extra_arguments with the required arguments + commands.
+      expect(result.config).toContain('extra_arguments "automation"');
+      expect(result.config).toContain('arguments = ["-input=false"]');
+      expect(result.config).toContain('TF_IN_AUTOMATION = "true"');
+      // No plan-output hook (plan output is a pipeline concern; can leak secrets).
+      expect(result.config).not.toContain('after_hook');
+      expect(result.config).not.toContain('tofu');
+      // auto-approve is omitted unless requested.
+      expect(result.config).not.toContain('extra_arguments "auto_approve"');
+    });
+
+    it('adds the auto-approve block only when auto_approve is truthy', async () => {
+      const result = await generator.generateConfig({
+        useCase: 'cicd',
+        backend: 'github-actions',
+        options: { auto_approve: true },
+      });
+
+      expect(result.config).toContain('extra_arguments "auto_approve"');
+      expect(result.config).toContain('arguments = ["-auto-approve"]');
+    });
+
+    it('does NOT add auto-approve when auto_approve is false (flag honors false)', async () => {
+      const result = await generator.generateConfig({
+        useCase: 'cicd',
+        backend: 'github-actions',
+        options: { auto_approve: false },
+      });
+
+      expect(result.config).not.toContain('extra_arguments "auto_approve"');
+      expect(result.config).not.toContain('-auto-approve');
+    });
+  });
 });

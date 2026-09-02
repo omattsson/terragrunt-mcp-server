@@ -49,9 +49,21 @@ describe('ConfigTemplateLibrary', () => {
       expect(template?.name).toBe('Azure Blob Storage Backend'); // Schema-based template has priority
     });
 
+    it.each([
+      ['github-actions', 'cicd-github-actions'],
+      ['gitlab', 'cicd-gitlab'],
+      ['azure-devops', 'cicd-azure-devops'],
+    ])('resolves the cicd template for %s (#96)', async (platform, id) => {
+      const template = await library.getTemplate('cicd', platform);
+
+      expect(template).toBeDefined();
+      expect(template?.id).toBe(id);
+      expect(template?.category).toBe('cicd');
+    });
+
     it('should get provider_generation template', async () => {
       const template = await library.getTemplate('provider_generation', 'aws');
-      
+
       expect(template).toBeDefined();
       expect(template?.name).toBe('AWS Provider Generation');
       expect(template?.category).toBe('provider');

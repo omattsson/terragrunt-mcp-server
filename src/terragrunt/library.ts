@@ -4,7 +4,7 @@ import { ConfigTemplate } from '../types/templates.js';
 /**
  * Use case categories for template organization
  */
-export type UseCase = 'remote_state' | 'provider_generation' | 'dependencies' | 'hooks' | 'inputs';
+export type UseCase = 'remote_state' | 'provider_generation' | 'dependencies' | 'hooks' | 'inputs' | 'cicd';
 
 /**
  * Validation result for template syntax and structure
@@ -32,6 +32,7 @@ export class ConfigTemplateLibrary {
     dependencies: 'dependency',
     hooks: 'hooks',
     inputs: 'inputs',
+    cicd: 'cicd',
   };
 
   /**
@@ -43,6 +44,7 @@ export class ConfigTemplateLibrary {
     dependency: 'dependencies',
     hooks: 'hooks',
     inputs: 'inputs',
+    cicd: 'cicd',
   };
 
   constructor(templatesManager?: TemplatesManager) {

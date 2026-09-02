@@ -502,10 +502,10 @@ describe('MCP Protocol Compliance', () => {
         expect(typeof genTool?.inputSchema.properties).toBe('object');
       });
 
-      it('should define useCase parameter as enum with 5 valid values', () => {
+      it('should define useCase parameter as enum with 6 valid values', () => {
         const tools = toolHandler.getAvailableTools();
         const genTool = tools.find(t => t.name === 'build_config');
-        
+
         const useCaseProperty = genTool?.inputSchema.properties.useCase;
         expect(useCaseProperty).toBeDefined();
         expect(useCaseProperty.type).toBe('string');
@@ -516,7 +516,8 @@ describe('MCP Protocol Compliance', () => {
           'provider_generation',
           'dependencies',
           'hooks',
-          'inputs'
+          'inputs',
+          'cicd'
         ]);
       });
 
@@ -643,16 +644,16 @@ describe('MCP Protocol Compliance', () => {
         expect(result.error).toContain('useCase');
       });
 
-      it('should return error when options parameter is missing', async () => {
+      it('should return error listing required variables when options are missing', async () => {
         const result = await toolHandler.executeTool('build_config', {
           useCase: 'remote_state'
-          // Missing options
+          // Missing options -> generator reports the required variables it needs
         });
 
         expect(result).toBeDefined();
         expect(result.error).toBeDefined();
         expect(typeof result.error).toBe('string');
-        expect(result.error).toContain('options');
+        expect(result.error).toContain('required');
       });
 
       it('should handle optional backend parameter correctly', async () => {

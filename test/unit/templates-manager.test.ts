@@ -14,7 +14,7 @@ describe('TemplatesManager', () => {
       const templates = await manager.getAllTemplates();
       
       expect(templates.length).toBeGreaterThanOrEqual(3);
-      expect(templates.length).toBe(16); // 12 builtin + 4 schema-based (s3, aws-s3-complete, azurerm, gcp-gcs-complete)
+      expect(templates.length).toBe(19); // 15 builtin (incl. 3 cicd) + 4 schema-based
     });
 
     it('should only load templates once', async () => {
@@ -76,7 +76,7 @@ describe('TemplatesManager', () => {
     it('should return all templates', async () => {
       const templates = await manager.getAllTemplates();
       
-      expect(templates).toHaveLength(16); // 12 builtin + 4 schema-based
+      expect(templates).toHaveLength(19); // 15 builtin (incl. 3 cicd) + 4 schema-based
       
       const ids = templates.map(t => t.id);
       expect(ids).toContain('aws-s3-backend');
@@ -159,7 +159,7 @@ describe('TemplatesManager', () => {
     it('should return correct metadata', async () => {
       const metadata = await manager.getMetadata();
       
-      expect(metadata.totalTemplates).toBe(16); // 12 builtin + 4 schema-based
+      expect(metadata.totalTemplates).toBe(19); // 15 builtin (incl. 3 cicd) + 4 schema-based
       expect(metadata.categories).toContain('backend');
       expect(metadata.categories).toContain('provider');
       expect(metadata.cloudProviders).toContain('aws');
@@ -249,7 +249,7 @@ describe('TemplatesManager', () => {
       
       const afterClear = await manager.getAllTemplates();
       // After clear, loadTemplates will reinitialize
-      expect(afterClear.length).toBe(16); // 12 builtin + 4 schema-based
+      expect(afterClear.length).toBe(19); // 15 builtin (incl. 3 cicd) + 4 schema-based
     });
   });
 });

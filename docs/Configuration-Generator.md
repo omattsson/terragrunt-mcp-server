@@ -4,13 +4,14 @@ The Terragrunt Configuration Generator (`generate_terragrunt_config` tool) helps
 
 ## Overview
 
-The generator provides **12 templates** covering **5 use cases** across multiple cloud providers:
+The generator provides **15 templates** covering **6 use cases** across multiple cloud providers:
 
 - **Remote State Management**: AWS S3, Azure Blob Storage, Google Cloud Storage (Essential + Advanced tiers)
 - **Provider Generation**: AWS provider blocks with account validation
 - **Dependencies**: Module dependency configurations with mock outputs
 - **Hooks**: Before/after hooks for automation and validation
 - **Inputs**: Variable configuration for Terraform modules
+- **CI/CD**: Non-interactive pipeline config for GitHub Actions, GitLab CI, Azure DevOps
 - **Version Constraints**: Terraform version requirements
 
 ### Template Tiers
@@ -416,6 +417,91 @@ inputs = {
 - Use consistent naming across environments
 - Keep environment-specific values in separate files
 - Leverage Terragrunt's built-in functions for dynamic values
+
+### 6. CI/CD Pipelines
+
+The `cicd` use case generates an opinionated `terraform` block for running
+Terragrunt in a pipeline: automation-friendly OpenTofu/Terraform runs
+(`-input=false`, `TF_IN_AUTOMATION`) and an optional auto-approve block. The
+`backend` parameter selects the platform.
+
+`-input=false` and `TF_IN_AUTOMATION` only affect OpenTofu/Terraform. To stop
+Terragrunt's own confirmation prompts, set `TG_NON_INTERACTIVE=true` (or pass
+`--non-interactive`) in the pipeline — the `terraform` block cannot configure
+that. The samples below set it.
+
+```text
+Generate a cicd config for github-actions
+```
+
+Parameters:
+
+- `backend`: `github-actions`, `gitlab`, or `azure-devops`
+- `options.auto_approve` (optional): set `auto_approve=true` to add an auto-approve
+  block for `apply`/`destroy`. Omit it or set `false` to require manual approval.
+  Enable only for trusted, gated pipelines.
+
+The generated config is platform-agnostic Terragrunt HCL; the pipeline itself
+runs Terragrunt. Cloud credentials come from the pipeline environment — the
+config never hard-codes them.
+
+Plan output and artifacts are left to the pipeline. A machine-readable plan
+(`tofu show -json`) can contain resource and output values in plaintext, so
+emit it deliberately to a protected artifact — not to the build log — and
+redact as needed. To capture a plan for a later apply, run `plan -out=tfplan`
+in your pipeline and apply that saved plan.
+
+**Sample GitHub Actions pipeline:**
+
+```yaml
+# .github/workflows/terragrunt.yml
+name: Terragrunt
+on: [push, pull_request]
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    env:
+      TG_NON_INTERACTIVE: 'true'   # stop Terragrunt's own prompts
+    steps:
+      - uses: actions/checkout@v5
+      # terragrunt-action installs both tools; pin the versions your project uses.
+      # (Alternatively, commit a mise.toml and omit tg_version/tofu_version.)
+      - uses: gruntwork-io/terragrunt-action@v3
+        with:
+          tg_version: '0.72.6'
+          tofu_version: '1.9.0'
+          tg_command: 'plan'
+```
+
+**Sample GitLab CI pipeline** (use an image that ships Terragrunt and OpenTofu/Terraform; pin a tag that matches your versions):
+
+```yaml
+# .gitlab-ci.yml
+terragrunt-plan:
+  image: devopsinfra/docker-terragrunt:latest
+  variables:
+    TG_NON_INTERACTIVE: 'true'   # stop Terragrunt's own prompts
+  script:
+    - terragrunt plan -out=tfplan
+  artifacts:
+    # tfplan is the binary plan (for a later apply), not JSON. Protect it.
+    paths: [tfplan]
+```
+
+**Sample Azure DevOps pipeline:**
+
+```yaml
+# azure-pipelines.yml
+steps:
+  - script: terragrunt plan
+    displayName: 'Terragrunt plan'
+    env:
+      TG_NON_INTERACTIVE: 'true'   # stop Terragrunt's own prompts
+      ARM_CLIENT_ID: $(ARM_CLIENT_ID)
+      ARM_CLIENT_SECRET: $(ARM_CLIENT_SECRET)
+      ARM_SUBSCRIPTION_ID: $(ARM_SUBSCRIPTION_ID)
+      ARM_TENANT_ID: $(ARM_TENANT_ID)
+```
 
 ## Available Templates
 

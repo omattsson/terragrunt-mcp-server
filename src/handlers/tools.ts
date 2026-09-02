@@ -133,7 +133,7 @@ interface BuildConfigArgs {
     content?: string;
     
     // Mode 1 & 3: Generate parameters (required for generate modes)
-    useCase?: 'remote_state' | 'provider_generation' | 'dependencies' | 'hooks' | 'inputs';
+    useCase?: 'remote_state' | 'provider_generation' | 'dependencies' | 'hooks' | 'inputs' | 'cicd';
     options?: Record<string, string | number | boolean | undefined>;
     
     // Generate-specific optional parameters
@@ -144,7 +144,7 @@ interface BuildConfigArgs {
         id: string;
         name: string;
         description: string;
-        category: 'backend' | 'provider' | 'dependency' | 'hooks' | 'inputs' | 'advanced' | 'configuration';
+        category: 'backend' | 'provider' | 'dependency' | 'hooks' | 'inputs' | 'advanced' | 'configuration' | 'cicd';
         cloudProvider?: 'aws' | 'azure' | 'gcp' | 'multi';
         templateHcl: string;
         variables?: Array<{
@@ -664,13 +664,13 @@ export class ToolHandler {
             },
             {
                 name: 'build_config',
-                description: 'Generate or write Terragrunt HCL configuration files (terragrunt.hcl). Use cases: remote_state backends (S3, GCS, Azure), provider generation, dependency blocks, hooks, and inputs.',
+                description: 'Generate or write Terragrunt HCL configuration files (terragrunt.hcl). Use cases: remote_state backends (S3, GCS, Azure), provider generation, dependency blocks, hooks, inputs, and cicd (CI/CD-ready config for GitHub Actions, GitLab, Azure DevOps).',
                 inputSchema: {
                     type: 'object',
                     properties: {
                         useCase: {
                             type: 'string',
-                            enum: ['remote_state', 'provider_generation', 'dependencies', 'hooks', 'inputs'],
+                            enum: ['remote_state', 'provider_generation', 'dependencies', 'hooks', 'inputs', 'cicd'],
                             description: 'Use case'
                         },
                         options: {
@@ -684,7 +684,7 @@ export class ToolHandler {
                         },
                         backend: {
                             type: 'string',
-                            description: 'Backend type'
+                            description: 'For remote_state, the backend type (s3, azurerm, gcs). For cicd, the platform (github-actions, gitlab, azure-devops).'
                         },
                         tier: {
                             type: 'string',
@@ -965,12 +965,13 @@ export class ToolHandler {
                     
                     // Handle generate mode (with optional write)
                     if (!args?.useCase) {
-                        return { error: 'useCase is required. Valid values: remote_state, provider_generation, dependencies, hooks, inputs. Or provide content for write-only mode.' };
+                        return { error: 'useCase is required. Valid values: remote_state, provider_generation, dependencies, hooks, inputs, cicd. Or provide content for write-only mode.' };
                     }
-                    if (!args?.options) {
-                        return { error: 'options parameter is required for the selected useCase. Pass template variables as key-value pairs (e.g., for remote_state: { bucket, region, key }).' };
-                    }
-                    
+                    // options is optional (some use cases, e.g. cicd, have no required
+                    // variables). Default to {}; the generator validates any required
+                    // template variables per use case.
+                    const buildOptions = args?.options ?? {};
+
                     // Validate write mode parameters early
                     if (args.write && !args.path) {
                         return { 
@@ -989,7 +990,7 @@ export class ToolHandler {
                         args.useCase,
                         args.backend,
                         args.tier,
-                        args.options,
+                        buildOptions,
                         args.strictValidation ?? false,
                         args.custom_template,  // Still supported for backward compatibility despite schema removal
                         args.write ?? false,

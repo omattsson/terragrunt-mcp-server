@@ -590,10 +590,12 @@ The tool accepts these removed names for migration help. Current Terragrunt does
   - `"dependencies"` - Module dependency configuration
   - `"hooks"` - Before/after hooks for automation
   - `"inputs"` - Input variables configuration
+  - `"cicd"` - CI/CD-ready Terragrunt config (automation-friendly OpenTofu args, optional auto-approve)
 - **`backend`** (string, optional): Backend type for `remote_state` use case:
   - `"s3"` - AWS S3 with native lockfile locking
   - `"azurerm"` - Azure Blob Storage with Azure AD
   - `"gcs"` - Google Cloud Storage
+  - For the `cicd` use case, `backend` selects the platform: `"github-actions"`, `"gitlab"`, or `"azure-devops"`
 - **`options`** (object, optional): Configuration options (varies by use case):
   - **For S3**: `bucket`, `key`, `region`, `use_lockfile`, `dynamodb_table`, `encrypt`. Native `use_lockfile` locking is enabled for new configurations when neither locking option is specified. Deprecated `dynamodb_table` remains available for migration and clients that do not support S3 lockfiles.
   - **For Azure**: `storage_account_name`, `container_name`, `key`, `resource_group_name`
@@ -680,17 +682,18 @@ Generates and writes in one operation. Useful for:
 
 ### Available Templates — build_config
 
-The tool provides **9 templates** covering **5 use cases**:
+`build_config` can select **14 built-in templates** across **6 use cases** (schema-based backend templates are loaded on top at runtime):
 
 | Use Case | Templates | Cloud Providers |
 |----------|-----------|-----------------|
-| remote_state | 3 templates | AWS S3, Azure Blob, GCP GCS |
+| remote_state | 6 templates | AWS S3, Azure Blob, GCP GCS (essential + advanced tiers) |
 | provider_generation | 1 template | AWS |
 | dependencies | 1 template | Multi-cloud |
 | hooks | 2 templates | Multi-cloud (before_hook, after_hook) |
 | inputs | 1 template | Multi-cloud |
+| cicd | 3 templates | GitHub Actions, GitLab CI, Azure DevOps |
 
-<!-- Note: The "configuration" template (Terraform version constraints) is included as part of the "inputs" use case. -->
+<!-- The "configuration" (version constraints) and "advanced" categories are not mapped to a useCase, so they are not directly selectable here. -->
 
 ### Security Features — build_config (write mode)
 
