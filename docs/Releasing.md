@@ -82,21 +82,21 @@ GitHub Release as **Latest**.
 
 ### 5. Publish the versioned Docker image
 
-`docker-publish.yml` triggers on `v*.*.*` tags and produces the semver image
-tags (`X.Y.Z`, `X.Y`, `X`) plus `latest`. **However**, a tag pushed by another
-workflow using `GITHUB_TOKEN` does not trigger other workflows (a GitHub
-anti-recursion rule), and the release workflow pushes the tag with
-`GITHUB_TOKEN`. So the release tag does **not** auto-trigger a Docker publish.
+`docker-publish.yml` runs on pushes to `main` and on `v*.*.*` tags. Tag-triggered
+runs produce the semver image tags (`X.Y.Z`, `X.Y`, `X`) (they do **not** push
+`:latest`). **However**, a tag pushed by another workflow using `GITHUB_TOKEN`
+does not trigger other workflows (a GitHub anti-recursion rule), and the release
+workflow pushes the tag with `GITHUB_TOKEN`. So the release tag does **not**
+auto-trigger a Docker publish.
 
-Publish the versioned image explicitly:
+Publish the versioned image explicitly (run it against `main` to also refresh
+`:latest`; note `push_latest` is currently ignored by the workflow):
 
-```bash
-gh workflow run docker-publish.yml -f tag=1.3.0 -f push_latest=true
-```
+    gh workflow run docker-publish.yml -f tag=1.3.0
 
-This pushes `olofdevopsninja/terragrunt-mcp-server:1.3.0` and refreshes
-`:latest`. (A **manually** pushed `v*` tag would trigger `docker-publish`
-automatically; only workflow-pushed tags need this dispatch.)
+This pushes `olofdevopsninja/terragrunt-mcp-server:1.3.0` (and refreshes `:latest` when run against `main`). A **manually**
+pushed `v*` tag would trigger it automatically; only
+workflow-pushed tags need this dispatch.
 
 ## Notes
 
