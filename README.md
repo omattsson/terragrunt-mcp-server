@@ -590,6 +590,8 @@ For detailed testing information, see:
 - [Edge Cases Testing Guide](docs/Edge-Cases-Testing.md)
 - [MCP Protocol Compliance](docs/MCP-Protocol-Compliance.md)
 
+For cutting a release, see the [Releasing Guide](docs/Releasing.md).
+
 ### Docker Support
 
 Build and run in Docker for isolated testing:
