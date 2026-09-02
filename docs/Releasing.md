@@ -34,7 +34,7 @@ gh workflow run release.yml -f version=1.3.0 -f action=create-pr
 ```
 
 This runs `build`, `lint`, and `test:server`, then creates branch
-`release/v1.3.0`, bumps `package.json` (`npm version … --no-git-tag-version`),
+`release/v1.3.0`, bumps `package.json` and `package-lock.json` (`npm version … --no-git-tag-version`),
 and opens a **version-bump PR** into `main`.
 
 ### 2. Add curated release notes
