@@ -464,18 +464,21 @@ jobs:
       TG_NON_INTERACTIVE: 'true'   # stop Terragrunt's own prompts
     steps:
       - uses: actions/checkout@v5
-      - uses: opentofu/setup-opentofu@v1
+      # terragrunt-action installs both tools; pin the versions your project uses.
+      # (Alternatively, commit a mise.toml and omit tg_version/tofu_version.)
       - uses: gruntwork-io/terragrunt-action@v3
         with:
+          tg_version: '0.72.6'
+          tofu_version: '1.9.0'
           tg_command: 'plan'
 ```
 
-**Sample GitLab CI pipeline** (use an image that has Terragrunt and OpenTofu/Terraform):
+**Sample GitLab CI pipeline** (use an image that ships Terragrunt and OpenTofu/Terraform; pin a tag that matches your versions):
 
 ```yaml
 # .gitlab-ci.yml
 terragrunt-plan:
-  image: devopsinfra/docker-terragrunt:tofu-1.9.0-terragrunt-0.72.6
+  image: devopsinfra/docker-terragrunt:latest
   variables:
     TG_NON_INTERACTIVE: 'true'   # stop Terragrunt's own prompts
   script:
