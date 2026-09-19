@@ -730,9 +730,9 @@ terraform {
         '`terraform.source` follows the normal source-download behavior',
       ]);
       expectContent('/troubleshooting/performance/', [
-        'fetching and parsing the backend state object directly',
-        'experiment supports S3 and GCS backends',
-        'Azure Storage (`azurerm`) is supported',
+        '--filter-affected',
+        '--terragrunt-global-cache',
+        'Static Configuration as JSON or YAML',
       ]);
       expectContent('/features/stacks/explicit/', [
         'Add an `autoinclude` block to the `unit` block',

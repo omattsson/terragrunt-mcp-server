@@ -71,7 +71,7 @@ The fixture contains 124 Markdown documentation pages sourced from
 - HCL blocks, attributes, and functions
 - Troubleshooting guides
 
-Snapshot generated: August 30, 2026
+Snapshot generated: September 19, 2026
 
 Upstream baseline: Terragrunt revision
-`2a4802eb604cc7175d9937a9d5303d66656b86ed` from August 29, 2026.
+`0d43275a6312a0ec1151ee75c15319337d02e6fa` from September 18, 2026.

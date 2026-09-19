@@ -61,6 +61,16 @@ describe('CLICommandsManager', () => {
                 expect(cmd?.category).toBe('discovery');
             });
 
+            it('should get the experimental login command', () => {
+                const cmd = manager.getCommand('login');
+                expect(cmd).not.toBeNull();
+                expect(cmd?.experiment).toBe('tg-login');
+                expect(cmd?.options).toContainEqual(expect.objectContaining({
+                    flag: '--force',
+                    envVar: 'TG_LOGIN_FORCE',
+                }));
+            });
+
             it('should not expose removed validate-inputs command', () => {
                 expect(manager.getCommand('validate-inputs')).toBeNull();
             });
@@ -430,6 +440,9 @@ describe('CLICommandsManager', () => {
                 expect(flagNames).toContain('--config');
                 expect(flagNames).toContain('--no-cas');
                 expect(flagNames).toContain('--cas-clone-depth');
+                expect(flagNames).toContain('--cas-offline');
+                expect(flagNames).toContain('--cas-refresh');
+                expect(flagNames).toContain('--cas-probe-ttl');
                 expect(flagNames).toContain('--discovery-boundary');
                 expect(flagNames).toContain('--graph-root');
                 expect(flagNames).toContain('--no-dependency-outputs');
@@ -437,11 +450,37 @@ describe('CLICommandsManager', () => {
                 expect(flagNames).toContain('--provider-cache');
                 expect(flagNames).toContain('--provider-cache-token');
                 expect(flagNames).toContain('--dependency-fetch-output-from-state');
+                expect(flagNames).toContain('--no-dependency-fetch-output-from-state');
                 expect(flagNames).toContain('--no-hooks');
                 expect(flagNames).toContain('--destroy-dependencies-check');
                 expect(flagNames).toContain('--report-file');
                 expect(flagNames).toContain('--report-schema-file');
                 expect(flagNames).not.toContain('--terragrunt-config');
+            });
+
+            it('should document experiment-gated offline CAS options', () => {
+                for (const flag of ['--cas-offline', '--cas-refresh', '--cas-probe-ttl']) {
+                    const option = cmd?.options.find(candidate => candidate.flag === flag);
+                    expect(option, flag).toBeDefined();
+                    expect(option?.experiment, flag).toBe('offline-cas');
+                }
+                expect(cmd?.options.find(option => option.flag === '--cas-probe-ttl')).toMatchObject({
+                    type: 'string',
+                    defaultValue: '0',
+                    envVar: 'TG_CAS_PROBE_TTL',
+                });
+            });
+
+            it('should expose graduated run options without experiment gates', () => {
+                for (const flag of [
+                    '--discovery-boundary',
+                    '--no-hooks',
+                    '--no-dependency-outputs',
+                    '--dependency-fetch-output-from-state',
+                    '--no-dependency-fetch-output-from-state',
+                ]) {
+                    expect(cmd?.options.find(option => option.flag === flag)?.experiment, flag).toBeUndefined();
+                }
             });
 
             it('should use current TG_ environment variables', () => {
@@ -533,13 +572,14 @@ describe('CLICommandsManager', () => {
         });
 
         describe('catalog command', () => {
-            it('should document current output formats and experiment gate', () => {
+            it('should document current stable output formats', () => {
                 const cmd = manager.getCommand('catalog');
                 const format = cmd?.options.find(option => option.flag === '--format');
 
                 expect(format?.description).toContain('jsonl');
                 expect(format?.description).toContain('md');
-                expect(cmd?.notes?.some(note => note.includes('catalog-format'))).toBe(true);
+                expect(format?.experiment).toBeUndefined();
+                expect(cmd?.examples.some(example => example.command === 'terragrunt catalog --format md')).toBe(true);
             });
         });
 
@@ -714,7 +754,7 @@ describe('CLICommandsManager', () => {
         // Commands the manager exposes that upstream documents under the single
         // opentofu-shortcuts page rather than their own command pages. Excluded
         // from the reverse (removal-drift) check below.
-        const SHORTCUTS = new Set(['plan', 'apply', 'destroy', 'output', 'init']);
+        const COMMANDS_WITHOUT_DOC_PAGES = new Set(['plan', 'apply', 'destroy', 'output', 'init', 'login']);
 
         it('resolves every documented command in the manager', () => {
             // Guard against a vacuous pass: if the manifest shape/paths changed
@@ -732,7 +772,7 @@ describe('CLICommandsManager', () => {
             const manager = new CLICommandsManager();
             const extra = manager.getAllCommands()
                 .map((cmd) => cmd.name)
-                .filter((name) => !SHORTCUTS.has(name) && !documentedCommands.includes(name))
+                .filter((name) => !COMMANDS_WITHOUT_DOC_PAGES.has(name) && !documentedCommands.includes(name))
                 .sort();
             expect(extra, `Manager commands not documented upstream (removal/rename drift, or add to SHORTCUTS): ${extra.join(', ')}`).toEqual([]);
         });

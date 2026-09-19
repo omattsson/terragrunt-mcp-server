@@ -2199,8 +2199,8 @@ export class ErrorPatternMatcher {
    * Block expansion error patterns (category: configuration, 8 patterns)
    *
    * Anchored to pkg/config/hclparse/errors.go at the pinned upstream revision.
-   * Expansion is a parse-time concern, so these stay in the configuration
-   * category; the meta-argument cases require the block-iteration experiment.
+  * Expansion is a parse-time concern, so these stay in the configuration
+  * category.
    */
   private getExpansionErrorPatterns(): ErrorPattern[] {
     return [
@@ -2731,9 +2731,8 @@ export class ErrorPatternMatcher {
    * Managed azurerm state error patterns (category: backend, 4 patterns)
    *
    * Anchored to pkg/config/dependency_state_azurerm.go and
-   * internal/remotestate/backend/azurerm/errors.go at the pinned upstream
-   * revision. The azure-backend experiment gate is covered by
-   * experiment-required and is not duplicated here.
+  * internal/remotestate/backend/azurerm/errors.go at the pinned upstream
+  * revision.
    */
   private getAzureManagedStateErrorPatterns(): ErrorPattern[] {
     return [

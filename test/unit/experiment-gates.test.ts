@@ -11,39 +11,18 @@ describe('experiment gates on data', () => {
     expect(cli.getCommand('browse')?.experiment).toBe('browse-tui');
   });
 
-  it('gates known CLI options on their experiments', () => {
+  it('gates active CLI options on their experiments', () => {
     const flagExperiment = (cmdName: string, flag: string): string | undefined => {
       const cmd = cli.getCommand(cmdName);
       return cmd?.options.find((o) => o.flag === flag)?.experiment;
     };
-    // These four live in the shared getRunCommandOptions(), so 'run' exposes them.
-    expect(flagExperiment('run', '--discovery-boundary')).toBe('bounded-discovery');
-    expect(flagExperiment('run', '--no-hooks')).toBe('optional-hooks');
-    expect(flagExperiment('run', '--no-dependency-outputs')).toBe('optional-dependency-outputs');
-    expect(flagExperiment('run', '--dependency-fetch-output-from-state')).toBe('dependency-fetch-output-from-state');
-    expect(flagExperiment('catalog', '--format')).toBe('catalog-format');
-  });
-
-  it('gates the dependency expansion attribute on block-iteration', () => {
-    const dep = hcl.getBlock('dependency');
-    expect(dep?.attributes.find((a) => a.name === 'expansion')?.experiment).toBe('block-iteration');
+    expect(flagExperiment('run', '--cas-offline')).toBe('offline-cas');
+    expect(flagExperiment('run', '--cas-refresh')).toBe('offline-cas');
+    expect(flagExperiment('run', '--cas-probe-ttl')).toBe('offline-cas');
   });
 
   it('gates the engine block on iac-engine', () => {
     expect(hcl.getBlock('engine')?.experiment).toBe('iac-engine');
-  });
-
-  it('gates the unit and stack enabled attributes on block-iteration', () => {
-    for (const blockName of ['unit', 'stack']) {
-      const enabled = hcl.getBlock(blockName)?.attributes.find((a) => a.name === 'enabled');
-      expect(enabled?.experiment, `${blockName}.enabled`).toBe('block-iteration');
-    }
-  });
-
-  it('does not gate generate hcl_fmt (only mutable requires mutable-generate)', () => {
-    const generate = hcl.getBlock('generate');
-    expect(generate?.attributes.find((a) => a.name === 'hcl_fmt')?.experiment).toBeUndefined();
-    expect(generate?.attributes.find((a) => a.name === 'mutable')?.experiment).toBe('mutable-generate');
   });
 
   it('only references known experiment names', () => {
@@ -61,8 +40,25 @@ describe('experiment gates on data', () => {
   });
 
   it('does not gate completed features as experiments', () => {
-    // update_source_with_cas belongs to the completed CAS experiment (default), not gated.
-    const stack = hcl.getBlock('stack');
-    expect(stack?.attributes.find((a) => a.name === 'update_source_with_cas')?.experiment).toBeUndefined();
+    const run = cli.getCommand('run');
+    for (const flag of [
+      '--discovery-boundary',
+      '--no-hooks',
+      '--no-dependency-outputs',
+      '--dependency-fetch-output-from-state',
+      '--no-dependency-fetch-output-from-state',
+    ]) {
+      expect(run?.options.find((option) => option.flag === flag)?.experiment, flag).toBeUndefined();
+    }
+    expect(cli.getCommand('catalog')?.options.find((option) => option.flag === '--format')?.experiment).toBeUndefined();
+
+    for (const blockName of ['dependency', 'unit', 'stack']) {
+      expect(hcl.getBlock(blockName)?.attributes.find((attribute) => attribute.name === 'expansion')?.experiment).toBeUndefined();
+    }
+    for (const blockName of ['unit', 'stack']) {
+      expect(hcl.getBlock(blockName)?.attributes.find((attribute) => attribute.name === 'enabled')?.experiment).toBeUndefined();
+    }
+    expect(hcl.getBlock('terraform')?.attributes.find((attribute) => attribute.name === 'version')?.experiment).toBeUndefined();
+    expect(hcl.getBlock('generate')?.attributes.find((attribute) => attribute.name === 'mutable')?.experiment).toBeUndefined();
   });
 });
