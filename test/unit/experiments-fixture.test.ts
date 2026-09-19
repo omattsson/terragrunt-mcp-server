@@ -31,10 +31,10 @@ describe('terragrunt-experiments.json', () => {
 
   it('classifies the audited experiments correctly', async () => {
     const fx = await load();
-    for (const name of ['deep-merge', 'block-iteration', 'oci', 'version-attribute', 'mutable-generate']) {
+    for (const name of ['base64gzip-compat', 'deep-merge', 'offline-cas']) {
       expect(fx.active, `${name} should be active`).toContain(name);
     }
-    for (const name of ['cas', 'cli-redesign', 'stacks']) {
+    for (const name of ['block-iteration', 'cas', 'cli-redesign', 'mutable-generate', 'oci', 'stacks', 'version-attribute']) {
       expect(fx.completed, `${name} should be completed`).toContain(name);
     }
   });

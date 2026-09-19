@@ -309,6 +309,7 @@ export class CLICommandsManager {
       // Main Commands
       this.getRunCommand(),
       this.getExecCommand(),
+      this.getLoginCommand(),
       
       // Backend Commands
       this.getBackendBootstrapCommand(),
@@ -428,8 +429,7 @@ dependencies defined in terragrunt.hcl files.`,
       },
       {
         flag: '--discovery-boundary',
-        experiment: 'bounded-discovery',
-        description: 'Bound graph discovery to a directory. Requires the bounded-discovery experiment.',
+        description: 'Bound graph discovery to a directory.',
         type: 'path',
         envVar: 'TG_DISCOVERY_BOUNDARY',
         example: '--discovery-boundary ./prod',
@@ -530,8 +530,7 @@ dependencies defined in terragrunt.hcl files.`,
       },
       {
         flag: '--no-hooks',
-        experiment: 'optional-hooks',
-        description: 'Disable Terragrunt hooks. Requires the optional-hooks experiment.',
+        description: 'Disable Terragrunt hooks during run.',
         type: 'boolean',
         defaultValue: 'false',
         envVar: 'TG_NO_HOOKS',
@@ -573,20 +572,50 @@ dependencies defined in terragrunt.hcl files.`,
         example: '--cas-clone-depth=-1',
       },
       {
+        flag: '--cas-offline',
+        experiment: 'offline-cas',
+        description: 'Resolve CAS sources from the local store without contacting remotes. Requires the offline-cas experiment.',
+        type: 'boolean',
+        defaultValue: 'false',
+        envVar: 'TG_CAS_OFFLINE',
+      },
+      {
+        flag: '--cas-refresh',
+        experiment: 'offline-cas',
+        description: 'Ignore recorded CAS probe results and query every remote again. Requires the offline-cas experiment.',
+        type: 'boolean',
+        defaultValue: 'false',
+        envVar: 'TG_CAS_REFRESH',
+      },
+      {
+        flag: '--cas-probe-ttl',
+        experiment: 'offline-cas',
+        description: 'Trust recorded probes for mutable CAS sources for the specified duration. Requires the offline-cas experiment.',
+        type: 'string',
+        defaultValue: '0',
+        envVar: 'TG_CAS_PROBE_TTL',
+        example: '--cas-probe-ttl=10m',
+      },
+      {
         flag: '--no-dependency-outputs',
-        experiment: 'optional-dependency-outputs',
-        description: 'Skip dependency output resolution. Requires the optional-dependency-outputs experiment.',
+        description: 'Skip all dependency output resolution. Dependency blocks will not call tofu/terraform output.',
         type: 'boolean',
         defaultValue: 'false',
         envVar: 'TG_NO_DEPENDENCY_OUTPUTS',
       },
       {
         flag: '--dependency-fetch-output-from-state',
-        experiment: 'dependency-fetch-output-from-state',
-        description: 'Fetch dependency outputs directly from state and enable the dependency-fetch-output-from-state experiment.',
+        description: 'Read dependency outputs directly from state. Enabled by default; retained for backwards compatibility.',
         type: 'boolean',
         defaultValue: 'false',
         envVar: 'TG_DEPENDENCY_FETCH_OUTPUT_FROM_STATE',
+      },
+      {
+        flag: '--no-dependency-fetch-output-from-state',
+        description: 'Read dependency outputs by running tofu/terraform output instead of reading state directly.',
+        type: 'boolean',
+        defaultValue: 'false',
+        envVar: 'TG_NO_DEPENDENCY_FETCH_OUTPUT_FROM_STATE',
       },
       {
         flag: '--destroy-dependencies-check',
@@ -975,8 +1004,7 @@ new projects using modules from the catalog.`,
       options: [
         {
           flag: '--format',
-          experiment: 'catalog-format',
-          description: 'Output format: tui, jsonl, or md. Non-TUI formats require the catalog-format experiment.',
+          description: 'Output format: tui, jsonl, or md.',
           type: 'string',
           defaultValue: 'tui',
           envVar: 'TG_FORMAT',
@@ -1006,12 +1034,11 @@ new projects using modules from the catalog.`,
         },
         {
           description: 'Render a Markdown catalog',
-          command: 'terragrunt --experiment catalog-format catalog --format md',
+          command: 'terragrunt catalog --format md',
         },
       ],
       relatedCommands: ['scaffold'],
       documentationUrl: 'https://docs.terragrunt.com/reference/cli/commands/catalog/',
-      notes: ['The jsonl and md formats require the catalog-format experiment.'],
     };
   }
 
@@ -1209,6 +1236,35 @@ units and stacks. The command requires the browse-tui experiment.`,
       relatedCommands: ['find', 'list'],
       documentationUrl: 'https://docs.terragrunt.com/reference/cli/commands/browse/',
       notes: ['Requires the browse-tui experiment.'],
+    };
+  }
+
+  private getLoginCommand(): CLICommand {
+    return {
+      name: 'login',
+      experiment: 'tg-login',
+      aliases: [],
+      category: 'main',
+      description: 'Sign in to the Gruntwork Developer Portal.',
+      usage: 'terragrunt --experiment tg-login login [flags]',
+      details: 'Signs in to the Gruntwork Developer Portal so Terragrunt can discover catalogs selected by your organization.',
+      options: [
+        {
+          flag: '--force',
+          description: 'Replace the credential from an existing, unexpired login.',
+          type: 'boolean',
+          defaultValue: 'false',
+          envVar: 'TG_LOGIN_FORCE',
+        },
+      ],
+      examples: [
+        {
+          description: 'Sign in to the Developer Portal',
+          command: 'terragrunt --experiment tg-login login',
+        },
+      ],
+      relatedCommands: ['catalog'],
+      notes: ['Requires the tg-login experiment.'],
     };
   }
 

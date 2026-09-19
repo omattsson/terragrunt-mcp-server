@@ -12,7 +12,7 @@ async function topMatch(errorText: string, fuzzy = true) {
 }
 
 // Each anchor is verbatim upstream error text at revision
-// 2a4802eb604cc7175d9937a9d5303d66656b86ed. Every case asserts the exact regex
+// 0d43275a6312a0ec1151ee75c15319337d02e6fa. Every case asserts the exact regex
 // pattern wins at 0.95, which is above the fuzzy ceiling of 0.85.
 
 describe('modern diagnosis: stack validation', () => {
@@ -129,9 +129,9 @@ describe('modern diagnosis: CAS', () => {
 describe('modern diagnosis: experiment gates', () => {
   const gated = [
     "the 'browse' command requires the 'browse-tui' experiment to be enabled (set --experiment browse-tui or TG_EXPERIMENT=browse-tui)",
-    "the terraform block in x sets the version attribute, which requires the 'version-attribute' experiment; enable it with --experiment version-attribute",
-    "the generate block \"backend\" in x sets the mutable attribute, which requires the 'mutable-generate' experiment; enable it with --experiment mutable-generate",
-    "the azurerm backend is experimental and requires the 'azure-backend' experiment to be enabled (e.g. --experiment azure-backend or experiments = [\"azure-backend\"])",
+    "the 'login' command requires the 'tg-login' experiment to be enabled (set --experiment tg-login or TG_EXPERIMENT=tg-login)",
+    "base64gzip_compat in x requires the 'base64gzip-compat' experiment; enable it with --experiment base64gzip-compat",
+    "flag --cas-offline requires the 'offline-cas' experiment; enable it with --experiment offline-cas",
   ];
   it.each(gated)('flags experiment-not-enabled distinctly', async (text) => {
     const m = await topMatch(text, false);
@@ -148,9 +148,7 @@ describe('modern diagnosis: experiment gates', () => {
   it('cites only experiment names present in the #252 inventory', () => {
     const known = new Set(EXPERIMENTS.map((e) => e.name));
     const cited = [
-      'browse-tui', 'bounded-discovery', 'optional-hooks',
-      'optional-dependency-outputs', 'mutable-generate', 'version-attribute',
-      'block-iteration', 'deep-merge', 'azure-backend',
+      'browse-tui', 'tg-login', 'deep-merge', 'base64gzip-compat', 'offline-cas',
     ];
     for (const name of cited) {
       expect(known.has(name), name).toBe(true);

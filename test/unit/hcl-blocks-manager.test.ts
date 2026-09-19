@@ -488,8 +488,8 @@ describe('HCLBlocksManager', () => {
 
                 expect(source.description).toContain('oci://');
                 expect(version.type).toBe('string');
-                expect(version.description).toContain('version-attribute');
                 expect(version.description).toContain('tfr://');
+                expect(version.experiment).toBeUndefined();
                 expect(updateSourceWithCas).toMatchObject({ type: 'boolean', defaultValue: false });
                 expect(mutable).toMatchObject({ type: 'boolean', defaultValue: false });
                 expect(mutable.description).not.toContain('experimental content-addressable store');
@@ -582,8 +582,8 @@ describe('HCLBlocksManager', () => {
                 const expansion = block.attributes.find(attribute => attribute.name === 'expansion')!;
 
                 expect(expansion.nestedAttributes?.map(attribute => attribute.name)).toEqual(['for_each', 'count']);
-                expect(expansion.description).toContain('block-iteration');
                 expect(expansion.description).toContain('1,000,000');
+                expect(expansion.experiment).toBeUndefined();
                 expect(expansion.nestedAttributes?.find(attribute => attribute.name === 'for_each')?.description).toContain('each.value');
                 expect(expansion.nestedAttributes?.find(attribute => attribute.name === 'count')).toMatchObject({
                     type: 'number',
@@ -632,12 +632,11 @@ describe('HCLBlocksManager', () => {
                 expect(hclFmt.type).toBe('boolean');
                 expect(hclFmt.defaultValue).toBe('true for .hcl, .tf, and .tofu files; false otherwise');
                 expect(hclFmt.description).toContain('.tofu');
-                // hcl_fmt is not gated by mutable-generate upstream (only `mutable` is).
                 expect(hclFmt.description).not.toContain('mutable-generate');
                 expect(mutable.type).toBe('boolean');
                 expect(mutable.defaultValue).toBe(false);
                 expect(mutable.description).toContain('CAS hard link');
-                expect(mutable.description).toContain('mutable-generate');
+                expect(mutable.experiment).toBeUndefined();
             });
         });
 
@@ -685,7 +684,7 @@ describe('HCLBlocksManager', () => {
 
                 expect(attributeNames).toEqual(expect.arrayContaining(['enabled', 'update_source_with_cas', 'mutable', 'expansion']));
                 expect(expansion.nestedAttributes?.map(attribute => attribute.name)).toEqual(['for_each', 'count']);
-                expect(expansion.description).toContain('block-iteration');
+                expect(expansion.experiment).toBeUndefined();
                 expect(block.attributes.find(attribute => attribute.name === 'source')?.description).toContain('oci://');
                 expect(block.attributes.find(attribute => attribute.name === 'enabled')).toMatchObject({ type: 'boolean', defaultValue: true });
                 expect(block.attributes.find(attribute => attribute.name === 'update_source_with_cas')).toMatchObject({ type: 'boolean', defaultValue: false });
@@ -730,16 +729,16 @@ describe('HCLBlocksManager', () => {
 describe('upstream HCL block parity', () => {
   // The /reference/hcl/blocks/ page documents each top-level block as an H2
   // heading; H3/H4 headings are prose or sub-sections. `autoinclude` has its
-  // own H2 but is a nested block used inside unit/stack (modeled here as a
-  // nested `autoinclude` attribute on the unit and stack blocks), not a
-  // top-level block. Tied to revision
-  // 2a4802eb604cc7175d9937a9d5303d66656b86ed; revisit on refresh.
-  const NESTED_NOT_TOPLEVEL = new Set(['autoinclude']);
+    // own H2 but is a nested block used inside unit/stack; `expansion` is nested
+    // inside dependency/unit/stack. Both are modeled as nested attributes, not
+    // top-level blocks. Tied to revision
+    // 0d43275a6312a0ec1151ee75c15319337d02e6fa; revisit on refresh.
+    const NESTED_NOT_TOPLEVEL = new Set(['autoinclude', 'expansion']);
 
   // In-code entries modeled as blocks for reference convenience but documented
   // upstream as attributes (/reference/hcl/attributes/), not top-level blocks on
   // the blocks page. They are excluded from the reverse (removal-drift) check.
-  // Tied to revision 2a4802eb604cc7175d9937a9d5303d66656b86ed; revisit on refresh.
+    // Tied to revision 0d43275a6312a0ec1151ee75c15319337d02e6fa; revisit on refresh.
   const ATTRIBUTE_MODELS = new Set([
     'inputs',
     'prevent_destroy',
@@ -797,7 +796,7 @@ describe('modern HCL surface baseline (issue #244 AC4)', () => {
       expect(block, blockName).not.toBeNull();
       const expansion = block?.attributes.find((a) => a.name === 'expansion');
       expect(expansion, `${blockName}.expansion`).toBeDefined();
-      expect(expansion?.description).toContain('block-iteration');
+    expect(expansion?.experiment).toBeUndefined();
     }
   });
 

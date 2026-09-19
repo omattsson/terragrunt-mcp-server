@@ -10,11 +10,11 @@ import {
 import { UPSTREAM_REVISION } from '../../src/terragrunt/docs-manifest.js';
 
 describe('EXPERIMENTS inventory', () => {
-  it('has 19 active and 12 completed, all with unique names and summaries', () => {
+  it('has 10 active and 23 completed, all with unique names and summaries', () => {
     const active = EXPERIMENTS.filter((e) => e.status === 'active');
     const completed = EXPERIMENTS.filter((e) => e.status === 'completed');
-    expect(active.length).toBe(19);
-    expect(completed.length).toBe(12);
+    expect(active.length).toBe(10);
+    expect(completed.length).toBe(23);
     const names = EXPERIMENTS.map((e) => e.name);
     expect(new Set(names).size).toBe(names.length);
     for (const e of EXPERIMENTS) expect(e.summary.length).toBeGreaterThan(0);
@@ -43,9 +43,9 @@ describe('EXPERIMENTS inventory', () => {
   });
 
   it('describes an active gate with enablement', () => {
-    const gate = describeGate('block-iteration');
+    const gate = describeGate('deep-merge');
     expect(gate.status).toBe('active');
-    expect(gate.enable).toEqual({ flag: '--experiment block-iteration', envVar: 'TG_EXPERIMENT=block-iteration' });
+    expect(gate.enable).toEqual({ flag: '--experiment deep-merge', envVar: 'TG_EXPERIMENT=deep-merge' });
     expect(gate.summary.length).toBeGreaterThan(0);
   });
 

@@ -17,9 +17,9 @@ describe('Static Built-in Functions Integration', () => {
   }, 60000); // Allow time for potential network calls
 
   describe('Complete function coverage', () => {
-    it('should have all 32 built-in functions available', () => {
+    it('should have all 33 built-in functions available', () => {
       const functions = functionsManager.listFunctions();
-      expect(functions.length).toBeGreaterThanOrEqual(32);
+      expect(functions.length).toBeGreaterThanOrEqual(33);
       
       // Verify all static functions are present
       for (const staticFn of STATIC_BUILTIN_FUNCTIONS) {
@@ -153,12 +153,19 @@ describe('Static Built-in Functions Integration', () => {
       expect(markGlobAsRead!.stability).toBe('stable');
       expect(markGlobAsRead!.returnType).toBe('list(string)');
     });
+
+    it('exposes the base64 gzip compatibility function', () => {
+      const fn = functionsManager.getFunction('base64gzip_compat');
+      expect(fn).not.toBeNull();
+      expect(fn!.stability).toBe('experimental');
+      expect(fn!.experiment).toBe('base64gzip-compat');
+    });
   });
 
   describe('Static function helpers', () => {
     it('getStaticFunctions returns all static definitions', () => {
       const staticFns = functionsManager.getStaticFunctions();
-      expect(staticFns.length).toBe(32);
+      expect(staticFns.length).toBe(33);
     });
 
     it('isStaticFunction correctly identifies static functions', () => {

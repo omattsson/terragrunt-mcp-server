@@ -1161,14 +1161,10 @@ describe('MCP Protocol Compliance', () => {
   });
 
   describe('experiment gates in responses (issue #252)', () => {
-    it('surfaces a structured experiment gate on a gated HCL attribute', async () => {
+    it('does not surface an experiment gate on a graduated HCL attribute', async () => {
       const result = await toolHandler.executeTool('get_hcl_config_reference', { config: 'dependency' });
       const expansion = result.attributes.find((a: any) => a.name === 'expansion');
-      expect(expansion.experimentGate).toMatchObject({
-        name: 'block-iteration',
-        status: 'active',
-        enable: { flag: '--experiment block-iteration', envVar: 'TG_EXPERIMENT=block-iteration' },
-      });
+      expect(expansion.experimentGate).toBeUndefined();
     });
 
     it('surfaces a structured experiment gate on the browse command', async () => {
@@ -1187,9 +1183,9 @@ describe('MCP Protocol Compliance', () => {
       expect(result.howToEnable.flag).toContain('--experiment');
       expect(result.howToEnable.envVar).toContain('TG_EXPERIMENT');
       const activeNames = result.active.map((e: any) => e.name);
-      expect(activeNames).toContain('block-iteration');
+      expect(activeNames).toContain('deep-merge');
       const completedNames = result.completed.map((e: any) => e.name);
-      expect(completedNames).toContain('cas');
+      expect(completedNames).toEqual(expect.arrayContaining(['block-iteration', 'cas']));
     });
   });
 });

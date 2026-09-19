@@ -33,15 +33,14 @@ const HCL_BLOCKS: HCLBlock[] = [
         name: 'source',
         type: 'string',
         required: true,
-        description: 'The source URL for the Terraform module. Supports local paths, Git URLs, S3, GCS, Terraform Registry (tfr://), and OCI registry (oci://) sources. OCI sources require the oci experiment.',
+        description: 'The source URL for the Terraform module. Supports local paths, Git URLs, S3, GCS, Terraform Registry (tfr://), and OCI registry (oci://) sources.',
         example: '"git::https://github.com/gruntwork-io/terragrunt.git//modules/vpc?ref=v0.1.0"',
       },
       {
         name: 'version',
         type: 'string',
         required: false,
-        description: 'Version constraint for a tfr:// Terraform Registry source. Requires the version-attribute experiment and cannot be combined with an inline ?version= query parameter.',
-        experiment: 'version-attribute',
+        description: 'Version constraint for a tfr:// Terraform Registry source. Cannot be combined with an inline ?version= query parameter.',
         example: '"~> 1.2"',
       },
       {
@@ -468,10 +467,9 @@ include "env" {
       },
       {
         name: 'expansion',
-        experiment: 'block-iteration',
         type: 'block',
         required: false,
-        description: 'Expand this dependency into multiple instances. Requires the block-iteration experiment, accepts either for_each or count, and supports at most 1,000,000 instances.',
+        description: 'Expand this dependency into multiple instances using either for_each or count, with at most 1,000,000 instances.',
         nestedAttributes: [
           { name: 'for_each', type: 'any', required: false, description: 'Map, object, or set used to create instances. Cannot be combined with count; use each.key and each.value in the expanded block.' },
           { name: 'count', type: 'number', required: false, description: 'Non-negative number of indexed instances to create. Cannot be combined with for_each; use count.index in the expanded block.' },
@@ -623,7 +621,7 @@ inputs = {
         name: 'source',
         type: 'string',
         required: true,
-        description: 'Source containing the Terragrunt configuration for the unit. Supports oci:// sources when the oci experiment is enabled.',
+        description: 'Source containing the Terragrunt configuration for the unit. Supports oci:// sources.',
         example: '"git::git@github.com:acme/units.git//vpc?ref=v1.0.0"',
       },
       {
@@ -643,8 +641,7 @@ inputs = {
         name: 'enabled',
         type: 'boolean',
         required: false,
-        description: 'Whether to generate this unit. Requires the block-iteration experiment.',
-        experiment: 'block-iteration',
+        description: 'Whether to generate this unit.',
         defaultValue: true,
       },
       {
@@ -663,10 +660,9 @@ inputs = {
       },
       {
         name: 'expansion',
-        experiment: 'block-iteration',
         type: 'block',
         required: false,
-        description: 'Expand this unit into multiple instances. Requires the block-iteration experiment, accepts either for_each or count, and supports at most 1,000,000 instances.',
+        description: 'Expand this unit into multiple instances using either for_each or count, with at most 1,000,000 instances.',
         nestedAttributes: [
           { name: 'for_each', type: 'any', required: false, description: 'Map, object, or set used to create instances. Cannot be combined with count; use each.key and each.value in the expanded block.' },
           { name: 'count', type: 'number', required: false, description: 'Non-negative number of indexed instances to create. Cannot be combined with for_each; use count.index in the expanded block.' },
@@ -721,7 +717,7 @@ inputs = {
         name: 'source',
         type: 'string',
         required: true,
-        description: 'Source containing the nested terragrunt.stack.hcl configuration. Supports oci:// sources when the oci experiment is enabled.',
+        description: 'Source containing the nested terragrunt.stack.hcl configuration. Supports oci:// sources.',
         example: '"github.com/acme/stacks//services?ref=v1.0.0"',
       },
       {
@@ -741,8 +737,7 @@ inputs = {
         name: 'enabled',
         type: 'boolean',
         required: false,
-        description: 'Whether to generate this stack. Requires the block-iteration experiment.',
-        experiment: 'block-iteration',
+        description: 'Whether to generate this stack.',
         defaultValue: true,
       },
       {
@@ -761,10 +756,9 @@ inputs = {
       },
       {
         name: 'expansion',
-        experiment: 'block-iteration',
         type: 'block',
         required: false,
-        description: 'Expand this stack into multiple instances. Requires the block-iteration experiment, accepts either for_each or count, and supports at most 1,000,000 instances.',
+        description: 'Expand this stack into multiple instances using either for_each or count, with at most 1,000,000 instances.',
         nestedAttributes: [
           { name: 'for_each', type: 'any', required: false, description: 'Map, object, or set used to create instances. Cannot be combined with count; use each.key and each.value in the expanded block.' },
           { name: 'count', type: 'number', required: false, description: 'Non-negative number of indexed instances to create. Cannot be combined with for_each; use count.index in the expanded block.' },
@@ -881,8 +875,7 @@ inputs = {
         name: 'mutable',
         type: 'boolean',
         required: false,
-        description: 'Write a directly writable generated file instead of a read-only CAS hard link. Requires the mutable-generate experiment.',
-        experiment: 'mutable-generate',
+        description: 'Write a directly writable generated file instead of a read-only CAS hard link.',
         defaultValue: false,
       },
     ],

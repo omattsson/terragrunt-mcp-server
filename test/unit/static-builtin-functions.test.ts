@@ -26,8 +26,8 @@ class FailingDocsManager {
 
 describe('STATIC_BUILTIN_FUNCTIONS', () => {
   describe('Static definitions completeness', () => {
-    it('should contain exactly 32 functions', () => {
-      expect(STATIC_BUILTIN_FUNCTIONS.length).toBe(32);
+    it('should contain exactly 33 functions', () => {
+      expect(STATIC_BUILTIN_FUNCTIONS.length).toBe(33);
     });
 
     it('should have unique function names', () => {
@@ -126,15 +126,16 @@ describe('STATIC_BUILTIN_FUNCTIONS', () => {
       expect(execFunctions[0].name).toBe('run_cmd');
     });
 
-    it('should have all expected utility functions (4)', () => {
+    it('should have all expected utility functions (5)', () => {
       const utilFunctions = STATIC_BUILTIN_FUNCTIONS.filter(f => f.category === 'utility');
-      expect(utilFunctions.length).toBe(4);
+      expect(utilFunctions.length).toBe(5);
       
       const expectedUtilFunctions = [
         'get_terragrunt_source_cli_flag',
         'get_default_retryable_errors',
         'constraint_check',
-        'deep_merge'
+        'deep_merge',
+        'base64gzip_compat'
       ];
       
       const actualNames = utilFunctions.map(f => f.name);
@@ -258,6 +259,16 @@ describe('STATIC_BUILTIN_FUNCTIONS', () => {
       expect(fn!.examples.some(example => example.code.includes(']...'))).toBe(true);
     });
 
+    it('base64gzip_compat documents its compatibility experiment', () => {
+      const fn = STATIC_BUILTIN_FUNCTIONS.find(f => f.name === 'base64gzip_compat');
+      expect(fn).toBeDefined();
+      expect(fn!.signature).toBe('base64gzip_compat(str)');
+      expect(fn!.returnType).toBe('string');
+      expect(fn!.stability).toBe('experimental');
+      expect(fn!.experiment).toBe('base64gzip-compat');
+      expect(fn!.description).toContain('v1.1.3');
+    });
+
     it('mark_glob_as_read documents stable boundary and queue behavior', () => {
       const fn = STATIC_BUILTIN_FUNCTIONS.find(f => f.name === 'mark_glob_as_read');
       expect(fn).toBeDefined();
@@ -306,15 +317,15 @@ describe('TerragruntFunctionsManager with static functions', () => {
   });
 
   describe('getStaticFunctions()', () => {
-    it('returns all 32 static functions', () => {
+    it('returns all 33 static functions', () => {
       const staticFns = mgr.getStaticFunctions();
-      expect(staticFns.length).toBe(32);
+      expect(staticFns.length).toBe(33);
     });
 
     it('returns a copy, not the original array', () => {
       const staticFns = mgr.getStaticFunctions();
       staticFns.push({} as TerragruntFunction);
-      expect(mgr.getStaticFunctions().length).toBe(32);
+      expect(mgr.getStaticFunctions().length).toBe(33);
     });
   });
 
@@ -344,10 +355,10 @@ describe('TerragruntFunctionsManager with static functions', () => {
   });
 
   describe('loadFunctions() with static definitions', () => {
-    it('loads all 32 static functions when docs are empty', async () => {
+    it('loads all 33 static functions when docs are empty', async () => {
       await mgr.loadFunctions();
       const functions = mgr.listFunctions();
-      expect(functions.length).toBe(32);
+      expect(functions.length).toBe(33);
     });
 
     it('includes find_in_parent_folders after loading', async () => {
@@ -373,7 +384,7 @@ describe('TerragruntFunctionsManager with static functions', () => {
       const failingMgr = new TerragruntFunctionsManager(new FailingDocsManager() as any);
       await failingMgr.loadFunctions();
       const functions = failingMgr.listFunctions();
-      expect(functions.length).toBe(32);
+      expect(functions.length).toBe(33);
       expect(failingMgr.getFunction('deep_merge')?.stability).toBe('experimental');
       expect(failingMgr.getFunction('mark_glob_as_read')?.stability).toBe('stable');
     });

@@ -458,8 +458,24 @@ export const STATIC_BUILTIN_FUNCTIONS: TerragruntFunction[] = [
   },
 
   // ============================================================================
-  // UTILITY FUNCTIONS (4)
+  // UTILITY FUNCTIONS (5)
   // ============================================================================
+  {
+    name: 'base64gzip_compat',
+    signature: 'base64gzip_compat(str)',
+    description: 'Returns the base64-encoded gzip bytes produced by Terragrunt v1.1.3 and earlier, keeping encoded values stable across the Go encoder change. This function requires the base64gzip-compat experiment.',
+    parameters: [
+      { name: 'str', type: 'string', required: true, description: 'String content to gzip and base64 encode with the legacy encoder' }
+    ],
+    returnType: 'string',
+    category: 'utility',
+    examples: [
+      { code: 'inputs = {\n  user_data_base64 = base64gzip_compat(file("${get_terragrunt_dir()}/user-data.sh"))\n}', description: 'Keep compressed user data byte-identical across Terragrunt upgrades', useCase: 'stable-user-data' }
+    ],
+    relatedFunctions: ['get_terragrunt_dir'],
+    stability: 'experimental',
+    experiment: 'base64gzip-compat'
+  },
   {
     name: 'deep_merge',
     signature: 'deep_merge(map1, map2, ...maps)',
