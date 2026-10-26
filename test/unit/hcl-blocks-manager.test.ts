@@ -732,13 +732,13 @@ describe('upstream HCL block parity', () => {
     // own H2 but is a nested block used inside unit/stack; `expansion` is nested
     // inside dependency/unit/stack. Both are modeled as nested attributes, not
     // top-level blocks. Tied to revision
-    // 0d43275a6312a0ec1151ee75c15319337d02e6fa; revisit on refresh.
+    // a70782561d59fa7d2189785289b5967e7a2b3da0; revisit on refresh.
     const NESTED_NOT_TOPLEVEL = new Set(['autoinclude', 'expansion']);
 
   // In-code entries modeled as blocks for reference convenience but documented
   // upstream as attributes (/reference/hcl/attributes/), not top-level blocks on
   // the blocks page. They are excluded from the reverse (removal-drift) check.
-    // Tied to revision 0d43275a6312a0ec1151ee75c15319337d02e6fa; revisit on refresh.
+    // Tied to revision a70782561d59fa7d2189785289b5967e7a2b3da0; revisit on refresh.
   const ATTRIBUTE_MODELS = new Set([
     'inputs',
     'prevent_destroy',

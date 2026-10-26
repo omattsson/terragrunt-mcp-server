@@ -4,7 +4,7 @@ These tests guard the curated Terragrunt data in `src/terragrunt/*` against a
 pinned upstream revision, so upstream drift fails a test instead of silently
 rotting.
 
-- Pinned revision: `0d43275a6312a0ec1151ee75c15319337d02e6fa` (2026-09-18).
+- Pinned revision: `a70782561d59fa7d2189785289b5967e7a2b3da0` (2026-10-23).
 - Single source of truth for the revision string: `UPSTREAM_REVISION` in
   `src/terragrunt/docs-manifest.ts`.
 
@@ -31,7 +31,8 @@ revision, in these files:
 - `internal/getter/oci.go`, `internal/getter/errors.go`
 - `internal/engine/engine.go`, `internal/engine/verification.go`
 - `internal/cli/commands/browse/errors.go`,
-  `internal/cli/commands/login/errors.go`, and the other experiment gates
+  `internal/cli/commands/login/errors.go`,
+  `internal/cli/commands/mcp/errors.go`, and the other experiment gates
 - `pkg/config/dependency_state_azurerm.go`,
   `internal/remotestate/backend/azurerm/errors.go`
 - `internal/cas/errors.go` (CAS / update_source_with_cas)
@@ -43,7 +44,7 @@ and `test/unit/error-pattern-stats.test.ts` fails if the counts quoted in
 
 ## Experiment inventory
 
-`src/terragrunt/experiments.ts` is the typed experiment inventory (10 active,
+`src/terragrunt/experiments.ts` is the typed experiment inventory (11 active,
 23 completed) used to surface experiment gates. It is pinned to
 `UPSTREAM_REVISION` (`EXPERIMENT_REVISION`), and its names and active/completed
 split are cross-checked against `fixtures/terragrunt-experiments.json`

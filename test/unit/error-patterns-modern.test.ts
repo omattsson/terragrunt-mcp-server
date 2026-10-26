@@ -12,7 +12,7 @@ async function topMatch(errorText: string, fuzzy = true) {
 }
 
 // Each anchor is verbatim upstream error text at revision
-// 0d43275a6312a0ec1151ee75c15319337d02e6fa. Every case asserts the exact regex
+// a70782561d59fa7d2189785289b5967e7a2b3da0. Every case asserts the exact regex
 // pattern wins at 0.95, which is above the fuzzy ceiling of 0.85.
 
 describe('modern diagnosis: stack validation', () => {
@@ -111,6 +111,7 @@ describe('modern diagnosis: CAS', () => {
     ['update_source_with_cas does not support absolute sources', 'cas-source-absolute'],
     ['update_source_with_cas source escapes repository root', 'cas-source-escapes-repo'],
     ['update_source_with_cas requires a literal source string', 'cas-source-not-literal'],
+    ['update_source_with_cas must be true, false, or an expression of literals and locals that call no functions', 'cas-update-source-not-constant'],
     ['CAS reference hash must be lowercase hex (40 characters for sha1, 64 for sha256)', 'cas-ref-invalid'],
     ['CAS reference missing expected hash algorithm prefix', 'cas-ref-invalid'],
     ['CAS reference has empty hash', 'cas-ref-invalid'],
@@ -130,6 +131,7 @@ describe('modern diagnosis: experiment gates', () => {
   const gated = [
     "the 'browse' command requires the 'browse-tui' experiment to be enabled (set --experiment browse-tui or TG_EXPERIMENT=browse-tui)",
     "the 'login' command requires the 'tg-login' experiment to be enabled (set --experiment tg-login or TG_EXPERIMENT=tg-login)",
+    "the 'mcp' command requires the 'mcp-command' experiment to be enabled (set --experiment mcp-command or TG_EXPERIMENT=mcp-command)",
     "base64gzip_compat in x requires the 'base64gzip-compat' experiment; enable it with --experiment base64gzip-compat",
     "flag --cas-offline requires the 'offline-cas' experiment; enable it with --experiment offline-cas",
   ];
@@ -148,7 +150,7 @@ describe('modern diagnosis: experiment gates', () => {
   it('cites only experiment names present in the #252 inventory', () => {
     const known = new Set(EXPERIMENTS.map((e) => e.name));
     const cited = [
-      'browse-tui', 'tg-login', 'deep-merge', 'base64gzip-compat', 'offline-cas',
+      'browse-tui', 'tg-login', 'mcp-command', 'deep-merge', 'base64gzip-compat', 'offline-cas',
     ];
     for (const name of cited) {
       expect(known.has(name), name).toBe(true);

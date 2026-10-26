@@ -1,7 +1,7 @@
 {
-  "upstreamRevision": "0d43275a6312a0ec1151ee75c15319337d02e6fa",
-  "upstreamDate": "2026-09-18",
-  "generatedAt": "2026-09-19T08:57:34.727Z",
+  "upstreamRevision": "a70782561d59fa7d2189785289b5967e7a2b3da0",
+  "upstreamDate": "2026-10-23",
+  "generatedAt": "2026-10-26T17:26:11.459Z",
   "source": "internal/experiment/experiment.go",
   "active": [
     "base64gzip-compat",
@@ -9,6 +9,7 @@
     "deep-merge",
     "hook-context-env",
     "iac-engine",
+    "mcp-command",
     "offline-cas",
     "otel-logs",
     "slow-task-reporting",

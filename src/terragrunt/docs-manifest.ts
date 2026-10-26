@@ -1,10 +1,10 @@
 /**
  * Canonical paths for the Terragrunt documentation inventory at upstream
- * revision 0d43275a6312a0ec1151ee75c15319337d02e6fa. The llms.txt generator
+ * revision a70782561d59fa7d2189785289b5967e7a2b3da0. The llms.txt generator
  * sorts pages by their Starlight content ID, which is the canonical slug.
  */
 /** The upstream Terragrunt revision this documentation inventory is pinned to. */
-export const UPSTREAM_REVISION = '0d43275a6312a0ec1151ee75c15319337d02e6fa';
+export const UPSTREAM_REVISION = 'a70782561d59fa7d2189785289b5967e7a2b3da0';
 
 export const TERRAGRUNT_DOC_MANIFEST = [
   ['Contributing', '/community/contributing/'],
@@ -24,6 +24,7 @@ export const TERRAGRUNT_DOC_MANIFEST = [
   ['SMB', '/features/caching/cas/smb/'],
   ['Provider Cache Server', '/features/caching/provider-cache-server/'],
   ['Catalog', '/features/catalog/'],
+  ['Gruntwork Developer Portal', '/features/catalog/gruntwork-developer-portal/'],
   ['Non-interactive catalog', '/features/catalog/non-interactive/'],
   ['Scaffold', '/features/catalog/scaffold/'],
   ['Catalog TUI', '/features/catalog/tui/'],
@@ -43,6 +44,9 @@ export const TERRAGRUNT_DOC_MANIFEST = [
   ['Stack Operations', '/features/stacks/stack-operations/'],
   ['Units', '/features/units/'],
   ['Authentication', '/features/units/authentication/'],
+  ['Authenticating with AWS', '/features/units/authentication/aws/'],
+  ['Authenticating with Azure', '/features/units/authentication/azure/'],
+  ['Authenticating with GCP', '/features/units/authentication/gcp/'],
   ['Auto-init', '/features/units/auto-init/'],
   ['IaC Engines', '/features/units/engine/'],
   ['Extra Arguments', '/features/units/extra-arguments/'],
@@ -53,6 +57,9 @@ export const TERRAGRUNT_DOC_MANIFEST = [
   ['OCI Registries', '/features/units/oci/'],
   ['Feature Flags, Errors and Excludes', '/features/units/runtime-control/'],
   ['State Backend', '/features/units/state-backend/'],
+  ['Azure Storage (azurerm) Backend', '/features/units/state-backend/azurerm/'],
+  ['GCS Backend', '/features/units/state-backend/gcs/'],
+  ['S3 Backend', '/features/units/state-backend/s3/'],
   ['Terragrunt Cache', '/features/units/terragrunt-cache/'],
   ['Install', '/getting-started/install/'],
   ['Overview', '/getting-started/overview/', 'Get a high level overview of the most important Terragrunt features.'],
@@ -103,6 +110,8 @@ export const TERRAGRUNT_DOC_MANIFEST = [
   ['print', '/reference/cli/commands/info/print/'],
   ['strict', '/reference/cli/commands/info/strict/'],
   ['list', '/reference/cli/commands/list/'],
+  ['login', '/reference/cli/commands/login/'],
+  ['mcp', '/reference/cli/commands/mcp/'],
   ['OpenTofu Shortcuts', '/reference/cli/commands/opentofu-shortcuts/'],
   ['render', '/reference/cli/commands/render/'],
   ['run', '/reference/cli/commands/run/', 'Run OpenTofu/Terraform commands.'],

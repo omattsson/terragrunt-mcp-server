@@ -11,6 +11,10 @@ describe('experiment gates on data', () => {
     expect(cli.getCommand('browse')?.experiment).toBe('browse-tui');
   });
 
+  it('gates mcp on mcp-command', () => {
+    expect(cli.getCommand('mcp')?.experiment).toBe('mcp-command');
+  });
+
   it('gates active CLI options on their experiments', () => {
     const flagExperiment = (cmdName: string, flag: string): string | undefined => {
       const cmd = cli.getCommand(cmdName);

@@ -10,10 +10,10 @@ import {
 import { UPSTREAM_REVISION } from '../../src/terragrunt/docs-manifest.js';
 
 describe('EXPERIMENTS inventory', () => {
-  it('has 10 active and 23 completed, all with unique names and summaries', () => {
+  it('has 11 active and 23 completed, all with unique names and summaries', () => {
     const active = EXPERIMENTS.filter((e) => e.status === 'active');
     const completed = EXPERIMENTS.filter((e) => e.status === 'completed');
-    expect(active.length).toBe(10);
+    expect(active.length).toBe(11);
     expect(completed.length).toBe(23);
     const names = EXPERIMENTS.map((e) => e.name);
     expect(new Set(names).size).toBe(names.length);

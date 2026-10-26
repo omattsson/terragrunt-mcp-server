@@ -36,6 +36,7 @@ export const EXPERIMENTS: readonly Experiment[] = [
   { name: 'tg-login', status: 'active', summary: 'Enable terragrunt login and Developer Portal catalogs.' },
   { name: 'base64gzip-compat', status: 'active', summary: 'Expose base64gzip_compat for output compatible with Terragrunt v1.1.3 and earlier.' },
   { name: 'offline-cas', status: 'active', summary: 'Control the CAS probe cache, including resolving runs without contacting remotes.' },
+  { name: 'mcp-command', status: 'active', summary: 'Add the terragrunt mcp command, which serves Terragrunt operations to AI agents over the Model Context Protocol.' },
   // Completed experiments — now stable and enabled by default.
   { name: 'cli-redesign', status: 'completed', summary: 'The redesigned Terragrunt CLI.' },
   { name: 'stacks', status: 'completed', summary: 'Terragrunt stacks (terragrunt.stack.hcl).' },

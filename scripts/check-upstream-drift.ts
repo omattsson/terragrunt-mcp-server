@@ -52,6 +52,7 @@ export const WATCHED_PATHS: WatchedPath[] = [
   { path: 'internal/engine/verification.go', reason: 'engine integrity diagnosis pattern' },
   { path: 'internal/cli/commands/browse/errors.go', reason: 'experiment gate diagnosis pattern' },
   { path: 'internal/cli/commands/login/errors.go', reason: 'experiment gate diagnosis pattern' },
+  { path: 'internal/cli/commands/mcp/errors.go', reason: 'experiment gate diagnosis pattern' },
   { path: 'internal/remotestate/backend/azurerm/errors.go', reason: 'managed azurerm diagnosis patterns' },
   { path: 'pkg/config/dependency_state_azurerm.go', reason: 'azurerm dependency-state diagnosis pattern' },
   { path: 'internal/cli/commands/run/flags.go', reason: 'experiment-gated run flag messages' },
