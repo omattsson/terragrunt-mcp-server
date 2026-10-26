@@ -38,7 +38,7 @@ export class FilesystemTemplateLoader implements TemplateLoader {
       const files = await readdir(this.templatePath).catch(() => []);
       
       if (files.length === 0) {
-        console.log(`[FilesystemTemplateLoader] No templates found in ${this.templatePath}`);
+        console.error(`[FilesystemTemplateLoader] No templates found in ${this.templatePath}`);
         return [];
       }
 
@@ -57,7 +57,7 @@ export class FilesystemTemplateLoader implements TemplateLoader {
         }
       }
 
-      console.log(`[FilesystemTemplateLoader] Loaded ${templates.length} templates from ${this.templatePath}`);
+      console.error(`[FilesystemTemplateLoader] Loaded ${templates.length} templates from ${this.templatePath}`);
       return templates;
     } catch (error) {
       console.error('[FilesystemTemplateLoader] Error loading templates:', error);

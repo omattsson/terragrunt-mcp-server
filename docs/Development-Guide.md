@@ -55,8 +55,7 @@ terragrunt-mcp-server/
 │   ├── server.ts          # Server setup
 │   ├── handlers/          # MCP protocol handlers
 │   │   ├── resources.ts   # Resource handler
-│   │   ├── tools.ts       # Tool handler
-│   │   └── prompts.ts     # Prompt handler
+│   │   └── tools.ts       # Tool handler
 │   ├── terragrunt/        # Domain logic
 │   │   ├── docs.ts        # Documentation manager
 │   │   ├── commands.ts    # Command execution
@@ -129,10 +128,12 @@ try {
 
 ### Logging
 
-Use structured logging:
+stdout carries the MCP JSON-RPC stream, so log to stderr only. Use `console.error` for
+informational and error messages and `console.warn` for warnings; ESLint `no-console`
+rejects `console.log`, `console.info` and `console.debug` in `src/`:
 
 ```typescript
-console.info('[INFO] Cache loaded successfully');
+console.error('[INFO] Cache loaded successfully');
 console.warn('[WARN] Cache expired, refreshing...');
 console.error('[ERROR] Web fetch failed:', error);
 ```
@@ -423,7 +424,7 @@ Add debug logging:
 const DEBUG = process.env.DEBUG === 'true';
 
 if (DEBUG) {
-  console.log('[DEBUG] Cache status:', {
+  console.error('[DEBUG] Cache status:', {
     size: this.inMemoryCache.size,
     lastUpdated: this.cacheMetadata.lastUpdated
   });

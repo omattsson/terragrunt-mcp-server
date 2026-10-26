@@ -3,5 +3,5 @@
 
 export function setupRoutes(app: any) {
     // Legacy implementation - not used in MCP server
-    console.log('Legacy server setup - not used in MCP implementation');
+    console.error('Legacy server setup - not used in MCP implementation');
 }

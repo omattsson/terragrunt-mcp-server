@@ -173,6 +173,45 @@ interface BuildConfigArgs {
     compareWith?: string;
 }
 
+/**
+ * Decide whether a tool result is a tool-level failure, which the server
+ * reports to the client as an MCP result with isError: true.
+ *
+ * A result is a failure when it carries a non-empty `error` (a message string, or
+ * an object with a non-empty `message`) or `success: false`.
+ * Preview (dry-run) results are the exception: a preview that computed a diff
+ * but reports the write would be blocked (e.g. file exists, overwrite disabled)
+ * is a successful dry run, not an error. A preview without a diff is an error.
+ */
+export function isErrorResult(result: unknown): boolean {
+    if (!result || typeof result !== 'object') {
+        return false;
+    }
+    const r = result as Record<string, any>;
+
+    if (r.preview === true) {
+        return r.success === false && typeof r.previewResult?.diff !== 'string';
+    }
+
+    const message = typeof r.error === 'string' ? r.error : r.error?.message;
+    const hasError = typeof message === 'string' && message.length > 0;
+    return hasError || r.success === false;
+}
+
+/**
+ * Extract a human-readable failure message from an error result.
+ */
+function getResultErrorMessage(result: Record<string, any>): string {
+    const error = result.error || result.writeResult?.error || result.previewResult?.error;
+    if (!error) {
+        return 'Tool reported failure';
+    }
+    if (typeof error === 'string') {
+        return error;
+    }
+    return typeof error.message === 'string' ? error.message : JSON.stringify(error);
+}
+
 export class ToolHandler {
     private mode: ServerMode;
     private docsManager?: TerragruntDocsManager;
@@ -829,33 +868,59 @@ export class ToolHandler {
     }
 
     async executeTool(name: string, args?: any): Promise<any> {
+        return (await this.callTool(name, args)).result;
+    }
+
+    /**
+     * Execute a tool and classify its result once, for both metrics and the
+     * client-visible isError flag.
+     *
+     * Metrics follow the MetricsManager contract: a successful call is logged
+     * with logResponse, a failed one (returned or thrown) with logError only.
+     * Metrics are a side effect and never change the tool's outcome.
+     */
+    async callTool(name: string, args?: any): Promise<{ result: any; isError: boolean }> {
         const startTime = performance.now();
-        
+        // Skip metrics for get_server_metrics to avoid recursion, and for unknown
+        // tool names so clients cannot grow the metrics map without bound
+        const recordMetrics = name !== 'get_server_metrics'
+            && MODE_CONFIGS[ServerMode.FULL].tools.includes(name);
+
         try {
             const result = await this.executeToolInternal(name, args);
             const latencyMs = Math.round(performance.now() - startTime);
-            
-            // Log metrics (skip for get_server_metrics to avoid recursion)
-            if (name !== 'get_server_metrics') {
-                this.metricsManager.logResponse('tool', name, result, latencyMs);
+            const isError = isErrorResult(result);
+
+            if (recordMetrics) {
+                this.recordMetrics(() => {
+                    if (isError) {
+                        this.metricsManager.logError('tool', name, new Error(getResultErrorMessage(result)));
+                    } else {
+                        this.metricsManager.logResponse('tool', name, result, latencyMs);
+                    }
+                });
             }
-            
-            return result;
+
+            return { result, isError };
         } catch (error) {
-            const latencyMs = Math.round(performance.now() - startTime);
-            
             console.error(`Error executing tool ${name}:`, error);
-            
-            // Log error metrics
-            if (name !== 'get_server_metrics' && error instanceof Error) {
-                this.metricsManager.logError('tool', name, error);
+
+            if (recordMetrics) {
+                this.recordMetrics(() => this.metricsManager.logError(
+                    'tool',
+                    name,
+                    error instanceof Error ? error : new Error(String(error))
+                ));
             }
-            
-            const errorResult = {
-                error: error instanceof Error ? error.message : 'Unknown error occurred'
-            };
-            this.metricsManager.logResponse('tool', name, errorResult, latencyMs);
             throw error;
+        }
+    }
+
+    private recordMetrics(record: () => void): void {
+        try {
+            record();
+        } catch (error) {
+            console.error('Failed to record tool metrics:', error);
         }
     }
     

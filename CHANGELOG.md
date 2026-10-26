@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### 🐛 Fixed
+
+- **stdout carries only JSON-RPC** (#289): informational logs from the docs cache and template loaders were written to stdout, interleaving non-JSON lines with protocol messages on the stdio transport.
+  - All logging now goes to stderr.
+  - `src/stdio-guard.ts`, imported first by the entry point, points every global console method (`log`, `info`, `debug`, `dir`, `table`, …) at stderr before any other module loads.
+  - ESLint `no-console` allows only `console.error` and `console.warn`.
+  - The lint script is now `eslint src`, so it covers every file under `src/`; the old unquoted glob skipped 17 of 56 files. The CI lint step now fails the build instead of continuing on error.
+  - Removed the unused `src/handlers/prompts.ts`, which read from stdin and wrote to stdout through readline.
+- **Failed tool calls report `isError`** (#290): results with a non-empty `error` or `success: false` (unknown tools, not-found lookups, mode restrictions, validation and generation failures) are now returned with `isError: true`. Previews that still produced a diff are not treated as errors. `ToolHandler.callTool` classifies each result once, for both the client response and metrics.
+- **Tool error metrics**: a failed call is now recorded once, as an error, so `errorRate` is correct. Thrown errors were previously also counted as calls.
+  - `calls` (and the size and latency figures) count successful calls only; failures are counted in `errors`. Returned failures used to be counted as successful calls.
+  - A metrics entry first created by an error now takes its minimum size and latency from the first successful call instead of keeping 0.
+  - A failure now updates `lastCallTime`.
+  - Errors while recording metrics are logged and no longer change the tool's result.
+  - Calls to unknown tool names are no longer recorded, so clients cannot grow the metrics map without bound.
+
+### 🧪 Testing
+
+- **End-to-end stdio tests** (#292): a new integration suite builds the server, spawns `dist/index.js` and every `bin/` mode wrapper, and drives them through the MCP SDK client over stdio. It asserts that stdout carries only JSON-RPC, checks per-mode tool lists, and checks `isError` for successful and failing calls. It runs offline against the bundled fixture.
+
 ## [1.1.0] - 2026-02-22
 
 ### ✨ Added

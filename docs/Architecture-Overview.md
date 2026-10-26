@@ -87,11 +87,6 @@ This page provides a comprehensive overview of the Terragrunt MCP Server's archi
 7. `diagnose_terragrunt_error` - Error diagnosis
 8. `get_server_metrics` - Server observability
 
-#### PromptsHandler (`prompts.ts`)
-
-- Future: Guided workflows and templates
-- Currently minimal implementation
-
 ### 3. Documentation Management Layer (`src/terragrunt/docs.ts`)
 
 **Purpose**: Core business logic for fetching, caching, and searching Terragrunt documentation

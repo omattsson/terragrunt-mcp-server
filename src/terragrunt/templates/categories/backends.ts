@@ -300,7 +300,7 @@ export const backendTemplates: ConfigTemplate[] = [
     resource_group_name  = local.deployment_storage_resource_group_name
     storage_account_name = local.deployment_storage_account_name
     container_name       = local.tf_container_name
-    key                  = "\${path_relative_to_include(\"site\")}/terraform.tfstate"
+    key                  = "\${path_relative_to_include("site")}/terraform.tfstate"
   }
 }`,
   },
@@ -439,7 +439,7 @@ export const backendTemplates: ConfigTemplate[] = [
     resource_group_name  = "rg-terraform-state"
     storage_account_name = "tfstatestorage"
     container_name       = "tfstate"
-    key                  = "\${path_relative_to_include(\"site\")}/terraform.tfstate"
+    key                  = "\${path_relative_to_include("site")}/terraform.tfstate"
     subscription_id      = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
     tenant_id            = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
     use_azuread_auth     = true

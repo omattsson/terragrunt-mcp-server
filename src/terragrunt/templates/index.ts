@@ -56,7 +56,7 @@ export class TemplatesManager {
     }
 
     this.initialized = true;
-    console.log(`[TemplatesManager] Loaded ${this.templates.size} templates from ${this.loaders.length} loader(s)`);
+    console.error(`[TemplatesManager] Loaded ${this.templates.size} templates from ${this.loaders.length} loader(s)`);
   }
 
   /**
