@@ -55,8 +55,7 @@ terragrunt-mcp-server/
 │   ├── server.ts          # Server setup
 │   ├── handlers/          # MCP protocol handlers
 │   │   ├── resources.ts   # Resource handler
-│   │   ├── tools.ts       # Tool handler
-│   │   └── prompts.ts     # Prompt handler
+│   │   └── tools.ts       # Tool handler
 │   ├── terragrunt/        # Domain logic
 │   │   ├── docs.ts        # Documentation manager
 │   │   ├── commands.ts    # Command execution

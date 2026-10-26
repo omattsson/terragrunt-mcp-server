@@ -31,7 +31,7 @@ import { ToolHandler } from './handlers/tools';     // ✗ Runtime crash
 try { return { data: await operation() }; }
 catch (error) { console.error('...', error); return { data: [], error: 'message' }; }
 ```
-A result with a non-empty `error` or `success: false` is reported to the client with `isError: true` and counted as an error in metrics (`isErrorResult` in `src/handlers/tools.ts`). Preview results that still produced a diff are not errors.
+A result with a non-empty `error` (a string, or an object with a non-empty `message`) or `success: false` is reported to the client with `isError: true` (`isErrorResult` in `src/handlers/tools.ts`, applied once in `ToolHandler.callTool`). Preview results that still produced a diff are not errors. In metrics, a failure is recorded with `logError` only: `calls`, sizes and latencies count successful calls, and `errors` counts failures.
 
 **Logging — stderr only:** stdout carries the MCP JSON-RPC stream. Use `console.error` / `console.warn`; ESLint `no-console` rejects `console.log`, `console.info` and `console.debug` in `src/`.
 

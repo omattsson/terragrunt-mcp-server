@@ -472,9 +472,9 @@ Once configured, interact with Terragrunt documentation directly through Copilot
 terragrunt-mcp-server/
 ├── src/
 │   ├── index.ts                 # MCP server entry point
+│   ├── stdio-guard.ts           # Keeps stdout JSON-RPC only (imported first)
 │   ├── handlers/
-│   │   ├── tools.ts             # Tool execution handlers (7 consolidated tools)
-│   │   └── prompts.ts           # Prompt templates (future)
+│   │   └── tools.ts             # Tool execution handlers (7 consolidated tools)
 │   ├── terragrunt/
 │   │   ├── docs.ts              # Documentation fetching and caching
 │   │   ├── functions.ts         # Built-in functions manager

@@ -7,8 +7,10 @@
  * cannot see: stdout must carry only JSON-RPC, and failed tool calls must be
  * reported with isError.
  *
- * Runs offline: the docs source points at an unreachable address with retries
- * disabled, so the server falls back to the disk cache or the bundled fixture.
+ * Runs offline and independent of local state: the docs source points at an
+ * unreachable address with retries disabled, and a zero cache TTL makes any
+ * local disk cache count as expired, so the server always uses the bundled
+ * fixture.
  */
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
@@ -24,6 +26,7 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '.
 const SERVER_ENV = {
   TERRAGRUNT_LLMS_SOURCE: 'http://127.0.0.1:9/llms-small.txt',
   TERRAGRUNT_RETRY_MAX_RETRIES: '0',
+  TERRAGRUNT_CACHE_TTL_HOURS: '0',
   TERRAGRUNT_MCP_FILE_WRITE_ENABLED: 'false',
 };
 

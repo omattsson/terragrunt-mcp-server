@@ -10,24 +10,17 @@
  * Tools: 8 tools total (7 core tools + 1 observability tool), down from 11 in v0.4.x
  */
 
+// Must stay the first import: redirects console stdout methods before any other module loads
+import './stdio-guard.js';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import {
     CallToolRequestSchema,
     ListToolsRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
-import { ToolHandler, isErrorResult } from './handlers/tools.js';
+import { ToolHandler } from './handlers/tools.js';
 import { MetricsManager } from './terragrunt/metrics.js';
 import { parseModeFromArgs, ServerMode } from './modes/config.js';
-
-// stdout carries the MCP JSON-RPC stream. Route any stray console output from
-// this codebase or its dependencies to stderr so it cannot corrupt the protocol.
-const writeToStderr = (...args: unknown[]) => console.error(...args);
-/* eslint-disable no-console -- redirecting the stdout methods is the point here */
-console.log = writeToStderr;
-console.info = writeToStderr;
-console.debug = writeToStderr;
-/* eslint-enable no-console */
 
 class TerragruntMCPServer {
     private server: Server;
@@ -82,7 +75,7 @@ class TerragruntMCPServer {
         this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
             try {
                 const { name, arguments: args } = request.params;
-                const result = await this.toolHandler.executeTool(name, args);
+                const { result, isError } = await this.toolHandler.callTool(name, args);
 
                 return {
                     content: [
@@ -91,7 +84,7 @@ class TerragruntMCPServer {
                             text: JSON.stringify(result),
                         },
                     ],
-                    ...(isErrorResult(result) ? { isError: true } : {}),
+                    ...(isError ? { isError: true } : {}),
                 };
             } catch (error) {
                 const errorMsg = error instanceof Error ? error.message : 'Unknown error';
@@ -100,7 +93,7 @@ class TerragruntMCPServer {
                     content: [
                         {
                             type: 'text',
-                            text: `Error: ${errorMsg}`,
+                            text: JSON.stringify({ error: errorMsg }),
                         },
                     ],
                     isError: true,
