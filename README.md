@@ -176,7 +176,7 @@ Diagnose Terragrunt error messages and get actionable solutions, debugging steps
   - `minConfidence` (number, optional): Minimum confidence score 0-1 (default: 0.3)
   - `enableFuzzyMatching` (boolean, optional): Enable fuzzy matching (default: true)
   - `enrichWithDocs` (boolean, optional): Enrich with documentation-sourced solutions (default: false)
-- **Returns**: Matches with confidence scores, solutions, debugging steps, related errors, and documentation links (110 error patterns across 12 categories)
+- **Returns**: Matches with confidence scores, solutions, debugging steps, related errors, and documentation links (111 error patterns across 12 categories)
 - **Use cases**: Troubleshooting errors, getting actionable solutions, finding relevant documentation
 
 **Example prompts:**

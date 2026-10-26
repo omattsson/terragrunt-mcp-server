@@ -16,7 +16,7 @@ import {
  * This class analyzes error messages from Terragrunt and matches them against
  * known error patterns to provide helpful solutions and debugging steps.
  * 
- * **Database contains 110 error patterns across 12 categories**
+ * **Database contains 111 error patterns across 12 categories**
  * (counts are computed by getPatternStats and guarded against drift by tests)
  * 
  * Features:
@@ -38,7 +38,7 @@ import {
  * - oci: OCI source and credential errors (11 patterns)
  * - engine: IaC engine lifecycle failures (6 patterns)
  * - experiment: Experiment-not-enabled failures (1 pattern)
- * - cas: Content-addressable store (update_source_with_cas) failures (8 patterns)
+ * - cas: Content-addressable store (update_source_with_cas) failures (9 patterns)
  */
 export class ErrorPatternMatcher {
   private readonly docsManager: TerragruntDocsManager;
@@ -2818,7 +2818,7 @@ export class ErrorPatternMatcher {
   }
 
   /**
-   * CAS (content-addressable store) error patterns (category: cas, 8 patterns)
+   * CAS (content-addressable store) error patterns (category: cas, 9 patterns)
    *
    * Anchored to verbatim upstream Error() strings in internal/cas/errors.go at
    * the pinned revision. CAS backs update_source_with_cas and the cas:: getter.
@@ -2892,6 +2892,24 @@ export class ErrorPatternMatcher {
         solutions: [
           { step: 1, explanation: 'Write the source as a literal string' },
           { step: 2, explanation: 'Move any dynamic value out of the source when CAS is enabled' }
+        ],
+        documentationRefs: [
+          'https://docs.terragrunt.com/features/caching/cas/'
+        ]
+      },
+      {
+        id: 'cas-update-source-not-constant',
+        name: 'update_source_with_cas value is not constant',
+        category: 'cas',
+        regex: /update_source_with_cas\s+must\s+be\s+true,\s+false,\s+or\s+an\s+expression\s+of\s+literals\s+and\s+locals\s+that\s+call\s+no\s+functions/i,
+        description: 'The update_source_with_cas attribute calls a function or reads something other than literals and the locals of the same file',
+        likelyCauses: [
+          'update_source_with_cas calls a function, such as get_env() or can()',
+          'update_source_with_cas references values, dependency outputs, or another namespace that is not a local of the same file'
+        ],
+        solutions: [
+          { step: 1, explanation: 'Set update_source_with_cas to the literal true or false' },
+          { step: 2, explanation: 'Or compute it only from literals and locals declared in the same file, without function calls' }
         ],
         documentationRefs: [
           'https://docs.terragrunt.com/features/caching/cas/'

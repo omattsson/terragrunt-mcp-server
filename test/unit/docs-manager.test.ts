@@ -721,6 +721,12 @@ terraform {
       expectContent('/reference/cli/commands/browse/', [
         'Browse Terragrunt configurations in an interactive TUI.',
       ]);
+      expectContent('/reference/cli/commands/login/', [
+        'Sign in to the Gruntwork Developer Portal.',
+      ]);
+      expectContent('/reference/cli/commands/mcp/', [
+        'Serve Terragrunt operations to AI agents over the Model Context Protocol.',
+      ]);
       expectContent('/features/caching/cas/', [
         'deduplicate content across multiple Terragrunt configurations',
         'stack generation by avoiding redundant downloads of remote sources',
@@ -742,6 +748,8 @@ terraform {
         'The `unit` block supports the following arguments',
         '`no_dot_terragrunt_stack` (attribute, optional)',
         '`no_validation` (attribute, optional)',
+        'Setting it to a file is deprecated',
+        'before any dependency has run',
       ]);
       expectContent('/reference/hcl/functions/', [
         '`deep_merge(map1, map2, ...)` deeply merges maps/objects',
@@ -768,7 +776,7 @@ terraform {
 
       expect(realDocsManager.fetchFromLlmsTxt).toHaveBeenCalledOnce();
       expect(realDocsManager.loadCacheFromDisk).toHaveBeenCalledTimes(2);
-      expect(docs).toHaveLength(124);
+      expect(docs).toHaveLength(133);
       expect(docs).toContainEqual(expect.objectContaining({
         title: 'browse',
         url: 'https://docs.terragrunt.com/reference/cli/commands/browse/',

@@ -356,7 +356,7 @@ export const STATIC_BUILTIN_FUNCTIONS: TerragruntFunction[] = [
   {
     name: 'read_terragrunt_config',
     signature: 'read_terragrunt_config(config_path, [default_val])',
-    description: 'Parses a Terragrunt config file and returns a map of its contents. Exposes all blocks and attributes including locals, inputs, and dependency outputs. Also supports reading terragrunt.stack.hcl and terragrunt.values.hcl files.',
+    description: 'Parses a Terragrunt config file and returns a map of its contents. Exposes all blocks and attributes including locals, inputs, and dependency outputs. Also supports reading terragrunt.stack.hcl and terragrunt.values.hcl files. The read file cannot see the locals or feature flags of the reading unit, and its relative paths resolve from its own directory. Reading a config already being parsed further up the chain is a cycle error.',
     parameters: [
       { name: 'config_path', type: 'string', required: true, description: 'Path to the terragrunt config file to read' },
       { name: 'default_val', type: 'any', required: false, description: 'Default value to return if the file does not exist', default: undefined }
@@ -440,7 +440,7 @@ export const STATIC_BUILTIN_FUNCTIONS: TerragruntFunction[] = [
   {
     name: 'run_cmd',
     signature: 'run_cmd([flags], command, ...args)',
-    description: 'Runs a shell command and returns stdout as the result. Executes in the same folder as the terragrunt.hcl file. Supports special flags: --terragrunt-quiet (suppress output), --terragrunt-global-cache (cache globally), --terragrunt-no-cache (disable caching). Results are cached by default based on directory and command.',
+    description: 'Runs a shell command and returns stdout as the result. Executes in the same folder as the terragrunt.hcl file. Supports special flags: --terragrunt-quiet (suppress output), --terragrunt-global-cache (cache globally), --terragrunt-no-cache (disable caching). Results are cached by default, keyed on the directory of the file being evaluated, the command arguments, and the env vars Terragrunt configures for the command (so units with different --auth-provider-cmd credentials run it separately).',
     parameters: [
       { name: 'flags', type: 'string', required: false, description: 'Optional flags: --terragrunt-quiet, --terragrunt-global-cache, --terragrunt-no-cache', default: undefined },
       { name: 'command', type: 'string', required: true, description: 'The command to execute' },

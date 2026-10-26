@@ -69,6 +69,30 @@ describe('CLICommandsManager', () => {
                     flag: '--force',
                     envVar: 'TG_LOGIN_FORCE',
                 }));
+                expect(cmd?.documentationUrl).toContain('/reference/cli/commands/login/');
+            });
+
+            it('should get the experimental mcp command', () => {
+                const cmd = manager.getCommand('mcp');
+                expect(cmd).not.toBeNull();
+                expect(cmd?.experiment).toBe('mcp-command');
+                expect(cmd?.category).toBe('configuration');
+                expect(cmd?.documentationUrl).toContain('/reference/cli/commands/mcp/');
+                for (const [flag, envVar] of [
+                    ['--allow', 'TG_ALLOW'],
+                    ['--allow-cmd', 'TG_ALLOW_CMD'],
+                    ['--dangerously-allow-apply', 'TG_DANGEROUSLY_ALLOW_APPLY'],
+                    ['--tf-path', 'TG_TF_PATH'],
+                ]) {
+                    expect(cmd?.options).toContainEqual(expect.objectContaining({ flag, envVar }));
+                }
+            });
+
+            it('should expose --discovery-boundary on the stack commands', () => {
+                for (const name of ['stack run', 'stack output', 'stack generate']) {
+                    const cmd = manager.getCommand(name);
+                    expect(cmd?.options.find((o) => o.flag === '--discovery-boundary'), name).toBeDefined();
+                }
             });
 
             it('should not expose removed validate-inputs command', () => {
@@ -754,12 +778,12 @@ describe('CLICommandsManager', () => {
         // Commands the manager exposes that upstream documents under the single
         // opentofu-shortcuts page rather than their own command pages. Excluded
         // from the reverse (removal-drift) check below.
-        const COMMANDS_WITHOUT_DOC_PAGES = new Set(['plan', 'apply', 'destroy', 'output', 'init', 'login']);
+        const COMMANDS_WITHOUT_DOC_PAGES = new Set(['plan', 'apply', 'destroy', 'output', 'init']);
 
         it('resolves every documented command in the manager', () => {
             // Guard against a vacuous pass: if the manifest shape/paths changed
             // and no command pages were discovered, `missing` would be empty and
-            // the test would pass without checking. The pinned revision has 20.
+            // the test would pass without checking. The pinned revision has 22.
             expect(documentedCommands.length, 'no documented command pages found — manifest shape may have changed').toBeGreaterThanOrEqual(15);
             const manager = new CLICommandsManager();
             const missing = documentedCommands.filter((name) => manager.getCommand(name) === null);

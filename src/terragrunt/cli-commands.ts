@@ -338,6 +338,7 @@ export class CLICommandsManager {
       this.getDagGraphCommand(),
       this.getInfoPrintCommand(),
       this.getInfoStrictCommand(),
+      this.getMcpCommand(),
 
       // Shortcut Commands
       this.getPlanCommand(),
@@ -768,7 +769,8 @@ to Terragrunt's resolved configuration values.`,
       usage: 'terragrunt backend bootstrap [flags]',
       details: `Automatically creates the backend resources needed for remote state storage. 
 For AWS, this includes the S3 bucket and DynamoDB table for state locking.
-For GCP, this creates the GCS bucket. For Azure, it creates the storage account and container.`,
+For GCP, this creates the GCS bucket. For Azure, it creates the resource group, storage account, and blob container,
+and can grant the Storage Blob Data Contributor role when assign_blob_data_role = true.`,
       options: [
         {
           flag: '--config',
@@ -832,9 +834,10 @@ For GCP, this creates the GCS bucket. For Azure, it creates the storage account 
       category: 'backend',
       description: 'Migrate state from one backend to another.',
       usage: 'terragrunt backend migrate [flags] <src-unit> <dst-unit>',
-      details: `Migrates Terraform state from the current backend to a new backend configuration.
-This is useful when moving state between different storage backends or reconfiguring
-backend settings.`,
+      details: `Migrates OpenTofu/Terraform state from one unit to another.
+When both units use the same supported backend (S3, GCS, or Azure Storage), Terragrunt moves the
+state with the cloud provider's SDK. Azure Storage moves must stay within one storage account;
+cross-account moves are refused. Otherwise Terragrunt falls back to the OpenTofu/Terraform CLI.`,
       options: [
         {
           flag: '--force',
@@ -881,6 +884,13 @@ The stack run command respects dependency ordering and can run modules in parall
           defaultValue: 'false',
           envVar: 'TG_QUEUE_IGNORE_ERRORS',
         },
+        {
+          flag: '--discovery-boundary',
+          description: 'Bound graph discovery to a directory.',
+          type: 'path',
+          envVar: 'TG_DISCOVERY_BOUNDARY',
+          example: '--discovery-boundary ./prod',
+        },
       ],
       examples: [
         {
@@ -924,6 +934,13 @@ getting a summary of all resources and their outputs across the entire infrastru
           description: 'Output raw values.',
           type: 'boolean',
         },
+        {
+          flag: '--discovery-boundary',
+          description: 'Bound graph discovery to a directory.',
+          type: 'path',
+          envVar: 'TG_DISCOVERY_BOUNDARY',
+          example: '--discovery-boundary ./prod',
+        },
       ],
       examples: [
         {
@@ -956,6 +973,13 @@ Generation includes validation by default.`,
           type: 'boolean',
           defaultValue: 'false',
           envVar: 'TG_NO_STACK_VALIDATE',
+        },
+        {
+          flag: '--discovery-boundary',
+          description: 'Bound graph discovery to a directory.',
+          type: 'path',
+          envVar: 'TG_DISCOVERY_BOUNDARY',
+          example: '--discovery-boundary ./prod',
         },
       ],
       examples: [
@@ -1247,7 +1271,7 @@ units and stacks. The command requires the browse-tui experiment.`,
       category: 'main',
       description: 'Sign in to the Gruntwork Developer Portal.',
       usage: 'terragrunt --experiment tg-login login [flags]',
-      details: 'Signs in to the Gruntwork Developer Portal so Terragrunt can discover catalogs selected by your organization.',
+      details: 'Signs in to the Gruntwork Developer Portal so terragrunt catalog can discover the repositories your organization selected there.',
       options: [
         {
           flag: '--force',
@@ -1262,9 +1286,17 @@ units and stacks. The command requires the browse-tui experiment.`,
           description: 'Sign in to the Developer Portal',
           command: 'terragrunt --experiment tg-login login',
         },
+        {
+          description: 'Sign in again, replacing a credential that has not expired yet',
+          command: 'terragrunt --experiment tg-login login --force',
+        },
       ],
       relatedCommands: ['catalog'],
-      notes: ['Requires the tg-login experiment.'],
+      documentationUrl: 'https://docs.terragrunt.com/reference/cli/commands/login/',
+      notes: [
+        'Requires the tg-login experiment.',
+        'Uses the OAuth 2.0 Device Authorization Grant (RFC 8628) and stores one credential per organization in terragrunt/tokens.json under the user configuration directory.',
+      ],
     };
   }
 
@@ -1483,6 +1515,10 @@ including paths, versions, environment variables, and resolved configuration val
           description: 'Print configuration info',
           command: 'terragrunt info print',
         },
+        {
+          description: 'Print the context of every unit as JSON Lines, one unit per line',
+          command: "terragrunt info print --all | jq -c '{config_path, download_dir}'",
+        },
       ],
       relatedCommands: ['render'],
       documentationUrl: 'https://docs.terragrunt.com/reference/cli/commands/info/print/',
@@ -1523,6 +1559,67 @@ that control and its subcontrols.`,
       ],
       relatedCommands: ['info print'],
       documentationUrl: 'https://docs.terragrunt.com/reference/cli/commands/info/strict/',
+    };
+  }
+
+  private getMcpCommand(): CLICommand {
+    return {
+      name: 'mcp',
+      experiment: 'mcp-command',
+      aliases: [],
+      category: 'configuration',
+      description: 'Serve Terragrunt operations to AI agents over the Model Context Protocol.',
+      usage: 'terragrunt --experiment mcp-command mcp [flags]',
+      details: `Serves Terragrunt operations (read-only by default) to AI agents over the Model Context Protocol,
+speaking the protocol on standard input and output. It is typically launched by an MCP client rather than
+run by hand. Tools: discover, render_config, validate, run_order, get_outputs, and plan; apply and destroy
+are served only under --dangerously-allow-apply. Every tool is confined to the server root (--working-dir).
+The server denies every capability at startup; grant them with --allow.`,
+      options: [
+        {
+          flag: '--allow',
+          description: 'Grant a capability the server otherwise denies: exec, http, sops, or env. Repeatable.',
+          type: 'list',
+          envVar: 'TG_ALLOW',
+          example: '--allow exec --allow http',
+        },
+        {
+          flag: '--allow-cmd',
+          description: "Allow MCP tools to run a command a configuration names, such as one a run_cmd or a hook calls, given as a pattern like 'jq **'. Repeatable. Requires --allow=exec.",
+          type: 'list',
+          envVar: 'TG_ALLOW_CMD',
+          example: "--allow-cmd 'jq **'",
+        },
+        {
+          flag: '--dangerously-allow-apply',
+          description: 'Serve apply and destroy tools, which change and tear down real infrastructure. Each run is gated on a person accepting it in the MCP client. Requires --allow=exec.',
+          type: 'boolean',
+          defaultValue: 'false',
+          envVar: 'TG_DANGEROUSLY_ALLOW_APPLY',
+        },
+        {
+          flag: '--tf-path',
+          description: 'Path to the OpenTofu/Terraform binary the tools run. Defaults to tofu, or terraform when tofu is not installed.',
+          type: 'string',
+          envVar: 'TG_TF_PATH',
+        },
+      ],
+      examples: [
+        {
+          description: 'Serve read-only tools for the units under the current directory',
+          command: 'terragrunt --experiment mcp-command mcp',
+        },
+        {
+          description: 'Grant enough capabilities to plan',
+          command: 'terragrunt --experiment mcp-command mcp --allow=exec --allow=http --allow=env',
+        },
+      ],
+      relatedCommands: ['find', 'render', 'hcl validate', 'run'],
+      documentationUrl: 'https://docs.terragrunt.com/reference/cli/commands/mcp/',
+      notes: [
+        'Requires the mcp-command experiment. MCP clients usually set TG_EXPERIMENT=mcp-command in the server env.',
+        'Not a sandbox: the restrictions limit what Terragrunt does, not the programs it starts.',
+      ],
     };
   }
 

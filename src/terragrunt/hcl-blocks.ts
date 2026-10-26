@@ -68,7 +68,7 @@ const HCL_BLOCKS: HCLBlock[] = [
         name: 'update_source_with_cas',
         type: 'boolean',
         required: false,
-        description: 'Rewrite a relative source path when Terragrunt materializes the module through the content-addressable store (CAS).',
+        description: 'Rewrite a relative source path when Terragrunt materializes the module through the content-addressable store (CAS). Accepts true, false, or an expression of literals and same-file locals that calls no functions.',
         defaultValue: false,
       },
       {
@@ -212,7 +212,7 @@ const HCL_BLOCKS: HCLBlock[] = [
         name: 'disable_init',
         type: 'boolean',
         required: false,
-        description: 'Disable automatic remote state initialization.',
+        description: 'Skip automatic creation and management of remote state resources (supported for s3, gcs, and azurerm). OpenTofu/Terraform still initializes the backend normally.',
         defaultValue: false,
       },
       {
@@ -427,7 +427,7 @@ include "env" {
         name: 'config_path',
         type: 'string',
         required: true,
-        description: 'Relative or absolute path to the dependency\'s terragrunt.hcl directory.',
+        description: 'Relative or absolute path to the dependency\'s unit directory (with a terragrunt.hcl) or stack directory (with a terragrunt.stack.hcl). Setting it to a file is deprecated; see the dependency-config-path-file strict control.',
         example: '"../vpc"',
       },
       {
@@ -648,7 +648,7 @@ inputs = {
         name: 'update_source_with_cas',
         type: 'boolean',
         required: false,
-        description: 'Rewrite a relative source path when Terragrunt materializes the unit through the content-addressable store (CAS).',
+        description: 'Rewrite a relative source path when Terragrunt materializes the unit through the content-addressable store (CAS). Accepts true, false, or an expression of literals and same-file locals that calls no functions.',
         defaultValue: false,
       },
       {
@@ -744,7 +744,7 @@ inputs = {
         name: 'update_source_with_cas',
         type: 'boolean',
         required: false,
-        description: 'Rewrite a relative source path when Terragrunt materializes the stack through the content-addressable store (CAS).',
+        description: 'Rewrite a relative source path when Terragrunt materializes the stack through the content-addressable store (CAS). Accepts true, false, or an expression of literals and same-file locals that calls no functions.',
         defaultValue: false,
       },
       {
@@ -962,7 +962,7 @@ exclude {
   {
     name: 'exclude',
     displayName: 'Exclude Block',
-    description: 'Conditionally excludes a unit from selected actions. This replaces the removed top-level skip attribute with action-aware control.',
+    description: 'Conditionally excludes a unit from selected actions. This replaces the removed top-level skip attribute with action-aware control. Its attributes cannot reference dependency outputs, because exclude blocks are evaluated while building the run queue, before any dependency has run.',
     category: 'execution',
     syntax: 'exclude { ... }',
     attributes: [
