@@ -189,7 +189,7 @@ describe('Single-Fetch Doc Loading', () => {
       manager.contentCache.set('https://example.com/test', 'Full content here');
       
       // Build indexed metadata for search
-      manager.buildMetadataIndex();
+      manager.buildSearchIndex();
 
       const results = await manager.searchDocs('Test');
       
@@ -219,7 +219,7 @@ describe('Single-Fetch Doc Loading', () => {
       });
       manager.contentCache.set('doc2', 'content');
       
-      manager.buildMetadataIndex();
+      manager.buildSearchIndex();
 
       const results = await manager.searchDocs('test');
       
@@ -249,7 +249,7 @@ describe('Single-Fetch Doc Loading', () => {
       });
       manager.contentCache.set('nomatch', 'content');
       
-      manager.buildMetadataIndex();
+      manager.buildSearchIndex();
 
       const results = await manager.searchDocs('Matching');
       

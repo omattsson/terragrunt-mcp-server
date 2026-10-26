@@ -41,7 +41,7 @@ The Terragrunt MCP Server provides **8 consolidated tools** for comprehensive Te
 ### Modes — search_docs
 
 #### Mode: search (default)
-Semantic search across all documentation.
+Relevance-ranked full-text search across all documentation. Queries can be natural language ("remote state s3", "how to use run --all") or identifiers (`find_in_parent_folders`, `terragrunt.stack.hcl`). Results are ranked best first (BM25 over the page text, boosted by matches in the title, URL, section headings and section); each result has a `score` and a snippet centred on the matched terms. The `examples` mode uses the same ranking to pick pages.
 
 **Required**: `query`  
 **Optional**: `page`, `pageSize`
@@ -99,13 +99,14 @@ Find code examples and patterns.
 **Search mode response:**
 ```json
 {
-  "query": "dependencies",
+  "query": "dependency mock_outputs",
   "results": [
     {
-      "title": "Dependencies",
-      "url": "https://docs.terragrunt.com/...",
-      "section": "features",
-      "snippet": "...",
+      "title": "Blocks",
+      "url": "https://docs.terragrunt.com/reference/hcl/blocks/",
+      "section": "reference",
+      "score": 26.729,
+      "snippet": "...config_path = \"\"   mock_outputs = { attribute = \"hello\" ...",
       "lastUpdated": "2025-10-23"
     }
   ],

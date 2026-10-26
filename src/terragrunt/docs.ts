@@ -5,6 +5,7 @@ import { fileURLToPath } from 'url';
 import { gzip, gunzip } from 'zlib';
 import { promisify } from 'util';
 import { LRUCache } from 'lru-cache';
+import { DocSearchIndex, buildSnippet } from './search-index.js';
 import { TERRAGRUNT_DOC_MANIFEST } from './docs-manifest.js';
 
 const gzipAsync = promisify(gzip);
@@ -26,10 +27,10 @@ export interface CodeBlock {
   language: string;
 }
 
-interface IndexedMetadata extends DocMetadata {
-  titleLower: string;
-  sectionLower: string;
-  urlLower: string;
+/** A search result with its relevance score */
+export interface RankedDoc {
+  doc: TerragruntDoc;
+  score: number;
 }
 
 interface CacheMetadata {
@@ -42,6 +43,8 @@ interface LoadingMetrics {
   startupTimeMs: number;
   /** Time to fetch all docs from llms.txt and build indexes */
   fetchAndIndexTime?: number;
+  /** Time to build the full-text search index on the last load */
+  searchIndexBuildTime?: number;
   initialMemoryMB: number;
   metadataCount: number;
 }
@@ -132,7 +135,7 @@ export function slugifyTitle(title: string): string {
 
 export class TerragruntDocsManager {
   private readonly baseUrl = 'https://docs.terragrunt.com';
-  private searchCache: LRUCache<string, TerragruntDoc[]>;
+  private searchCache: LRUCache<string, RankedDoc[]>;
   private lastFetchTime: Date | null = null;
   private readonly cacheExpiry: number;
   private readonly cacheDir: string;
@@ -143,7 +146,7 @@ export class TerragruntDocsManager {
   
   // Indexed metadata and content caches (single-fetch llms.txt model)
   private metadataCache: Map<string, DocMetadata> = new Map();
-  private indexedMetadata: IndexedMetadata[] = [];
+  private searchIndex = new DocSearchIndex([]);
   private contentCache: Map<string, string> = new Map();
   private loadingMetrics: LoadingMetrics;
   private readonly startTime: number;
@@ -198,7 +201,7 @@ export class TerragruntDocsManager {
     };
     
     // Initialize LRU cache for search results (max 100 searches, 5 min TTL)
-    this.searchCache = new LRUCache<string, TerragruntDoc[]>({
+    this.searchCache = new LRUCache<string, RankedDoc[]>({
       max: 100,
       ttl: 1000 * 60 * 5, // 5 minutes
       updateAgeOnGet: true
@@ -309,7 +312,7 @@ export class TerragruntDocsManager {
       this.lastFetchTime = new Date(); // Mark as fresh to prevent immediate re-fetch
       
       // Build metadata index for fixture docs
-      this.buildMetadataIndex();
+      this.buildSearchIndex();
 
       console.error(`Loaded ${docs.length} docs from fixture (fallback mode)`);
       return true;
@@ -468,6 +471,8 @@ export class TerragruntDocsManager {
         console.warn('Disk cache has metadata but no meaningful content — treating as cache miss');
         this.metadataCache.clear();
         this.contentCache.clear();
+        // Keep the search index consistent with the now-empty caches
+        this.buildSearchIndex();
         this.lastFetchTime = null;
         this.stats.misses++;
         return false;
@@ -477,7 +482,7 @@ export class TerragruntDocsManager {
       this.stats.hits++;
       
       // Build indexed metadata for optimized searches
-      this.buildMetadataIndex();
+      this.buildSearchIndex();
       
       // Calculate startup time
       this.loadingMetrics.startupTimeMs = performance.now() - this.startTime;
@@ -613,8 +618,6 @@ export class TerragruntDocsManager {
       
       this.metadataCache.clear();
       this.contentCache.clear();
-      this.searchCache.clear();
-      this.indexedMetadata = [];
       
       // Populate metadata and content caches from llms.txt results
       for (const doc of docs) {
@@ -631,7 +634,7 @@ export class TerragruntDocsManager {
       this.stats.lastRefresh = this.lastFetchTime;
       
       // Build indexed metadata for optimized searches
-      this.buildMetadataIndex();
+      this.buildSearchIndex();
       
       const endTime = performance.now();
       this.loadingMetrics.fetchAndIndexTime = endTime - refreshStartTime;
@@ -689,24 +692,42 @@ export class TerragruntDocsManager {
   }
 
   /**
-   * Build metadata index with pre-computed lowercase fields for optimized searches.
+   * Build the full-text search index from the metadata and content caches.
+   * Called after every docs load; cached search results are dropped.
    */
-  private buildMetadataIndex(): void {
-    const metadata = Array.from(this.metadataCache.values());
-    this.indexedMetadata = metadata.map(meta => ({
-      ...meta,
-      titleLower: meta.title.toLowerCase(),
-      sectionLower: meta.section.toLowerCase(),
-      urlLower: meta.url.toLowerCase()
-    }));
-    console.error(`Built metadata index for ${this.indexedMetadata.length} documents`);
+  private buildSearchIndex(): void {
+    const indexStart = performance.now();
+    this.searchIndex = new DocSearchIndex(this.assembleDocs());
+    this.searchCache.clear();
+    this.loadingMetrics.searchIndexBuildTime = performance.now() - indexStart;
+    console.error(`Built search index for ${this.searchIndex.size} documents in ${this.loadingMetrics.searchIndexBuildTime.toFixed(2)}ms`);
   }
 
+  /**
+   * Build a snippet of the content centred on the query's most specific word.
+   */
+  getSnippet(content: string, query: string, maxLength = 300): string {
+    return buildSnippet(content, query, this.searchIndex, maxLength);
+  }
+
+  /**
+   * Search the docs, best match first.
+   */
   async searchDocs(query: string): Promise<TerragruntDoc[]> {
+    return (await this.searchDocsRanked(query)).map(result => result.doc);
+  }
+
+  /**
+   * Search the docs with relevance scores, best match first. Ranking is BM25
+   * over the body plus title, URL, heading and section matches (see
+   * DocSearchIndex). Only documents matching at least one query term are returned.
+   */
+  async searchDocsRanked(query: string): Promise<RankedDoc[]> {
     const startTime = performance.now();
     
-    // Check LRU cache first
-    const cached = this.searchCache.get(query);
+    // Check LRU cache first, unless the docs are due for a refresh: cached
+    // results would come from the old index and skip the refresh
+    const cached = this.shouldRefreshCache() ? undefined : this.searchCache.get(query);
     if (cached) {
       this.stats.hits++;
       this.stats.searches++;
@@ -717,52 +738,27 @@ export class TerragruntDocsManager {
     
     // Ensure docs are loaded
     await this.fetchLatestDocs();
-    
-    const lowercaseQuery = query.toLowerCase();
 
-    // Search indexed metadata first (pre-computed lowercase fields)
-    const metadataMatchUrls = new Set<string>();
-    const metadataMatches: typeof this.indexedMetadata = [];
-
-    for (const indexed of this.indexedMetadata) {
-      if (
-        indexed.titleLower.includes(lowercaseQuery) ||
-        indexed.sectionLower.includes(lowercaseQuery) ||
-        indexed.urlLower.includes(lowercaseQuery)
-      ) {
-        metadataMatches.push(indexed);
-        metadataMatchUrls.add(indexed.url);
-      }
+    let results: RankedDoc[];
+    if (query === '') {
+      // An empty query applies no filter: every doc, unranked
+      results = this.assembleDocs().map(doc => ({ doc, score: 0 }));
+    } else if (query.trim() === '') {
+      // Whitespace has nothing to search for
+      results = [];
+    } else if (!/[a-z0-9]/i.test(query)) {
+      // No words to rank (symbols such as "${" or "->", or a non-Latin script):
+      // fall back to case-insensitive substring matching, unranked
+      const needle = query.trim().toLowerCase();
+      results = this.assembleDocs()
+        .filter(doc => doc.content.toLowerCase().includes(needle) || doc.title.toLowerCase().includes(needle))
+        .map(doc => ({ doc, score: 0 }));
+    } else {
+      results = this.searchIndex.search(query).map(hit => ({
+        doc: this.assembleDoc(hit.url),
+        score: hit.score
+      }));
     }
-
-    // Also search content for docs not already matched by metadata
-    const contentMatches: typeof this.indexedMetadata = [];
-    for (const indexed of this.indexedMetadata) {
-      if (metadataMatchUrls.has(indexed.url)) continue;
-      const content = this.contentCache.get(indexed.url);
-      if (content && content.toLowerCase().includes(lowercaseQuery)) {
-        contentMatches.push(indexed);
-      }
-    }
-
-    // Sort: title matches first, then section/URL matches, then content matches
-    metadataMatches.sort((a, b) => {
-      const aTitle = a.titleLower.includes(lowercaseQuery);
-      const bTitle = b.titleLower.includes(lowercaseQuery);
-      if (aTitle && !bTitle) return -1;
-      if (!aTitle && bTitle) return 1;
-
-      const aSection = a.sectionLower.includes(lowercaseQuery);
-      const bSection = b.sectionLower.includes(lowercaseQuery);
-      if (aSection && !bSection) return -1;
-      if (!aSection && bSection) return 1;
-
-      return 0;
-    });
-
-    // Metadata matches ranked above content matches
-    const allMatches = [...metadataMatches, ...contentMatches];
-    const results = allMatches.map(meta => this.assembleDoc(meta.url));
 
     // Cache the results
     this.searchCache.set(query, results);
@@ -835,15 +831,10 @@ export class TerragruntDocsManager {
   }
 
   async getCodeExamples(topic: string): Promise<Array<{ doc: TerragruntDoc, examples: CodeBlock[] }>> {
-    const docs = await this.fetchLatestDocs();
-    const query = topic.toLowerCase();
     const results: Array<{ doc: TerragruntDoc, examples: CodeBlock[] }> = [];
 
-    // Search docs that match the topic
-    const relevantDocs = docs.filter(doc =>
-      doc.title.toLowerCase().includes(query) ||
-      doc.content.toLowerCase().includes(query)
-    );
+    // Search docs that match the topic, best match first
+    const relevantDocs = await this.searchDocs(topic);
 
     // Extract code examples from each relevant doc
     for (const doc of relevantDocs.slice(0, 10)) { // Limit to 10 docs

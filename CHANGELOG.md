@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### ✨ Improved
+
+- **Relevance-ranked `search_docs`** (#293): search used to match the whole query as one substring, so natural queries such as "remote state s3" or "how to use run --all" returned nothing, and single words returned unrelated pages first.
+  - A new BM25 index (`src/terragrunt/search-index.ts`) ranks pages by their text, with bonuses for query terms in the title, URL, section headings and section.
+  - Identifiers (`find_in_parent_folders`) and file names (`terragrunt.stack.hcl`) match whole and by their parts.
+  - A word that doesn't occur in the docs matches the words it begins ("boot" finds `bootstrap`), at lower weight.
+  - Queries without letters or digits (`${`, `->`) still use substring matching. Queries made only of stopwords or whitespace return no results.
+  - Results include a `score` and a snippet centred on the matched terms.
+  - `examples` mode, related docs in `build_config`, and diagnosis enrichment use the same ranking. Diagnosis enrichment keeps the top 3 docs per search.
+  - A golden-query test (42 queries against the offline fixture) guards ranking quality: an expected page is in the top 3 for all 42, against 15 with the old matcher.
+
 ### ⚠️ BREAKING CHANGES
 
 - **File writing requires an explicit allowlist** (#291): `build_config` no longer falls back to the server's working directory, which MCP clients often set to `$HOME`. Set `TERRAGRUNT_MCP_ALLOWED_DIRS` to enable writes and `compareWith` diffs; until then they fail with `NO_ALLOWED_DIRECTORIES`. Filesystem roots are ignored as allowed directories.

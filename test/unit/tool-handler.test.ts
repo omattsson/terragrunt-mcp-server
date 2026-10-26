@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { ToolHandler } from '../../src/handlers/tools.js';
 import { TerragruntDoc } from '../../src/terragrunt/docs.js';
 import { ServerMode } from '../../src/modes/config.js';
+import { buildSnippet } from '../../src/terragrunt/search-index.js';
 
 // Create shared mock instances
 const mockDocsManager = {
@@ -11,7 +12,12 @@ const mockDocsManager = {
   getCliCommandHelp: vi.fn(),
   getHclConfigReference: vi.fn(),
   getCodeExamples: vi.fn(),
-  searchDocs: vi.fn()
+  searchDocs: vi.fn(),
+  // Ranked search delegates to the searchDocs mock so tests can keep stubbing searchDocs
+  searchDocsRanked: vi.fn(async (query: string) =>
+    ((await mockDocsManager.searchDocs(query)) ?? []).map((doc: TerragruntDoc) => ({ doc, score: 1 }))
+  ),
+  getSnippet: vi.fn((content: string, query: string) => buildSnippet(content, query))
 };
 
 const mockResourceHandler = {
@@ -37,6 +43,8 @@ vi.mock('../../src/terragrunt/docs.js', () => {
       getHclConfigReference = mockDocsManager.getHclConfigReference;
       getCodeExamples = mockDocsManager.getCodeExamples;
       searchDocs = mockDocsManager.searchDocs;
+      searchDocsRanked = mockDocsManager.searchDocsRanked;
+      getSnippet = mockDocsManager.getSnippet;
     }
   };
 });
