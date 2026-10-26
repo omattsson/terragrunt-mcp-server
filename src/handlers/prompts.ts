@@ -18,5 +18,5 @@ export const confirmAction = async (action: string): Promise<boolean> => {
 };
 
 export const displayMessage = (message: string): void => {
-    console.log(message);
+    console.error(message);
 };

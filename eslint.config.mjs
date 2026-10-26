@@ -32,7 +32,8 @@ export default [
     rules: {
       '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
       '@typescript-eslint/no-explicit-any': 'off',
-      'no-console': 'off',
+      // stdout carries the MCP JSON-RPC stream; log to stderr only
+      'no-console': ['error', { allow: ['error', 'warn'] }],
       'no-case-declarations': 'off',
       'no-undef': 'off', // TypeScript handles this
       'no-unused-vars': 'off', // Use TypeScript ESLint version instead

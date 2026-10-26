@@ -31,6 +31,9 @@ import { ToolHandler } from './handlers/tools';     // ✗ Runtime crash
 try { return { data: await operation() }; }
 catch (error) { console.error('...', error); return { data: [], error: 'message' }; }
 ```
+A result with a non-empty `error` or `success: false` is reported to the client with `isError: true` and counted as an error in metrics (`isErrorResult` in `src/handlers/tools.ts`). Preview results that still produced a diff are not errors.
+
+**Logging — stderr only:** stdout carries the MCP JSON-RPC stream. Use `console.error` / `console.warn`; ESLint `no-console` rejects `console.log`, `console.info` and `console.debug` in `src/`.
 
 **Template loading priority:** `TemplatesManager` (`src/terragrunt/templates/index.ts`) loads from multiple loaders sorted by priority (builtin=10, schema=15, filesystem=50, custom API=100). Higher priority overrides lower.
 

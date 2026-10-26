@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### 🐛 Fixed
+
+- **stdout carries only JSON-RPC** (#289): informational logs from the docs cache and template loaders were written to stdout, interleaving non-JSON lines with protocol messages on the stdio transport. All logging now goes to stderr, the entry point redirects `console.log/info/debug` to stderr as a backstop, and ESLint `no-console` allows only `console.error` and `console.warn`. The lint script now quotes its glob so it covers every file under `src/`.
+- **Failed tool calls report `isError`** (#290): results with a non-empty `error` or `success: false` (unknown tools, not-found lookups, mode restrictions, validation and generation failures) are now returned with `isError: true` and counted as errors in metrics. Previews that still produced a diff are not treated as errors.
+
+### 🧪 Testing
+
+- **End-to-end stdio tests** (#292): a new integration suite builds the server, spawns `dist/index.js` and every `bin/` mode wrapper, and drives them through the MCP SDK client over stdio. It asserts that stdout carries only JSON-RPC, checks per-mode tool lists, and checks `isError` for successful and failing calls. It runs offline against the bundled fixture.
+
 ## [1.1.0] - 2026-02-22
 
 ### ✨ Added

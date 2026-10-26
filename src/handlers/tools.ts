@@ -173,6 +173,38 @@ interface BuildConfigArgs {
     compareWith?: string;
 }
 
+/**
+ * Decide whether a tool result is a tool-level failure, which the server
+ * reports to the client as an MCP result with isError: true.
+ *
+ * A result is a failure when it carries a non-empty `error` or `success: false`.
+ * Preview (dry-run) results are the exception: a preview that computed a diff
+ * but reports the write would be blocked (e.g. file exists, overwrite disabled)
+ * is a successful dry run, not an error. A preview without a diff is an error.
+ */
+export function isErrorResult(result: unknown): boolean {
+    if (!result || typeof result !== 'object') {
+        return false;
+    }
+    const r = result as Record<string, any>;
+
+    if (r.preview === true) {
+        return r.success === false && typeof r.previewResult?.diff !== 'string';
+    }
+
+    return (typeof r.error === 'string' && r.error.length > 0) || r.success === false;
+}
+
+/**
+ * Extract a human-readable failure message from an error result.
+ */
+function getResultErrorMessage(result: Record<string, any>): string {
+    return result.error
+        || result.writeResult?.error
+        || result.previewResult?.error
+        || 'Tool reported failure';
+}
+
 export class ToolHandler {
     private mode: ServerMode;
     private docsManager?: TerragruntDocsManager;
@@ -837,6 +869,9 @@ export class ToolHandler {
             
             // Log metrics (skip for get_server_metrics to avoid recursion)
             if (name !== 'get_server_metrics') {
+                if (isErrorResult(result)) {
+                    this.metricsManager.logError('tool', name, new Error(getResultErrorMessage(result)));
+                }
                 this.metricsManager.logResponse('tool', name, result, latencyMs);
             }
             

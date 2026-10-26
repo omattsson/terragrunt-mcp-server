@@ -58,7 +58,7 @@ export class SchemaTemplateLoader implements TemplateLoader {
         }
       }
       
-      console.log(`[SchemaTemplateLoader] Loaded ${templates.length} schema-based templates`);
+      console.error(`[SchemaTemplateLoader] Loaded ${templates.length} schema-based templates`);
     } catch (error) {
       console.error('[SchemaTemplateLoader] Error reading schema directory:', error);
       // Return empty array if directory doesn't exist or can't be read

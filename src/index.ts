@@ -16,9 +16,18 @@ import {
     CallToolRequestSchema,
     ListToolsRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
-import { ToolHandler } from './handlers/tools.js';
+import { ToolHandler, isErrorResult } from './handlers/tools.js';
 import { MetricsManager } from './terragrunt/metrics.js';
 import { parseModeFromArgs, ServerMode } from './modes/config.js';
+
+// stdout carries the MCP JSON-RPC stream. Route any stray console output from
+// this codebase or its dependencies to stderr so it cannot corrupt the protocol.
+const writeToStderr = (...args: unknown[]) => console.error(...args);
+/* eslint-disable no-console -- redirecting the stdout methods is the point here */
+console.log = writeToStderr;
+console.info = writeToStderr;
+console.debug = writeToStderr;
+/* eslint-enable no-console */
 
 class TerragruntMCPServer {
     private server: Server;
@@ -82,6 +91,7 @@ class TerragruntMCPServer {
                             text: JSON.stringify(result),
                         },
                     ],
+                    ...(isErrorResult(result) ? { isError: true } : {}),
                 };
             } catch (error) {
                 const errorMsg = error instanceof Error ? error.message : 'Unknown error';
