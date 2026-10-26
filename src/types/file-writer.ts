@@ -117,8 +117,14 @@ export interface FileWriterConfig {
   /** Whether file writing is enabled (default: true) */
   enabled: boolean;
   
-  /** List of allowed directories where files can be written */
+  /**
+   * Directories where files can be written (default: none). With an empty
+   * list, writes and diff reads are refused. Filesystem roots are ignored.
+   */
   allowedDirectories: string[];
+
+  /** File extensions that may be written or diffed, lowercase with a leading dot (default: ['.hcl']) */
+  allowedExtensions: string[];
   
   /** Automatically create backups before overwriting (default: true) */
   autoBackup: boolean;
@@ -135,6 +141,10 @@ export interface FileWriterConfig {
  */
 export enum FileWriteErrorType {
   DISABLED = 'FILE_WRITING_DISABLED',
+  NO_ALLOWED_DIRECTORIES = 'NO_ALLOWED_DIRECTORIES',
+  DISALLOWED_FILE_TYPE = 'DISALLOWED_FILE_TYPE',
+  SYMLINK_NOT_ALLOWED = 'SYMLINK_NOT_ALLOWED',
+  HARDLINK_NOT_ALLOWED = 'HARDLINK_NOT_ALLOWED',
   PATH_TRAVERSAL = 'PATH_TRAVERSAL_DETECTED',
   OUTSIDE_ALLOWED_DIRS = 'OUTSIDE_ALLOWED_DIRECTORIES',
   FILE_EXISTS = 'FILE_EXISTS_NO_OVERWRITE',

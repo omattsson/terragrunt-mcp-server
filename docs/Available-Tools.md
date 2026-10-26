@@ -710,11 +710,16 @@ File writing includes comprehensive security validation:
 Control file writing behavior with environment variables:
 
 ```bash
-# Enable/disable file writing (default: false for security)
-export TERRAGRUNT_MCP_FILE_WRITE_ENABLED=true
-
-# Comma-separated list of allowed directories
+# Comma-separated list of allowed directories (required: no default, so
+# file writing is refused until this is set)
 export TERRAGRUNT_MCP_ALLOWED_DIRS="/home/user/terraform,/home/user/projects"
+
+# File extensions that may be written or diffed (default: .hcl).
+# Dot-files and dot-directories are always refused.
+export TERRAGRUNT_MCP_ALLOWED_EXTENSIONS=".hcl"
+
+# Set to false to turn file writing off entirely (default: true)
+export TERRAGRUNT_MCP_FILE_WRITE_ENABLED=true
 
 # Automatic backup creation (default: true)
 export TERRAGRUNT_MCP_AUTO_BACKUP=true
@@ -808,8 +813,12 @@ Or write-only with existing content:
 
 | Error Type | Description | Solution |
 |------------|-------------|----------|
-| `FILE_WRITING_DISABLED` | File writing not enabled | Set `TERRAGRUNT_MCP_FILE_WRITE_ENABLED=true` |
-| `OUTSIDE_ALLOWED_DIRECTORIES` | Path not in whitelist | Add directory to `TERRAGRUNT_MCP_ALLOWED_DIRS` |
+| `FILE_WRITING_DISABLED` | File writing turned off | Unset `TERRAGRUNT_MCP_FILE_WRITE_ENABLED` or set it to `true` |
+| `NO_ALLOWED_DIRECTORIES` | No allowed directory configured | Set `TERRAGRUNT_MCP_ALLOWED_DIRS` |
+| `OUTSIDE_ALLOWED_DIRECTORIES` | Path not in whitelist, or resolves outside it through a symlinked directory | Add directory to `TERRAGRUNT_MCP_ALLOWED_DIRS`, or write to the real path |
+| `DISALLOWED_FILE_TYPE` | Not an allowed extension (`.hcl` by default), or a dot-file / dot-directory path | Write a `.hcl` file, or extend `TERRAGRUNT_MCP_ALLOWED_EXTENSIONS` |
+| `SYMLINK_NOT_ALLOWED` | The target path (or a `compareWith` base) is a symlink that cannot be followed | Write to the real file path |
+| `HARDLINK_NOT_ALLOWED` | The file has more than one hard link | Write to a regular, singly linked file |
 | `PATH_TRAVERSAL_DETECTED` | Malicious path detected | Use absolute paths without `../` |
 | `FILE_EXISTS_NO_OVERWRITE` | File exists, overwrite disabled | Set `overwrite: true` in arguments |
 | `PERMISSION_DENIED` | No write permission | Check file/directory permissions |

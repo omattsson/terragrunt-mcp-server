@@ -20,32 +20,44 @@ File writing is **disabled by default** and requires explicit configuration. The
 
 ### Defense in Depth
 
-1. **Opt-in by default**: File writing must be explicitly enabled
+1. **Opt-in by default**: There is no default allowed directory. Until `TERRAGRUNT_MCP_ALLOWED_DIRS` is set, writes and diff reads are refused with `NO_ALLOWED_DIRECTORIES`. A filesystem root (`/`, `C:\`) is never accepted as an allowed directory.
 2. **Directory whitelisting**: Only write to explicitly allowed directories
-3. **Path traversal prevention**: Automatic detection and blocking of `../` patterns
-4. **Overwrite protection**: Requires explicit permission to overwrite files
-5. **Automatic backups**: Creates timestamped backups before overwriting
-6. **File size limits**: Configurable maximum file size
+3. **File type allowlist**: Only `.hcl` files by default (`terragrunt.hcl`, `root.hcl`, `terragrunt.stack.hcl`, …). Extra extensions can be enabled with `TERRAGRUNT_MCP_ALLOWED_EXTENSIONS`.
+4. **No dot-files or dot-directories**: Any path segment starting with `.` below the allowed directory is refused, so `.git/hooks`, `.github/workflows`, `.envrc` and similar files cannot be written or read.
+5. **Link escape prevention**: A target that is a symlink or has more than one hard link is refused, and the file is opened with `O_NOFOLLOW` and its link count re-checked before it is truncated. The target's real path (resolved through its nearest existing parent directory) must stay inside an allowed directory and pass the file-type and dot-file rules, so a symlinked directory cannot redirect a write elsewhere, including into `.github` or `.git`. The real path is checked again after parent directories are created. A process that can modify the allowed directory at the same moment could still swap a directory for a symlink between that check and the write; Node.js has no `openat()` to close that gap.
+6. **Path traversal prevention**: Automatic detection and blocking of `../` patterns
+7. **Overwrite protection**: Requires explicit permission to overwrite files; an overwritten file keeps its permissions
+8. **Automatic backups**: Creates timestamped backups before overwriting
+9. **File size limits**: Configurable maximum file size
+
+The same path, file type and symlink rules apply to the files read for `compareWith` diffs, so a diff cannot be used to read secrets such as a `.env` file.
 
 ### Security Layers
 
 ```text
 ┌─────────────────────────────────────┐
-│  1. Enabled Check                   │  ← TERRAGRUNT_MCP_FILE_WRITE_ENABLED
+│  1. Enabled + Allowlist Check       │  ← TERRAGRUNT_MCP_FILE_WRITE_ENABLED,
+│                                     │    TERRAGRUNT_MCP_ALLOWED_DIRS (required)
 ├─────────────────────────────────────┤
-│  2. Path Normalization              │  ← path.resolve()
+│  2. File Size Validation            │  ← TERRAGRUNT_MCP_MAX_FILE_SIZE
 ├─────────────────────────────────────┤
 │  3. Path Traversal Detection        │  ← ../ pattern matching
 ├─────────────────────────────────────┤
-│  4. Directory Whitelist Validation  │  ← TERRAGRUNT_MCP_ALLOWED_DIRS
+│  4. Path Normalization              │  ← path.resolve()
 ├─────────────────────────────────────┤
-│  5. File Size Validation            │  ← TERRAGRUNT_MCP_MAX_FILE_SIZE
+│  5. Directory Whitelist Validation  │  ← TERRAGRUNT_MCP_ALLOWED_DIRS
 ├─────────────────────────────────────┤
-│  6. Overwrite Check                 │  ← overwrite parameter
+│  6. File Name Policy                │  ← TERRAGRUNT_MCP_ALLOWED_EXTENSIONS,
+│                                     │    no dot-files / dot-directories
 ├─────────────────────────────────────┤
-│  7. Backup Creation                 │  ← TERRAGRUNT_MCP_AUTO_BACKUP
+│  7. Symlink Checks                  │  ← target not a symlink; real parent
+│                                     │    path inside allowed directories
 ├─────────────────────────────────────┤
-│  8. Write Operation                 │  ← fs.writeFile()
+│  8. Overwrite Check                 │  ← overwrite parameter
+├─────────────────────────────────────┤
+│  9. Backup Creation                 │  ← TERRAGRUNT_MCP_AUTO_BACKUP
+├─────────────────────────────────────┤
+│ 10. Write Operation                 │  ← open(O_NOFOLLOW), mode preserved
 └─────────────────────────────────────┘
 ```
 
@@ -56,11 +68,12 @@ File writing is **disabled by default** and requires explicit configuration. The
 ### Step 1: Enable File Writing
 
 ```bash
-# Enable file writing
-export TERRAGRUNT_MCP_FILE_WRITE_ENABLED=true
-
-# Configure allowed directories (comma-separated)
+# Configure allowed directories (comma-separated). Required: without it,
+# file writing is refused.
 export TERRAGRUNT_MCP_ALLOWED_DIRS="/home/user/terraform,/home/user/projects"
+
+# Optional: allow file types beyond .hcl
+export TERRAGRUNT_MCP_ALLOWED_EXTENSIONS=".hcl,.tfvars"
 ```
 
 ### Step 2: Generate Configuration
@@ -99,8 +112,9 @@ The tool will respond with success details:
 
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
-| `TERRAGRUNT_MCP_FILE_WRITE_ENABLED` | boolean | `false` | Enable/disable file writing |
-| `TERRAGRUNT_MCP_ALLOWED_DIRS` | string | `""` | Comma-separated allowed directories |
+| `TERRAGRUNT_MCP_FILE_WRITE_ENABLED` | boolean | `true` | Set to `false` to turn file writing and diff reads off entirely |
+| `TERRAGRUNT_MCP_ALLOWED_DIRS` | string | none | Comma-separated allowed directories. **Required** for writes; filesystem roots are ignored |
+| `TERRAGRUNT_MCP_ALLOWED_EXTENSIONS` | string | `.hcl` | Comma-separated file extensions that may be written or diffed |
 | `TERRAGRUNT_MCP_AUTO_BACKUP` | boolean | `true` | Automatic backup creation |
 | `TERRAGRUNT_MCP_MAX_FILE_SIZE` | number | `1048576` | Maximum file size (bytes) |
 
@@ -442,6 +456,8 @@ export TERRAGRUNT_MCP_ALLOWED_DIRS="/home/user/terraform,/home/user/infra"
 # Bad: Too permissive
 export TERRAGRUNT_MCP_ALLOWED_DIRS="/home/user,/tmp,/var"
 ```
+
+Dot-files and non-`.hcl` files stay protected even inside a broad directory, but a narrow allowlist still limits which `.hcl` files can be overwritten.
 
 ### 4. Test with Non-Critical Directories First
 
