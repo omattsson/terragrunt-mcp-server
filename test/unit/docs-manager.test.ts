@@ -31,7 +31,7 @@ describe('TerragruntDocsManager', () => {
       lastUpdated: doc.lastUpdated
     }]));
     manager.contentCache = new Map(docs.map(doc => [doc.url, doc.content]));
-    manager.buildMetadataIndex();
+    manager.buildSearchIndex();
     manager.lastFetchTime = new Date();
   }
 
@@ -126,6 +126,23 @@ describe('TerragruntDocsManager', () => {
     it('should return empty array for no matches', async () => {
       const results = await docsManager.searchDocs('nonexistentterm12345');
       expect(results).toHaveLength(0);
+    });
+
+    it('should return no results for a whitespace-only query', async () => {
+      const results = await docsManager.searchDocs('   ');
+      expect(results).toHaveLength(0);
+    });
+
+    it('should fall back to substring matching for queries without words', async () => {
+      const manager = docsManager as any;
+      populateCaches(manager, [
+        { title: 'Interpolation', url: 'https://x/interp', section: 'reference', content: 'Use ${local.name} in strings' },
+        { title: 'Plain', url: 'https://x/plain', section: 'reference', content: 'No interpolation here' }
+      ]);
+
+      const results = await docsManager.searchDocs('${');
+
+      expect(results.map(doc => doc.url)).toEqual(['https://x/interp']);
     });
 
     it('should be case insensitive', async () => {

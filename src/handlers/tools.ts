@@ -1141,7 +1141,7 @@ export class ToolHandler {
         pageSize: number = 10
     ): Promise<any> {
         // docsManager validated by caller (searchDocs)
-        const results = await this.docsManager!.searchDocs(query);
+        const results = await this.docsManager!.searchDocsRanked(query);
 
         // Apply pagination
         const { results: paginatedResults, pagination } = this.calculatePagination(
@@ -1152,13 +1152,12 @@ export class ToolHandler {
 
         const response = {
             query,
-            results: paginatedResults.map(doc => ({
+            results: paginatedResults.map(({ doc, score }) => ({
                 title: doc.title,
                 url: doc.url,
                 section: doc.section,
-                snippet: doc.content.length > 300
-                    ? doc.content.substring(0, 300) + '...'
-                    : doc.content,
+                score,
+                snippet: this.docsManager!.getSnippet(doc.content, query),
                 lastUpdated: doc.lastUpdated
             })),
             pagination
@@ -1248,7 +1247,7 @@ export class ToolHandler {
 
         switch (mode) {
             case 'search':
-                // Semantic search across all docs
+                // Relevance-ranked search across all docs
                 if (!args?.query) {
                     return { error: 'query parameter is required for search mode. Use mode="list" to browse available sections first.' };
                 }
@@ -1761,8 +1760,8 @@ export class ToolHandler {
             return this.getAdvancedCodeExamples(query, mode, limit, category);
         }
 
-        // Original doc-scraped examples mode (requires query)
-        if (!query) {
+        // Original doc-scraped examples mode (requires a non-blank query)
+        if (!query?.trim()) {
             return {
                 error: 'query parameter is required for examples mode when advanced=false',
                 suggestion: 'Use advanced=true to browse curated examples, or provide a query to search documentation'

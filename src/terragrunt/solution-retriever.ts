@@ -24,6 +24,12 @@ const DEFAULT_OPTIONS: Required<SolutionRetrievalOptions> = {
 };
 
 /**
+ * Ranked documentation hits kept per search query. Search returns every doc
+ * matching any query term, best first, so only the top hits are relevant.
+ */
+const DOCS_PER_QUERY = 3;
+
+/**
  * Commands that are considered destructive and require warnings
  */
 const DESTRUCTIVE_COMMANDS = [
@@ -175,7 +181,8 @@ export class SolutionRetriever {
         const docs = await Promise.race([docsPromise, timeoutPromise]);
         clearTimeout(timeoutId); // Clear timeout on success
         
-        for (const doc of docs) {
+        // Results are ranked best first; keep the top hits of each query
+        for (const doc of docs.slice(0, DOCS_PER_QUERY)) {
           if (!seenUrls.has(doc.url)) {
             seenUrls.add(doc.url);
             allDocs.push(doc);

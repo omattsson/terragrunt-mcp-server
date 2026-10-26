@@ -11,7 +11,7 @@ llms.txt (single HTTP request)
   → Parse Markdown into doc entries (split on H1 boundaries)
   → Populate metadataCache (title/url/section per doc)
   → Populate contentCache (full Markdown content per doc)
-  → Build indexedMetadata (pre-computed lowercase fields for search)
+  → Build the full-text search index (DocSearchIndex)
   → Persist to disk cache (compressed JSON)
 ```
 
@@ -29,9 +29,9 @@ All documents are fetched upfront in one request. Two in-memory caches store the
 
 - **`metadataCache: Map<string, DocMetadata>`** — lightweight metadata (title, URL, section, date)
 - **`contentCache: Map<string, string>`** — full Markdown content keyed by URL
-- **`indexedMetadata: IndexedMetadata[]`** — pre-computed lowercase fields for search
+- **`searchIndex: DocSearchIndex`** — full-text index built from both caches after every load (`src/terragrunt/search-index.ts`); its build time is reported as `loading.searchIndexBuildTime` in the cache stats
 
-Search operates in two tiers: first against `indexedMetadata` (fast string matching on lowercase title/section/URL), then falls back to full-text content matching for documents not already matched. Results are ranked with metadata matches above content matches. Full `TerragruntDoc` objects are assembled from both caches for matched documents.
+Search tokenizes the query the same way as the documents (lowercase, punctuation-aware; identifiers such as `find_in_parent_folders` and file names such as `terragrunt.stack.hcl` are kept whole and also split into words; light plural stemming; stopwords dropped). Documents are ranked with BM25 over the body, plus bonuses for query terms in the title, URL, section headings and section, each weighted by how rare the term is in that field. Documents matching more of the query rank higher, with extra weight for an exact title or heading match and for the full query phrase. A query word that does not occur in the docs is expanded to the indexed words it begins ("boot" → `bootstrap`) at reduced weight. A query without letters or digits (e.g. `${`) falls back to substring matching. Full `TerragruntDoc` objects are assembled from both caches for matched documents; ranked results are cached in an LRU cache.
 
 ```typescript
 interface DocMetadata {
