@@ -270,7 +270,7 @@ export class TerragruntDocsManager {
         
         if (attempt < this.retryConfig.maxRetries) {
           console.warn(`${context} failed (attempt ${attempt + 1}/${this.retryConfig.maxRetries + 1}): ${lastError.message}`);
-          console.log(`Retrying in ${delay}ms...`);
+          console.error(`Retrying in ${delay}ms...`);
           await this.sleep(delay);
           delay = Math.min(delay * this.retryConfig.backoffMultiplier, this.retryConfig.maxDelayMs);
         }
@@ -282,7 +282,7 @@ export class TerragruntDocsManager {
 
   private async loadFixture(): Promise<boolean> {
     try {
-      console.log('Attempting to load fixture as fallback...');
+      console.error('Attempting to load fixture as fallback...');
       const fixtureExists = await fs.access(this.fixtureFile).then(() => true).catch(() => false);
       
       if (!fixtureExists) {
@@ -311,7 +311,7 @@ export class TerragruntDocsManager {
       // Build metadata index for fixture docs
       this.buildMetadataIndex();
 
-      console.log(`Loaded ${docs.length} docs from fixture (fallback mode)`);
+      console.error(`Loaded ${docs.length} docs from fixture (fallback mode)`);
       return true;
     } catch (error) {
       console.error('Failed to load fixture:', error);
@@ -414,7 +414,7 @@ export class TerragruntDocsManager {
       const metadataExists = await fs.access(this.metadataFile).then(() => true).catch(() => false);
 
       if (!cacheExists || !metadataExists) {
-        console.log('No disk cache found');
+        console.error('No disk cache found');
         this.stats.misses++;
         return false;
       }
@@ -426,7 +426,7 @@ export class TerragruntDocsManager {
       // Check if cache is expired
       const cacheAge = Date.now() - new Date(metadata.lastFetchTime).getTime();
       if (cacheAge > this.cacheExpiry) {
-        console.log('Disk cache expired');
+        console.error('Disk cache expired');
         this.stats.misses++;
         return false;
       }
@@ -438,7 +438,7 @@ export class TerragruntDocsManager {
       if (cacheFileToLoad.endsWith('.gz')) {
         const decompressed = await gunzipAsync(fileBuffer);
         docsContent = decompressed.toString('utf-8');
-        console.log(`Decompressed cache: ${fileBuffer.length} → ${decompressed.length} bytes`);
+        console.error(`Decompressed cache: ${fileBuffer.length} → ${decompressed.length} bytes`);
       } else {
         docsContent = fileBuffer.toString('utf-8');
       }
@@ -482,7 +482,7 @@ export class TerragruntDocsManager {
       // Calculate startup time
       this.loadingMetrics.startupTimeMs = performance.now() - this.startTime;
       
-      console.log(`Loaded ${docs.length} docs from disk cache (${this.contentCache.size} with content, age: ${Math.round(cacheAge / 1000 / 60)} minutes)`);
+      console.error(`Loaded ${docs.length} docs from disk cache (${this.contentCache.size} with content, age: ${Math.round(cacheAge / 1000 / 60)} minutes)`);
       
       return true;
     } catch (error) {
@@ -554,11 +554,11 @@ export class TerragruntDocsManager {
         // Write cache atomically to avoid partial reads during parallel operations/tests.
         await this.atomicWriteFile(this.cacheFile, Buffer.from(compressed));
         await this.atomicWriteFile(this.metadataFile, metadataJson, 'utf-8');
-        console.log(`Saved ${docs.length} docs to disk cache (compressed: ${jsonData.length} → ${compressed.length} bytes, ${Math.round(compressed.length / jsonData.length * 100)}%)`);
+        console.error(`Saved ${docs.length} docs to disk cache (compressed: ${jsonData.length} → ${compressed.length} bytes, ${Math.round(compressed.length / jsonData.length * 100)}%)`);
       } else {
         await this.atomicWriteFile(this.cacheFile, jsonData, 'utf-8');
         await this.atomicWriteFile(this.metadataFile, metadataJson, 'utf-8');
-        console.log(`Saved ${docs.length} docs to disk cache`);
+        console.error(`Saved ${docs.length} docs to disk cache`);
       }
     } catch (error) {
       console.error('Failed to save cache to disk:', error);
@@ -582,7 +582,7 @@ export class TerragruntDocsManager {
         console.error('All documentation fetch methods failed:', error);
         // If we have any docs in cache (even stale), return them
         if (this.metadataCache.size > 0) {
-          console.log('Returning stale cached docs');
+          console.error('Returning stale cached docs');
           return this.assembleDocs();
         }
         // Last resort: try fixture
@@ -600,7 +600,7 @@ export class TerragruntDocsManager {
 
   private async refreshDocsCache(): Promise<void> {
     try {
-      console.log('Refreshing Terragrunt documentation cache via llms.txt...');
+      console.error('Refreshing Terragrunt documentation cache via llms.txt...');
       
       const refreshStartTime = performance.now();
       
@@ -637,7 +637,7 @@ export class TerragruntDocsManager {
       this.loadingMetrics.fetchAndIndexTime = endTime - refreshStartTime;
       this.loadingMetrics.startupTimeMs = endTime - this.startTime;
       
-      console.log(`Loaded ${this.metadataCache.size} docs from llms.txt in ${this.loadingMetrics.fetchAndIndexTime.toFixed(2)}ms`);
+      console.error(`Loaded ${this.metadataCache.size} docs from llms.txt in ${this.loadingMetrics.fetchAndIndexTime.toFixed(2)}ms`);
       
       // Save to disk after successful fetch
       await this.saveCacheToDisk();
@@ -647,7 +647,7 @@ export class TerragruntDocsManager {
       // Try loading from disk cache if available
       const diskCacheLoaded = await this.loadCacheFromDisk();
       if (diskCacheLoaded) {
-        console.log('Using stale disk cache due to fetch failure');
+        console.error('Using stale disk cache due to fetch failure');
         return;
       }
       
@@ -699,7 +699,7 @@ export class TerragruntDocsManager {
       sectionLower: meta.section.toLowerCase(),
       urlLower: meta.url.toLowerCase()
     }));
-    console.log(`Built metadata index for ${this.indexedMetadata.length} documents`);
+    console.error(`Built metadata index for ${this.indexedMetadata.length} documents`);
   }
 
   async searchDocs(query: string): Promise<TerragruntDoc[]> {

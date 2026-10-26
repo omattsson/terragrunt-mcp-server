@@ -18,8 +18,8 @@
     "measure-memory": "node --expose-gc --loader tsx scripts/measure-memory.ts",
     "dev": "ts-node src/index.ts",
     "build": "tsc",
-    "lint": "eslint src/**/*.ts",
-    "lint:fix": "eslint src/**/*.ts --fix",
+    "lint": "eslint src",
+    "lint:fix": "eslint src --fix",
     "test": "npm run test:unit && npm run test:integration:vitest",
     "test:unit": "vitest run --config vitest.unit.config.ts",
     "test:unit:fast": "vitest run --config vitest.unit.config.ts --no-coverage --pool=forks",
@@ -48,7 +48,7 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.32.2",
     "@types/mustache": "^4.2.6",
-    "diff": "^8.0.4",
+    "diff": "^9.0.0",
     "lru-cache": "^11.2.2",
     "mustache": "^4.2.0",
     "node-fetch": "^3.3.2",
@@ -57,7 +57,7 @@
   },
   "devDependencies": {
     "@types/lru-cache": "^7.10.10",
-    "@types/node": "^24.9.1",
+    "@types/node": "^26.6.5",
     "@typescript-eslint/eslint-plugin": "^8.0.0",
     "@typescript-eslint/parser": "^8.0.0",
     "@vitest/coverage-v8": "^4.1.12",

@@ -68,14 +68,17 @@ export class MetricsManager implements IMetricsManager {
     // Update in-memory stats
     const existing = this.metrics.get(key);
     if (existing) {
+      // An entry created by logError has no calls yet; its zero minimums are
+      // placeholders, so seed them from this first successful call.
+      const hasCalls = existing.calls > 0;
       this.metrics.set(key, {
         calls: existing.calls + 1,
         totalBytes: existing.totalBytes + size,
-        minBytes: Math.min(existing.minBytes, size),
+        minBytes: hasCalls ? Math.min(existing.minBytes, size) : size,
         maxBytes: Math.max(existing.maxBytes, size),
         lastCallTime: new Date(),
         totalLatencyMs: existing.totalLatencyMs + latency,
-        minLatencyMs: Math.min(existing.minLatencyMs, latency),
+        minLatencyMs: hasCalls ? Math.min(existing.minLatencyMs, latency) : latency,
         maxLatencyMs: Math.max(existing.maxLatencyMs, latency),
         errors: existing.errors,
         lastError: existing.lastError,
@@ -110,6 +113,7 @@ export class MetricsManager implements IMetricsManager {
     if (existing) {
       this.metrics.set(key, {
         ...existing,
+        lastCallTime: new Date(),
         errors: existing.errors + 1,
         lastError: {
           timestamp: new Date(),

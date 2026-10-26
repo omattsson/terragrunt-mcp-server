@@ -283,6 +283,28 @@ describe('MetricsManager', () => {
       expect(stats['tool:test'].errorRate).toBe(1);
     });
 
+    it('should update lastCallTime when an existing operation fails', async () => {
+      manager.logResponse('tool', 'test', { data: 'success' });
+      const firstCall = manager.getStats()['tool:test'].lastCallTime;
+      await new Promise(resolve => setTimeout(resolve, 5));
+
+      manager.logError('tool', 'test', new Error('Failed later'));
+
+      expect(manager.getStats()['tool:test'].lastCallTime.getTime()).toBeGreaterThan(firstCall.getTime());
+    });
+
+    it('should seed minimums from the first successful call after an error', () => {
+      manager.logError('tool', 'test', new Error('Failed on first try'));
+      manager.logResponse('tool', 'test', { data: 'success' }, 120);
+      manager.logResponse('tool', 'test', { data: 'a longer successful response' }, 80);
+
+      const stats = manager.getStats();
+      const size = JSON.stringify({ data: 'success' }).length;
+      expect(stats['tool:test'].minBytes).toBe(size);
+      expect(stats['tool:test'].minLatencyMs).toBe(80);
+      expect(stats['tool:test'].errorRate).toBeCloseTo(1 / 3, 2);
+    });
+
     it('should preserve error timestamp', () => {
       const before = new Date();
       manager.logError('tool', 'test', new Error('Test error'));

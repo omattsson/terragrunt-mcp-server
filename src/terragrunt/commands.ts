@@ -26,7 +26,7 @@ export const runTerragruntCommand = async (
 ): Promise<TerragruntCommandResult> => {
     try {
         const fullCommand = `terragrunt ${command} ${args.join(' ')}`;
-        console.log(`Running Terragrunt command: ${fullCommand} in ${workingDir}`);
+        console.error(`Running Terragrunt command: ${fullCommand} in ${workingDir}`);
 
         const { stdout, stderr } = await execAsync(fullCommand, {
             cwd: workingDir,

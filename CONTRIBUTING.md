@@ -145,8 +145,7 @@ src/
 ├── server.ts             # Server implementation
 ├── handlers/             # MCP protocol handlers
 │   ├── tools.ts          # Tool definitions and execution
-│   ├── resources.ts      # Resource management
-│   └── prompts.ts        # Prompt handling
+│   └── resources.ts      # Resource management
 ├── terragrunt/           # Terragrunt-specific logic
 │   ├── docs.ts           # Documentation fetching/caching
 │   ├── commands.ts       # CLI command wrappers
