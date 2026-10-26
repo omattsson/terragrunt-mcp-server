@@ -41,6 +41,7 @@ import { FilesystemTemplateLoader } from '../terragrunt/templates/loaders/filesy
 import { CustomTemplateLoader } from '../terragrunt/templates/loaders/custom.js';
 import { TemplateValidator } from '../terragrunt/templates/validator.js';
 import { FileWriter } from '../terragrunt/file-writer.js';
+import { FileWriteError } from '../types/file-writer.js';
 import { ErrorPatternMatcher } from '../terragrunt/error-patterns.js';
 import { CLICommandsManager } from '../terragrunt/cli-commands.js';
 import { HCLBlocksManager } from '../terragrunt/hcl-blocks.js';
@@ -58,6 +59,12 @@ export interface Tool {
     name: string;
     description: string;
     inputSchema: any;
+    annotations?: {
+        readOnlyHint?: boolean;
+        destructiveHint?: boolean;
+        idempotentHint?: boolean;
+        openWorldHint?: boolean;
+    };
 }
 
 /**
@@ -338,6 +345,8 @@ export class ToolHandler {
             this.fileWriter = new FileWriter({
                 enabled: process.env.TERRAGRUNT_MCP_FILE_WRITE_ENABLED !== 'false',
                 allowedDirectories: this.parseAllowedDirectories(),
+                // Unset or empty falls back to FileWriter's default (.hcl)
+                allowedExtensions: this.parseCommaList(process.env.TERRAGRUNT_MCP_ALLOWED_EXTENSIONS ?? ''),
                 autoBackup: process.env.TERRAGRUNT_MCP_AUTO_BACKUP !== 'false',
                 maxFileSize: parseInt(process.env.TERRAGRUNT_MCP_MAX_FILE_SIZE || '1048576', 10) || 1048576
             });
@@ -345,15 +354,15 @@ export class ToolHandler {
     }
     
     /**
-     * Parse allowed directories from environment variable
+     * Parse allowed directories from environment variable. There is no default:
+     * without TERRAGRUNT_MCP_ALLOWED_DIRS, file writes and diff reads are refused.
      */
     private parseAllowedDirectories(): string[] {
-        const envDirs = process.env.TERRAGRUNT_MCP_ALLOWED_DIRS;
-        if (envDirs) {
-            return envDirs.split(',').map(dir => dir.trim());
-        }
-        // Default to current working directory
-        return [process.cwd()];
+        return this.parseCommaList(process.env.TERRAGRUNT_MCP_ALLOWED_DIRS ?? '');
+    }
+
+    private parseCommaList(value: string): string[] {
+        return value.split(',').map(item => item.trim()).filter(item => item.length > 0);
     }
     
     /**
@@ -704,6 +713,12 @@ export class ToolHandler {
             {
                 name: 'build_config',
                 description: 'Generate or write Terragrunt HCL configuration files (terragrunt.hcl). Use cases: remote_state backends (S3, GCS, Azure), provider generation, dependency blocks, hooks, inputs, and cicd (CI/CD-ready config for GitHub Actions, GitLab, Azure DevOps).',
+                annotations: {
+                    readOnlyHint: false,
+                    destructiveHint: true,
+                    idempotentHint: false,
+                    openWorldHint: false
+                },
                 inputSchema: {
                     type: 'object',
                     properties: {
@@ -2515,7 +2530,8 @@ export class ToolHandler {
         } catch (error) {
             return {
                 error: error instanceof Error ? error.message : 'Failed to compute diff',
-                errorType: 'DIFF_ERROR'
+                // Keep specific file-access types (e.g. NO_ALLOWED_DIRECTORIES) for callers
+                errorType: error instanceof FileWriteError ? error.type : 'DIFF_ERROR'
             };
         }
     }

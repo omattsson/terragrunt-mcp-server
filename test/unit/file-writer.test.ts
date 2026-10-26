@@ -518,4 +518,374 @@ describe('FileWriter', () => {
       expect(existsSync(target)).toBe(false);
     });
   });
+
+  describe('hardening (#291)', () => {
+    let outsideDir: string;
+
+    beforeEach(async () => {
+      outsideDir = await fs.mkdtemp(path.join(tmpdir(), 'terragrunt-mcp-outside-'));
+    });
+
+    afterEach(async () => {
+      await fs.rm(outsideDir, { recursive: true, force: true });
+    });
+
+    describe('explicit allowlist', () => {
+      it('defaults to no allowed directories and .hcl only', () => {
+        const config = new FileWriter().getConfig();
+
+        expect(config.allowedDirectories).toEqual([]);
+        expect(config.allowedExtensions).toEqual(['.hcl']);
+      });
+
+      it('refuses writes, previews and diffs when no directory is allowed', async () => {
+        const writer = new FileWriter();
+        const filePath = path.join(testDir, 'terragrunt.hcl');
+
+        const write = await writer.writeFile({ content: 'inputs = {}\n', filePath });
+        const preview = await writer.previewWrite({ content: 'inputs = {}\n', filePath });
+
+        expect(write.errorType).toBe(FileWriteErrorType.NO_ALLOWED_DIRECTORIES);
+        expect(write.error).toMatch(/TERRAGRUNT_MCP_ALLOWED_DIRS/);
+        expect(preview.errorType).toBe(FileWriteErrorType.NO_ALLOWED_DIRECTORIES);
+        await expect(writer.computeDiff(filePath, 'x')).rejects.toMatchObject({
+          type: FileWriteErrorType.NO_ALLOWED_DIRECTORIES,
+        });
+        expect(existsSync(filePath)).toBe(false);
+      });
+
+      it('ignores a filesystem root as an allowed directory', async () => {
+        const writer = new FileWriter({ allowedDirectories: [path.parse(testDir).root] });
+
+        expect(writer.getConfig().allowedDirectories).toEqual([]);
+        const result = await writer.writeFile({ content: 'x = 1\n', filePath: path.join(testDir, 'root.hcl') });
+        expect(result.errorType).toBe(FileWriteErrorType.NO_ALLOWED_DIRECTORIES);
+      });
+    });
+
+    describe('file name policy', () => {
+      it.each([
+        ['.envrc'],
+        ['.git/hooks/pre-commit.hcl'],
+        ['.github/workflows/deploy.hcl'],
+        ['live/.terraform/terragrunt.hcl'],
+      ])('refuses dot-file or dot-directory target %s', async (relativePath) => {
+        const filePath = path.join(testDir, relativePath);
+
+        const result = await fileWriter.writeFile({ content: 'x = 1\n', filePath });
+
+        expect(result.errorType).toBe(FileWriteErrorType.DISALLOWED_FILE_TYPE);
+        expect(existsSync(filePath)).toBe(false);
+      });
+
+      it.each([
+        ['deploy.sh'],
+        ['workflow.yml'],
+        ['package.json'],
+        ['Makefile'],
+      ])('refuses non-.hcl target %s by default', async (fileName) => {
+        const filePath = path.join(testDir, fileName);
+
+        const result = await fileWriter.writeFile({ content: 'x\n', filePath });
+
+        expect(result.errorType).toBe(FileWriteErrorType.DISALLOWED_FILE_TYPE);
+        expect(existsSync(filePath)).toBe(false);
+      });
+
+      it('accepts terragrunt.hcl, root.hcl and terragrunt.stack.hcl', async () => {
+        for (const fileName of ['terragrunt.hcl', 'root.hcl', 'terragrunt.stack.hcl']) {
+          const result = await fileWriter.writeFile({ content: 'x = 1\n', filePath: path.join(testDir, 'live', fileName) });
+          expect(result.success).toBe(true);
+        }
+      });
+
+      it('allows configured extra extensions, normalizing case and leading dot', async () => {
+        const writer = new FileWriter({ allowedDirectories: [testDir], allowedExtensions: ['.hcl', 'TFVARS'] });
+
+        const result = await writer.writeFile({ content: 'region = "eu-west-1"\n', filePath: path.join(testDir, 'env.tfvars') });
+
+        expect(writer.getConfig().allowedExtensions).toEqual(['.hcl', '.tfvars']);
+        expect(result.success).toBe(true);
+      });
+
+      it('applies the dot-segment rule relative to the allowed directory', async () => {
+        const dottedRoot = path.join(testDir, '.config', 'infra');
+        await fs.mkdir(dottedRoot, { recursive: true });
+        const writer = new FileWriter({ allowedDirectories: [dottedRoot] });
+
+        const result = await writer.writeFile({ content: 'x = 1\n', filePath: path.join(dottedRoot, 'terragrunt.hcl') });
+
+        expect(result.success).toBe(true);
+      });
+
+      it('reports a disallowed target in preview without writing', async () => {
+        const filePath = path.join(testDir, '.envrc');
+
+        const result = await fileWriter.previewWrite({ content: 'export X=1\n', filePath });
+
+        expect(result.success).toBe(false);
+        expect(result.errorType).toBe(FileWriteErrorType.DISALLOWED_FILE_TYPE);
+        expect(existsSync(filePath)).toBe(false);
+      });
+
+      it('refuses to diff against a non-.hcl file such as .env', async () => {
+        const secrets = path.join(testDir, '.env');
+        await fs.writeFile(secrets, 'AWS_SECRET_ACCESS_KEY=abc\n', 'utf8');
+
+        await expect(fileWriter.computeDiff(secrets, 'x')).rejects.toMatchObject({
+          type: FileWriteErrorType.DISALLOWED_FILE_TYPE,
+        });
+      });
+
+      it('refuses to diff through an .hcl symlink that points at a non-.hcl file', async () => {
+        await fs.writeFile(path.join(testDir, 'secrets.txt'), 'token=abc\n', 'utf8');
+        const link = path.join(testDir, 'innocent.hcl');
+        await fs.symlink(path.join(testDir, 'secrets.txt'), link);
+
+        await expect(fileWriter.computeDiff(link, 'x')).rejects.toMatchObject({
+          type: FileWriteErrorType.DISALLOWED_FILE_TYPE,
+        });
+      });
+    });
+
+    describe('symlinks', () => {
+      it('refuses to write through a symlinked file pointing outside the allowlist', async () => {
+        const outsideFile = path.join(outsideDir, 'victim.hcl');
+        await fs.writeFile(outsideFile, 'original = true\n', 'utf8');
+        const link = path.join(testDir, 'terragrunt.hcl');
+        await fs.symlink(outsideFile, link);
+
+        const result = await fileWriter.writeFile({ content: 'pwned = true\n', filePath: link, overwrite: true });
+
+        expect(result.errorType).toBe(FileWriteErrorType.SYMLINK_NOT_ALLOWED);
+        expect(await fs.readFile(outsideFile, 'utf8')).toBe('original = true\n');
+      });
+
+      it('refuses to write through a symlinked file even when it points inside the allowlist', async () => {
+        const realFile = path.join(testDir, 'real.hcl');
+        await fs.writeFile(realFile, 'a = 1\n', 'utf8');
+        const link = path.join(testDir, 'alias.hcl');
+        await fs.symlink(realFile, link);
+
+        const result = await fileWriter.writeFile({ content: 'a = 2\n', filePath: link, overwrite: true });
+
+        expect(result.errorType).toBe(FileWriteErrorType.SYMLINK_NOT_ALLOWED);
+        expect(await fs.readFile(realFile, 'utf8')).toBe('a = 1\n');
+      });
+
+      it('refuses a dangling symlink target', async () => {
+        const link = path.join(testDir, 'dangling.hcl');
+        await fs.symlink(path.join(outsideDir, 'created-later.hcl'), link);
+
+        const result = await fileWriter.writeFile({ content: 'x = 1\n', filePath: link });
+
+        expect(result.errorType).toBe(FileWriteErrorType.SYMLINK_NOT_ALLOWED);
+        expect(existsSync(path.join(outsideDir, 'created-later.hcl'))).toBe(false);
+      });
+
+      it.each([
+        ['an existing file in it', 'terragrunt.hcl'],
+        ['a new nested directory under it', path.join('new', 'nested', 'terragrunt.hcl')],
+      ])('refuses a symlinked directory pointing outside the allowlist (%s)', async (_label, relativePath) => {
+        const linkedDir = path.join(testDir, 'modules');
+        await fs.symlink(outsideDir, linkedDir);
+
+        const result = await fileWriter.writeFile({ content: 'x = 1\n', filePath: path.join(linkedDir, relativePath) });
+        const preview = await fileWriter.previewWrite({ content: 'x = 1\n', filePath: path.join(linkedDir, relativePath) });
+
+        expect(result.errorType).toBe(FileWriteErrorType.OUTSIDE_ALLOWED_DIRS);
+        expect(preview.errorType).toBe(FileWriteErrorType.OUTSIDE_ALLOWED_DIRS);
+        expect(await fs.readdir(outsideDir)).toEqual([]);
+      });
+
+      it('allows writes when the allowed directory itself is reached through a symlink', async () => {
+        const linkedRoot = path.join(outsideDir, 'repo-link');
+        await fs.symlink(testDir, linkedRoot);
+        const writer = new FileWriter({ allowedDirectories: [linkedRoot] });
+
+        const result = await writer.writeFile({ content: 'x = 1\n', filePath: path.join(linkedRoot, 'live', 'terragrunt.hcl') });
+
+        expect(result.success).toBe(true);
+        expect(existsSync(path.join(testDir, 'live', 'terragrunt.hcl'))).toBe(true);
+      });
+    });
+
+    describe('permissions', () => {
+      it('keeps the mode of an overwritten file', async () => {
+        if (process.platform === 'win32') return;
+        const filePath = path.join(testDir, 'terragrunt.hcl');
+        await fs.writeFile(filePath, 'a = 1\n', 'utf8');
+        await fs.chmod(filePath, 0o600);
+
+        const result = await fileWriter.writeFile({ content: 'a = 2\n', filePath, overwrite: true, createBackup: false });
+
+        expect(result.success).toBe(true);
+        expect((await fs.stat(filePath)).mode & 0o777).toBe(0o600);
+      });
+
+      it('creates new files with 0644 minus the umask', async () => {
+        if (process.platform === 'win32') return;
+        const filePath = path.join(testDir, 'new-mode.hcl');
+
+        await fileWriter.writeFile({ content: 'a = 1\n', filePath });
+
+        const umask = process.umask();
+        expect((await fs.stat(filePath)).mode & 0o777).toBe(0o644 & ~umask);
+      });
+    });
+
+    describe('edge cases', () => {
+      it('creates an allowed directory that does not exist yet', async () => {
+        const newRoot = path.join(testDir, 'new-repo');
+        const writer = new FileWriter({ allowedDirectories: [newRoot] });
+
+        const result = await writer.writeFile({ content: 'x = 1\n', filePath: path.join(newRoot, 'live', 'terragrunt.hcl') });
+
+        expect(result.success).toBe(true);
+        expect(existsSync(path.join(newRoot, 'live', 'terragrunt.hcl'))).toBe(true);
+      });
+
+      it('refuses a symlinked directory that resolves into a dot-directory', async () => {
+        const workflows = path.join(testDir, '.github', 'workflows');
+        await fs.mkdir(workflows, { recursive: true });
+        await fs.symlink(workflows, path.join(testDir, 'wf'));
+
+        const result = await fileWriter.writeFile({ content: 'x = 1\n', filePath: path.join(testDir, 'wf', 'deploy.hcl') });
+
+        expect(result.errorType).toBe(FileWriteErrorType.DISALLOWED_FILE_TYPE);
+        expect(await fs.readdir(workflows)).toEqual([]);
+      });
+
+      it('refuses to write or diff through a hard link to a file outside the allowlist', async () => {
+        const outsideFile = path.join(outsideDir, 'outside.hcl');
+        await fs.writeFile(outsideFile, 'original = true\n', 'utf8');
+        const hardLink = path.join(testDir, 'hl.hcl');
+        await fs.link(outsideFile, hardLink);
+
+        const result = await fileWriter.writeFile({ content: 'pwned = true\n', filePath: hardLink, overwrite: true });
+
+        expect(result.errorType).toBe(FileWriteErrorType.HARDLINK_NOT_ALLOWED);
+        expect(await fs.readFile(outsideFile, 'utf8')).toBe('original = true\n');
+        await expect(fileWriter.computeDiff(hardLink, 'x')).rejects.toMatchObject({
+          type: FileWriteErrorType.HARDLINK_NOT_ALLOWED,
+        });
+      });
+
+      it('matches multi-part extensions by suffix', async () => {
+        const writer = new FileWriter({ allowedDirectories: [testDir], allowedExtensions: ['.hcl.json'] });
+
+        const allowed = await writer.writeFile({ content: '{}\n', filePath: path.join(testDir, 'terragrunt.hcl.json') });
+        const refused = await writer.writeFile({ content: '{}\n', filePath: path.join(testDir, 'other.json') });
+
+        expect(allowed.success).toBe(true);
+        expect(refused.errorType).toBe(FileWriteErrorType.DISALLOWED_FILE_TYPE);
+      });
+
+      it('uses the most specific allowed directory for the dot-segment rule', async () => {
+        const dotted = path.join(testDir, '.config');
+        await fs.mkdir(dotted, { recursive: true });
+        const writer = new FileWriter({ allowedDirectories: [testDir, dotted] });
+
+        const nested = await writer.writeFile({ content: 'x = 1\n', filePath: path.join(dotted, 'x.hcl') });
+
+        expect(nested.success).toBe(true);
+      });
+
+      it('reports a dangling symlink diff base as a symlink error', async () => {
+        const link = path.join(testDir, 'dangle.hcl');
+        await fs.symlink(path.join(testDir, 'missing-target.hcl'), link);
+
+        await expect(fileWriter.computeDiff(link, 'x')).rejects.toMatchObject({
+          type: FileWriteErrorType.SYMLINK_NOT_ALLOWED,
+        });
+      });
+
+      it('reports a missing parent under a regular file as an invalid path', async () => {
+        await fs.writeFile(path.join(testDir, 'plainfile'), 'x', 'utf8');
+
+        const result = await fileWriter.previewWrite({
+          content: 'x = 1\n',
+          filePath: path.join(testDir, 'plainfile', 'a', 'b.hcl'),
+          createParentDirs: false,
+        });
+
+        expect(result.success).toBe(false);
+        expect(result.errorType).toBe(FileWriteErrorType.INVALID_PATH);
+      });
+
+      it('backs up the original content and mode, then writes the new content exactly', async () => {
+        const filePath = path.join(testDir, 'terragrunt.hcl');
+        const original = 'a_long_original_value = "' + 'x'.repeat(200) + '"\n';
+        await fs.writeFile(filePath, original, 'utf8');
+        if (process.platform !== 'win32') {
+          await fs.chmod(filePath, 0o600);
+        }
+
+        const result = await fileWriter.writeFile({ content: 'short = 1\n', filePath, overwrite: true, createBackup: true });
+
+        expect(result.success).toBe(true);
+        expect(await fs.readFile(filePath, 'utf8')).toBe('short = 1\n');
+        expect(await fs.readFile(result.backupPath!, 'utf8')).toBe(original);
+        if (process.platform !== 'win32') {
+          expect((await fs.stat(result.backupPath!)).mode & 0o777).toBe(0o600);
+        }
+      });
+
+      it.each([
+        [[]],
+        [['', ' ', '.']],
+      ])('falls back to .hcl when the configured extension list %j has no usable entries', (allowedExtensions) => {
+        const writer = new FileWriter({ allowedDirectories: [testDir], allowedExtensions });
+
+        expect(writer.getConfig().allowedExtensions).toEqual(['.hcl']);
+      });
+
+      it('reports a dangling-symlink parent as a symlink error in preview, as a write would', async () => {
+        await fs.symlink(path.join(testDir, 'missing-dir'), path.join(testDir, 'live'));
+        const filePath = path.join(testDir, 'live', 'terragrunt.hcl');
+
+        const preview = await fileWriter.previewWrite({ content: 'x = 1\n', filePath });
+        const write = await fileWriter.writeFile({ content: 'x = 1\n', filePath });
+
+        expect(preview.success).toBe(false);
+        expect(preview.errorType).toBe(FileWriteErrorType.SYMLINK_NOT_ALLOWED);
+        expect(write.errorType).toBe(FileWriteErrorType.SYMLINK_NOT_ALLOWED);
+      });
+
+      it('reports a regular file in the middle of the path as an invalid path when writing', async () => {
+        await fs.writeFile(path.join(testDir, 'plainfile'), 'x', 'utf8');
+
+        const result = await fileWriter.writeFile({ content: 'x = 1\n', filePath: path.join(testDir, 'plainfile', 'a', 'b.hcl') });
+
+        expect(result.success).toBe(false);
+        expect(result.errorType).toBe(FileWriteErrorType.INVALID_PATH);
+      });
+
+      it('refuses a path through a dangling symlinked directory', async () => {
+        await fs.symlink(path.join(outsideDir, 'missing'), path.join(testDir, 'modules'));
+
+        const result = await fileWriter.writeFile({ content: 'x = 1\n', filePath: path.join(testDir, 'modules', 'vpc', 'terragrunt.hcl') });
+
+        expect(result.errorType).toBe(FileWriteErrorType.SYMLINK_NOT_ALLOWED);
+        expect(await fs.readdir(outsideDir)).toEqual([]);
+      });
+
+      it('refuses to back up an existing file larger than maxFileSize', async () => {
+        const writer = new FileWriter({ allowedDirectories: [testDir], maxFileSize: 64 });
+        const filePath = path.join(testDir, 'big.hcl');
+        await fs.writeFile(filePath, 'x'.repeat(256), 'utf8');
+
+        const result = await writer.writeFile({ content: 'small = 1\n', filePath, overwrite: true, createBackup: true });
+
+        expect(result.errorType).toBe(FileWriteErrorType.MAX_SIZE_EXCEEDED);
+        expect(await fs.readFile(filePath, 'utf8')).toBe('x'.repeat(256));
+      });
+
+      it('ignores undefined config values instead of overriding defaults', () => {
+        const writer = new FileWriter({ allowedDirectories: [testDir], allowedExtensions: undefined });
+
+        expect(writer.getConfig().allowedExtensions).toEqual(['.hcl']);
+      });
+    });
+  });
 });

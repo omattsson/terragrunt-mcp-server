@@ -225,7 +225,8 @@ For consistent Copilot behavior, configure model allowlists:
 | `TERRAGRUNT_MCP_MODE` | Server mode (full, core, config, guidance, observability) | `full` |
 | `TERRAGRUNT_MCP_FILE_WRITE_ENABLED` | Enable file writing | `true` |
 | `TERRAGRUNT_MCP_AUTO_BACKUP` | Auto-backup before overwrite | `true` |
-| `TERRAGRUNT_MCP_ALLOWED_DIRS` | Comma-separated allowed write paths | Current directory |
+| `TERRAGRUNT_MCP_ALLOWED_DIRS` | Comma-separated allowed write paths (required for file writing) | none |
+| `TERRAGRUNT_MCP_ALLOWED_EXTENSIONS` | Comma-separated file extensions that may be written | `.hcl` |
 | `TERRAGRUNT_MCP_MAX_FILE_SIZE` | Max file size in bytes | `1048576` (1MB) |
 
 ## Copilot Tool Selection

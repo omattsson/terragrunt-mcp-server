@@ -528,9 +528,11 @@ inputs = {
         content: 'content'
       });
 
+      // No default allowlist: an empty setting refuses writes instead of
+      // falling back to the working directory
       expect(result.success).toBe(false);
-      expect(result.error).toBeDefined();
-      expect(result.errorType).toBe('OUTSIDE_ALLOWED_DIRECTORIES');
+      expect(result.error).toMatch(/TERRAGRUNT_MCP_ALLOWED_DIRS/);
+      expect(result.errorType).toBe('NO_ALLOWED_DIRECTORIES');
     });
 
     it('should handle multiple allowed directories', async () => {
@@ -756,6 +758,65 @@ inputs = {
 
       expect(result.success).toBe(false);
       expect(result.error).toBeDefined();
+    });
+  });
+
+  describe('Write hardening via build_config (#291)', () => {
+    it('refuses writes when TERRAGRUNT_MCP_ALLOWED_DIRS is not set', async () => {
+      process.env.TERRAGRUNT_MCP_FILE_WRITE_ENABLED = 'true';
+      delete process.env.TERRAGRUNT_MCP_ALLOWED_DIRS;
+      const handler = new ToolHandler();
+      const targetPath = path.join(process.cwd(), 'should-not-exist.hcl');
+
+      const result = await handler.executeTool('build_config', { path: targetPath, content: 'x = 1\n' });
+
+      expect(result.success).toBe(false);
+      expect(result.errorType).toBe('NO_ALLOWED_DIRECTORIES');
+      await expect(fs.access(targetPath)).rejects.toThrow();
+    });
+
+    it('refuses dot-files such as .envrc', async () => {
+      const targetPath = path.join(allowedDir, '.envrc');
+
+      const result = await toolHandler.executeTool('build_config', { path: targetPath, content: 'export AWS_PROFILE=prod\n' });
+
+      expect(result.success).toBe(false);
+      expect(result.errorType).toBe('DISALLOWED_FILE_TYPE');
+      await expect(fs.access(targetPath)).rejects.toThrow();
+    });
+
+    it('allows extra extensions from TERRAGRUNT_MCP_ALLOWED_EXTENSIONS', async () => {
+      process.env.TERRAGRUNT_MCP_ALLOWED_DIRS = allowedDir;
+      process.env.TERRAGRUNT_MCP_ALLOWED_EXTENSIONS = '.hcl, .tfvars';
+      const handler = new ToolHandler();
+
+      const result = await handler.executeTool('build_config', {
+        path: path.join(allowedDir, 'env.tfvars'),
+        content: 'region = "eu-west-1"\n'
+      });
+
+      expect(result.success).toBe(true);
+    });
+
+    it('keeps the specific error type for compareWith diffs', async () => {
+      process.env.TERRAGRUNT_MCP_FILE_WRITE_ENABLED = 'true';
+      delete process.env.TERRAGRUNT_MCP_ALLOWED_DIRS;
+      const handler = new ToolHandler();
+
+      const result = await handler.executeTool('build_config', {
+        useCase: 'cicd',
+        backend: 'github-actions',
+        compareWith: path.join(allowedDir, 'terragrunt.hcl')
+      });
+
+      expect(result.success).toBe(false);
+      expect(result.errorType).toBe('NO_ALLOWED_DIRECTORIES');
+    });
+
+    it('annotates build_config as destructive', () => {
+      const buildConfig = toolHandler.getAvailableTools().find(tool => tool.name === 'build_config');
+
+      expect(buildConfig?.annotations).toMatchObject({ readOnlyHint: false, destructiveHint: true });
     });
   });
 });

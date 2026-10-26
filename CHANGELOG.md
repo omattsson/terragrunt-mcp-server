@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### ⚠️ BREAKING CHANGES
+
+- **File writing requires an explicit allowlist** (#291): `build_config` no longer falls back to the server's working directory, which MCP clients often set to `$HOME`. Set `TERRAGRUNT_MCP_ALLOWED_DIRS` to enable writes and `compareWith` diffs; until then they fail with `NO_ALLOWED_DIRECTORIES`. Filesystem roots are ignored as allowed directories.
+- **Only `.hcl` files by default, no dot-files** (#291): writes and diff reads are limited to `.hcl` files (extend with `TERRAGRUNT_MCP_ALLOWED_EXTENSIONS`, e.g. `.hcl,.tfvars`). Any path segment starting with `.` below the allowed directory is refused (`DISALLOWED_FILE_TYPE`), which blocks `.git/hooks`, `.github/workflows` and `.envrc`.
+
+### 🔒 Security
+
+- **Link escape prevention for writes** (#291): previously only diff reads checked symlinks, so a symlinked file or directory inside an allowed directory could redirect a write outside it.
+  - Writes refuse a target that is a symlink (`SYMLINK_NOT_ALLOWED`) or has more than one hard link (`HARDLINK_NOT_ALLOWED`).
+  - Files are opened with `O_NOFOLLOW`, and the link count is checked again on the open handle before truncating.
+  - Creating a new file is atomic (`O_EXCL`), so a file that appears between the existence check and the write is never overwritten when `overwrite` is false.
+  - Backups are read from the same verified handle and created exclusively with the original file's permissions, so a swapped-in link cannot be copied into a backup.
+  - The target's real path must stay inside an allowed directory and pass the file-type and dot-file rules, so a symlinked directory cannot point a write into `.github` or `.git` either.
+- **Diff reads follow the file policy** (#291): `compareWith` cannot read non-`.hcl` files or dot-files (for example `.env`), including through an `.hcl` symlink or a hard link.
+- **Overwrites keep file permissions** (#291): overwriting no longer resets the file mode to `0644`; new files are created with `0644` minus the umask.
+- **`build_config` is annotated as destructive** (#291): `destructiveHint: true` lets MCP clients ask for confirmation before a call.
+
 ### 🐛 Fixed
 
 - **stdout carries only JSON-RPC** (#289): informational logs from the docs cache and template loaders were written to stdout, interleaving non-JSON lines with protocol messages on the stdio transport.
