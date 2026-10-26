@@ -60,7 +60,7 @@
     "@types/node": "^26.6.5",
     "@typescript-eslint/eslint-plugin": "^8.0.0",
     "@typescript-eslint/parser": "^8.0.0",
-    "@vitest/coverage-v8": "^4.1.12",
+    "@vitest/coverage-v8": "^5.0.5",
     "@vitest/ui": "^4.1.12",
     "cheerio": "^1.0.0-rc.12",
     "eslint": "^9.0.0",
