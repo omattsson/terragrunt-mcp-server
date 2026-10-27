@@ -337,7 +337,7 @@ export async function loadBackendSchema(
   } catch (error) {
     const message = `Failed to read schema file: ${filePath}`;
     if (throwOnError) {
-      throw new Error(message);
+      throw new Error(message, { cause: error });
     }
     console.error(message, error);
     // Return empty schema structure when not throwing
@@ -358,7 +358,7 @@ export async function loadBackendSchema(
   } catch (error) {
     const message = `Failed to parse JSON in schema file: ${filePath}`;
     if (throwOnError) {
-      throw new Error(message);
+      throw new Error(message, { cause: error });
     }
     console.error(message, error);
     // Return empty schema structure when not throwing
@@ -411,7 +411,7 @@ export async function loadAllBackendSchemas(
   } catch (error) {
     const message = `Failed to read schema directory: ${directory}`;
     if (throwOnError) {
-      throw new Error(message);
+      throw new Error(message, { cause: error });
     }
     console.error(message, error);
     return schemas;
