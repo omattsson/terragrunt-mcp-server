@@ -60,12 +60,12 @@
     "@types/node": "^26.6.5",
     "@typescript-eslint/eslint-plugin": "^8.0.0",
     "@typescript-eslint/parser": "^8.0.0",
-    "@vitest/coverage-v8": "^4.1.12",
-    "@vitest/ui": "^4.1.12",
+    "@vitest/coverage-v8": "^5.0.5",
+    "@vitest/ui": "^5.0.5",
     "cheerio": "^1.0.0-rc.12",
     "eslint": "^9.0.0",
     "tsx": "^4.21.0",
-    "vitest": "^4.1.12"
+    "vitest": "^5.0.5"
   },
   "type": "module",
   "bin": {
