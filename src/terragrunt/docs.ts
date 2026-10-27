@@ -657,7 +657,7 @@ export class TerragruntDocsManager {
       // Fall back to fixture as last resort
       const fixtureLoaded = await this.loadFixture();
       if (!fixtureLoaded) {
-        throw new Error('Failed to load documentation from any source (network, disk cache, or fixture)');
+        throw new Error('Failed to load documentation from any source (network, disk cache, or fixture)', { cause: error });
       }
     }
   }

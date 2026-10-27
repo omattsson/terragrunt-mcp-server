@@ -659,9 +659,10 @@ terraform {
   });
 
   describe('Fixture Validation', () => {
-    // Unmock fs/promises for these tests so we can read the real fixture file
+    // Unmock fs/promises for these tests so we can read the real fixture file.
+    // doUnmock is not hoisted, so it only affects the dynamic imports below.
     beforeAll(() => {
-      vi.unmock('fs/promises');
+      vi.doUnmock('fs/promises');
     });
 
     async function loadFixtureDocs(): Promise<TerragruntDoc[]> {
