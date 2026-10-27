@@ -173,10 +173,11 @@ Diagnose Terragrunt error messages and get actionable solutions, debugging steps
   - `module` (string, optional): Module name
   - `backend` (string, optional): Backend type
   - `maxMatches` (number, optional): Maximum matches to return (default: 3)
-  - `minConfidence` (number, optional): Minimum confidence score 0-1 (default: 0.3)
+  - `minConfidence` (number, optional): Minimum confidence score 0-1 (default: 0.5)
   - `enableFuzzyMatching` (boolean, optional): Enable fuzzy matching (default: true)
-  - `enrichWithDocs` (boolean, optional): Enrich with documentation-sourced solutions (default: false)
-- **Returns**: Matches with confidence scores, solutions, debugging steps, related errors, and documentation links (111 error patterns across 12 categories)
+  - `detailLevel` (string, optional): `summary` (matches, causes, and solutions) or `full` (adds debugging steps, related errors, and documentation links) (default: `summary`)
+  - `enrichWithDocs` (boolean, optional): In `full` detail, enrich with documentation-sourced solutions (on unless set to `false`)
+- **Returns**: Matches with confidence scores and solutions, or an explicit `noConfidentMatch` result with generic debugging steps (113 error patterns across 12 categories)
 - **Use cases**: Troubleshooting errors, getting actionable solutions, finding relevant documentation
 
 **Example prompts:**

@@ -8,11 +8,11 @@ const matcher = new ErrorPatternMatcher(new TerragruntDocsManager());
 describe('getPatternStats', () => {
   it('reports the total and a per-category breakdown computed from the array', async () => {
     const stats = await matcher.getPatternStats();
-    expect(stats.total).toBe(111);
+    expect(stats.total).toBe(113);
     expect(stats.byCategory).toMatchObject({
       configuration: 46,
       state: 3,
-      dependency: 13,
+      dependency: 15,
       backend: 8,
       terraform: 3,
       authentication: 3,

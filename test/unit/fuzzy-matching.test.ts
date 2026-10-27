@@ -22,17 +22,15 @@ describe('ErrorPatternMatcher - Fuzzy Matching and Confidence Scoring', () => {
     });
 
     it('should assign high confidence (0.7-0.85) for high similarity matches', async () => {
-      // This should match via fuzzy matching with high similarity
-      const errorMessage = 'configuration file syntax error invalid block definition';
+      // Covers every word of the pattern name, but no pattern regex matches
+      const errorMessage = 'before hook command exited with status 1';
       const result = await matcher.diagnoseError(errorMessage, undefined, {
         enableFuzzyMatching: true
       });
 
-      const fuzzyMatches = result.matches.filter(m => m.confidence < 0.95);
-      if (fuzzyMatches.length > 0) {
-        const highConfMatches = fuzzyMatches.filter(m => m.confidence >= 0.7 && m.confidence <= 0.85);
-        expect(highConfMatches.length).toBeGreaterThan(0);
-      }
+      expect(result.matches[0].pattern.id).toBe('hook-command-failed');
+      expect(result.matches[0].confidence).toBeGreaterThanOrEqual(0.7);
+      expect(result.matches[0].confidence).toBeLessThanOrEqual(0.85);
     });
 
     it('should assign medium confidence (0.4-0.65) for medium similarity matches', async () => {

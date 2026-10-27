@@ -350,9 +350,11 @@ describe('ToolHandler', () => {
       // Schema is now flattened - options properties are at top level
       expect(diagnoseTool?.inputSchema.properties.maxMatches).toBeDefined();
       expect(diagnoseTool?.inputSchema.properties.maxMatches.default).toBe(3);
-      expect(diagnoseTool?.inputSchema.properties.minConfidence.default).toBe(0.3);
+      expect(diagnoseTool?.inputSchema.properties.minConfidence.default).toBe(0.5);
       expect(diagnoseTool?.inputSchema.properties.enableFuzzyMatching.default).toBe(true);
-      expect(diagnoseTool?.inputSchema.properties.enrichWithDocs.default).toBe(true);
+      expect(diagnoseTool?.inputSchema.properties.detailLevel.default).toBe('summary');
+      // No default: a client that fills in defaults must still get the summary
+      expect(diagnoseTool?.inputSchema.properties.enrichWithDocs.default).toBeUndefined();
     });
   });
 
@@ -1484,6 +1486,62 @@ inputs = {
   });
 
   describe('Tool Execution - diagnose_terragrunt_error', () => {
+    it('should return a compact summary by default', async () => {
+      const result = await toolHandler.executeTool('diagnose_terragrunt_error', {
+        error_message: 'Error acquiring the state lock'
+      });
+
+      expect(result.matches[0].patternId).toBe('state-lock-error');
+      expect(result.matches[0].solutions.length).toBeGreaterThan(0);
+      expect(result.matches[0].description).toBeUndefined();
+      expect(result.richSolutions).toBeUndefined();
+      expect(result.debuggingSteps).toBeUndefined();
+      expect(JSON.stringify(result).length).toBeLessThan(2000);
+    });
+
+    it('should return enriched details with detailLevel full', async () => {
+      const result = await toolHandler.executeTool('diagnose_terragrunt_error', {
+        error_message: 'Error acquiring the state lock',
+        detailLevel: 'full'
+      });
+
+      expect(result.matches[0].description).toBeDefined();
+      expect(Array.isArray(result.richSolutions)).toBe(true);
+      expect(Array.isArray(result.orderedDebuggingSteps)).toBe(true);
+    });
+
+    it('should fall back to the summary for an unrecognised detailLevel', async () => {
+      const result = await toolHandler.executeTool('diagnose_terragrunt_error', {
+        error_message: 'Error acquiring the state lock',
+        detailLevel: 'verbose'
+      });
+
+      expect(result.matches[0].description).toBeUndefined();
+      expect(result.debuggingSteps).toBeUndefined();
+    });
+
+    it('should return full detail when enrichWithDocs is set without detailLevel', async () => {
+      const result = await toolHandler.executeTool('diagnose_terragrunt_error', {
+        error_message: 'Error acquiring the state lock',
+        enrichWithDocs: true
+      });
+
+      expect(Array.isArray(result.richSolutions)).toBe(true);
+    });
+
+    it('should round confidence to two decimals', async () => {
+      const result = await toolHandler.executeTool('diagnose_terragrunt_error', {
+        error_message: 'the s3 bucket for remote state does not exist',
+        maxMatches: 10,
+        minConfidence: 0
+      });
+
+      expect(result.matchCount).toBeGreaterThan(0);
+      for (const match of result.matches) {
+        expect(match.confidence).toBe(Math.round(match.confidence * 100) / 100);
+      }
+    });
+
     it('should execute with valid error message', async () => {
       const result = await toolHandler.executeTool('diagnose_terragrunt_error', {
         error_message: 'Backend initialization required, please run "terraform init"'
@@ -1538,9 +1596,10 @@ inputs = {
       }
     });
 
-    it('should include debugging steps', async () => {
+    it('should include debugging steps in full detail', async () => {
       const result = await toolHandler.executeTool('diagnose_terragrunt_error', {
-        error_message: 'Error acquiring the state lock'
+        error_message: 'Error acquiring the state lock',
+        detailLevel: 'full'
       });
       
       expect(result.success).toBe(true);
@@ -1616,9 +1675,10 @@ inputs = {
       }
     });
 
-    it('should return general advice', async () => {
+    it('should return general advice in full detail', async () => {
       const result = await toolHandler.executeTool('diagnose_terragrunt_error', {
-        error_message: 'Error acquiring the state lock'
+        error_message: 'Error acquiring the state lock',
+        detailLevel: 'full'
       });
       
       expect(result.success).toBe(true);

@@ -830,17 +830,24 @@ export class ToolHandler {
                         minConfidence: {
                             type: 'number',
                             description: 'Min confidence',
-                            default: 0.3
+                            default: 0.5
                         },
                         enableFuzzyMatching: {
                             type: 'boolean',
                             description: 'Fuzzy matching',
                             default: true
                         },
+                        detailLevel: {
+                            type: 'string',
+                            enum: ['summary', 'full'],
+                            description: 'summary: matches with causes and solutions | full: adds debugging steps, related errors, and documentation links',
+                            default: 'summary'
+                        },
                         enrichWithDocs: {
+                            // No schema default: clients that fill in defaults would
+                            // send true and always select full detail
                             type: 'boolean',
-                            description: 'Include debugging steps and documentation links in response',
-                            default: true
+                            description: 'Full detail only: add documentation-sourced solutions and links (on by default in full; true selects full detail when detailLevel is unset)'
                         },
                         includeDestructiveCommands: {
                             type: 'boolean',
@@ -1106,7 +1113,8 @@ export class ToolHandler {
                         maxMatches: args.maxMatches,
                         minConfidence: args.minConfidence,
                         enableFuzzyMatching: args.enableFuzzyMatching,
-                        enrichWithDocs: args.enrichWithDocs ?? true,
+                        detailLevel: args.detailLevel,
+                        enrichWithDocs: args.enrichWithDocs,
                         includeDestructiveCommands: args.includeDestructiveCommands
                     });
                     return await this.diagnoseTerragruntError(
@@ -2552,6 +2560,7 @@ export class ToolHandler {
             maxMatches?: number;
             minConfidence?: number;
             enableFuzzyMatching?: boolean;
+            detailLevel?: 'summary' | 'full';
             enrichWithDocs?: boolean;
             includeDestructiveCommands?: boolean;
         }
@@ -2559,7 +2568,13 @@ export class ToolHandler {
         // Check if ErrorPatternMatcher is available
         const errorPatternMatcher = this.checkManager(this.errorPatternMatcher, 'ErrorPatternMatcher');
         if ('error' in errorPatternMatcher) return errorPatternMatcher;
-        
+
+        // Clients that still ask for enrichWithDocs explicitly get full detail;
+        // any detailLevel other than 'full' gets the summary
+        const full = options?.detailLevel === 'full' ||
+            (options?.detailLevel === undefined && options?.enrichWithDocs === true);
+        const enrichWithDocs = full && (options?.enrichWithDocs ?? true);
+
         try {
             const diagnosis = await errorPatternMatcher.diagnoseError(
                 errorMessage,
@@ -2568,31 +2583,57 @@ export class ToolHandler {
                     maxMatches: options?.maxMatches,
                     minConfidence: options?.minConfidence,
                     enableFuzzyMatching: options?.enableFuzzyMatching,
-                    enrichWithDocs: options?.enrichWithDocs,
+                    enrichWithDocs,
                     enrichmentOptions: {
                         includeDestructiveCommands: options?.includeDestructiveCommands
                     }
                 }
             );
 
-            // Format the response based on whether enrichment was requested
-            if (options?.enrichWithDocs && 'richSolutions' in diagnosis) {
+            const formatMatches = (includeDescription: boolean) => diagnosis.matches.map(m => ({
+                patternId: m.pattern.id,
+                patternName: m.pattern.name,
+                category: m.pattern.category,
+                confidence: m.confidence,
+                ...(includeDescription ? { description: m.pattern.description } : {}),
+                likelyCause: m.likelyCause,
+                solutions: m.solutions,
+                documentationRefs: m.documentationRefs
+            }));
+
+            // Say so plainly rather than offering a weak guess as a diagnosis
+            if (diagnosis.matches.length === 0) {
+                return {
+                    success: true,
+                    noConfidentMatch: true,
+                    overallConfidence: 0,
+                    matchCount: 0,
+                    matches: [],
+                    message: 'No known error pattern matched this message with enough confidence. ' +
+                        'Try the generic steps below, or pass the complete error output including the lines around it.',
+                    debuggingSteps: diagnosis.debuggingSteps,
+                    generalAdvice: diagnosis.generalAdvice
+                };
+            }
+
+            if (!full) {
+                return {
+                    success: true,
+                    overallConfidence: diagnosis.overallConfidence,
+                    matchCount: diagnosis.matches.length,
+                    matches: formatMatches(false)
+                };
+            }
+
+            // Format the full response based on whether enrichment ran
+            if (enrichWithDocs && 'richSolutions' in diagnosis) {
                 return {
                     success: true,
                     overallConfidence: diagnosis.overallConfidence,
                     matchCount: diagnosis.matches.length,
                     enrichmentSuccessful: diagnosis.enrichmentSuccessful,
                     enrichmentError: diagnosis.enrichmentError,
-                    matches: diagnosis.matches.map(m => ({
-                        patternId: m.pattern.id,
-                        patternName: m.pattern.name,
-                        category: m.pattern.category,
-                        confidence: m.confidence,
-                        description: m.pattern.description,
-                        likelyCause: m.likelyCause,
-                        solutions: m.solutions,
-                        documentationRefs: m.documentationRefs
-                    })),
+                    matches: formatMatches(true),
                     richSolutions: diagnosis.richSolutions,
                     orderedDebuggingSteps: diagnosis.orderedDebuggingSteps,
                     documentationLinks: diagnosis.documentationLinks,
@@ -2605,16 +2646,7 @@ export class ToolHandler {
                 success: true,
                 overallConfidence: diagnosis.overallConfidence,
                 matchCount: diagnosis.matches.length,
-                matches: diagnosis.matches.map(m => ({
-                    patternId: m.pattern.id,
-                    patternName: m.pattern.name,
-                    category: m.pattern.category,
-                    confidence: m.confidence,
-                    description: m.pattern.description,
-                    likelyCause: m.likelyCause,
-                    solutions: m.solutions,
-                    documentationRefs: m.documentationRefs
-                })),
+                matches: formatMatches(true),
                 debuggingSteps: diagnosis.debuggingSteps,
                 relatedErrors: diagnosis.relatedErrors,
                 generalAdvice: diagnosis.generalAdvice
