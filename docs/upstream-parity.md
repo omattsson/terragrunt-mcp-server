@@ -37,6 +37,12 @@ revision, in these files:
   `internal/remotestate/backend/azurerm/errors.go`
 - `internal/cas/errors.go` (CAS / update_source_with_cas)
 
+The same test also anchors the dependency patterns (#294) on
+`pkg/config/errors.go`: `DependencyCycleError` ("Found a dependency cycle
+between modules: "), `ReadTerragruntConfigCycleError`
+("read_terragrunt_config cycle detected: "), and
+`TerragruntOutputTargetNoOutputs` ("... but detected no outputs").
+
 The documented pattern and category counts come from one source of truth:
 `ErrorPatternMatcher.getPatternStats()` computes them from the pattern array,
 and `test/unit/error-pattern-stats.test.ts` fails if the counts quoted in

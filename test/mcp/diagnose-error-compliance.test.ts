@@ -317,7 +317,8 @@ describe('MCP Protocol Compliance - diagnose_terragrunt_error', () => {
 
     it('should return matches array with correct structure', async () => {
       const result = await toolHandler.executeTool('diagnose_terragrunt_error', {
-        error_message: 'Error: Backend configuration changed'
+        error_message: 'Error: Backend configuration changed',
+        detailLevel: 'full'
       });
 
       expect(Array.isArray(result.matches)).toBe(true);
@@ -361,7 +362,8 @@ describe('MCP Protocol Compliance - diagnose_terragrunt_error', () => {
 
     it('should return generalAdvice array', async () => {
       const result = await toolHandler.executeTool('diagnose_terragrunt_error', {
-        error_message: 'Error: Backend configuration changed'
+        error_message: 'Error: Backend configuration changed',
+        detailLevel: 'full'
       });
 
       expect(Array.isArray(result.generalAdvice)).toBe(true);

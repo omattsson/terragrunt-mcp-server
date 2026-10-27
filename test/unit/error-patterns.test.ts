@@ -81,15 +81,14 @@ describe('ErrorPatternMatcher', () => {
     });
 
     it('should match partial error messages', async () => {
-      // Partial match of a known error pattern
-      const errorMessage = 'terraform init required';
+      // Paraphrase of a known error that no pattern regex matches
+      const errorMessage = 'terragrunt could not get the lock on the state file';
       const result = await matcher.diagnoseError(errorMessage, undefined, {
-        enableFuzzyMatching: true,
-        minConfidence: 0.3
+        enableFuzzyMatching: true
       });
 
-      // Should find matches via fuzzy matching
-      expect(result.matches.length).toBeGreaterThan(0);
+      expect(result.matches[0].pattern.id).toBe('state-lock-error');
+      expect(result.matches[0].confidence).toBeLessThan(0.95);
     });
 
     it('should handle error messages with stack traces', async () => {
@@ -134,45 +133,45 @@ describe('ErrorPatternMatcher', () => {
       expect(highConfidenceMatches.length).toBeGreaterThanOrEqual(1);
     });
 
-    it('should return medium confidence (0.4-0.7) for moderately similar errors', async () => {
+    it('should not match vague text that shares one generic word with a pattern', async () => {
       const errorMessage = 'some kind of configuration issue maybe';
       const result = await matcher.diagnoseError(errorMessage, undefined, {
         enableFuzzyMatching: true,
         minConfidence: 0.3
       });
 
-      // Verify we got matches first
-      expect(result.matches.length).toBeGreaterThan(0);
-      
-      // Check that any medium confidence matches have correct range
-      const mediumConfidence = result.matches.filter(m => m.confidence >= 0.4 && m.confidence < 0.7);
-      mediumConfidence.forEach(match => {
-        expect(match.confidence).toBeGreaterThanOrEqual(0.4);
-        expect(match.confidence).toBeLessThan(0.7);
-      });
+      expect(result.matches).toEqual([]);
     });
 
-    it('should filter out low confidence matches (<0.3) by default', async () => {
-      const errorMessage = 'random text that barely matches anything';
-      const result = await matcher.diagnoseError(errorMessage);
+    it('should filter out low confidence matches (<0.5) by default', async () => {
+      const errorMessage = 'the s3 bucket for remote state does not exist';
+      const result = await matcher.diagnoseError(errorMessage, undefined, { maxMatches: 10 });
 
-      // Default minConfidence is 0.3, so no matches below that
+      expect(result.matches.length).toBeGreaterThan(0);
       result.matches.forEach(match => {
-        expect(match.confidence).toBeGreaterThanOrEqual(0.3);
+        expect(match.confidence).toBeGreaterThanOrEqual(0.5);
       });
     });
 
-    it('should match errors with typos via fuzzy matching', async () => {
-      // Typos in "Backend" -> "Baceknd" and "initialization" -> "initializtion" (intentional typos for test)
-      const errorWithTypo = 'Baceknd initializtion required, please run terraform init';
-      const result = await matcher.diagnoseError(errorWithTypo, undefined, {
-        enableFuzzyMatching: true,
-        minConfidence: 0.3
+    it('should match word-form variants of pattern words', async () => {
+      // "acquire" matches the pattern name's "acquiring"; no pattern regex matches
+      const errorMessage = 'state lock error could not acquire lock';
+      const result = await matcher.diagnoseError(errorMessage, undefined, {
+        enableFuzzyMatching: true
       });
 
-      // Fuzzy matching should find relevant matches despite typos
-      // The "terraform init" part should still trigger init-related patterns
-      expect(result.matches.length).toBeGreaterThan(0);
+      expect(result.matches[0].pattern.id).toBe('state-lock-error');
+      expect(result.matches[0].confidence).toBeLessThan(0.95);
+    });
+
+    it('should not match short words inside longer ones', async () => {
+      // "the" and "a" once matched inside "authentication" and similar words
+      const result = await matcher.diagnoseError('the a the a an the', undefined, {
+        enableFuzzyMatching: true,
+        minConfidence: 0
+      });
+
+      expect(result.matches).toEqual([]);
     });
 
     it('should distinguish between similar but different errors', async () => {
@@ -236,21 +235,20 @@ describe('ErrorPatternMatcher', () => {
       expect(result.matches[0].confidence).toBe(0.95);
     });
 
-    it('should score fuzzy matches between 0.3 and 0.85', async () => {
-      const errorMessage = 'configuration problem with terraform files';
+    it('should score fuzzy matches between 0.35 and 0.85, rounded to two decimals', async () => {
+      const errorMessage = 'the s3 bucket for remote state does not exist';
       const result = await matcher.diagnoseError(errorMessage, undefined, {
         enableFuzzyMatching: true,
-        minConfidence: 0.3
+        minConfidence: 0,
+        maxMatches: 10
       });
 
-      // Verify we got matches first
-      expect(result.matches.length).toBeGreaterThan(0);
-      
-      // Check that fuzzy matches (non-regex) have correct score range
       const fuzzyMatches = result.matches.filter(m => m.confidence < 0.95);
+      expect(fuzzyMatches.length).toBeGreaterThan(0);
       fuzzyMatches.forEach(match => {
-        expect(match.confidence).toBeGreaterThanOrEqual(0.3);
+        expect(match.confidence).toBeGreaterThanOrEqual(0.35);
         expect(match.confidence).toBeLessThanOrEqual(0.85);
+        expect(match.confidence).toBe(Math.round(match.confidence * 100) / 100);
       });
     });
 

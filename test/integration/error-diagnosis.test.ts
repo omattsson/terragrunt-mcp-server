@@ -33,9 +33,10 @@ describe('Error Diagnosis Integration', () => {
       expect(typeof result.overallConfidence).toBe('number');
       expect(typeof result.matchCount).toBe('number');
       expect(Array.isArray(result.matches)).toBe(true);
-      // enrichWithDocs defaults to true, so enriched format returns orderedDebuggingSteps
-      expect(Array.isArray(result.orderedDebuggingSteps) || Array.isArray(result.debuggingSteps)).toBe(true);
-      expect(Array.isArray(result.generalAdvice)).toBe(true);
+      // Summary detail is the default: matches only, no debugging or advice lists
+      expect(result.debuggingSteps).toBeUndefined();
+      expect(result.orderedDebuggingSteps).toBeUndefined();
+      expect(result.generalAdvice).toBeUndefined();
     });
 
     it('should accept and process context parameters', async () => {
@@ -191,7 +192,8 @@ describe('Error Diagnosis Integration', () => {
   describe('MCP Response Format', () => {
     it('should return MCP-compliant response structure', async () => {
       const result = await toolHandler.executeTool('diagnose_terragrunt_error', {
-        error_message: 'Error: No Terraform configuration files found'
+        error_message: 'Error: No Terraform configuration files found',
+        detailLevel: 'full'
       });
 
       // MCP tool responses must have specific structure
@@ -203,7 +205,7 @@ describe('Error Diagnosis Integration', () => {
       expect('overallConfidence' in result).toBe(true);
       expect('matchCount' in result).toBe(true);
       expect('matches' in result).toBe(true);
-      // enrichWithDocs defaults to true, so enriched format uses orderedDebuggingSteps
+      // Full detail enriches by default, so the response uses orderedDebuggingSteps
       expect('orderedDebuggingSteps' in result || 'debuggingSteps' in result).toBe(true);
       expect('generalAdvice' in result).toBe(true);
 

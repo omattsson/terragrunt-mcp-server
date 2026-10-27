@@ -11,12 +11,77 @@ import {
 } from '../types/terragrunt.js';
 
 /**
+ * Words with no diagnostic signal: English function words, plus terms that
+ * appear in nearly every Terragrunt error (error, failed, terragrunt). Fuzzy
+ * matching ignores them so generic text cannot produce a match.
+ */
+const STOPWORDS = new Set([
+  'a', 'about', 'after', 'all', 'also', 'an', 'and', 'any', 'are', 'as', 'at',
+  'be', 'been', 'before', 'being', 'but', 'by', 'can', 'cannot', 'could', 'did',
+  'do', 'does', 'during', 'each', 'either', 'else', 'for', 'from', 'had', 'has',
+  'have', 'here', 'how', 'if', 'in', 'into', 'is', 'it', 'its', 'just', 'may',
+  'maybe', 'might', 'more', 'most', 'must', 'my', 'no', 'nor', 'not', 'of', 'on',
+  'onto', 'or', 'other', 'our', 'out', 'over', 'should', 'so', 'some', 'such',
+  'than', 'that', 'the', 'their', 'them', 'then', 'there', 'these', 'they',
+  'this', 'those', 'to', 'too', 'under', 'up', 'use', 'used', 'using', 'very',
+  'via', 'was', 'we', 'went', 'were', 'what', 'when', 'where', 'which', 'while',
+  'who', 'why', 'will', 'with', 'without', 'would', 'you', 'your',
+  'detected', 'error', 'errors', 'fail', 'failed', 'failing', 'fails', 'failure', 'issue',
+  'problem', 'something', 'unable', 'terragrunt', 'terraform', 'opentofu', 'tofu'
+]);
+
+/**
+ * Plain words this long or longer also match on a shared prefix of this
+ * length, so "acquire" matches "acquiring" and "configuration" matches
+ * "configured". Identifiers such as read_terragrunt_config only match whole.
+ */
+const STEM_PREFIX_LENGTH = 6;
+
+function stemOf(token: string): string | undefined {
+  return token.length >= STEM_PREFIX_LENGTH && !token.includes('_')
+    ? token.slice(0, STEM_PREFIX_LENGTH)
+    : undefined;
+}
+
+/**
+ * Split text into lowercase whole-word tokens, dropping stopwords and bare
+ * numbers, and folding simple plurals of plain words ("modules" -> "module",
+ * "dependencies" -> "dependency").
+ */
+function tokenize(text: string): Set<string> {
+  const tokens = new Set<string>();
+  for (const word of text.toLowerCase().split(/[^a-z0-9_]+/)) {
+    if (word.length < 2 || STOPWORDS.has(word) || /^\d+$/.test(word)) {
+      continue;
+    }
+    if (word.includes('_')) {
+      tokens.add(word);
+    } else if (word.length > 4 && word.endsWith('ies')) {
+      tokens.add(word.slice(0, -3) + 'y');
+    } else if (word.length > 3 && word.endsWith('s') && !word.endsWith('ss')) {
+      tokens.add(word.slice(0, -1));
+    } else {
+      tokens.add(word);
+    }
+  }
+  return tokens;
+}
+
+/**
+ * Tokenized form of an error message, built once per diagnosis.
+ */
+interface TokenizedMessage {
+  tokens: Set<string>;
+  stems: Set<string>;
+}
+
+/**
  * Manages error pattern matching and diagnosis for Terragrunt errors.
  * 
  * This class analyzes error messages from Terragrunt and matches them against
  * known error patterns to provide helpful solutions and debugging steps.
  * 
- * **Database contains 111 error patterns across 12 categories**
+ * **Database contains 113 error patterns across 12 categories**
  * (counts are computed by getPatternStats and guarded against drift by tests)
  * 
  * Features:
@@ -29,7 +94,7 @@ import {
  * Supported error categories (patterns are thematically organized within these):
  * - configuration: Syntax errors, missing blocks, invalid values, hooks, includes, locals, generate, block expansion (46 patterns)
  * - state: State locking, backend issues (3 patterns)
- * - dependency: Circular dependencies, missing modules, module sources (13 patterns)
+ * - dependency: Circular dependencies, dependency outputs, missing modules, module sources (15 patterns)
  * - backend: S3, GCS, Azure backend and managed azurerm state errors (8 patterns)
  * - terraform: Version mismatches, provider issues (3 patterns)
  * - authentication: AWS, Azure, GCP credential issues (3 patterns)
@@ -45,17 +110,30 @@ export class ErrorPatternMatcher {
   private readonly solutionRetriever: SolutionRetriever;
   private readonly matchCache: LRUCache<string, ErrorMatch[]>;
   private patterns: ErrorPattern[] = [];
+  /** Tokenized name and description of each pattern, built at load */
+  private patternPhrases = new Map<ErrorPattern, { name: Set<string>; description: Set<string> }>();
+  /** Inverse document frequency of each pattern word across all patterns */
+  private wordWeights = new Map<string, number>();
   private patternsLoaded: boolean = false;
 
   /**
-   * Maximum edit distance for fuzzy matching as percentage of string length
+   * Minimum confidence score to include in results (configurable per-call).
+   * A fuzzy match needs the pattern name or most of its description to clear
+   * it; a single shared word never does.
    */
-  private readonly MAX_EDIT_DISTANCE_RATIO = 0.3;
+  private readonly DEFAULT_MIN_CONFIDENCE = 0.5;
 
   /**
-   * Minimum confidence score to include in results (configurable per-call)
+   * Minimum number of meaningful words a fuzzy match must share with the message
    */
-  private readonly DEFAULT_MIN_CONFIDENCE = 0.3;
+  private readonly MIN_FUZZY_WORD_MATCHES = 2;
+
+  /**
+   * Minimum summed word weight (IDF) a fuzzy match must reach. Two words that
+   * appear across many patterns ("module", "found") fall short; a word
+   * specific to a few patterns ("cycle", "lock") paired with any other clears it.
+   */
+  private readonly MIN_FUZZY_EVIDENCE = 5.5;
 
   /**
    * Maximum number of matches to return (configurable per-call)
@@ -115,6 +193,21 @@ export class ErrorPatternMatcher {
       ...this.getAzureManagedStateErrorPatterns(),
       ...this.getCASErrorPatterns()
     ];
+
+    const documentFrequency = new Map<string, number>();
+    for (const pattern of this.patterns) {
+      const phrases = {
+        name: tokenize(pattern.name),
+        description: tokenize(pattern.description)
+      };
+      this.patternPhrases.set(pattern, phrases);
+      for (const token of new Set([...phrases.name, ...phrases.description])) {
+        documentFrequency.set(token, (documentFrequency.get(token) ?? 0) + 1);
+      }
+    }
+    for (const [token, count] of documentFrequency) {
+      this.wordWeights.set(token, Math.log(this.patterns.length / count));
+    }
 
     this.patternsLoaded = true;
   }
@@ -234,9 +327,11 @@ export class ErrorPatternMatcher {
       return emptyResult;
     }
 
-    // Truncate very long error messages for performance (keep first 5000 chars)
+    // Truncate very long error messages for performance. Keep the head and the
+    // tail: Terraform and Terragrunt print the actual error last, after plan or
+    // log output.
     const truncatedMessage = errorMessage.length > 5000
-      ? errorMessage.substring(0, 5000)
+      ? `${errorMessage.substring(0, 2500)}\n${errorMessage.substring(errorMessage.length - 2500)}`
       : errorMessage;
 
     // Ensure patterns are loaded
@@ -335,7 +430,7 @@ export class ErrorPatternMatcher {
     }
   ): ErrorMatch[] {
     const matches: ErrorMatch[] = [];
-    const normalizedMessage = errorMessage.toLowerCase();
+    const message = this.tokenizeMessage(errorMessage);
     let regexMatchCount = 0;
 
     for (const pattern of this.patterns) {
@@ -367,18 +462,17 @@ export class ErrorPatternMatcher {
       }
 
       // Try fuzzy matching on pattern description and name
-      const descriptionSimilarity = this.calculateSimilarity(
-        pattern.description.toLowerCase(),
-        normalizedMessage
-      );
-      const nameSimilarity = this.calculateSimilarity(
-        pattern.name.toLowerCase(),
-        normalizedMessage
+      const phrases = this.patternPhrases.get(pattern)!;
+      const maxSimilarity = Math.max(
+        this.calculateSimilarity(phrases.description, message),
+        this.calculateSimilarity(phrases.name, message)
       );
 
-      const maxSimilarity = Math.max(descriptionSimilarity, nameSimilarity);
-      
-      // Map similarity to confidence score using the specified ranges
+      // Too few shared words is no evidence at all, whatever minConfidence is
+      if (maxSimilarity === 0) {
+        continue;
+      }
+
       const confidence = this.mapSimilarityToConfidence(maxSimilarity);
 
       if (confidence >= options.minConfidence) {
@@ -457,64 +551,61 @@ export class ErrorPatternMatcher {
     return context;
   }
 
-  /**
-   * Calculate raw similarity score between two strings.
-   * 
-   * @param pattern The pattern to match against
-   * @param text The text to search in
-   * @returns Raw similarity score 0-1 (1 = perfect match)
-   */
-  private calculateSimilarity(pattern: string, text: string): number {
-    // Check for exact substring match first
-    if (text.includes(pattern)) {
-      return 1.0;
+  private tokenizeMessage(message: string): TokenizedMessage {
+    const tokens = tokenize(message);
+    const stems = new Set<string>();
+    for (const token of tokens) {
+      const stem = stemOf(token);
+      if (stem) {
+        stems.add(stem);
+      }
     }
-
-    // Check for partial word matches
-    const patternWords = pattern.split(/\s+/).filter(w => w.length > 0);
-    const textWords = text.split(/\s+/).filter(w => w.length > 0);
-    
-    if (patternWords.length === 0) {
-      return 0;
-    }
-    
-    const matchingWords = patternWords.filter(pw => 
-      textWords.some(tw => tw.includes(pw) || pw.includes(tw))
-    );
-    
-    if (matchingWords.length > 0) {
-      const wordMatchRatio = matchingWords.length / patternWords.length;
-      // Scale word matches to 0.6-0.9 similarity range
-      return 0.6 + (wordMatchRatio * 0.3);
-    }
-
-    // Calculate Levenshtein distance for overall similarity
-    // Optimize by truncating very long texts to avoid expensive O(n*m) calculation
-    const truncatedText = text.length > 500 ? text.substring(0, 500) : text;
-    const distance = this.levenshteinDistance(pattern, truncatedText);
-    const maxLength = Math.max(pattern.length, truncatedText.length);
-    const similarity = 1 - (distance / maxLength);
-
-    return similarity;
+    return { tokens, stems };
   }
 
   /**
-   * Map raw similarity score to confidence score using specified ranges.
-   * 
+   * Calculate raw similarity between a pattern phrase and an error message.
+   *
+   * Words are compared whole (after stopword removal), never as substrings of
+   * other words, and weighted by how specific they are across patterns. A
+   * phrase needs MIN_FUZZY_WORD_MATCHES shared words reaching
+   * MIN_FUZZY_EVIDENCE in weight, otherwise it scores 0.
+   *
+   * @param phrase Tokens of the pattern name or description
+   * @param message The tokenized error message
+   * @returns The weighted share of the phrase's words found in the message
+   *   (1 = all of them), or 0 if too few
+   */
+  private calculateSimilarity(phrase: Set<string>, message: TokenizedMessage): number {
+    let matchingWords = 0;
+    let matchedWeight = 0;
+    let totalWeight = 0;
+    for (const token of phrase) {
+      const weight = this.wordWeights.get(token) ?? 0;
+      totalWeight += weight;
+      const stem = stemOf(token);
+      if (message.tokens.has(token) || (stem !== undefined && message.stems.has(stem))) {
+        matchingWords++;
+        matchedWeight += weight;
+      }
+    }
+
+    if (matchingWords < this.MIN_FUZZY_WORD_MATCHES || matchedWeight < this.MIN_FUZZY_EVIDENCE) {
+      return 0;
+    }
+    return matchedWeight / totalWeight;
+  }
+
+  /**
+   * Map raw similarity to a fuzzy confidence score in 0.35-0.85, rounded to
+   * two decimals. The ceiling stays below REGEX_MATCH_CONFIDENCE so a regex
+   * hit always outranks a fuzzy one.
+   *
    * @param similarity Raw similarity score (0-1)
-   * @returns Confidence score in appropriate range
+   * @returns Confidence score
    */
   private mapSimilarityToConfidence(similarity: number): number {
-    if (similarity > 0.8) {
-      // Map 0.8-1.0 to 0.7-0.85
-      return 0.7 + (similarity - 0.8) * 0.75;
-    } else if (similarity >= 0.5) {
-      // Map 0.5-0.8 to 0.4-0.65
-      return 0.4 + (similarity - 0.5) * 0.833;
-    } else {
-      // Map 0.0-0.5 to 0.1-0.35
-      return 0.1 + similarity * 0.5;
-    }
+    return Math.round((0.35 + similarity * 0.5) * 100) / 100;
   }
 
   /**
@@ -544,42 +635,6 @@ export class ErrorPatternMatcher {
   }
 
   /**
-   * Calculate Levenshtein distance between two strings.
-   * This measures the minimum number of single-character edits needed.
-   */
-  private levenshteinDistance(str1: string, str2: string): number {
-    const len1 = str1.length;
-    const len2 = str2.length;
-
-    // Create matrix
-    const matrix: number[][] = Array(len1 + 1)
-      .fill(null)
-      .map(() => Array(len2 + 1).fill(0));
-
-    // Initialize first column and row
-    for (let i = 0; i <= len1; i++) {
-      matrix[i][0] = i;
-    }
-    for (let j = 0; j <= len2; j++) {
-      matrix[0][j] = j;
-    }
-
-    // Calculate distances
-    for (let i = 1; i <= len1; i++) {
-      for (let j = 1; j <= len2; j++) {
-        const cost = str1[i - 1] === str2[j - 1] ? 0 : 1;
-        matrix[i][j] = Math.min(
-          matrix[i - 1][j] + 1,      // deletion
-          matrix[i][j - 1] + 1,      // insertion
-          matrix[i - 1][j - 1] + cost // substitution
-        );
-      }
-    }
-
-    return matrix[len1][len2];
-  }
-
-  /**
    * Generate cache key for error message including options.
    */
   private getCacheKey(
@@ -588,8 +643,9 @@ export class ErrorPatternMatcher {
     minConfidence: number,
     enableFuzzyMatching: boolean
   ): string {
-    // Use first 200 chars plus options as cache key
-    const msgKey = errorMessage.substring(0, 200).toLowerCase().trim();
+    // Key on the whole (already truncated) message: long outputs often share a
+    // preamble and differ only in the error at the end
+    const msgKey = errorMessage.toLowerCase().trim();
     return `${msgKey}|${maxMatches}|${minConfidence}|${enableFuzzyMatching}`;
   }
 
@@ -1013,8 +1069,11 @@ export class ErrorPatternMatcher {
         id: 'dep-circular',
         name: 'Circular dependency detected',
         category: 'dependency',
-        regex: /cycle:|circular\s+dependency/i,
-        description: 'Modules have circular dependencies which Terraform cannot resolve',
+        // Upstream DependencyCycleError (pkg/config/errors.go):
+        // "Found a dependency cycle between modules: a -> b -> a"
+        regex: /found\s+a\s+dependency\s+cycle\s+between\s+modules|cycle:|circular\s+dependency/i,
+        // "cycle:" also catches Terraform's resource-graph "Error: Cycle: ..."
+        description: 'Units, modules, or resources depend on each other in a cycle, so they cannot be ordered',
         likelyCauses: [
           'Module A depends on Module B which depends on Module A',
           'Indirect circular dependency through multiple modules',
@@ -1027,6 +1086,62 @@ export class ErrorPatternMatcher {
         ],
         documentationRefs: [
           'https://docs.terragrunt.com/reference/hcl/blocks/#dependencies'
+        ]
+      },
+      {
+        id: 'dep-read-config-cycle',
+        name: 'read_terragrunt_config cycle detected',
+        category: 'dependency',
+        // Upstream ReadTerragruntConfigCycleError (pkg/config/errors.go):
+        // "read_terragrunt_config cycle detected: a.hcl -> b.hcl -> a.hcl"
+        regex: /read_terragrunt_config\s+cycle\s+detected/i,
+        description: 'Configuration files read each other through read_terragrunt_config in a loop',
+        likelyCauses: [
+          'Two files call read_terragrunt_config on each other',
+          'A shared file reads back a file that reads it, through a longer chain',
+          'A unit reads its own terragrunt.hcl through find_in_parent_folders or a relative path'
+        ],
+        solutions: [
+          { step: 1, explanation: 'Follow the chain in the error message to find the file that closes the loop' },
+          { step: 2, explanation: 'Move the shared values into a separate file that does not call read_terragrunt_config' },
+          { step: 3, explanation: 'Use an include block instead where you only need to inherit configuration' }
+        ],
+        documentationRefs: [
+          'https://docs.terragrunt.com/reference/hcl/functions/#read_terragrunt_config'
+        ]
+      },
+      {
+        id: 'dep-outputs-unavailable',
+        name: 'Dependency outputs not available',
+        category: 'dependency',
+        // Upstream TerragruntOutputTargetNoOutputs (pkg/config/errors.go):
+        // "<a> is a dependency of <b> but detected no outputs."
+        // HCL, when an output is read from empty outputs:
+        // "dependency.vpc.outputs is object with no attributes"
+        regex: /is\s+a\s+dependency\s+of\s+.+\s+but\s+detected\s+no\s+outputs|dependency\.[\w-]+\.outputs\s+is\s+object\s+with\s+no\s+attributes/i,
+        description: 'A dependency has no outputs yet, usually because it has not been applied',
+        likelyCauses: [
+          'The dependency has not been applied yet, so its state has no outputs',
+          'Running plan or validate across a stack whose dependencies are not applied',
+          'The dependency module does not declare the output being read'
+        ],
+        solutions: [
+          { step: 1, explanation: 'Apply the dependency first so its outputs exist in state' },
+          {
+            step: 2,
+            command: 'mock_outputs = { vpc_id = "mock-vpc-id" }',
+            explanation: 'Add mock_outputs to the dependency block so plan and validate can run before the dependency is applied'
+          },
+          {
+            step: 3,
+            command: 'mock_outputs_allowed_terraform_commands = ["init", "validate", "plan"]',
+            explanation: 'Limit mock outputs to read-only commands so apply never uses placeholder values'
+          },
+          { step: 4, explanation: 'Check that the dependency module declares an output with the name being read' }
+        ],
+        documentationRefs: [
+          'https://docs.terragrunt.com/features/stacks/#unapplied-dependency-and-mock-outputs',
+          'https://docs.terragrunt.com/reference/hcl/blocks/#dependency'
         ]
       },
       {

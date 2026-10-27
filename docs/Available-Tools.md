@@ -856,10 +856,25 @@ See [File Writing Guide](File-Writing-Guide.md) for detailed security configurat
   - `backend` (string): Backend type (s3, gcs, azurerm, etc.)
 - **`options`** (object, optional): Diagnosis options
   - `maxMatches` (number): Maximum matches to return (default: 3)
-  - `minConfidence` (number): Minimum confidence score 0-1 (default: 0.3)
+  - `minConfidence` (number): Minimum confidence score 0-1 (default: 0.5)
   - `enableFuzzyMatching` (boolean): Enable fuzzy matching (default: true)
-  - `enrichWithDocs` (boolean): Enrich with documentation-sourced solutions (default: false)
+  - `detailLevel` (string): `summary` or `full` (default: `summary`; see below)
+  - `enrichWithDocs` (boolean): In `full` detail, enrich with documentation-sourced solutions (on unless set to `false`). Setting it to `true` without a `detailLevel` selects `full`.
   - `includeDestructiveCommands` (boolean): Include destructive commands in solutions (default: true)
+
+### Matching and confidence — diagnose_terragrunt_error
+
+- A pattern whose regex matches the message scores 0.95.
+- Otherwise the message is compared with each pattern's name and description
+  word by word: whole words only, ignoring common words such as "the",
+  "error", or "terragrunt". A fuzzy match needs at least two shared words,
+  and words that appear in many patterns ("module", "found") count less than
+  specific ones ("cycle", "lock"). Fuzzy scores range from 0.35 to 0.85, so a
+  regex hit always ranks first.
+- Confidence is rounded to two decimals.
+- When nothing reaches `minConfidence`, the response says so with
+  `noConfidentMatch: true` and generic debugging steps, instead of offering
+  the closest weak guess.
 
 ### Use Cases — diagnose_terragrunt_error
 
@@ -877,7 +892,53 @@ See [File Writing Guide](File-Writing-Guide.md) for detailed security configurat
 "Diagnose this terragrunt error and tell me how to fix it"
 ```
 
-### Example Response — diagnose_terragrunt_error (Basic)
+### Example Response — diagnose_terragrunt_error (Summary, default)
+
+```json
+{
+  "success": true,
+  "overallConfidence": 0.95,
+  "matchCount": 1,
+  "matches": [
+    {
+      "patternId": "backend-config-changed",
+      "patternName": "Backend Configuration Changed",
+      "category": "backend",
+      "confidence": 0.95,
+      "likelyCause": "Backend bucket, region, or key was modified",
+      "solutions": [
+        {
+          "step": 1,
+          "command": "terragrunt init -reconfigure",
+          "explanation": "Reinitialize with new backend configuration"
+        }
+      ],
+      "documentationRefs": ["https://docs.terragrunt.com/..."]
+    }
+  ]
+}
+```
+
+### Example Response — diagnose_terragrunt_error (No confident match)
+
+```json
+{
+  "success": true,
+  "noConfidentMatch": true,
+  "overallConfidence": 0,
+  "matchCount": 0,
+  "matches": [],
+  "message": "No known error pattern matched this message with enough confidence. Try the generic steps below, or pass the complete error output including the lines around it.",
+  "debuggingSteps": ["Run with --inputs-debug to emit input debugging information", "..."],
+  "generalAdvice": ["Check your terragrunt.hcl configuration for syntax errors", "..."]
+}
+```
+
+### Example Response — diagnose_terragrunt_error (Full, without enrichment)
+
+With `detailLevel: "full"` and `enrichWithDocs: false`, each match adds a
+`description`, and the response adds debugging steps, related errors, and
+general advice:
 
 ```json
 {
@@ -914,9 +975,10 @@ See [File Writing Guide](File-Writing-Guide.md) for detailed security configurat
 }
 ```
 
-### Example Response — diagnose_terragrunt_error (Enriched)
+### Example Response — diagnose_terragrunt_error (Full, enriched)
 
-When `enrichWithDocs: true`, you get additional documentation-sourced solutions:
+With `detailLevel: "full"` (enrichment is on by default there), you get
+additional documentation-sourced solutions:
 
 ```json
 {

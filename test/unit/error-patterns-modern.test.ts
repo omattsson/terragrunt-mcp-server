@@ -127,6 +127,22 @@ describe('modern diagnosis: CAS', () => {
   });
 });
 
+describe('modern diagnosis: dependency cycles and outputs', () => {
+  // pkg/config/errors.go: DependencyCycleError, ReadTerragruntConfigCycleError,
+  // TerragruntOutputTargetNoOutputs
+  const cases: Array<[string, string]> = [
+    ['Found a dependency cycle between modules: /infra/vpc -> /infra/app -> /infra/vpc', 'dep-circular'],
+    ['read_terragrunt_config cycle detected: a.hcl -> b.hcl -> a.hcl', 'dep-read-config-cycle'],
+    ['/infra/vpc/terragrunt.hcl is a dependency of /infra/app/terragrunt.hcl but detected no outputs. Either the target module has not been applied yet, or the module has no outputs.', 'dep-outputs-unavailable'],
+  ];
+  it.each(cases)('matches %s -> %s at 0.95', async (text, id) => {
+    const m = await topMatch(text, false);
+    expect(m.pattern.id).toBe(id);
+    expect(m.pattern.category).toBe('dependency');
+    expect(m.confidence).toBe(0.95);
+  });
+});
+
 describe('modern diagnosis: experiment gates', () => {
   const gated = [
     "the 'browse' command requires the 'browse-tui' experiment to be enabled (set --experiment browse-tui or TG_EXPERIMENT=browse-tui)",
