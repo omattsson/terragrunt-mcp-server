@@ -1044,7 +1044,7 @@ export class TerragruntDocsManager {
       }
       chunks.push(value);
     }
-    return Buffer.concat(chunks).toString('utf-8');
+    return new TextDecoder().decode(Buffer.concat(chunks));
   }
 
   /**

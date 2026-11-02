@@ -1469,6 +1469,14 @@ terraform {
 
       expect(docs).toHaveLength(2);
     });
+
+    it('should strip a UTF-8 byte order mark before parsing', async () => {
+      mockFetch.mockResolvedValueOnce(new Response(streamOf('\uFEFF' + sampleMarkdown)));
+
+      const docs = await manager.fetchFromLlmsTxt();
+
+      expect(docs.map(d => d.title)).toEqual(['Install', 'Quick Start']);
+    });
   });
 
   describe('fetch limits configuration', () => {
