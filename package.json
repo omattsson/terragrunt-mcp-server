@@ -52,7 +52,7 @@
     "lru-cache": "^11.2.2",
     "mustache": "^4.2.0",
     "ts-node": "^10.9.0",
-    "typescript": "^5.0.0"
+    "typescript": "^7.0.2"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
