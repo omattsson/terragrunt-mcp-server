@@ -1,11 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { TerragruntDocsManager } from '../../src/terragrunt/docs.js';
 
-// Mock node-fetch
-vi.mock('node-fetch', () => ({
-  default: vi.fn()
-}));
-
 // Mock fs/promises - need to mock the default export
 vi.mock('fs/promises', () => ({
   default: {
@@ -48,8 +43,8 @@ describe('Error Handling - Network Failures', () => {
     process.env.TERRAGRUNT_RETRY_BACKOFF_MULTIPLIER = '1.5';
     
     // Get mocked modules
-    const fetchModule = await import('node-fetch');
-    mockFetch = fetchModule.default as any;
+    mockFetch = vi.fn();
+    vi.stubGlobal('fetch', mockFetch);
     
     const fsModule = await import('fs/promises');
     mockFs = {
@@ -67,6 +62,7 @@ describe('Error Handling - Network Failures', () => {
 
   afterEach(() => {
     vi.clearAllMocks();
+    vi.unstubAllGlobals();
     
     // Restore original environment variables
     process.env.TERRAGRUNT_RETRY_INITIAL_DELAY = originalEnv.TERRAGRUNT_RETRY_INITIAL_DELAY;
@@ -101,11 +97,7 @@ describe('Error Handling - Network Failures', () => {
     });
 
     it('should handle HTTP 404 error', async () => {
-      mockFetch.mockResolvedValue({
-        ok: false,
-        status: 404,
-        statusText: 'Not Found'
-      });
+      mockFetch.mockResolvedValue(new Response(null, { status: 404, statusText: 'Not Found' }));
       
       (mockFs.access as any).mockRejectedValue(new Error('ENOENT'));
       (mockFs.readFile as any).mockResolvedValue(JSON.stringify([
@@ -119,11 +111,7 @@ describe('Error Handling - Network Failures', () => {
     });
 
     it('should handle HTTP 500 error', async () => {
-      mockFetch.mockResolvedValue({
-        ok: false,
-        status: 500,
-        statusText: 'Internal Server Error'
-      });
+      mockFetch.mockResolvedValue(new Response(null, { status: 500, statusText: 'Internal Server Error' }));
       
       (mockFs.access as any).mockRejectedValue(new Error('ENOENT'));
       (mockFs.readFile as any).mockResolvedValue(JSON.stringify([
@@ -181,10 +169,7 @@ describe('Error Handling - Network Failures', () => {
 
   describe('Malformed HTML/Parsing Errors', () => {
     it('should handle empty HTML response', async () => {
-      mockFetch.mockResolvedValue({
-        ok: true,
-        text: async () => ''
-      });
+      mockFetch.mockResolvedValue(new Response(''));
       
       (mockFs.access as any).mockRejectedValue(new Error('ENOENT'));
       (mockFs.readFile as any).mockResolvedValue(JSON.stringify([
@@ -199,10 +184,7 @@ describe('Error Handling - Network Failures', () => {
     });
 
     it('should handle malformed HTML', async () => {
-      mockFetch.mockResolvedValue({
-        ok: true,
-        text: async () => '<html><body><div class="unclosed'
-      });
+      mockFetch.mockResolvedValue(new Response('<html><body><div class="unclosed'));
       
       (mockFs.access as any).mockRejectedValue(new Error('ENOENT'));
       (mockFs.readFile as any).mockResolvedValue(JSON.stringify([
@@ -216,10 +198,7 @@ describe('Error Handling - Network Failures', () => {
     });
 
     it('should handle HTML with no documentation content', async () => {
-      mockFetch.mockResolvedValue({
-        ok: true,
-        text: async () => '<html><body><h1>No docs here</h1></body></html>'
-      });
+      mockFetch.mockResolvedValue(new Response('<html><body><h1>No docs here</h1></body></html>'));
       
       (mockFs.access as any).mockRejectedValue(new Error('ENOENT'));
       (mockFs.readFile as any).mockResolvedValue(JSON.stringify([
@@ -233,10 +212,7 @@ describe('Error Handling - Network Failures', () => {
     });
 
     it('should handle HTML with unexpected structure', async () => {
-      mockFetch.mockResolvedValue({
-        ok: true,
-        text: async () => '<html><body><div class="wrong-class">Content</div></body></html>'
-      });
+      mockFetch.mockResolvedValue(new Response('<html><body><div class="wrong-class">Content</div></body></html>'));
       
       (mockFs.access as any).mockRejectedValue(new Error('ENOENT'));
       (mockFs.readFile as any).mockResolvedValue(JSON.stringify([
@@ -256,10 +232,7 @@ describe('Error Handling - Network Failures', () => {
       (mockFs.readFile as any).mockRejectedValueOnce(new Error('EACCES: permission denied'));
       
       // Should fall back to network fetch
-      mockFetch.mockResolvedValue({
-        ok: true,
-        text: async () => '<html><body></body></html>'
-      });
+      mockFetch.mockResolvedValue(new Response('<html><body></body></html>'));
       
       // Fixture fallback
       (mockFs.readFile as any).mockResolvedValue(JSON.stringify([
@@ -277,10 +250,7 @@ describe('Error Handling - Network Failures', () => {
       (mockFs.mkdir as any).mockRejectedValue(new Error('EACCES: permission denied'));
       (mockFs.writeFile as any).mockRejectedValue(new Error('EACCES: permission denied'));
       
-      mockFetch.mockResolvedValue({
-        ok: true,
-        text: async () => '<html><body></body></html>'
-      });
+      mockFetch.mockResolvedValue(new Response('<html><body></body></html>'));
       
       (mockFs.readFile as any).mockResolvedValue(JSON.stringify([
         { title: 'Test', url: 'http://example.com', content: 'test', section: 'test', lastUpdated: '2025-01-01' }
@@ -298,10 +268,7 @@ describe('Error Handling - Network Failures', () => {
       (mockFs.mkdir as any).mockResolvedValue(undefined);
       (mockFs.writeFile as any).mockRejectedValue(new Error('ENOSPC: no space left on device'));
       
-      mockFetch.mockResolvedValue({
-        ok: true,
-        text: async () => '<html><body></body></html>'
-      });
+      mockFetch.mockResolvedValue(new Response('<html><body></body></html>'));
       
       (mockFs.readFile as any).mockResolvedValue(JSON.stringify([
         { title: 'Test', url: 'http://example.com', content: 'test', section: 'test', lastUpdated: '2025-01-01' }
@@ -318,10 +285,7 @@ describe('Error Handling - Network Failures', () => {
       (mockFs.mkdir as any).mockRejectedValue(new Error('EROFS: read-only file system'));
       (mockFs.writeFile as any).mockRejectedValue(new Error('EROFS: read-only file system'));
       
-      mockFetch.mockResolvedValue({
-        ok: true,
-        text: async () => '<html><body></body></html>'
-      });
+      mockFetch.mockResolvedValue(new Response('<html><body></body></html>'));
       
       (mockFs.readFile as any).mockResolvedValue(JSON.stringify([
         { title: 'Test', url: 'http://example.com', content: 'test', section: 'test', lastUpdated: '2025-01-01' }
@@ -468,10 +432,7 @@ describe('Error Handling - Network Failures', () => {
       (mockFs.readFile as any).mockResolvedValueOnce('{ corrupted }');
       
       // Network works
-      mockFetch.mockResolvedValue({
-        ok: true,
-        text: async () => '<html><body></body></html>'
-      });
+      mockFetch.mockResolvedValue(new Response('<html><body></body></html>'));
       
       // Fixture as final fallback
       (mockFs.readFile as any).mockResolvedValue(JSON.stringify([

@@ -37,6 +37,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 🐛 Fixed
 
+- **Docs fetch can no longer hang** (#295): a stalled connection to docs.terragrunt.com hung the first tool call indefinitely, and a large response was read into memory in full.
+  - Each fetch attempt times out after `TERRAGRUNT_FETCH_TIMEOUT_MS` (default 10000). A timeout is retried like other network failures.
+  - Responses larger than `TERRAGRUNT_FETCH_MAX_BYTES` (default 16 MiB) are rejected, checked against `content-length` and while streaming. They are not retried.
+  - When the fetch fails, the server now uses an expired disk cache before the bundled fixture. Before, an expired disk cache was skipped.
+  - `node-fetch` is replaced with the built-in Node.js `fetch`.
 - **stdout carries only JSON-RPC** (#289): informational logs from the docs cache and template loaders were written to stdout, interleaving non-JSON lines with protocol messages on the stdio transport.
   - All logging now goes to stderr.
   - `src/stdio-guard.ts`, imported first by the entry point, points every global console method (`log`, `info`, `debug`, `dir`, `table`, …) at stderr before any other module loads.

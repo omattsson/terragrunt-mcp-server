@@ -51,7 +51,6 @@
     "diff": "^9.0.0",
     "lru-cache": "^11.2.2",
     "mustache": "^4.2.0",
-    "node-fetch": "^3.3.2",
     "ts-node": "^10.9.0",
     "typescript": "^5.0.0"
   },
