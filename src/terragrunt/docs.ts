@@ -1,4 +1,3 @@
-import fetch from 'node-fetch';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
@@ -65,6 +64,22 @@ interface RetryConfig {
   initialDelayMs: number;
   maxDelayMs: number;
   backoffMultiplier: number;
+}
+
+interface FetchConfig {
+  timeoutMs: number;
+  maxBytes: number;
+}
+
+function positiveIntFromEnv(name: string, fallback: number): number {
+  const value = Number(process.env[name]);
+  return Number.isInteger(value) && value > 0 ? value : fallback;
+}
+
+function nonRetryableError(message: string): Error {
+  const err = new Error(message);
+  err.name = 'NonRetryableError';
+  return err;
 }
 
 /**
@@ -165,6 +180,10 @@ export class TerragruntDocsManager {
     initialDelayMs: parseInt(process.env.TERRAGRUNT_RETRY_INITIAL_DELAY || '1000', 10),
     maxDelayMs: parseInt(process.env.TERRAGRUNT_RETRY_MAX_DELAY || '10000', 10),
     backoffMultiplier: parseFloat(process.env.TERRAGRUNT_RETRY_BACKOFF_MULTIPLIER || '2')
+  };
+  private readonly fetchConfig: FetchConfig = {
+    timeoutMs: positiveIntFromEnv('TERRAGRUNT_FETCH_TIMEOUT_MS', 10_000),
+    maxBytes: positiveIntFromEnv('TERRAGRUNT_FETCH_MAX_BYTES', 16 * 1024 * 1024)
   };
 
   constructor() {
@@ -397,7 +416,7 @@ export class TerragruntDocsManager {
     }
   }
 
-  private async loadCacheFromDisk(): Promise<boolean> {
+  private async loadCacheFromDisk(options: { allowExpired?: boolean } = {}): Promise<boolean> {
     // Keep track of the chosen cache file so we can clean it up if it is corrupt.
     let cacheFileToLoad = this.cacheFile;
 
@@ -428,7 +447,7 @@ export class TerragruntDocsManager {
 
       // Check if cache is expired
       const cacheAge = Date.now() - new Date(metadata.lastFetchTime).getTime();
-      if (cacheAge > this.cacheExpiry) {
+      if (cacheAge > this.cacheExpiry && !options.allowExpired) {
         console.error('Disk cache expired');
         this.stats.misses++;
         return false;
@@ -648,7 +667,7 @@ export class TerragruntDocsManager {
       console.error('Failed to refresh Terragrunt docs cache:', error);
       
       // Try loading from disk cache if available
-      const diskCacheLoaded = await this.loadCacheFromDisk();
+      const diskCacheLoaded = await this.loadCacheFromDisk({ allowExpired: true });
       if (diskCacheLoaded) {
         console.error('Using stale disk cache due to fetch failure');
         return;
@@ -972,19 +991,25 @@ export class TerragruntDocsManager {
 
     try {
       const markdown = await this.retryWithBackoff(async () => {
-        const response = await fetch(url);
-        if (!response.ok) {
-          const status = response.status;
-          const message = `HTTP ${status} ${response.statusText}`;
-          // Don't retry on client errors (4xx) except 408 (timeout) and 429 (rate limit)
-          if (status >= 400 && status < 500 && status !== 408 && status !== 429) {
-            const err = new Error(message);
-            err.name = 'NonRetryableError';
-            throw err;
+        const { timeoutMs } = this.fetchConfig;
+        try {
+          const response = await fetch(url, { signal: AbortSignal.timeout(timeoutMs) });
+          if (!response.ok) {
+            const status = response.status;
+            const message = `HTTP ${status} ${response.statusText}`;
+            // Don't retry on client errors (4xx) except 408 (timeout) and 429 (rate limit)
+            if (status >= 400 && status < 500 && status !== 408 && status !== 429) {
+              throw nonRetryableError(message);
+            }
+            throw new Error(message);
           }
-          throw new Error(message);
+          return await this.readBodyWithLimit(response);
+        } catch (error) {
+          if (error instanceof Error && error.name === 'TimeoutError') {
+            throw new Error(`Timed out after ${timeoutMs}ms`, { cause: error });
+          }
+          throw error;
         }
-        return await response.text();
       }, `Fetching llms.txt from ${url}`);
 
       return this.parseLlmsMarkdown(markdown);
@@ -992,6 +1017,34 @@ export class TerragruntDocsManager {
       console.error(`Failed to fetch llms.txt from ${url}:`, error);
       return [];
     }
+  }
+
+  private async readBodyWithLimit(response: Response): Promise<string> {
+    const { maxBytes } = this.fetchConfig;
+    const tooLarge = () => nonRetryableError(`Response exceeds the ${maxBytes} bytes size cap (TERRAGRUNT_FETCH_MAX_BYTES)`);
+
+    if (Number(response.headers.get('content-length')) > maxBytes) {
+      await response.body?.cancel();
+      throw tooLarge();
+    }
+    if (!response.body) {
+      return '';
+    }
+
+    const reader = response.body.getReader();
+    const chunks: Uint8Array[] = [];
+    let received = 0;
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      received += value.byteLength;
+      if (received > maxBytes) {
+        await reader.cancel();
+        throw tooLarge();
+      }
+      chunks.push(value);
+    }
+    return new TextDecoder().decode(Buffer.concat(chunks));
   }
 
   /**

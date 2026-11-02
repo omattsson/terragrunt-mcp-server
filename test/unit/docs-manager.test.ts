@@ -1,9 +1,8 @@
-import { describe, it, expect, beforeEach, vi, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi, beforeAll, afterAll } from 'vitest';
 import { TerragruntDocsManager, TerragruntDoc, SECTION_MAP, slugifyTitle } from '../../src/terragrunt/docs.js';
 import { TERRAGRUNT_DOC_MANIFEST } from '../../src/terragrunt/docs-manifest.js';
-
-// Mock node-fetch
-vi.mock('node-fetch');
+// Static import keeps the mocked module after the fixture tests call vi.doUnmock.
+import * as mockedFs from 'fs/promises';
 
 // Mock fs/promises for most tests, but we'll unmock for fixture validation
 vi.mock('fs/promises', () => ({
@@ -38,6 +37,11 @@ describe('TerragruntDocsManager', () => {
   beforeEach(() => {
     docsManager = new TerragruntDocsManager();
     vi.clearAllMocks();
+    vi.stubGlobal('fetch', vi.fn());
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
   describe('Cache Expiry Logic', () => {
@@ -1231,15 +1235,30 @@ terraform {
       'Quick start guide.',
     ].join('\n');
 
-    /** Helper to create a mock Response-like object */
     function mockResponse(opts: { ok: boolean; status?: number; statusText?: string; body?: string }) {
-      return {
-        ok: opts.ok,
+      return new Response(opts.ok ? (opts.body ?? '') : null, {
         status: opts.status ?? (opts.ok ? 200 : 500),
         statusText: opts.statusText ?? (opts.ok ? 'OK' : 'Internal Server Error'),
-        text: () => Promise.resolve(opts.body ?? ''),
-      };
+      });
     }
+
+    function stalledFetch(_url: string, init?: RequestInit): Promise<Response> {
+      return new Promise((_resolve, reject) => {
+        init?.signal?.addEventListener('abort', () => reject(init.signal!.reason));
+      });
+    }
+
+    function streamOf(...chunks: string[]): ReadableStream<Uint8Array> {
+      const encoder = new TextEncoder();
+      return new ReadableStream({
+        start(controller) {
+          for (const chunk of chunks) controller.enqueue(encoder.encode(chunk));
+          controller.close();
+        },
+      });
+    }
+
+    const withSignal = expect.objectContaining({ signal: expect.any(AbortSignal) });
 
     beforeEach(async () => {
       manager = new TerragruntDocsManager();
@@ -1253,9 +1272,7 @@ terraform {
       vi.clearAllMocks();
       delete process.env.TERRAGRUNT_LLMS_SOURCE;
 
-      // Obtain a typed reference to the mocked fetch
-      const fetchModule = await import('node-fetch');
-      mockFetch = fetchModule.default as unknown as ReturnType<typeof vi.fn>;
+      mockFetch = globalThis.fetch as unknown as ReturnType<typeof vi.fn>;
     });
 
     afterAll(() => {
@@ -1273,7 +1290,7 @@ terraform {
       expect(docs[1].title).toBe('Quick Start');
       expect(docs[1].section).toBe('getting-started');
 
-      expect(mockFetch).toHaveBeenCalledWith('https://docs.terragrunt.com/llms-small.txt');
+      expect(mockFetch).toHaveBeenCalledWith('https://docs.terragrunt.com/llms-small.txt', withSignal);
     });
 
     it('should use TERRAGRUNT_LLMS_SOURCE env var with absolute URL', async () => {
@@ -1284,7 +1301,7 @@ terraform {
       const docs = await manager.fetchFromLlmsTxt();
 
       expect(docs).toHaveLength(2);
-      expect(mockFetch).toHaveBeenCalledWith('https://example.com/llms-full.txt');
+      expect(mockFetch).toHaveBeenCalledWith('https://example.com/llms-full.txt', withSignal);
     });
 
     it('should resolve TERRAGRUNT_LLMS_SOURCE filename against baseUrl', async () => {
@@ -1295,7 +1312,7 @@ terraform {
       const docs = await manager.fetchFromLlmsTxt();
 
       expect(docs).toHaveLength(2);
-      expect(mockFetch).toHaveBeenCalledWith('https://docs.terragrunt.com/llms-full.txt');
+      expect(mockFetch).toHaveBeenCalledWith('https://docs.terragrunt.com/llms-full.txt', withSignal);
     });
 
     it('should resolve TERRAGRUNT_LLMS_SOURCE path with leading slash', async () => {
@@ -1305,7 +1322,7 @@ terraform {
 
       await manager.fetchFromLlmsTxt();
 
-      expect(mockFetch).toHaveBeenCalledWith('https://docs.terragrunt.com/custom/llms.txt');
+      expect(mockFetch).toHaveBeenCalledWith('https://docs.terragrunt.com/custom/llms.txt', withSignal);
     });
 
     it('should return empty array on total fetch failure without throwing', async () => {
@@ -1395,6 +1412,96 @@ terraform {
 
       warnSpy.mockRestore();
       logSpy.mockRestore();
+    });
+
+    it('should abort a stalled request after the timeout and retry it', async () => {
+      (manager as any).fetchConfig = { timeoutMs: 20, maxBytes: 1024 };
+      mockFetch.mockImplementation(stalledFetch);
+      const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      const docs = await manager.fetchFromLlmsTxt();
+
+      expect(docs).toEqual([]);
+      expect(mockFetch).toHaveBeenCalledTimes(4);
+      const logged = errSpy.mock.calls.flat().map(a => (a instanceof Error ? a.message : String(a)));
+      expect(logged.some(m => /timed out after 20ms/i.test(m))).toBe(true);
+
+      errSpy.mockRestore();
+      warnSpy.mockRestore();
+    });
+
+    it('should reject a response whose content-length exceeds the cap without retrying', async () => {
+      (manager as any).fetchConfig = { timeoutMs: 1000, maxBytes: 10 };
+      mockFetch.mockResolvedValue(new Response(streamOf('tiny'), { headers: { 'content-length': '11' } }));
+      const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      const docs = await manager.fetchFromLlmsTxt();
+
+      expect(docs).toEqual([]);
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+      const logged = errSpy.mock.calls.flat().map(a => (a instanceof Error ? a.message : String(a)));
+      expect(logged.some(m => /exceeds .*10 bytes/i.test(m))).toBe(true);
+
+      errSpy.mockRestore();
+    });
+
+    it('should reject a streamed body that grows past the cap without retrying', async () => {
+      (manager as any).fetchConfig = { timeoutMs: 1000, maxBytes: 10 };
+      mockFetch.mockResolvedValue(new Response(streamOf('123456', '789012')));
+      const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      const docs = await manager.fetchFromLlmsTxt();
+
+      expect(docs).toEqual([]);
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+
+      errSpy.mockRestore();
+    });
+
+    it('should accept a streamed body exactly at the cap', async () => {
+      const size = new TextEncoder().encode(sampleMarkdown).byteLength;
+      (manager as any).fetchConfig = { timeoutMs: 1000, maxBytes: size };
+      const half = Math.floor(sampleMarkdown.length / 2);
+      mockFetch.mockResolvedValue(new Response(streamOf(sampleMarkdown.slice(0, half), sampleMarkdown.slice(half))));
+
+      const docs = await manager.fetchFromLlmsTxt();
+
+      expect(docs).toHaveLength(2);
+    });
+
+    it('should strip a UTF-8 byte order mark before parsing', async () => {
+      mockFetch.mockResolvedValueOnce(new Response(streamOf('\uFEFF' + sampleMarkdown)));
+
+      const docs = await manager.fetchFromLlmsTxt();
+
+      expect(docs.map(d => d.title)).toEqual(['Install', 'Quick Start']);
+    });
+  });
+
+  describe('fetch limits configuration', () => {
+    afterEach(() => {
+      delete process.env.TERRAGRUNT_FETCH_TIMEOUT_MS;
+      delete process.env.TERRAGRUNT_FETCH_MAX_BYTES;
+    });
+
+    it('should default to a 10 s timeout and a 16 MiB cap', () => {
+      const manager = new TerragruntDocsManager() as any;
+      expect(manager.fetchConfig).toEqual({ timeoutMs: 10_000, maxBytes: 16 * 1024 * 1024 });
+    });
+
+    it('should read the timeout and cap from the environment', () => {
+      process.env.TERRAGRUNT_FETCH_TIMEOUT_MS = '2500';
+      process.env.TERRAGRUNT_FETCH_MAX_BYTES = '4096';
+      const manager = new TerragruntDocsManager() as any;
+      expect(manager.fetchConfig).toEqual({ timeoutMs: 2500, maxBytes: 4096 });
+    });
+
+    it('should fall back to the defaults for invalid values', () => {
+      process.env.TERRAGRUNT_FETCH_TIMEOUT_MS = 'soon';
+      process.env.TERRAGRUNT_FETCH_MAX_BYTES = '0';
+      const manager = new TerragruntDocsManager() as any;
+      expect(manager.fetchConfig).toEqual({ timeoutMs: 10_000, maxBytes: 16 * 1024 * 1024 });
     });
   });
 
@@ -1491,6 +1598,55 @@ terraform {
 
       errSpy.mockRestore();
       logSpy.mockRestore();
+    });
+
+    it('should fall back to an expired disk cache before the fixture', async () => {
+      const fsMock = mockedFs as any;
+      process.env.TERRAGRUNT_CACHE_COMPRESSION = 'false';
+      const staleManager = new TerragruntDocsManager() as any;
+      delete process.env.TERRAGRUNT_CACHE_COMPRESSION;
+      const twoDaysAgo = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
+      fsMock.access.mockResolvedValue(undefined);
+      fsMock.readFile.mockImplementation(async (file: string) =>
+        file.endsWith('metadata.json')
+          ? JSON.stringify({ lastFetchTime: twoDaysAgo, docsCount: 1, compressed: false })
+          : Buffer.from(JSON.stringify(fakeDocs)));
+      vi.spyOn(staleManager, 'fetchFromLlmsTxt').mockResolvedValueOnce([]);
+      const fixtureSpy = vi.spyOn(staleManager, 'loadFixture');
+      const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      try {
+        await staleManager.refreshDocsCache();
+      } finally {
+        fsMock.access.mockRejectedValue(new Error('No cache'));
+        fsMock.readFile.mockRejectedValue(new Error('No file'));
+      }
+
+      expect(fixtureSpy).not.toHaveBeenCalled();
+      expect(staleManager.contentCache.get(fakeDocs[0].url)).toBe('Install instructions.');
+
+      errSpy.mockRestore();
+    });
+
+    it('should fall back to the fixture when every fetch attempt times out', async () => {
+      manager.fetchConfig = { timeoutMs: 20, maxBytes: 1024 };
+      (globalThis.fetch as any).mockImplementation((_url: string, init?: RequestInit) =>
+        new Promise((_resolve, reject) => {
+          init?.signal?.addEventListener('abort', () => reject(init.signal!.reason));
+        }));
+      vi.spyOn(manager, 'loadCacheFromDisk').mockResolvedValue(false);
+      const fixtureSpy = vi.spyOn(manager, 'loadFixture').mockImplementation(async () => {
+        populateCaches(manager, fakeDocs);
+        return true;
+      });
+      const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      const docs = await manager.fetchLatestDocs();
+
+      expect(fixtureSpy).toHaveBeenCalledOnce();
+      expect(docs).toHaveLength(1);
+
+      errSpy.mockRestore();
     });
 
     it('should fall back to disk cache when fetchFromLlmsTxt throws', async () => {

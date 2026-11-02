@@ -384,6 +384,8 @@ The documentation source URL can be configured via the `TERRAGRUNT_LLMS_SOURCE` 
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `TERRAGRUNT_LLMS_SOURCE` | `llms-small.txt` | Override llms.txt URL (absolute URL or relative path) |
+| `TERRAGRUNT_FETCH_TIMEOUT_MS` | `10000` | Timeout for each llms.txt fetch attempt, in milliseconds |
+| `TERRAGRUNT_FETCH_MAX_BYTES` | `16777216` | Maximum llms.txt response size (16 MiB); larger responses are rejected |
 
 ```bash
 # Use abridged docs (default)
