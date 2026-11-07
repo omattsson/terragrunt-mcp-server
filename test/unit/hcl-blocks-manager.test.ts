@@ -375,6 +375,7 @@ describe('HCLBlocksManager', () => {
                 'unit',
                 'stack',
                 'inputs',
+                'variables',
                 'download_dir',
                 'prevent_destroy',
                 'iam_role',
@@ -691,6 +692,59 @@ describe('HCLBlocksManager', () => {
                 expect(block.attributes.find(attribute => attribute.name === 'update_source_with_cas')).toMatchObject({ type: 'boolean', defaultValue: false });
                 expect(block.attributes.find(attribute => attribute.name === 'mutable')).toMatchObject({ type: 'boolean', defaultValue: false });
             });
+        });
+    });
+
+    describe('variables block (experiment, unreleased Terragrunt v1.2.2)', () => {
+        it('should expose variables gated by the variables-block experiment', () => {
+            const block = manager.getBlock('variables')!;
+
+            expect(block).not.toBeNull();
+            expect(block.experiment).toBe('variables-block');
+            expect(block.category).toBe('core');
+            expect(block.syntax).toBe('variables { ... }');
+            expect(block.allowMultiple).toBe(true);
+        });
+
+        it('should say in the description that the block is only in unreleased v1.2.2', () => {
+            const block = manager.getBlock('variables')!;
+
+            expect(block.description).toContain('v1.2.2');
+            expect(block.description).toMatch(/unreleased/i);
+        });
+
+        it('should document inputs, kind, nullable and validate', () => {
+            const block = manager.getBlock('variables')!;
+            const byName = (name: string) => block.attributes.find(attribute => attribute.name === name);
+
+            expect(block.attributes.map(attribute => attribute.name)).toEqual(['inputs', 'kind', 'nullable', 'validate']);
+            expect(byName('inputs')).toMatchObject({ type: 'map', required: true });
+            expect(byName('kind')).toMatchObject({ type: 'string', required: false, defaultValue: 'env', validValues: ['env', 'tfvar', 'json'] });
+            expect(byName('nullable')).toMatchObject({ type: 'boolean', required: false, defaultValue: false });
+            expect(byName('validate')).toMatchObject({ type: 'boolean', required: false, defaultValue: false });
+        });
+
+        it('should have an example and relate to the inputs block', () => {
+            const block = manager.getBlock('variables')!;
+
+            expect(block.examples.length).toBeGreaterThan(0);
+            expect(block.examples[0].code).toContain('variables {');
+            expect(block.relatedBlocks).toContain('inputs');
+            expect(block.docsUrl).toMatch(/^https:\/\/docs\.terragrunt\.com\/reference\/hcl\/blocks\/#variables$/);
+        });
+
+        it('should be found by search and listed in the core category', () => {
+            expect(manager.searchBlocks('variables').some(result => result.block.name === 'variables')).toBe(true);
+            expect(manager.listBlocks('core').some(block => block.name === 'variables')).toBe(true);
+        });
+    });
+
+    describe('per-item documentation URLs', () => {
+        it.each([
+            ['catalog', 'https://docs.terragrunt.com/reference/hcl/blocks/catalog/'],
+            ['prevent_destroy', 'https://docs.terragrunt.com/reference/hcl/attributes/prevent_destroy/'],
+        ])('should link %s to its own upstream page', (blockName, url) => {
+            expect(manager.getBlock(blockName)?.docsUrl).toBe(url);
         });
     });
 

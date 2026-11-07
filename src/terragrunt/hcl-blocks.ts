@@ -342,6 +342,63 @@ const HCL_BLOCKS: HCLBlock[] = [
     relatedBlocks: ['locals', 'dependency'],
     docsUrl: 'https://docs.terragrunt.com/reference/hcl/blocks/#inputs',
   },
+  {
+    name: 'variables',
+    experiment: 'variables-block',
+    displayName: 'Variables Block',
+    description: 'Sets OpenTofu/Terraform variables like the inputs attribute, and chooses how Terragrunt passes them: as TF_VAR_ environment variables, in a terragrunt.auto.tfvars file, or in a terragrunt.auto.tfvars.json file. Only in the unreleased Terragrunt v1.2.2, behind the variables-block experiment. A configuration can have any number of variables blocks, and one file cannot set the same input twice.',
+    category: 'core',
+    syntax: 'variables { ... }',
+    allowMultiple: true,
+    attributes: [
+      {
+        name: 'inputs',
+        type: 'map',
+        required: true,
+        description: 'A map of variable names to values, written the same way as the inputs attribute.',
+        example: '{ vpc_id = dependency.vpc.outputs.vpc_id }',
+      },
+      {
+        name: 'kind',
+        type: 'string',
+        required: false,
+        description: 'How Terragrunt passes the inputs. env sets TF_VAR_ environment variables, as the inputs attribute does. tfvar writes a terragrunt.auto.tfvars file and json writes a terragrunt.auto.tfvars.json file, both in the directory where OpenTofu/Terraform runs. The tfvar and json kinds write values to disk in plain text, sensitive values included.',
+        defaultValue: 'env',
+        validValues: ['env', 'tfvar', 'json'],
+        example: '"tfvar"',
+      },
+      {
+        name: 'nullable',
+        type: 'boolean',
+        required: false,
+        description: 'When true, a null value sets its variable to null. When false, Terragrunt drops null values so the variable keeps its default.',
+        defaultValue: false,
+      },
+      {
+        name: 'validate',
+        type: 'boolean',
+        required: false,
+        description: 'When true, the run stops before OpenTofu/Terraform starts if the module does not declare every variable the block sets.',
+        defaultValue: false,
+      },
+    ],
+    examples: [
+      {
+        description: 'Pass inputs in a terragrunt.auto.tfvars file and validate the variable names',
+        code: `variables {
+  kind     = "tfvar"
+  validate = true
+
+  inputs = {
+    vpc_id  = dependency.vpc.outputs.vpc_id
+    subnets = local.subnets
+  }
+}`,
+      },
+    ],
+    relatedBlocks: ['inputs', 'locals', 'dependency'],
+    docsUrl: 'https://docs.terragrunt.com/reference/hcl/blocks/#variables',
+  },
 
   // ============================================================================
   // MODULE COMPOSITION BLOCKS
@@ -606,7 +663,7 @@ inputs = {
       },
     ],
     relatedBlocks: ['unit', 'stack'],
-    docsUrl: 'https://docs.terragrunt.com/reference/hcl/blocks/#catalog',
+    docsUrl: 'https://docs.terragrunt.com/reference/hcl/blocks/catalog/',
   },
   {
     name: 'unit',
@@ -1035,7 +1092,7 @@ prevent_destroy = true`,
       },
     ],
     relatedBlocks: ['exclude'],
-    docsUrl: 'https://docs.terragrunt.com/reference/hcl/blocks/#prevent_destroy',
+    docsUrl: 'https://docs.terragrunt.com/reference/hcl/attributes/prevent_destroy/',
   },
   {
     name: 'errors',
