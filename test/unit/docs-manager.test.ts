@@ -1220,6 +1220,133 @@ terraform {
       expect(docs[0].content).toContain('More content after the fence.');
       expect(docs[1].title).toBe('Next Section');
     });
+
+    describe('new llms-small.txt format', () => {
+      const preamble = [
+        '# Terragrunt',
+        '',
+        '> Terragrunt is a flexible orchestration tool that allows Infrastructure as Code written in OpenTofu/Terraform to scale.',
+        '',
+        'This is the abridged documentation. It omits notes, tips, and collapsible details.',
+        '',
+      ].join('\n');
+
+      afterEach(() => {
+        vi.restoreAllMocks();
+      });
+
+      it('should drop the site preamble section', () => {
+        const markdown = `${preamble}\n# Contributing\n\n> Contributing to Terragrunt\n\nBody.`;
+        const docs = manager.parseLlmsMarkdown(markdown);
+
+        expect(docs.map(d => d.title)).toEqual(['Contributing']);
+        expect(docs.some(d => d.url.endsWith('/features/terragrunt/'))).toBe(false);
+      });
+
+      it('should drop the preamble of the full documentation variant too', () => {
+        const markdown = [
+          '# Terragrunt',
+          '',
+          '> Site description.',
+          '',
+          'This is the full documentation for Terragrunt.',
+          '',
+          '# Contributing',
+          '',
+          'Body.',
+        ].join('\n');
+
+        expect(manager.parseLlmsMarkdown(markdown).map(d => d.title)).toEqual(['Contributing']);
+      });
+
+      it('should keep a real page titled Terragrunt that is not the site preamble', () => {
+        const markdown = '# Terragrunt\n\n> A real page.\n\nNo preamble marker here.\n\n# Contributing\n\nBody.';
+        const docs = manager.parseLlmsMarkdown(markdown);
+
+        expect(docs.map(d => d.title)).toEqual(['Terragrunt', 'Contributing']);
+      });
+
+      it('should keep a later section titled Terragrunt even when it mentions the marker', () => {
+        const markdown = [
+          '# Contributing',
+          '',
+          'Body.',
+          '',
+          '# Terragrunt',
+          '',
+          'This is the abridged documentation.',
+        ].join('\n');
+
+        expect(manager.parseLlmsMarkdown(markdown).map(d => d.title)).toEqual(['Contributing', 'Terragrunt']);
+      });
+
+      it('should never give two pages the same URL', () => {
+        vi.spyOn(console, 'warn').mockImplementation(() => {});
+        const markdown = [
+          '# catalog',
+          '',
+          '> Launch the user interface for searching and managing your module catalog.',
+          '',
+          '## Usage',
+          '',
+          'HCL block.',
+          '',
+          '# catalog',
+          '',
+          '> Launch the catalog UI from the command line.',
+          '',
+          '## Usage',
+          '',
+          'CLI command.',
+          '',
+          '# Contributing',
+          '',
+          'Body.',
+        ].join('\n');
+
+        const docs = manager.parseLlmsMarkdown(markdown);
+
+        expect(docs).toHaveLength(3);
+        const urls = docs.map(d => d.url);
+        expect(new Set(urls).size).toBe(urls.length);
+        expect(docs[0].content).toContain('HCL block.');
+        expect(docs[1].content).toContain('CLI command.');
+      });
+
+      it('should not drop any page when fallback slugs collide with a manifest URL', () => {
+        vi.spyOn(console, 'warn').mockImplementation(() => {});
+        // "Install" is in the manifest; a second "Install" must not reuse its URL.
+        const markdown = '# Install\n\n> First.\n\nA.\n\n# Install\n\n> Second.\n\nB.';
+        const docs = manager.parseLlmsMarkdown(markdown);
+
+        expect(docs).toHaveLength(2);
+        expect(new Set(docs.map(d => d.url)).size).toBe(2);
+      });
+
+      it('should warn once about headings that are not in the manifest', () => {
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        const markdown = '# Contributing\n\nBody.\n\n# Totally Unknown Heading\n\nBody.\n\n# Another Unknown One\n\nBody.';
+        const docs = manager.parseLlmsMarkdown(markdown);
+
+        // Still parsed (runtime keeps working), via the SECTION_MAP fallback.
+        expect(docs.map(d => d.title)).toEqual(['Contributing', 'Totally Unknown Heading', 'Another Unknown One']);
+        expect(docs[1].url).toBe('https://docs.terragrunt.com/features/totally-unknown-heading/');
+
+        const messages = warn.mock.calls.map(call => String(call[0]));
+        const fallbackWarnings = messages.filter(m => m.includes('not in the docs manifest'));
+        expect(fallbackWarnings).toHaveLength(1);
+        expect(fallbackWarnings[0]).toContain('Totally Unknown Heading');
+        expect(fallbackWarnings[0]).toContain('Another Unknown One');
+        expect(fallbackWarnings[0]).not.toContain('Contributing');
+      });
+
+      it('should not warn when every heading is in the manifest', () => {
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        manager.parseLlmsMarkdown(`${preamble}\n# Contributing\n\n> Contributing to Terragrunt\n\nBody.`);
+
+        expect(warn).not.toHaveBeenCalled();
+      });
+    });
   });
 
   describe('fetchFromLlmsTxt', () => {

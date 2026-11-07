@@ -128,13 +128,28 @@ for (const [title] of TERRAGRUNT_DOC_MANIFEST) {
   manifestTitleCounts.set(title, (manifestTitleCounts.get(title) ?? 0) + 1);
 }
 
-const sourcePaths = new Map<string, string>();
+/**
+ * Manifest paths keyed two ways, so the parser can look up a page by the most
+ * specific key first:
+ * - `title\ndescription` for every entry (exact match on both heading and `>` line),
+ * - `title` alone for titles that occur once in the manifest.
+ */
+const sourcePathsByTitleAndDescription = new Map<string, string>();
+const sourcePathsByUniqueTitle = new Map<string, string>();
 for (const [title, sourcePath, description] of TERRAGRUNT_DOC_MANIFEST) {
-  const key = manifestTitleCounts.get(title) === 1
-    ? title
-    : `${title}\n${description ?? ''}`;
-  sourcePaths.set(key, sourcePath);
+  sourcePathsByTitleAndDescription.set(`${title}\n${description ?? ''}`, sourcePath);
+  if (manifestTitleCounts.get(title) === 1) {
+    sourcePathsByUniqueTitle.set(title, sourcePath);
+  }
 }
+
+/**
+ * Detects the site preamble that starlight-llms-txt style generators put in
+ * front of the first page: `# Terragrunt`, a site description and a line that
+ * says "This is the abridged/full documentation". It is not a documentation page.
+ */
+const SITE_PREAMBLE_TITLE = 'Terragrunt';
+const SITE_PREAMBLE_MARKER = /This is the (?:abridged|full) documentation/i;
 
 /**
  * Convert a title string to a URL-friendly slug.
@@ -1051,6 +1066,18 @@ export class TerragruntDocsManager {
    * Parse raw Markdown from llms.txt into individual TerragruntDoc entries.
    * Splits on H1 (`# `) boundaries; each H1 becomes one doc.
    *
+   * - A leading `<SYSTEM>...</SYSTEM>` block (old format) and a leading site
+   *   preamble section (`# Terragrunt` plus "This is the abridged documentation",
+   *   new format) are dropped; they are not pages.
+   * - URLs come from `TERRAGRUNT_DOC_MANIFEST`: first by title and description,
+   *   then by title alone when the title is unique in the manifest. Headings that
+   *   are not in the manifest fall back to a `SECTION_MAP` guess and are reported
+   *   once with `console.warn`.
+   * - No two docs share a URL. If a manifest URL is already taken (for example two
+   *   `# catalog` sections while the manifest knows only one), the later page
+   *   takes a unique fallback URL, so it is never dropped when callers key a Map
+   *   by `url`.
+   *
    * @param markdown - Raw Markdown string (e.g., fetched from llms-small.txt)
    * @returns Array of TerragruntDoc objects with title, content, section, and url
    */
@@ -1092,8 +1119,10 @@ export class TerragruntDocsManager {
 
     const sections = sectionChunks.filter(s => s.trim());
     const docs: TerragruntDoc[] = [];
-    const seenSlugs = new Set<string>();
+    const seenUrls = new Set<string>();
+    const fallbackTitles: string[] = [];
     const parseTimestamp = new Date().toISOString();
+    let isFirstPage = true;
 
     for (const section of sections) {
       // Extract the H1 line
@@ -1105,32 +1134,38 @@ export class TerragruntDocsManager {
       const title = headerMatch[1].trim();
       // Content is everything after the H1 line
       const content = section.slice(headerMatch[0].length).trim();
+
+      // Drop the site preamble, which only ever comes first.
+      const isFirst = isFirstPage;
+      isFirstPage = false;
+      if (isFirst && title === SITE_PREAMBLE_TITLE && SITE_PREAMBLE_MARKER.test(content)) {
+        continue;
+      }
+
       const firstContentLine = content.split('\n').find(line => line.trim());
       const description = firstContentLine?.match(/^>\s*(.+)$/)?.[1].trim() ?? '';
-      const sourceKey = manifestTitleCounts.get(title) === 1
-        ? title
-        : `${title}\n${description}`;
-      const sourcePath = sourcePaths.get(sourceKey);
+      const sourcePath = sourcePathsByTitleAndDescription.get(`${title}\n${description}`)
+        ?? sourcePathsByUniqueTitle.get(title);
 
-      // Infer section and URL prefix from SECTION_MAP
+      // Prefer the manifest URL unless another page already owns it.
+      const manifestUrl = sourcePath ? `${this.baseUrl}${sourcePath}` : undefined;
       const mapping = this.inferSection(title);
-      const slug = slugifyTitle(title);
-
-      // Handle duplicate slugs by appending a counter
-      let uniqueSlug = slug;
-      if (seenSlugs.has(slug)) {
-        let counter = 2;
-        while (seenSlugs.has(`${slug}-${counter}`)) {
-          counter++;
+      let url: string;
+      let canonicalSection: string | undefined;
+      if (sourcePath && manifestUrl && !seenUrls.has(manifestUrl)) {
+        url = manifestUrl;
+        canonicalSection = sourcePath.split('/')[1];
+      } else {
+        // Not in the manifest, or the manifest URL is taken: guess from SECTION_MAP
+        // and make the URL unique with a counter.
+        const slug = slugifyTitle(title);
+        url = `${this.baseUrl}${mapping.urlPrefix}/${slug}/`;
+        for (let counter = 2; seenUrls.has(url); counter++) {
+          url = `${this.baseUrl}${mapping.urlPrefix}/${slug}-${counter}/`;
         }
-        uniqueSlug = `${slug}-${counter}`;
+        fallbackTitles.push(title);
       }
-      seenSlugs.add(uniqueSlug);
-
-      const url = sourcePath
-        ? `${this.baseUrl}${sourcePath}`
-        : `${this.baseUrl}${mapping.urlPrefix}/${uniqueSlug}/`;
-      const canonicalSection = sourcePath?.split('/')[1];
+      seenUrls.add(url);
 
       docs.push({
         title,
@@ -1139,6 +1174,14 @@ export class TerragruntDocsManager {
         url,
         lastUpdated: parseTimestamp,
       });
+    }
+
+    if (fallbackTitles.length > 0) {
+      const shown = fallbackTitles.slice(0, 20).map(t => JSON.stringify(t)).join(', ');
+      const more = fallbackTitles.length > 20 ? `, and ${fallbackTitles.length - 20} more` : '';
+      console.warn(
+        `${fallbackTitles.length} llms page(s) are not in the docs manifest (or share a manifest URL) and got a guessed URL: ${shown}${more}`,
+      );
     }
 
     return docs;
