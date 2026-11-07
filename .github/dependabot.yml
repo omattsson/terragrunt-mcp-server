@@ -8,6 +8,13 @@ updates:
     commit-message:
       prefix: chore
       include: scope
+    ignore:
+      # typescript-eslint caps its typescript peer at <6.1.0 and TypeScript 7 has
+      # no stable JS API yet. Remove this once a typescript-eslint release
+      # supports TypeScript 7 (https://github.com/typescript-eslint/typescript-eslint/issues/10940).
+      - dependency-name: typescript
+        update-types:
+          - version-update:semver-major
     groups:
       # Security fixes for transitive packages land as a single lockfile PR
       security:
