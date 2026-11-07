@@ -37,6 +37,8 @@ export const EXPERIMENTS: readonly Experiment[] = [
   { name: 'base64gzip-compat', status: 'active', summary: 'Expose base64gzip_compat for output compatible with Terragrunt v1.1.3 and earlier.' },
   { name: 'offline-cas', status: 'active', summary: 'Control the CAS probe cache, including resolving runs without contacting remotes.' },
   { name: 'mcp-command', status: 'active', summary: 'Add the terragrunt mcp command, which serves Terragrunt operations to AI agents over the Model Context Protocol.' },
+  { name: 'no-dot-terragrunt-cache', status: 'active', summary: 'Support the terraform.no_dot_terragrunt_cache attribute, which runs a unit from its own directory instead of a copy in .terragrunt-cache.' },
+  { name: 'variables-block', status: 'active', summary: 'Support the variables block, which sets OpenTofu/Terraform variables like inputs and also chooses how Terragrunt passes them.' },
   // Completed experiments — now stable and enabled by default.
   { name: 'cli-redesign', status: 'completed', summary: 'The redesigned Terragrunt CLI.' },
   { name: 'stacks', status: 'completed', summary: 'Terragrunt stacks (terragrunt.stack.hcl).' },

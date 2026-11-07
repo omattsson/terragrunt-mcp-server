@@ -1,7 +1,7 @@
 {
-  "upstreamRevision": "484372bfa1f658b0beb28aba3de2365102016c2c",
-  "upstreamDate": "2026-11-01",
-  "generatedAt": "2026-11-07T18:34:10.264Z",
+  "upstreamRevision": "0fa02c2575fa8256d1e6d12fc553381fb74f3dbb",
+  "upstreamDate": "2026-11-06",
+  "generatedAt": "2026-11-07T20:36:17.059Z",
   "source": "internal/experiment/experiment.go",
   "active": [
     "base64gzip-compat",
@@ -15,7 +15,8 @@
     "otel-logs",
     "slow-task-reporting",
     "symlinks",
-    "tg-login"
+    "tg-login",
+    "variables-block"
   ],
   "completed": [
     "auto-provider-cache-dir",

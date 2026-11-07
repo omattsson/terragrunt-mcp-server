@@ -50,7 +50,7 @@ and `test/unit/error-pattern-stats.test.ts` fails if the counts quoted in
 
 ## Experiment inventory
 
-`src/terragrunt/experiments.ts` is the typed experiment inventory (11 active,
+`src/terragrunt/experiments.ts` is the typed experiment inventory (13 active,
 23 completed) used to surface experiment gates. It is pinned to
 `UPSTREAM_REVISION` (`EXPERIMENT_REVISION`), and its names and active/completed
 split are cross-checked against `fixtures/terragrunt-experiments.json`
