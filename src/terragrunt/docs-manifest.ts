@@ -14,7 +14,7 @@
  * included up to v1.2.1.
  */
 /** The upstream Terragrunt revision this documentation inventory is pinned to. */
-export const UPSTREAM_REVISION = '484372bfa1f658b0beb28aba3de2365102016c2c';
+export const UPSTREAM_REVISION = '0fa02c2575fa8256d1e6d12fc553381fb74f3dbb';
 
 export const TERRAGRUNT_DOC_MANIFEST = [
   ['Contributing', '/community/contributing/'],

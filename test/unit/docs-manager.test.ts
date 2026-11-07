@@ -798,7 +798,7 @@ terraform {
 
       expect(realDocsManager.fetchFromLlmsTxt).toHaveBeenCalledOnce();
       expect(realDocsManager.loadCacheFromDisk).toHaveBeenCalledTimes(2);
-      expect(docs).toHaveLength(133);
+      expect(docs).toHaveLength(TERRAGRUNT_DOC_MANIFEST.length);
       expect(docs).toContainEqual(expect.objectContaining({
         title: 'browse',
         url: 'https://docs.terragrunt.com/reference/cli/commands/browse/',
@@ -1311,6 +1311,30 @@ terraform {
         expect(new Set(urls).size).toBe(urls.length);
         expect(docs[0].content).toContain('HCL block.');
         expect(docs[1].content).toContain('CLI command.');
+      });
+
+      it('should give the two catalog sections their own manifest URLs', () => {
+        const hcl = TERRAGRUNT_DOC_MANIFEST.find(([t, p]) => t === 'catalog' && p.includes('/hcl/blocks/'));
+        const cli = TERRAGRUNT_DOC_MANIFEST.find(([t, p]) => t === 'catalog' && p.includes('/cli/commands/'));
+        expect(hcl?.[2]).toBeTruthy();
+        expect(cli?.[2]).toBeTruthy();
+
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        // The CLI command comes second in the manifest, but the parser must go by
+        // title and description, not by order.
+        const markdown = [
+          '# catalog', '', `> ${cli![2]}`, '', 'CLI command.', '',
+          '# catalog', '', `> ${hcl![2]}`, '', 'HCL block.',
+        ].join('\n');
+
+        const docs = manager.parseLlmsMarkdown(markdown);
+
+        expect(docs.map(d => d.url)).toEqual([
+          'https://docs.terragrunt.com/reference/cli/commands/catalog/',
+          'https://docs.terragrunt.com/reference/hcl/blocks/catalog/',
+        ]);
+        expect(docs.map(d => d.section)).toEqual(['reference', 'reference']);
+        expect(warn).not.toHaveBeenCalled();
       });
 
       it('should not drop any page when fallback slugs collide with a manifest URL', () => {

@@ -53,6 +53,12 @@ regardless of any `TERRAGRUNT_LLMS_SOURCE` environment variable, then calls
 `TerragruntDocsManager.fetchFromLlmsTxt()` to download and parse the docs,
 and writes the result to `fixtures/terragrunt-docs-fixture.json`.
 
+The script writes only when the live page list matches `TERRAGRUNT_DOC_MANIFEST`
+(same titles, order and count) and no page got a fallback URL. Otherwise it
+prints how to proceed (re-pin with `npm run update-docs-manifest` from a newer
+upstream checkout, or wait for the site), exits with code 2 and leaves the
+fixture untouched. `npm run update-fixture -- --check` only compares.
+
 After updating, commit the changes:
 
 ```bash
@@ -74,4 +80,4 @@ The fixture contains 147 Markdown documentation pages sourced from
 Snapshot generated: November 7, 2026
 
 Upstream baseline: Terragrunt revision
-`484372bfa1f658b0beb28aba3de2365102016c2c` from November 1, 2026.
+`0fa02c2575fa8256d1e6d12fc553381fb74f3dbb` from November 6, 2026.

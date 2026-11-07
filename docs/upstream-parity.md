@@ -4,7 +4,7 @@ These tests guard the curated Terragrunt data in `src/terragrunt/*` against a
 pinned upstream revision, so upstream drift fails a test instead of silently
 rotting.
 
-- Pinned revision: `484372bfa1f658b0beb28aba3de2365102016c2c` (2026-11-01).
+- Pinned revision: `0fa02c2575fa8256d1e6d12fc553381fb74f3dbb` (2026-11-06).
 - Single source of truth for the revision string: `UPSTREAM_REVISION` in
   `src/terragrunt/docs-manifest.ts`.
 
@@ -92,13 +92,21 @@ cross-checks it against the evidence files listed in this document.
 The two fixtures come from two upstream sources (the live docs site and the Go
 checkout), so align them by revision:
 
-1. Check out `gruntwork-io/terragrunt` at the revision in `UPSTREAM_REVISION`
-   (`src/terragrunt/docs-manifest.ts`), the single source of truth for the pin.
-2. `npm run update-fixture` (reads the docs site).
+1. Check out `gruntwork-io/terragrunt` at the revision to pin (to keep the
+   current pin, the revision in `UPSTREAM_REVISION` in
+   `src/terragrunt/docs-manifest.ts`, the single source of truth for the pin).
+   For a new pin, run `TERRAGRUNT_REPO=<path-to-terragrunt> npm run update-docs-manifest`;
+   it rewrites the manifest and sets `UPSTREAM_REVISION` to the checkout's HEAD.
+2. `npm run update-fixture` (reads the docs site). It refuses to write, and
+   leaves the fixture untouched (exit code 2), when the live page list differs
+   from the manifest in titles, order or count, or when any page would get a
+   guessed fallback URL. That means the site and the pin have drifted apart:
+   re-pin (step 1 with a newer checkout) or wait until the site is rebuilt.
+   `npm run update-fixture -- --check` compares without writing.
 3. `TERRAGRUNT_REPO=<path-to-terragrunt> npm run update-experiments-fixture`
    (reads the Go checkout).
-4. If the revision changed, update `UPSTREAM_REVISION` in
-   `src/terragrunt/docs-manifest.ts` and the metadata in `fixtures/README.md`.
+4. If the revision changed, update the metadata (revision, date, page count,
+   snapshot date) in `fixtures/README.md` and the pin line above.
 5. `npm run test:unit`.
 6. Review each parity failure. A failure is a real drift signal: update the
    curated data in `src/terragrunt/*` by hand. Do not edit ignore lists or
