@@ -105,13 +105,31 @@ the curated data anchors on:
   renamed or removed: `docs/src/lib/generated-pages.ts` (the llms page order),
   `docs/src/data/faq` and `docs/src/data/patterns`.
 
-The rest of the docs collection (the `content/docs` folder of the upstream docs
-site) is **not** watched as a whole, because ordinary prose edits there happen almost daily and would keep
-the check red. A page added to or removed from that collection is therefore not
-reported by the watcher; the `update-fixture` guard finds it the next time the
-fixture is refreshed. The same holds for the strict controls data: its two
-status pages are fixed in the manifest.
 Upstream moving ahead by itself is not drift; that would flag forever.
+
+The rest of the docs collection (the `content/docs` folder of the upstream docs
+site) is **not** watched as a whole, because ordinary prose edits there happen
+almost daily and would keep the check red. A page added to or removed from that
+collection is therefore not reported by the watcher; the `update-fixture` guard
+finds it the next time the fixture is refreshed. The same holds for the strict
+controls data: its two status pages are fixed in the manifest.
+
+Two more blind spots remain:
+
+- A new Terragrunt release can change the published content without touching
+  any watched path. Pages with a `since` value appear once the release reaches
+  it, and `<Since>` and `<Before>` sections inside a page (for example the
+  `variables` section) switch with the release too.
+- The manifest generator copies logic from upstream files that are not watched:
+  the release helper (`release.ts`), the content collection config, the FAQ and
+  patterns libs, and the "published" helpers of the docs collection, the HCL
+  items and the commands. If upstream changes how it publishes pages, that is
+  noticed only at the next refresh, by the `update-fixture` guard or by
+  regenerating the manifest and reading its diff.
+
+One mitigation: after a release upstream usually lands a "clean up released
+version gates" commit, and it touches watched files, so the check reports
+drift soon after a release.
 
 On drift the workflow opens or updates an issue labeled `upstream-drift` with
 the changed paths, why each matters, and the latest commit per path. The issue

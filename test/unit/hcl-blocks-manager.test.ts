@@ -787,13 +787,12 @@ describe('upstream HCL block parity', () => {
   // headings are prose or sub-sections. `autoinclude` has its own H2 but is a
   // nested block used inside unit/stack; `expansion` is nested inside
   // dependency/unit/stack. Both are modeled as nested attributes, not
-  // top-level blocks. Revisit on refresh.
+  // top-level blocks.
   const NESTED_NOT_TOPLEVEL = new Set(['autoinclude', 'expansion']);
 
   // In-code entries modeled as blocks for reference convenience but documented
   // upstream as attributes (/reference/hcl/attributes/), not top-level blocks on
   // the blocks page. They are excluded from the reverse (removal-drift) check.
-  // Revisit on refresh.
   const ATTRIBUTE_MODELS = new Set([
     'inputs',
     'prevent_destroy',
@@ -820,7 +819,6 @@ describe('upstream HCL block parity', () => {
 
     // Guard against a vacuous pass: if the docs fixture format changed and the
     // extraction found nothing, the comparisons below would trivially succeed.
-    // The pinned revision documents 16 top-level blocks.
     expect(names.size, 'no top-level block headings extracted: docs fixture format may have changed').toBeGreaterThanOrEqual(10);
     return names;
   }

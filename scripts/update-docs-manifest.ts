@@ -27,7 +27,8 @@
  *   --repo <path>      Terragrunt checkout (or TERRAGRUNT_REPO).
  *   --release <tag>    Latest release the site was built with (or TERRAGRUNT_LATEST_RELEASE).
  *   --keep-revision    Keep the UPSTREAM_REVISION already in the manifest instead
- *                      of writing the checkout's HEAD.
+ *                      of writing the checkout's HEAD. Only for manifest-only
+ *                      experiments and tests; a real re-pin must not use it.
  *
  * See docs/upstream-parity.md for the refresh procedure.
  */
@@ -459,8 +460,14 @@ function main(): void {
   const pages = deriveManifestPages(readSources(repo), release);
 
   const tmp = `${MANIFEST_PATH}.tmp-${process.pid}-${Date.now()}`;
-  fs.writeFileSync(tmp, renderManifest(pages, { revision, release }), 'utf8');
-  fs.renameSync(tmp, MANIFEST_PATH);
+  try {
+    fs.writeFileSync(tmp, renderManifest(pages, { revision, release }), 'utf8');
+    fs.renameSync(tmp, MANIFEST_PATH);
+  } finally {
+    // After a successful rename the temp file is gone; after a failed write or
+    // rename it must not stay in src/terragrunt/.
+    fs.rmSync(tmp, { force: true });
+  }
   console.log(
     `Wrote ${pages.length} pages to ${path.relative(process.cwd(), MANIFEST_PATH)} ` +
       `(checkout ${checkoutRevision}, release ${release}, UPSTREAM_REVISION ${revision}).`,
