@@ -1,10 +1,10 @@
 /**
  * Canonical paths for the Terragrunt documentation inventory at upstream
- * revision a70782561d59fa7d2189785289b5967e7a2b3da0. The llms.txt generator
+ * revision 484372bfa1f658b0beb28aba3de2365102016c2c. The llms.txt generator
  * sorts pages by their Starlight content ID, which is the canonical slug.
  */
 /** The upstream Terragrunt revision this documentation inventory is pinned to. */
-export const UPSTREAM_REVISION = 'a70782561d59fa7d2189785289b5967e7a2b3da0';
+export const UPSTREAM_REVISION = '484372bfa1f658b0beb28aba3de2365102016c2c';
 
 export const TERRAGRUNT_DOC_MANIFEST = [
   ['Contributing', '/community/contributing/'],

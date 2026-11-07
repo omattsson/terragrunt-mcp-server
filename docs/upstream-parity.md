@@ -4,7 +4,7 @@ These tests guard the curated Terragrunt data in `src/terragrunt/*` against a
 pinned upstream revision, so upstream drift fails a test instead of silently
 rotting.
 
-- Pinned revision: `a70782561d59fa7d2189785289b5967e7a2b3da0` (2026-10-23).
+- Pinned revision: `484372bfa1f658b0beb28aba3de2365102016c2c` (2026-11-01).
 - Single source of truth for the revision string: `UPSTREAM_REVISION` in
   `src/terragrunt/docs-manifest.ts`.
 

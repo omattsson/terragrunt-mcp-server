@@ -62,7 +62,7 @@ git commit -m "chore: Update Terragrunt documentation fixture"
 
 ## Fixture Contents
 
-The fixture contains 133 Markdown documentation pages sourced from
+The fixture contains 147 Markdown documentation pages sourced from
 `llms-small.txt`, covering:
 - Getting Started guides
 - Configuration reference
@@ -71,7 +71,7 @@ The fixture contains 133 Markdown documentation pages sourced from
 - HCL blocks, attributes, and functions
 - Troubleshooting guides
 
-Snapshot generated: October 26, 2026
+Snapshot generated: November 7, 2026
 
 Upstream baseline: Terragrunt revision
-`a70782561d59fa7d2189785289b5967e7a2b3da0` from October 23, 2026.
+`484372bfa1f658b0beb28aba3de2365102016c2c` from November 1, 2026.
