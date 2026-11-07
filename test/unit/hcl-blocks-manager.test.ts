@@ -7,6 +7,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { readFile } from 'fs/promises';
 import { HCLBlocksManager } from '../../src/terragrunt/hcl-blocks.js';
+import { documentedHclNames, type UpstreamDocPage } from './upstream-hcl-names.js';
 import type { HCLBlock, HCLBlockCategory, HCLBlockSearchResult } from '../../src/types/hcl-blocks.js';
 
 describe('HCLBlocksManager', () => {
@@ -728,17 +729,17 @@ describe('HCLBlocksManager', () => {
 
 describe('upstream HCL block parity', () => {
   // The /reference/hcl/blocks/ page documents each top-level block as an H2
-  // heading; H3/H4 headings are prose or sub-sections. `autoinclude` has its
-    // own H2 but is a nested block used inside unit/stack; `expansion` is nested
-    // inside dependency/unit/stack. Both are modeled as nested attributes, not
-    // top-level blocks. Tied to revision
-    // a70782561d59fa7d2189785289b5967e7a2b3da0; revisit on refresh.
-    const NESTED_NOT_TOPLEVEL = new Set(['autoinclude', 'expansion']);
+  // heading, or as a per-item page once upstream has migrated it; H3/H4
+  // headings are prose or sub-sections. `autoinclude` has its own H2 but is a
+  // nested block used inside unit/stack; `expansion` is nested inside
+  // dependency/unit/stack. Both are modeled as nested attributes, not
+  // top-level blocks. Revisit on refresh.
+  const NESTED_NOT_TOPLEVEL = new Set(['autoinclude', 'expansion']);
 
   // In-code entries modeled as blocks for reference convenience but documented
   // upstream as attributes (/reference/hcl/attributes/), not top-level blocks on
   // the blocks page. They are excluded from the reverse (removal-drift) check.
-    // Tied to revision a70782561d59fa7d2189785289b5967e7a2b3da0; revisit on refresh.
+  // Revisit on refresh.
   const ATTRIBUTE_MODELS = new Set([
     'inputs',
     'prevent_destroy',
@@ -752,23 +753,22 @@ describe('upstream HCL block parity', () => {
     'download_dir',
   ]);
 
-  // Documented top-level block names, extracted from the pinned docs fixture.
-  // H2 headings only (H3/H4 are prose/sub-sections); markdown \_ is unescaped.
+  // Documented top-level block names, extracted from the pinned docs fixture
+  // by the shared helper: H2 identifiers on /reference/hcl/blocks/ united with
+  // the per-item pages /reference/hcl/blocks/<name>/ (upstream is moving blocks
+  // to per-item pages, #7237, so both shapes must count).
   async function documentedTopLevelBlocks(): Promise<Set<string>> {
     const raw = await readFile(new URL('../../fixtures/terragrunt-docs-fixture.json', import.meta.url), 'utf-8');
-    const docs: Array<{ url: string; content: string }> = JSON.parse(raw);
-    const blocksDoc = docs.find((d) => d.url.endsWith('/reference/hcl/blocks/'));
-    expect(blocksDoc).toBeDefined();
+    const docs: UpstreamDocPage[] = JSON.parse(raw);
+    expect(docs.some((d) => d.url.endsWith('/reference/hcl/blocks/')), 'blocks reference page missing from the fixture').toBe(true);
 
-    const names = [...blocksDoc!.content.matchAll(/(?<!#)##(?!#)\s+(.+?)\s+\[Section titled/g)]
-      .map((m) => m[1].trim().replace(/\\_/g, '_').toLowerCase())
-      .filter((name) => !NESTED_NOT_TOPLEVEL.has(name));
+    const names = documentedHclNames(docs, 'blocks', { exclude: NESTED_NOT_TOPLEVEL });
 
     // Guard against a vacuous pass: if the docs fixture format changed and the
-    // regex extracted nothing, the comparisons below would trivially succeed.
-    // The pinned revision documents 14 top-level blocks.
-    expect(names.length, 'no top-level block headings extracted — docs fixture format may have changed').toBeGreaterThanOrEqual(10);
-    return new Set(names);
+    // extraction found nothing, the comparisons below would trivially succeed.
+    // The pinned revision documents 16 top-level blocks.
+    expect(names.size, 'no top-level block headings extracted: docs fixture format may have changed').toBeGreaterThanOrEqual(10);
+    return names;
   }
 
   it('covers every documented top-level block', async () => {
