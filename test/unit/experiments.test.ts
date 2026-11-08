@@ -10,14 +10,24 @@ import {
 import { UPSTREAM_REVISION } from '../../src/terragrunt/docs-manifest.js';
 
 describe('EXPERIMENTS inventory', () => {
-  it('has 11 active and 23 completed, all with unique names and summaries', () => {
+  it('has 13 active and 23 completed, all with unique names and summaries', () => {
     const active = EXPERIMENTS.filter((e) => e.status === 'active');
     const completed = EXPERIMENTS.filter((e) => e.status === 'completed');
-    expect(active.length).toBe(11);
+    expect(active.length).toBe(13);
     expect(completed.length).toBe(23);
     const names = EXPERIMENTS.map((e) => e.name);
     expect(new Set(names).size).toBe(names.length);
     for (const e of EXPERIMENTS) expect(e.summary.length).toBeGreaterThan(0);
+  });
+
+  it('includes the experiments added at the 0fa02c2 pin as active, with summaries', () => {
+    for (const name of ['no-dot-terragrunt-cache', 'variables-block']) {
+      const exp = getExperiment(name);
+      expect(exp?.status).toBe('active');
+      expect(exp?.summary.length).toBeGreaterThan(0);
+    }
+    expect(getExperiment('no-dot-terragrunt-cache')?.summary).toMatch(/no_dot_terragrunt_cache/);
+    expect(getExperiment('variables-block')?.summary).toMatch(/variables/);
   });
 
   it('is pinned to the docs-manifest revision', () => {

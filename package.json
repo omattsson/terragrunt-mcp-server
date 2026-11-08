@@ -37,6 +37,7 @@
     "test:ui": "vitest --ui",
     "check-schema-drift": "tsx scripts/check-schema-drift.ts",
     "check-upstream-drift": "tsx scripts/check-upstream-drift.ts",
+    "update-docs-manifest": "tsx scripts/update-docs-manifest.ts",
     "update-fixture": "tsx scripts/update-fixture.ts",
     "update-experiments-fixture": "tsx scripts/update-experiments-fixture.ts",
     "docker:build": "docker build -t terragrunt-mcp-server:latest .",
@@ -65,7 +66,8 @@
     "ts-node": "^10.9.0",
     "tsx": "^4.21.0",
     "typescript": "^6.0.3",
-    "vitest": "^5.0.5"
+    "vitest": "^5.0.5",
+    "yaml": "2.9.1"
   },
   "type": "module",
   "bin": {

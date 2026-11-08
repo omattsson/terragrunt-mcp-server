@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { readFile } from 'fs/promises';
+import { documentedHclNames } from './upstream-hcl-names.js';
 import type { TerragruntDoc } from '../../src/terragrunt/docs.js';
 import { 
   TerragruntFunctionsManager, 
@@ -295,14 +296,15 @@ describe('STATIC_BUILTIN_FUNCTIONS', () => {
       'utf-8'
     );
     const docs: TerragruntDoc[] = JSON.parse(fixtureContent);
-    const functionsDoc = docs.find(doc => doc.url.endsWith('/reference/hcl/functions/'));
-    expect(functionsDoc).toBeDefined();
+    expect(
+      docs.some(doc => doc.url.endsWith('/reference/hcl/functions/')),
+      'functions reference page missing from the fixture'
+    ).toBe(true);
 
-    const structuralHeadings = new Set(['examples', 'boundary']);
-    const documentedNames = [...functionsDoc!.content.matchAll(/## ([a-z0-9_\\]+) \[Section titled/gi)]
-      .map(match => match[1].replaceAll('\\_', '_'))
-      .filter(name => !structuralHeadings.has(name.toLowerCase()))
-      .sort();
+    // H2 identifiers on the reference page united with per-item pages such as
+    // /reference/hcl/functions/get_env/ (upstream is migrating, #7237).
+    const documentedNames = [...documentedHclNames(docs, 'functions')].sort();
+    expect(documentedNames.length, 'no function names extracted: docs fixture format may have changed').toBeGreaterThan(0);
     const staticNames = STATIC_BUILTIN_FUNCTIONS.map(fn => fn.name).sort();
 
     expect(staticNames).toEqual(documentedNames);

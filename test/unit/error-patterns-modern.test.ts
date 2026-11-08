@@ -11,8 +11,8 @@ async function topMatch(errorText: string, fuzzy = true) {
   return result.matches[0];
 }
 
-// Each anchor is verbatim upstream error text at revision
-// a70782561d59fa7d2189785289b5967e7a2b3da0. Every case asserts the exact regex
+// Each anchor is verbatim upstream error text, re-checked at the revision in
+// UPSTREAM_REVISION (0fa02c2575fa8256d1e6d12fc553381fb74f3dbb). Every case asserts the exact regex
 // pattern wins at 0.95, which is above the fuzzy ceiling of 0.85.
 
 describe('modern diagnosis: stack validation', () => {

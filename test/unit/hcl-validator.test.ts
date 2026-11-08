@@ -380,6 +380,21 @@ stack "services" {
       expect(result.warnings.filter(w => w.includes('Unknown block type'))).toEqual([]);
     });
 
+    it('should not warn about the variables block', () => {
+      const result = validateHCL(`
+variables {
+  kind = "tfvar"
+
+  inputs = {
+    region = "us-east-1"
+  }
+}
+`);
+
+      expect(result.syntaxValid).toBe(true);
+      expect(result.warnings.filter(w => w.includes('Unknown block type'))).toEqual([]);
+    });
+
     it.each([
       ['skip', 'true'],
       ['retryable_errors', '[".*timeout.*"]'],

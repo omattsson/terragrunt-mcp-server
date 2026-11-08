@@ -313,7 +313,7 @@ terraform {
       'Requires environment variable setup in CI/CD',
       'Local development needs .env file or exports'
     ],
-    relatedDocs: ['https://docs.terragrunt.com/reference/hcl/functions/#get_env']
+    relatedDocs: ['https://docs.terragrunt.com/reference/hcl/functions/get_env/']
   },
   {
     id: 'ec-002',
@@ -938,7 +938,7 @@ data "aws_secretsmanager_secret_version" "db" {
       'Requires external secret management setup',
       'Local development needs secret access configured'
     ],
-    relatedDocs: ['https://docs.terragrunt.com/reference/hcl/functions/#get_env']
+    relatedDocs: ['https://docs.terragrunt.com/reference/hcl/functions/get_env/']
   },
   {
     id: 'sc-002',

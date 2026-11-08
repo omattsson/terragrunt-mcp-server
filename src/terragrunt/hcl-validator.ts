@@ -430,6 +430,7 @@ function checkHCLStructure(config: string): string[] {
         'feature',
         'exclude',
         'errors',
+        'variables',
         'unit',
         'stack',
         'expansion',

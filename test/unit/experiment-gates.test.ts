@@ -29,6 +29,10 @@ describe('experiment gates on data', () => {
     expect(hcl.getBlock('engine')?.experiment).toBe('iac-engine');
   });
 
+  it('gates the variables block on variables-block', () => {
+    expect(hcl.getBlock('variables')?.experiment).toBe('variables-block');
+  });
+
   it('only references known experiment names', () => {
     const names: (string | undefined)[] = [];
     for (const c of cli.getAllCommands()) {

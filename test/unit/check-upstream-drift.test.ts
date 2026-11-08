@@ -24,7 +24,11 @@ describe('WATCHED_PATHS', () => {
       'docs/src/data/commands', // CLI commands
       'docs/src/data/flags', // CLI flags
       'docs/src/data/experiments', // experiment summaries
-      'docs/src/content/docs/04-reference/01-hcl', // HCL blocks, attributes, functions
+      'docs/src/content/docs/04-reference/01-hcl', // HCL placeholder pages
+      'docs/src/data/hcl', // per-item HCL blocks, attributes, functions (docs manifest + fixture)
+      'docs/src/data/faq', // FAQ pages (docs manifest)
+      'docs/src/data/patterns', // pattern pages (docs manifest)
+      'docs/src/lib/generated-pages.ts', // upstream llms page order and sources
     ]) {
       expect(watched.has(path), `${path} must be watched`).toBe(true);
     }
@@ -38,6 +42,19 @@ describe('WATCHED_PATHS', () => {
     const watched = new Set(WATCHED_PATHS.map(w => w.path));
     for (const file of new Set(evidence)) {
       expect(watched.has(file), `${file} listed in upstream-parity.md but not watched`).toBe(true);
+    }
+  });
+
+  it('covers every upstream docs path listed in docs/upstream-parity.md', async () => {
+    const doc = await readFile(new URL('../../docs/upstream-parity.md', import.meta.url), 'utf-8');
+    // Backtick-quoted upstream docs paths (data directories and generator files).
+    const docsPaths = [...doc.matchAll(/`(docs\/src\/[\w/.-]*[\w.])`/g)].map(m => m[1]);
+    expect(docsPaths.length).toBeGreaterThan(0);
+    const watched = WATCHED_PATHS.map(w => w.path);
+    for (const docsPath of new Set(docsPaths)) {
+      // A watched directory covers everything below it.
+      const covered = watched.some(w => docsPath === w || docsPath.startsWith(`${w}/`));
+      expect(covered, `${docsPath} listed in upstream-parity.md but not watched`).toBe(true);
     }
   });
 });

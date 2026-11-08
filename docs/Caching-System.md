@@ -282,12 +282,13 @@ Embedded fallback data for **offline operation** and **guaranteed availability**
 ### Update Strategy
 
 ```bash
-# Manually update fixture (maintainer task)
+# Manually update fixture (maintainer task). It refuses to write when the live
+# page list differs from the pinned docs manifest; see docs/upstream-parity.md.
 npm run update-fixture
-
-# Or manually:
-cp .cache/terragrunt-docs/docs-cache.json fixtures/terragrunt-docs-fixture.json
 ```
+
+Do not copy the disk cache over the fixture: that skips the page list check
+against the docs manifest.
 
 ## Cache Performance
 

@@ -34,6 +34,15 @@ describe('Static Best Practices', () => {
       expect(categories.has('testing')).toBe(true);
     });
 
+    it('should link get_env to its per-item docs page', () => {
+      const urls = STATIC_BEST_PRACTICES.flatMap(p => p.relatedDocs).filter(url => url.includes('get_env'));
+
+      expect(urls.length).toBeGreaterThan(0);
+      for (const url of urls) {
+        expect(url).toBe('https://docs.terragrunt.com/reference/hcl/functions/get_env/');
+      }
+    });
+
     it('should have unique IDs for all practices', () => {
       const ids = STATIC_BEST_PRACTICES.map(p => p.id);
       const uniqueIds = new Set(ids);

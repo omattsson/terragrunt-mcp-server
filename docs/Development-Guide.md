@@ -381,16 +381,18 @@ npm run dev
 Update the embedded fixture when documentation structure changes:
 
 ```bash
-# Ensure cache is fresh
-rm -rf .cache/
-npm run dev  # Will fetch and cache
+# Maintainer task. Reads the live site and refuses to write when its page list
+# differs from the pinned docs manifest (src/terragrunt/docs-manifest.ts).
+npm run update-fixture
 
-# Copy to fixture
-cp .cache/terragrunt-docs/docs-cache.json fixtures/terragrunt-docs-fixture.json
-
-# Test fixture fallback
-# (Simulate network failure in code)
+# Compare with the site without writing
+npm run update-fixture -- --check
 ```
+
+Do not copy `.cache/terragrunt-docs/docs-cache.json` over the fixture: that
+skips the page list check. When the manifest itself needs a new upstream
+revision, run `npm run update-docs-manifest` first. The full procedure is in
+[upstream-parity.md](upstream-parity.md).
 
 ## Debugging
 
