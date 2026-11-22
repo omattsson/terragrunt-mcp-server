@@ -21,6 +21,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `examples` mode, related docs in `build_config`, and diagnosis enrichment use the same ranking. Diagnosis enrichment keeps the top 3 docs per search.
   - A golden-query test (42 queries against the offline fixture) guards ranking quality: an expected page is in the top 3 for all 42, against 15 with the old matcher.
 
+### ⚠️ Deprecated
+
+- **Environment variables use the `TERRAGRUNT_MCP_` prefix** (#298): the unprefixed names overlapped Terragrunt's own environment namespace. Renamed: `TERRAGRUNT_LLMS_SOURCE`, `TERRAGRUNT_CACHE_TTL_HOURS`, `TERRAGRUNT_CACHE_COMPRESSION`, `TERRAGRUNT_FETCH_TIMEOUT_MS`, `TERRAGRUNT_FETCH_MAX_BYTES`, `TERRAGRUNT_RETRY_MAX_RETRIES`, `TERRAGRUNT_RETRY_INITIAL_DELAY`, `TERRAGRUNT_RETRY_MAX_DELAY`, `TERRAGRUNT_RETRY_BACKOFF_MULTIPLIER`, and for the maintenance scripts `TERRAGRUNT_REPO` and `TERRAGRUNT_LATEST_RELEASE`, each to `TERRAGRUNT_MCP_<same suffix>`.
+  - The old names still work as deprecated aliases for one release. The new name wins when both are set, and an old name logs a one-time warning to stderr.
+
+### 🧹 Removed
+
+- Unused modules `src/server.ts`, `src/terragrunt/commands.ts` (it built a shell string for `exec`) and `src/terragrunt/config.ts`. Generated reports (`coverage-report.txt`, `final-test.*`, `performance-*.txt`, `mode-verification-results.txt`) are no longer tracked and are git-ignored. `CHANGELOG-1.2.0.md` is merged into this file.
+
 ### 🐛 Fixed
 
 - **Server version** (#296): the server reported `0.5.0` to MCP clients regardless of the release. It now reports the `version` from `package.json`.

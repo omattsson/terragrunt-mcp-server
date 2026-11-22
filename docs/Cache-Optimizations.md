@@ -8,25 +8,25 @@ The caching system has been enhanced with Phase 1 and Phase 2 optimizations to i
 
 ## Environment Variables
 
-### `TERRAGRUNT_CACHE_TTL_HOURS`
+### `TERRAGRUNT_MCP_CACHE_TTL_HOURS`
 
 Configure how long cached documentation remains valid before refresh.
 
 - **Type**: Integer
 - **Default**: `24` (hours)
-- **Example**: `export TERRAGRUNT_CACHE_TTL_HOURS=12`
+- **Example**: `export TERRAGRUNT_MCP_CACHE_TTL_HOURS=12`
 - **Use cases**:
   - Development: Set to `1` for frequent updates
   - Production: Keep at `24` for stability
   - CI/CD: Set to `0` to force fresh fetches
 
-### `TERRAGRUNT_CACHE_COMPRESSION`
+### `TERRAGRUNT_MCP_CACHE_COMPRESSION`
 
 Enable or disable compression for disk cache.
 
 - **Type**: Boolean string
 - **Default**: `true`
-- **Example**: `export TERRAGRUNT_CACHE_COMPRESSION=false`
+- **Example**: `export TERRAGRUNT_MCP_CACHE_COMPRESSION=false`
 - **Benefits when enabled**:
   - 70-80% reduction in disk space (~1.1MB → ~200-300KB)
   - Faster disk I/O in most cases
@@ -100,13 +100,13 @@ Flexible cache expiration via environment variable:
 
 ```bash
 # Development - refresh every hour
-export TERRAGRUNT_CACHE_TTL_HOURS=1
+export TERRAGRUNT_MCP_CACHE_TTL_HOURS=1
 
 # Production - refresh daily
-export TERRAGRUNT_CACHE_TTL_HOURS=24
+export TERRAGRUNT_MCP_CACHE_TTL_HOURS=24
 
 # CI/CD - always fresh
-export TERRAGRUNT_CACHE_TTL_HOURS=0
+export TERRAGRUNT_MCP_CACHE_TTL_HOURS=0
 ```
 
 ### Phase 2: Performance Improvements
@@ -271,7 +271,7 @@ setInterval(() => {
 
 **Solutions**:
 1. Clear disk cache: `rm -rf ~/.cache/terragrunt-mcp/docs/`
-2. Set shorter TTL: `export TERRAGRUNT_CACHE_TTL_HOURS=1`
+2. Set shorter TTL: `export TERRAGRUNT_MCP_CACHE_TTL_HOURS=1`
 3. Check file permissions on cache directory
 4. Verify network connectivity for fetch
 
@@ -280,7 +280,7 @@ setInterval(() => {
 **Symptoms**: Errors loading compressed cache
 
 **Solutions**:
-1. Disable compression: `export TERRAGRUNT_CACHE_COMPRESSION=false`
+1. Disable compression: `export TERRAGRUNT_MCP_CACHE_COMPRESSION=false`
 2. Delete corrupted cache: `rm ~/.cache/terragrunt-mcp/docs/*.gz`
 3. Restart with fresh cache
 
@@ -298,10 +298,10 @@ No breaking changes! The optimizations are backward compatible:
 
 ```bash
 # Disable compression
-export TERRAGRUNT_CACHE_COMPRESSION=false
+export TERRAGRUNT_MCP_CACHE_COMPRESSION=false
 
 # Use old TTL (24 hours)
-export TERRAGRUNT_CACHE_TTL_HOURS=24
+export TERRAGRUNT_MCP_CACHE_TTL_HOURS=24
 
 # Or don't set any env vars - defaults work great!
 ```

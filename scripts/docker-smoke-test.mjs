@@ -40,7 +40,7 @@ const timer = setTimeout(() => fail(`timed out after ${TIMEOUT_MS / 1000}s`), TI
 
 const transport = new StdioClientTransport({
   command: 'docker',
-  args: ['run', '-i', '--rm', '--network', 'none', '--read-only', '--tmpfs', '/cache', '-e', 'TERRAGRUNT_RETRY_MAX_RETRIES=0', image],
+  args: ['run', '-i', '--rm', '--network', 'none', '--read-only', '--tmpfs', '/cache', '-e', 'TERRAGRUNT_MCP_RETRY_MAX_RETRIES=0', image],
   stderr: 'inherit',
 });
 const client = new Client({ name: 'docker-smoke-test', version: '1.0.0' });

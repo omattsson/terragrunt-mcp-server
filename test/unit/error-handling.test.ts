@@ -32,15 +32,15 @@ describe('Error Handling - Network Failures', () => {
     
     // Save original environment variables
     originalEnv = {
-      TERRAGRUNT_RETRY_INITIAL_DELAY: process.env.TERRAGRUNT_RETRY_INITIAL_DELAY,
-      TERRAGRUNT_RETRY_MAX_DELAY: process.env.TERRAGRUNT_RETRY_MAX_DELAY,
-      TERRAGRUNT_RETRY_BACKOFF_MULTIPLIER: process.env.TERRAGRUNT_RETRY_BACKOFF_MULTIPLIER
+      TERRAGRUNT_MCP_RETRY_INITIAL_DELAY: process.env.TERRAGRUNT_MCP_RETRY_INITIAL_DELAY,
+      TERRAGRUNT_MCP_RETRY_MAX_DELAY: process.env.TERRAGRUNT_MCP_RETRY_MAX_DELAY,
+      TERRAGRUNT_MCP_RETRY_BACKOFF_MULTIPLIER: process.env.TERRAGRUNT_MCP_RETRY_BACKOFF_MULTIPLIER
     };
     
     // Set fast retry timeouts for tests to avoid long waits
-    process.env.TERRAGRUNT_RETRY_INITIAL_DELAY = '10';
-    process.env.TERRAGRUNT_RETRY_MAX_DELAY = '50';
-    process.env.TERRAGRUNT_RETRY_BACKOFF_MULTIPLIER = '1.5';
+    process.env.TERRAGRUNT_MCP_RETRY_INITIAL_DELAY = '10';
+    process.env.TERRAGRUNT_MCP_RETRY_MAX_DELAY = '50';
+    process.env.TERRAGRUNT_MCP_RETRY_BACKOFF_MULTIPLIER = '1.5';
     
     // Get mocked modules
     mockFetch = vi.fn();
@@ -65,9 +65,9 @@ describe('Error Handling - Network Failures', () => {
     vi.unstubAllGlobals();
     
     // Restore original environment variables
-    process.env.TERRAGRUNT_RETRY_INITIAL_DELAY = originalEnv.TERRAGRUNT_RETRY_INITIAL_DELAY;
-    process.env.TERRAGRUNT_RETRY_MAX_DELAY = originalEnv.TERRAGRUNT_RETRY_MAX_DELAY;
-    process.env.TERRAGRUNT_RETRY_BACKOFF_MULTIPLIER = originalEnv.TERRAGRUNT_RETRY_BACKOFF_MULTIPLIER;
+    process.env.TERRAGRUNT_MCP_RETRY_INITIAL_DELAY = originalEnv.TERRAGRUNT_MCP_RETRY_INITIAL_DELAY;
+    process.env.TERRAGRUNT_MCP_RETRY_MAX_DELAY = originalEnv.TERRAGRUNT_MCP_RETRY_MAX_DELAY;
+    process.env.TERRAGRUNT_MCP_RETRY_BACKOFF_MULTIPLIER = originalEnv.TERRAGRUNT_MCP_RETRY_BACKOFF_MULTIPLIER;
   });
 
   describe('Network Failures During Doc Fetch', () => {

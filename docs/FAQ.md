@@ -142,7 +142,7 @@ machine-readable `llms.txt` endpoint:
 
 A single HTTP request retrieves all documentation as Markdown, which is then
 parsed into individual doc entries (split on H1 boundaries). The source URL is
-configurable via the `TERRAGRUNT_LLMS_SOURCE` environment variable.
+configurable via the `TERRAGRUNT_MCP_LLMS_SOURCE` environment variable.
 
 ### Is the documentation cached?
 

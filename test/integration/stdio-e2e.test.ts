@@ -25,9 +25,9 @@ import { ServerMode, getModeConfig } from '../../src/modes/config.js';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 
 const SERVER_ENV = {
-  TERRAGRUNT_LLMS_SOURCE: 'http://127.0.0.1:9/llms-small.txt',
-  TERRAGRUNT_RETRY_MAX_RETRIES: '0',
-  TERRAGRUNT_CACHE_TTL_HOURS: '0',
+  TERRAGRUNT_MCP_LLMS_SOURCE: 'http://127.0.0.1:9/llms-small.txt',
+  TERRAGRUNT_MCP_RETRY_MAX_RETRIES: '0',
+  TERRAGRUNT_MCP_CACHE_TTL_HOURS: '0',
   TERRAGRUNT_MCP_FILE_WRITE_ENABLED: 'false',
 };
 

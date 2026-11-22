@@ -81,7 +81,7 @@ CLI options, HCL blocks, and HCL attributes (surfaced in `cli_reference`,
 `get_guidance` `experiments` topic. Active experiments are enabled with
 `--experiment <name>` or `TG_EXPERIMENT=<name>`; completed experiments are
 default and need no flag. To refresh: after
-`TERRAGRUNT_REPO=<path-to-terragrunt> npm run update-experiments-fixture`
+`TERRAGRUNT_MCP_REPO=<path-to-terragrunt> npm run update-experiments-fixture`
 (see below), reconcile `EXPERIMENTS` in `experiments.ts` with the fixture (the
 cross-check test fails on any drift) and refresh summaries from the upstream
 `.mdx` files.
@@ -149,14 +149,14 @@ revision. Steps 1 and 2 choose the pin; everything else follows from it.
    pin (normally the head of the default branch). The revision in
    `UPSTREAM_REVISION` is only the previous pin and is not an input.
 2. **Regenerate the docs manifest.**
-   `TERRAGRUNT_REPO=<path-to-terragrunt> npm run update-docs-manifest`
+   `TERRAGRUNT_MCP_REPO=<path-to-terragrunt> npm run update-docs-manifest`
    rewrites `src/terragrunt/docs-manifest.ts` (the page list: titles, canonical
    URLs, order) from the docs tree of the checkout and sets `UPSTREAM_REVISION`
    to the checkout's HEAD. The page list depends on the latest Terragrunt
    release, because upstream hides entries whose `since` is newer than that
    release. The script reads the release with `gh api`; pass the release the
    live site was built with via `--release vX.Y.Z` or
-   `TERRAGRUNT_LATEST_RELEASE` when it differs. It refuses a checkout with
+   `TERRAGRUNT_MCP_LATEST_RELEASE` when it differs. It refuses a checkout with
    uncommitted changes under `docs/`. `--keep-revision` keeps the old
    `UPSTREAM_REVISION` and is only for a manifest-only experiment. Review the
    manifest diff.
@@ -177,7 +177,7 @@ revision. Steps 1 and 2 choose the pin; everything else follows from it.
    duplicate titles. The fixture content is whatever the site serves at that
    moment, so review the fixture diff.
 4. **Refresh the experiments fixture.**
-   `TERRAGRUNT_REPO=<path-to-terragrunt> npm run update-experiments-fixture`
+   `TERRAGRUNT_MCP_REPO=<path-to-terragrunt> npm run update-experiments-fixture`
    reads the Go checkout (`internal/experiment/experiment.go`) and writes
    `fixtures/terragrunt-experiments.json`. Then reconcile `EXPERIMENTS` in
    `src/terragrunt/experiments.ts` with it (the cross-check test fails on any

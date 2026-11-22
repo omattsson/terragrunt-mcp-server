@@ -282,14 +282,14 @@ This ensures the server **always** has data to return.
 
 ### Source Configuration
 
-The source URL is configurable via `TERRAGRUNT_LLMS_SOURCE`:
+The source URL is configurable via `TERRAGRUNT_MCP_LLMS_SOURCE`:
 
 ```bash
 # Default: llms-small.txt (abridged docs)
 # Full docs:
-export TERRAGRUNT_LLMS_SOURCE=llms-full.txt
+export TERRAGRUNT_MCP_LLMS_SOURCE=llms-full.txt
 # Custom mirror:
-export TERRAGRUNT_LLMS_SOURCE=https://my-mirror.example.com/llms.txt
+export TERRAGRUNT_MCP_LLMS_SOURCE=https://my-mirror.example.com/llms.txt
 ```
 
 ## Search Implementation

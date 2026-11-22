@@ -4,7 +4,7 @@
  * Terragrunt Go source (internal/experiment/experiment.go).
  *
  * Usage:
- *   TERRAGRUNT_REPO=/path/to/terragrunt npm run update-experiments-fixture
+ *   TERRAGRUNT_MCP_REPO=/path/to/terragrunt npm run update-experiments-fixture
  *   npm run update-experiments-fixture -- --repo /path/to/terragrunt
  *
  * The Go source is not available in CI, so this is a maintainer-run refresh
@@ -14,6 +14,7 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import { execFileSync } from 'child_process';
 import { fileURLToPath } from 'url';
+import { readEnv } from '../src/terragrunt/env.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -56,9 +57,9 @@ export function parseExperiments(goSource: string): { active: string[]; complete
 
 function resolveRepo(): string {
   const argIdx = process.argv.indexOf('--repo');
-  const repo = argIdx !== -1 ? process.argv[argIdx + 1] : process.env.TERRAGRUNT_REPO;
+  const repo = argIdx !== -1 ? process.argv[argIdx + 1] : readEnv('REPO');
   if (!repo) {
-    console.error('ERROR: set TERRAGRUNT_REPO or pass --repo <path> to a terragrunt checkout.');
+    console.error('ERROR: set TERRAGRUNT_MCP_REPO or pass --repo <path> to a terragrunt checkout.');
     process.exit(1);
   }
   return repo;
