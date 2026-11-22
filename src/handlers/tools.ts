@@ -180,6 +180,9 @@ interface BuildConfigArgs {
     compareWith?: string;
 }
 
+/** Longest search_docs query accepted, in characters. */
+export const MAX_SEARCH_QUERY_LENGTH = 1000;
+
 /**
  * Decide whether a tool result is a tool-level failure, which the server
  * reports to the client as an MCP result with isError: true.
@@ -1327,6 +1330,13 @@ export class ToolHandler {
                 // Relevance-ranked search across all docs
                 if (!args?.query) {
                     return { error: 'query parameter is required for search mode. Use mode="list" to browse available sections first.' };
+                }
+                // The query is client-controlled text that is tokenized and turned into
+                // regular expressions on the event loop: bound it before any work is done.
+                if (typeof args.query === 'string' && args.query.length > MAX_SEARCH_QUERY_LENGTH) {
+                    return {
+                        error: `query is too long (${args.query.length} characters, maximum ${MAX_SEARCH_QUERY_LENGTH}). Use a shorter, more specific query.`
+                    };
                 }
                 return await this.searchTerragruntDocs(
                     args.query,
