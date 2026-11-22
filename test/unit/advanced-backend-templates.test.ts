@@ -156,7 +156,7 @@ describe('Advanced Backend Templates', () => {
           },
         });
 
-        expect(result.config).not.toMatch(/\{\{[#^\/]?\w+\}\}/);
+        expect(result.config).not.toMatch(/\{\{[#^/]?\w+\}\}/);
       });
     });
 
@@ -476,7 +476,7 @@ describe('Advanced Backend Templates', () => {
           },
         });
 
-        expect(result.config).not.toMatch(/\{\{[#^\/]?\w+\}\}/);
+        expect(result.config).not.toMatch(/\{\{[#^/]?\w+\}\}/);
       });
     });
 
@@ -725,7 +725,7 @@ describe('Advanced Backend Templates', () => {
           },
         });
 
-        expect(result.config).not.toMatch(/\{\{[#^\/]?\w+\}\}/);
+        expect(result.config).not.toMatch(/\{\{[#^/]?\w+\}\}/);
       });
     });
 
@@ -1038,7 +1038,7 @@ describe('Advanced Backend Templates', () => {
       });
 
       expect(essentialResult.config).toContain('backend = "azurerm"');
-      expect(essentialResult.config).not.toMatch(/\{\{[#^\/]?\w+\}\}/);
+      expect(essentialResult.config).not.toMatch(/\{\{[#^/]?\w+\}\}/);
     });
 
     it('should have correct template counts after adding advanced templates', async () => {

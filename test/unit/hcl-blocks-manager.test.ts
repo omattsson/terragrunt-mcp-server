@@ -8,7 +8,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { readFile } from 'fs/promises';
 import { HCLBlocksManager } from '../../src/terragrunt/hcl-blocks.js';
 import { documentedHclNames, type UpstreamDocPage } from './upstream-hcl-names.js';
-import type { HCLBlock, HCLBlockCategory, HCLBlockSearchResult } from '../../src/types/hcl-blocks.js';
+import type { HCLBlockCategory } from '../../src/types/hcl-blocks.js';
 
 describe('HCLBlocksManager', () => {
     let manager: HCLBlocksManager;

@@ -670,7 +670,7 @@ describe('TerragruntConfigGenerator', () => {
       });
 
       // No Mustache syntax should remain in output
-      expect(result.config).not.toMatch(/\{\{[#^\/]?\w+\}\}/);
+      expect(result.config).not.toMatch(/\{\{[#^/]?\w+\}\}/);
     });
 
     it('should preserve non-conditional variable substitution', async () => {
@@ -690,7 +690,7 @@ describe('TerragruntConfigGenerator', () => {
       expect(result.config).toContain('bucket         = "my-bucket"');
       expect(result.config).toContain('region         = "us-east-1"');
       // No Mustache syntax should remain
-      expect(result.config).not.toMatch(/\{\{[#^\/]?\w+\}\}/);
+      expect(result.config).not.toMatch(/\{\{[#^/]?\w+\}\}/);
     });
 
     it('should handle empty string values as falsy for conditionals', async () => {
@@ -736,7 +736,7 @@ describe('TerragruntConfigGenerator', () => {
       expect(result.config).not.toContain('workspace_key_prefix');
       expect(result.config).not.toContain('skip_credentials_validation');
       // No Mustache syntax should remain
-      expect(result.config).not.toMatch(/\{\{[#^\/]?\w+\}\}/);
+      expect(result.config).not.toMatch(/\{\{[#^/]?\w+\}\}/);
     });
 
     it('should generate config with KMS encryption', async () => {
@@ -903,7 +903,7 @@ describe('TerragruntConfigGenerator', () => {
       expect(result.config).not.toContain('snapshot');
       expect(result.config).not.toContain('use_azuread_auth');
       // No Mustache syntax should remain
-      expect(result.config).not.toMatch(/\{\{[#^\/]?\w+\}\}/);
+      expect(result.config).not.toMatch(/\{\{[#^/]?\w+\}\}/);
     });
 
     it('should generate config with Service Principal authentication', async () => {
@@ -1061,7 +1061,7 @@ describe('TerragruntConfigGenerator', () => {
       expect(result.config).not.toContain('impersonate_service_account');
       expect(result.config).not.toContain('storage_custom_endpoint');
       // No Mustache syntax should remain
-      expect(result.config).not.toMatch(/\{\{[#^\/]?\w+\}\}/);
+      expect(result.config).not.toMatch(/\{\{[#^/]?\w+\}\}/);
     });
 
     it('should generate config with KMS encryption', async () => {

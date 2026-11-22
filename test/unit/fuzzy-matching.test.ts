@@ -332,7 +332,6 @@ describe('ErrorPatternMatcher - Fuzzy Matching and Confidence Scoring', () => {
       expect(withFuzzy.matches.length).toBeGreaterThanOrEqual(withoutFuzzy.matches.length);
       
       // Verify they're actually different (not cached incorrectly)
-      const fuzzyScores = withFuzzy.matches.filter(m => m.confidence < 0.95);
       const noFuzzyScores = withoutFuzzy.matches.filter(m => m.confidence < 0.95);
       
       // With fuzzy disabled, should have no fuzzy-scored matches
