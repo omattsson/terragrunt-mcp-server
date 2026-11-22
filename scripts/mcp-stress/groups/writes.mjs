@@ -27,7 +27,8 @@ const MB = 1024 * 1024;
  */
 
 function cases() {
-  const link = (target, at) => (box) => fs.symlinkSync(path.join(box.canary, target), path.join(box.sandbox, at));
+  // Relative targets resolve the same on the host and inside a container mount
+  const link = (target, at) => (box) => fs.symlinkSync(path.join('..', 'canary', target), path.join(box.sandbox, at));
   /** @type {WriteCase[]} */
   const list = [
     { id: 'control-plain-write', args: (p) => ({ content: HCL, path: p('ok.hcl') }), expect: { allow: true } },
@@ -59,8 +60,8 @@ function cases() {
     { id: 'ext-uppercase-ok', args: (p) => ({ content: HCL, path: p('UPPER.HCL') }), expect: { allow: true } },
     { id: 'symlink-file-to-canary', setup: link('secret.hcl', 'link.hcl'), args: (p) => ({ content: HCL, path: p('link.hcl'), overwrite: true }), expect: { refuse: ['SYMLINK_NOT_ALLOWED'] } },
     { id: 'symlink-dangling-to-canary', setup: link('not-yet.hcl', 'dangle.hcl'), args: (p) => ({ content: HCL, path: p('dangle.hcl'), overwrite: true }), expect: { refuse: ['SYMLINK_NOT_ALLOWED'] } },
-    { id: 'symlink-dir-to-canary', setup: (box) => fs.symlinkSync(box.canary, path.join(box.sandbox, 'linkdir')), args: (p) => ({ content: HCL, path: p('linkdir/new.hcl') }), expect: { refuse: ['OUTSIDE_ALLOWED_DIRECTORIES'] } },
-    { id: 'symlink-dir-to-canary-nested-create', setup: (box) => fs.symlinkSync(box.canary, path.join(box.sandbox, 'linkdir')), args: (p) => ({ content: HCL, path: p('linkdir/newdir/new.hcl'), createParentDirs: true }), expect: { refuse: ['OUTSIDE_ALLOWED_DIRECTORIES'] } },
+    { id: 'symlink-dir-to-canary', setup: (box) => fs.symlinkSync(path.join('..', 'canary'), path.join(box.sandbox, 'linkdir')), args: (p) => ({ content: HCL, path: p('linkdir/new.hcl') }), expect: { refuse: ['OUTSIDE_ALLOWED_DIRECTORIES'] } },
+    { id: 'symlink-dir-to-canary-nested-create', setup: (box) => fs.symlinkSync(path.join('..', 'canary'), path.join(box.sandbox, 'linkdir')), args: (p) => ({ content: HCL, path: p('linkdir/newdir/new.hcl'), createParentDirs: true }), expect: { refuse: ['OUTSIDE_ALLOWED_DIRECTORIES'] } },
     {
       id: 'hardlink-to-canary',
       setup: (box) => fs.linkSync(path.join(box.canary, 'secret.hcl'), path.join(box.sandbox, 'hard.hcl')),
