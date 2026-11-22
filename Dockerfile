@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 # ---- Build stage: compile TypeScript with dev dependencies ----
-FROM node:26-alpine AS build
+FROM node:26.13.1-alpine3.24 AS build
 WORKDIR /app
 
 COPY package*.json ./
@@ -12,7 +12,7 @@ COPY src/ ./src/
 RUN npm run build
 
 # ---- Runtime stage: production dependencies plus runtime data ----
-FROM node:26-alpine
+FROM node:26.13.1-alpine3.24
 WORKDIR /app
 
 COPY package*.json ./

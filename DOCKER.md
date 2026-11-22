@@ -83,7 +83,7 @@ echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":
 
 ## Container Details
 
-- **Base Image**: `node:24-alpine`
+- **Base Image**: `node:26.13.1-alpine3.24` (pinned; Dependabot bumps it)
 - **Working Directory**: `/app`
 - **User**: `node` (non-root for security)
 - **Cache Location**: `/cache/docs/`
