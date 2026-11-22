@@ -144,7 +144,7 @@ export function refusalMessage(problems: readonly string[]): string {
     'The live site has moved on from the upstream revision that the manifest is pinned to',
     `(UPSTREAM_REVISION ${UPSTREAM_REVISION}). Either:`,
     '  1. Re-pin: check out a newer gruntwork-io/terragrunt revision that matches the live site,',
-    '     run `TERRAGRUNT_REPO=<checkout> npm run update-docs-manifest`, review the diff of',
+    '     run `TERRAGRUNT_MCP_REPO=<checkout> npm run update-docs-manifest`, review the diff of',
     '     src/terragrunt/docs-manifest.ts, then run `npm run update-fixture` again.',
     '  2. Or wait until the site is rebuilt from the revision you pinned, then run this script again.',
     'See docs/upstream-parity.md ("Refresh procedure").',
@@ -155,8 +155,8 @@ async function main(): Promise<void> {
   const checkOnly = process.argv.includes('--check');
 
   // Force canonical source to ensure deterministic fixture regeneration,
-  // regardless of any TERRAGRUNT_LLMS_SOURCE env var the user may have set.
-  process.env.TERRAGRUNT_LLMS_SOURCE = LLMS_SMALL_URL;
+  // regardless of any TERRAGRUNT_MCP_LLMS_SOURCE env var the user may have set.
+  process.env.TERRAGRUNT_MCP_LLMS_SOURCE = LLMS_SMALL_URL;
 
   console.log(`Fetching Terragrunt documentation from ${LLMS_SMALL_URL}...`);
 

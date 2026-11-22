@@ -40,6 +40,25 @@ export default [
     },
   },
   {
+    // Plain Node scripts: declare the globals they use so `eslint scripts/*.mjs` is clean.
+    files: ['scripts/**/*.mjs'],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'module',
+      globals: {
+        console: 'readonly',
+        process: 'readonly',
+        Buffer: 'readonly',
+        setTimeout: 'readonly',
+        setInterval: 'readonly',
+        clearTimeout: 'readonly',
+        clearInterval: 'readonly',
+        URL: 'readonly',
+        fetch: 'readonly',
+      },
+    },
+  },
+  {
     ignores: ['dist/', 'node_modules/', '*.js', 'test/'],
   },
 ];

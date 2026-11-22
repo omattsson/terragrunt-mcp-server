@@ -16,16 +16,16 @@
  *
  * Published content depends on the latest Terragrunt release: upstream drops
  * every entry whose `since` is newer than the latest release tag when it builds
- * the site. Pass the same release with `--release` or `TERRAGRUNT_LATEST_RELEASE`
+ * the site. Pass the same release with `--release` or `TERRAGRUNT_MCP_LATEST_RELEASE`
  * (default: `gh api repos/gruntwork-io/terragrunt/releases/latest`).
  *
  * Usage:
- *   TERRAGRUNT_REPO=<checkout> npm run update-docs-manifest
+ *   TERRAGRUNT_MCP_REPO=<checkout> npm run update-docs-manifest
  *   npm run update-docs-manifest -- --repo <checkout> --release v1.2.1
  *
  * Options:
- *   --repo <path>      Terragrunt checkout (or TERRAGRUNT_REPO).
- *   --release <tag>    Latest release the site was built with (or TERRAGRUNT_LATEST_RELEASE).
+ *   --repo <path>      Terragrunt checkout (or TERRAGRUNT_MCP_REPO).
+ *   --release <tag>    Latest release the site was built with (or TERRAGRUNT_MCP_LATEST_RELEASE).
  *   --keep-revision    Keep the UPSTREAM_REVISION already in the manifest instead
  *                      of writing the checkout's HEAD. Only for manifest-only
  *                      experiments and tests; a real re-pin must not use it.
@@ -38,6 +38,7 @@ import * as path from 'path';
 import { execFileSync } from 'child_process';
 import { fileURLToPath } from 'url';
 import { parse as parseYaml } from 'yaml';
+import { readEnv } from '../src/terragrunt/env.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -417,16 +418,16 @@ function option(name: string): string | undefined {
 }
 
 function resolveRepo(): string {
-  const repo = option('--repo') ?? process.env.TERRAGRUNT_REPO;
+  const repo = option('--repo') ?? readEnv('REPO');
   if (!repo) {
-    console.error('ERROR: set TERRAGRUNT_REPO or pass --repo <path> to a terragrunt checkout.');
+    console.error('ERROR: set TERRAGRUNT_MCP_REPO or pass --repo <path> to a terragrunt checkout.');
     process.exit(1);
   }
   return repo;
 }
 
 function resolveRelease(): string {
-  let release = option('--release') ?? process.env.TERRAGRUNT_LATEST_RELEASE;
+  let release = option('--release') ?? readEnv('LATEST_RELEASE');
   if (!release) {
     release = execFileSync(
       'gh',
@@ -435,7 +436,7 @@ function resolveRelease(): string {
     ).trim();
   }
   if (!RELEASE_VERSION.test(release)) {
-    throw new Error(`latest release "${release}" must have the form vX.Y.Z; pass --release or set TERRAGRUNT_LATEST_RELEASE`);
+    throw new Error(`latest release "${release}" must have the form vX.Y.Z; pass --release or set TERRAGRUNT_MCP_LATEST_RELEASE`);
   }
   return release;
 }

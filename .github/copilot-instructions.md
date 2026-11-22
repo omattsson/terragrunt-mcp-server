@@ -7,7 +7,7 @@ GitHub Copilot code review reads this file. Claude Code imports it from `CLAUDE.
 1. Anything that writes to stdout in `src/` (`console.log`, `console.info`, `console.debug`, `process.stdout.write`): it corrupts the MCP JSON-RPC stream.
 2. A tool handler that throws instead of returning an error payload, or an error payload that `isErrorResult` does not see (no `error`, no `success: false`).
 3. File writes or diff reads outside `TERRAGRUNT_MCP_ALLOWED_DIRS`, a path check without `realpath`, or a weaker extension or size limit (see "File writing").
-4. A network fetch without the timeout and size cap of `fetchConfig` (`TERRAGRUNT_FETCH_TIMEOUT_MS`, `TERRAGRUNT_FETCH_MAX_BYTES`).
+4. A network fetch without the timeout and size cap of `fetchConfig` (`TERRAGRUNT_MCP_FETCH_TIMEOUT_MS`, `TERRAGRUNT_MCP_FETCH_MAX_BYTES`).
 5. An import without the `.js` extension (runtime crash).
 6. A new tool, or a tool moved between modes, without the matching change in `MODE_CONFIGS` and the mode tests (`test/unit/modes/`).
 7. A changed tool schema or behavior without updated tests and docs (`README.md`, `docs/`).
@@ -51,7 +51,7 @@ A result with a non-empty `error` (a string, or an object with a non-empty `mess
 
 **File writing (`src/terragrunt/file-writer.ts`):** writes and diff reads are refused unless the target is inside `TERRAGRUNT_MCP_ALLOWED_DIRS` (no default). The check resolves symlinks with `fs.realpath`. Other settings: `TERRAGRUNT_MCP_FILE_WRITE_ENABLED` (`false` turns writes off), `TERRAGRUNT_MCP_ALLOWED_EXTENSIONS` (default `.hcl`), `TERRAGRUNT_MCP_AUTO_BACKUP`, `TERRAGRUNT_MCP_MAX_FILE_SIZE` (default 1 MiB). Never add a default directory or skip the realpath check.
 
-**Docs fetch (`src/terragrunt/docs.ts`):** every fetch has a timeout and a size cap (`TERRAGRUNT_FETCH_TIMEOUT_MS`, default 10 s; `TERRAGRUNT_FETCH_MAX_BYTES`, default 16 MiB) and retries with backoff (`TERRAGRUNT_RETRY_*`). The docs source can be changed with `TERRAGRUNT_LLMS_SOURCE`.
+**Docs fetch (`src/terragrunt/docs.ts`):** every fetch has a timeout and a size cap (`TERRAGRUNT_MCP_FETCH_TIMEOUT_MS`, default 10 s; `TERRAGRUNT_MCP_FETCH_MAX_BYTES`, default 16 MiB) and retries with backoff (`TERRAGRUNT_MCP_RETRY_*`). The docs source can be changed with `TERRAGRUNT_MCP_LLMS_SOURCE`.
 
 **Template loading priority:** `TemplatesManager` (`src/terragrunt/templates/index.ts`) loads from multiple loaders sorted by priority (builtin=10, schema=15, filesystem=50, custom API=100). Higher priority overrides lower.
 
@@ -85,7 +85,7 @@ Schema updates require human review — never auto-update. Include `deprecated: 
 ```bash
 ./test-mcp.sh                              # Raw JSON-RPC protocol test
 rm -rf .cache/terragrunt-docs/             # Force cache refresh
-TERRAGRUNT_CACHE_TTL_HOURS=1 npm start     # Docs cache TTL in hours (default 24)
+TERRAGRUNT_MCP_CACHE_TTL_HOURS=1 npm start     # Docs cache TTL in hours (default 24)
 ```
 Server logs to stderr (visible in VS Code Output panel).
 

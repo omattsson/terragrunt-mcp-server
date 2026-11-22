@@ -7,6 +7,7 @@ import { LRUCache } from 'lru-cache';
 import { DocSearchIndex, buildSnippet } from './search-index.js';
 import { TERRAGRUNT_DOC_MANIFEST } from './docs-manifest.js';
 import { resolveCacheDir } from './paths.js';
+import { readEnv } from './env.js';
 
 const gzipAsync = promisify(gzip);
 const gunzipAsync = promisify(gunzip);
@@ -73,7 +74,7 @@ interface FetchConfig {
 }
 
 function positiveIntFromEnv(name: string, fallback: number): number {
-  const value = Number(process.env[name]);
+  const value = Number(readEnv(name));
   return Number.isInteger(value) && value > 0 ? value : fallback;
 }
 
@@ -192,14 +193,14 @@ export class TerragruntDocsManager {
     memoryUsage: 0
   };
   private readonly retryConfig: RetryConfig = {
-    maxRetries: parseInt(process.env.TERRAGRUNT_RETRY_MAX_RETRIES || '3', 10),
-    initialDelayMs: parseInt(process.env.TERRAGRUNT_RETRY_INITIAL_DELAY || '1000', 10),
-    maxDelayMs: parseInt(process.env.TERRAGRUNT_RETRY_MAX_DELAY || '10000', 10),
-    backoffMultiplier: parseFloat(process.env.TERRAGRUNT_RETRY_BACKOFF_MULTIPLIER || '2')
+    maxRetries: parseInt(readEnv('RETRY_MAX_RETRIES') || '3', 10),
+    initialDelayMs: parseInt(readEnv('RETRY_INITIAL_DELAY') || '1000', 10),
+    maxDelayMs: parseInt(readEnv('RETRY_MAX_DELAY') || '10000', 10),
+    backoffMultiplier: parseFloat(readEnv('RETRY_BACKOFF_MULTIPLIER') || '2')
   };
   private readonly fetchConfig: FetchConfig = {
-    timeoutMs: positiveIntFromEnv('TERRAGRUNT_FETCH_TIMEOUT_MS', 10_000),
-    maxBytes: positiveIntFromEnv('TERRAGRUNT_FETCH_MAX_BYTES', 16 * 1024 * 1024)
+    timeoutMs: positiveIntFromEnv('FETCH_TIMEOUT_MS', 10_000),
+    maxBytes: positiveIntFromEnv('FETCH_MAX_BYTES', 16 * 1024 * 1024)
   };
 
   constructor() {
@@ -211,16 +212,17 @@ export class TerragruntDocsManager {
     const __dirname = path.dirname(__filename);
     
     // Configurable cache TTL (default 24 hours)
-    const ttlHours = process.env.TERRAGRUNT_CACHE_TTL_HOURS 
-      ? parseInt(process.env.TERRAGRUNT_CACHE_TTL_HOURS, 10)
+    const ttlEnv = readEnv('CACHE_TTL_HOURS');
+    const ttlHours = ttlEnv
+      ? parseInt(ttlEnv, 10)
       : 24;
     if (isNaN(ttlHours) || ttlHours < 0) {
-      throw new Error('TERRAGRUNT_CACHE_TTL_HOURS must be a non-negative number');
+      throw new Error('TERRAGRUNT_MCP_CACHE_TTL_HOURS must be a non-negative number');
     }
     this.cacheExpiry = ttlHours * 60 * 60 * 1000;
     
     // Enable compression by default (can disable with env var)
-    this.useCompression = process.env.TERRAGRUNT_CACHE_COMPRESSION !== 'false';
+    this.useCompression = readEnv('CACHE_COMPRESSION') !== 'false';
     
     // Per-user cache directory (TERRAGRUNT_MCP_CACHE_DIR overrides)
     this.cacheDir = resolveCacheDir();
@@ -984,14 +986,14 @@ export class TerragruntDocsManager {
 
   /**
    * Fetch and parse the llms.txt endpoint into TerragruntDoc[].
-   * Uses TERRAGRUNT_LLMS_SOURCE env var to override the default URL.
+   * Uses TERRAGRUNT_MCP_LLMS_SOURCE env var to override the default URL.
    * The env var accepts an absolute URL (with scheme) or a path/filename
    * relative to the base URL (e.g., "llms-full.txt" or "/llms-full.txt").
    * Never throws — returns empty array and logs on failure.
    */
   async fetchFromLlmsTxt(): Promise<TerragruntDoc[]> {
     const defaultUrl = `${this.baseUrl}/llms-small.txt`;
-    const source = process.env.TERRAGRUNT_LLMS_SOURCE;
+    const source = readEnv('LLMS_SOURCE');
 
     let url: string;
     if (!source) {
@@ -1037,7 +1039,7 @@ export class TerragruntDocsManager {
 
   private async readBodyWithLimit(response: Response): Promise<string> {
     const { maxBytes } = this.fetchConfig;
-    const tooLarge = () => nonRetryableError(`Response exceeds the ${maxBytes} bytes size cap (TERRAGRUNT_FETCH_MAX_BYTES)`);
+    const tooLarge = () => nonRetryableError(`Response exceeds the ${maxBytes} bytes size cap (TERRAGRUNT_MCP_FETCH_MAX_BYTES)`);
 
     if (Number(response.headers.get('content-length')) > maxBytes) {
       await response.body?.cancel();

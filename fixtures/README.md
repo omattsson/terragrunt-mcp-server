@@ -26,7 +26,7 @@ Experiments data is extracted from the Terragrunt Go checkout to ensure parity
 tests can verify which experiments are available. Refresh with:
 
 ```bash
-TERRAGRUNT_REPO=<path-to-terragrunt> npm run update-experiments-fixture
+TERRAGRUNT_MCP_REPO=<path-to-terragrunt> npm run update-experiments-fixture
 ```
 
 Use the same checkout that the docs manifest was generated from, so both
@@ -57,18 +57,18 @@ Both fixtures belong to one upstream revision. Regenerate them in this order
 # 1. Page list and pin: from an upstream checkout at the revision to pin.
 #    Writes src/terragrunt/docs-manifest.ts and sets UPSTREAM_REVISION to the
 #    checkout's HEAD.
-TERRAGRUNT_REPO=<path-to-terragrunt> npm run update-docs-manifest
+TERRAGRUNT_MCP_REPO=<path-to-terragrunt> npm run update-docs-manifest
 
 # 2. Docs content: from the live site.
 npm run update-fixture
 
 # 3. Experiments: from the same checkout.
-TERRAGRUNT_REPO=<path-to-terragrunt> npm run update-experiments-fixture
+TERRAGRUNT_MCP_REPO=<path-to-terragrunt> npm run update-experiments-fixture
 ```
 
 `npm run update-fixture` forces the canonical source
 (`https://docs.terragrunt.com/llms-small.txt`) regardless of any
-`TERRAGRUNT_LLMS_SOURCE` environment variable, then calls
+`TERRAGRUNT_MCP_LLMS_SOURCE` environment variable, then calls
 `TerragruntDocsManager.fetchFromLlmsTxt()` to download and parse the docs, and
 writes the result to `fixtures/terragrunt-docs-fixture.json`.
 

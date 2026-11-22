@@ -3,3 +3,9 @@ dist
 .cache
 coverage.mcp-metrics
 coverage/
+coverage-report.txt
+final-test.json
+final-test.log
+performance-results.txt
+performance-test-output.txt
+mode-verification-results.txt

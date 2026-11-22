@@ -269,7 +269,7 @@ This ensures the server **always** has data to return.
 ### Technology
 
 - **llms.txt**: Machine-readable Markdown served by Terragrunt website
-- **node-fetch**: HTTP requests
+- **Built-in `fetch`**: HTTP requests (Node.js global, no extra package)
 - **Native Markdown parsing**: Split on H1 (`# `) boundaries
 
 ### How It Works
@@ -282,14 +282,14 @@ This ensures the server **always** has data to return.
 
 ### Source Configuration
 
-The source URL is configurable via `TERRAGRUNT_LLMS_SOURCE`:
+The source URL is configurable via `TERRAGRUNT_MCP_LLMS_SOURCE`:
 
 ```bash
 # Default: llms-small.txt (abridged docs)
 # Full docs:
-export TERRAGRUNT_LLMS_SOURCE=llms-full.txt
+export TERRAGRUNT_MCP_LLMS_SOURCE=llms-full.txt
 # Custom mirror:
-export TERRAGRUNT_LLMS_SOURCE=https://my-mirror.example.com/llms.txt
+export TERRAGRUNT_MCP_LLMS_SOURCE=https://my-mirror.example.com/llms.txt
 ```
 
 ## Search Implementation
@@ -379,9 +379,9 @@ try {
 ### Production
 
 - `@modelcontextprotocol/sdk`: MCP protocol
-- `node-fetch`: HTTP requests
 - `lru-cache`: Search result caching
-- `typescript`: Type safety
+- `diff`: Unified diffs
+- `mustache`: Template rendering
 
 ### Development
 

@@ -21,6 +21,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `examples` mode, related docs in `build_config`, and diagnosis enrichment use the same ranking. Diagnosis enrichment keeps the top 3 docs per search.
   - A golden-query test (42 queries against the offline fixture) guards ranking quality: an expected page is in the top 3 for all 42, against 15 with the old matcher.
 
+### ⚠️ Deprecated
+
+- **Environment variables use the `TERRAGRUNT_MCP_` prefix** (#298): the unprefixed names overlapped Terragrunt's own environment namespace. Renamed: `TERRAGRUNT_LLMS_SOURCE`, `TERRAGRUNT_CACHE_TTL_HOURS`, `TERRAGRUNT_CACHE_COMPRESSION`, `TERRAGRUNT_FETCH_TIMEOUT_MS`, `TERRAGRUNT_FETCH_MAX_BYTES`, `TERRAGRUNT_RETRY_MAX_RETRIES`, `TERRAGRUNT_RETRY_INITIAL_DELAY`, `TERRAGRUNT_RETRY_MAX_DELAY`, `TERRAGRUNT_RETRY_BACKOFF_MULTIPLIER`, and for the maintenance scripts `TERRAGRUNT_REPO` and `TERRAGRUNT_LATEST_RELEASE`, each to `TERRAGRUNT_MCP_<same suffix>`.
+  - The old names still work as deprecated aliases for one release. The new name wins when both are set, and an old name logs a one-time warning to stderr.
+
+### 🧹 Removed
+
+- Unused modules `src/server.ts`, `src/terragrunt/commands.ts` (it built a shell string for `exec`) and `src/terragrunt/config.ts`. Generated reports (`coverage-report.txt`, `final-test.*`, `performance-*.txt`, `mode-verification-results.txt`) are no longer tracked and are git-ignored. `CHANGELOG-1.2.0.md` is merged into this file.
+
 ### 🐛 Fixed
 
 - **Server version** (#296): the server reported `0.5.0` to MCP clients regardless of the release. It now reports the `version` from `package.json`.
@@ -66,6 +75,53 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### 🧪 Testing
 
 - **End-to-end stdio tests** (#292): a new integration suite builds the server, spawns `dist/index.js` and every `bin/` mode wrapper, and drives them through the MCP SDK client over stdio. It asserts that stdout carries only JSON-RPC, checks per-mode tool lists, and checks `isError` for successful and failing calls. It runs offline against the bundled fixture.
+
+## [1.2.0] - 2026-09-02
+
+A large, backward-compatible release: new configuration-generator modes, a much
+deeper error-diagnosis database, structured experiment guidance, and new
+upstream-parity automation. No tools were removed and no existing response
+field changed.
+
+### ✨ Added
+
+- **build_config — preview & diff mode** (#95): `preview` performs a dry-run
+  (never writes) and reports `targetExists` / `wouldOverwrite` / `wouldBackup`;
+  `compareWith` returns a unified diff of the result against an existing file.
+  Reads are restricted to the configured allowed directories.
+- **build_config — CI/CD templates** (#96): new `cicd` use case with GitHub
+  Actions, GitLab CI, and Azure DevOps templates (automation-friendly OpenTofu
+  args plus an optional, correctly-gated auto-approve). `options` is now optional
+  for use cases that have no required variables.
+- **diagnose_terragrunt_error — modern patterns** (#253) and **CAS patterns**
+  (#268): new `stack`, `engine`, `oci`, `experiment`, and `cas` categories.
+  The database grows from 66 to 110 patterns across 12 categories, with secret
+  redaction on the extracted context and a single source of truth for the counts.
+- **get_guidance — experiment status** (#252): experiment gates are surfaced as
+  structured `experimentGate` objects across CLI, HCL, function, and guidance
+  responses, plus a new `experiments` guidance topic.
+- **Static built-in functions reference** (#247): function reference is served
+  from curated data, checked against upstream.
+- **Upstream parity & drift automation** (#244, #269): offline parity guards for
+  CLI/HCL/function/experiment data pinned to a Terragrunt revision, and a weekly
+  workflow that opens/auto-closes an issue when a watched upstream file drifts
+  from the pin.
+
+### 🐛 Fixed
+
+- **Schema drift detector accuracy** (#212): nesting/tier-aware comparison ends
+  the recurring false positives; the workflow now auto-closes the drift issue
+  when it clears.
+- Modernize the CLI reference (#243), preserve documentation metadata (#246),
+  use canonical documentation URLs (#249), refresh the docs fixture (#245),
+  correct the terragrunt.hcl reference (#242), S3 native lockfile locking (#248),
+  and HCL block iteration / CAS handling (#251).
+
+### 🔧 Maintenance
+
+- Migrate Vitest config to v4 top-level pool options (#267).
+- Bump GitHub Actions to Node 24 majors (#265).
+- Clear Dependabot security alerts — SDK and Vitest bumps (#262).
 
 ## [1.1.0] - 2026-02-22
 

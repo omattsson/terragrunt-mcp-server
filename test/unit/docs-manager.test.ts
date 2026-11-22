@@ -1421,13 +1421,13 @@ terraform {
         backoffMultiplier: 2,
       };
       vi.clearAllMocks();
-      delete process.env.TERRAGRUNT_LLMS_SOURCE;
+      delete process.env.TERRAGRUNT_MCP_LLMS_SOURCE;
 
       mockFetch = globalThis.fetch as unknown as ReturnType<typeof vi.fn>;
     });
 
     afterAll(() => {
-      delete process.env.TERRAGRUNT_LLMS_SOURCE;
+      delete process.env.TERRAGRUNT_MCP_LLMS_SOURCE;
     });
 
     it('should fetch and parse llms.txt into TerragruntDoc[]', async () => {
@@ -1444,8 +1444,8 @@ terraform {
       expect(mockFetch).toHaveBeenCalledWith('https://docs.terragrunt.com/llms-small.txt', withSignal);
     });
 
-    it('should use TERRAGRUNT_LLMS_SOURCE env var with absolute URL', async () => {
-      process.env.TERRAGRUNT_LLMS_SOURCE = 'https://example.com/llms-full.txt';
+    it('should use TERRAGRUNT_MCP_LLMS_SOURCE env var with absolute URL', async () => {
+      process.env.TERRAGRUNT_MCP_LLMS_SOURCE = 'https://example.com/llms-full.txt';
 
       mockFetch.mockResolvedValueOnce(mockResponse({ ok: true, body: sampleMarkdown }));
 
@@ -1455,8 +1455,8 @@ terraform {
       expect(mockFetch).toHaveBeenCalledWith('https://example.com/llms-full.txt', withSignal);
     });
 
-    it('should resolve TERRAGRUNT_LLMS_SOURCE filename against baseUrl', async () => {
-      process.env.TERRAGRUNT_LLMS_SOURCE = 'llms-full.txt';
+    it('should resolve TERRAGRUNT_MCP_LLMS_SOURCE filename against baseUrl', async () => {
+      process.env.TERRAGRUNT_MCP_LLMS_SOURCE = 'llms-full.txt';
 
       mockFetch.mockResolvedValueOnce(mockResponse({ ok: true, body: sampleMarkdown }));
 
@@ -1466,8 +1466,8 @@ terraform {
       expect(mockFetch).toHaveBeenCalledWith('https://docs.terragrunt.com/llms-full.txt', withSignal);
     });
 
-    it('should resolve TERRAGRUNT_LLMS_SOURCE path with leading slash', async () => {
-      process.env.TERRAGRUNT_LLMS_SOURCE = '/custom/llms.txt';
+    it('should resolve TERRAGRUNT_MCP_LLMS_SOURCE path with leading slash', async () => {
+      process.env.TERRAGRUNT_MCP_LLMS_SOURCE = '/custom/llms.txt';
 
       mockFetch.mockResolvedValueOnce(mockResponse({ ok: true, body: sampleMarkdown }));
 
@@ -1632,8 +1632,8 @@ terraform {
 
   describe('fetch limits configuration', () => {
     afterEach(() => {
-      delete process.env.TERRAGRUNT_FETCH_TIMEOUT_MS;
-      delete process.env.TERRAGRUNT_FETCH_MAX_BYTES;
+      delete process.env.TERRAGRUNT_MCP_FETCH_TIMEOUT_MS;
+      delete process.env.TERRAGRUNT_MCP_FETCH_MAX_BYTES;
     });
 
     it('should default to a 10 s timeout and a 16 MiB cap', () => {
@@ -1642,15 +1642,15 @@ terraform {
     });
 
     it('should read the timeout and cap from the environment', () => {
-      process.env.TERRAGRUNT_FETCH_TIMEOUT_MS = '2500';
-      process.env.TERRAGRUNT_FETCH_MAX_BYTES = '4096';
+      process.env.TERRAGRUNT_MCP_FETCH_TIMEOUT_MS = '2500';
+      process.env.TERRAGRUNT_MCP_FETCH_MAX_BYTES = '4096';
       const manager = new TerragruntDocsManager() as any;
       expect(manager.fetchConfig).toEqual({ timeoutMs: 2500, maxBytes: 4096 });
     });
 
     it('should fall back to the defaults for invalid values', () => {
-      process.env.TERRAGRUNT_FETCH_TIMEOUT_MS = 'soon';
-      process.env.TERRAGRUNT_FETCH_MAX_BYTES = '0';
+      process.env.TERRAGRUNT_MCP_FETCH_TIMEOUT_MS = 'soon';
+      process.env.TERRAGRUNT_MCP_FETCH_MAX_BYTES = '0';
       const manager = new TerragruntDocsManager() as any;
       expect(manager.fetchConfig).toEqual({ timeoutMs: 10_000, maxBytes: 16 * 1024 * 1024 });
     });
@@ -1753,9 +1753,9 @@ terraform {
 
     it('should fall back to an expired disk cache before the fixture', async () => {
       const fsMock = mockedFs as any;
-      process.env.TERRAGRUNT_CACHE_COMPRESSION = 'false';
+      process.env.TERRAGRUNT_MCP_CACHE_COMPRESSION = 'false';
       const staleManager = new TerragruntDocsManager() as any;
-      delete process.env.TERRAGRUNT_CACHE_COMPRESSION;
+      delete process.env.TERRAGRUNT_MCP_CACHE_COMPRESSION;
       const twoDaysAgo = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
       fsMock.access.mockResolvedValue(undefined);
       fsMock.readFile.mockImplementation(async (file: string) =>
