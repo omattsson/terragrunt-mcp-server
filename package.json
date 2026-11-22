@@ -8,6 +8,7 @@
   },
   "scripts": {
     "start": "node dist/index.js",
+    "stress": "node scripts/mcp-stress/run.mjs",
     "start:core": "node bin/terragrunt-mcp-core",
     "start:config": "node bin/terragrunt-mcp-config",
     "start:guidance": "node bin/terragrunt-mcp-guidance",
