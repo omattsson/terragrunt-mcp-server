@@ -269,7 +269,7 @@ This ensures the server **always** has data to return.
 ### Technology
 
 - **llms.txt**: Machine-readable Markdown served by Terragrunt website
-- **node-fetch**: HTTP requests
+- **Built-in `fetch`**: HTTP requests (Node.js global, no extra package)
 - **Native Markdown parsing**: Split on H1 (`# `) boundaries
 
 ### How It Works
@@ -379,9 +379,9 @@ try {
 ### Production
 
 - `@modelcontextprotocol/sdk`: MCP protocol
-- `node-fetch`: HTTP requests
 - `lru-cache`: Search result caching
-- `typescript`: Type safety
+- `diff`: Unified diffs
+- `mustache`: Template rendering
 
 ### Development
 
