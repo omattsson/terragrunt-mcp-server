@@ -19,6 +19,22 @@ The Terragrunt MCP Server provides **8 consolidated tools** for comprehensive Te
 | 7 | `diagnose_terragrunt_error` | Error diagnosis | Troubleshooting Terragrunt errors |
 | 8 | `get_server_metrics` | Server observability | Monitoring performance and usage |
 
+### Tool annotations
+
+Every tool declares MCP annotations so clients can decide what needs confirmation.
+
+| Tool | `readOnlyHint` | `destructiveHint` | `idempotentHint` | `openWorldHint` |
+|------|----------------|-------------------|------------------|-----------------|
+| `search_docs`, `function_reference`, `cli_reference`, `get_hcl_config_reference`, `get_guidance`, `diagnose_terragrunt_error` | true | false | true | false |
+| `build_config` | false | true | false | false |
+| `get_server_metrics` | false | false | false | false |
+
+`get_server_metrics` is not read-only because `reset: true` clears the collected metrics.
+
+### Disabled tools
+
+A tool that the current server mode does not include is not listed, and a call to it by name returns an error result with `errorType: "MODE_RESTRICTION"` and the modes that do offer it in `availableIn`.
+
 ---
 
 ## 1. search_docs

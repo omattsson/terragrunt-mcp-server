@@ -22,7 +22,7 @@ The Terragrunt MCP Server provides 8 consolidated tools with mode-based paramete
 
 ### Why Prompt Patterns Matter
 
-- **Token Efficiency**: FULL mode uses 2,441 tokens; CORE mode uses 965 tokens (60% reduction)
+- **Token Efficiency**: FULL mode uses about 3,700 tokens; CORE mode uses about 1,600 tokens (57% reduction)
 - **Response Speed**: Fewer tools = faster AI processing
 - **Clarity**: Well-structured prompts lead to better tool selection
 - **Cache Optimization**: Consistent patterns improve MCP caching
@@ -1051,7 +1051,7 @@ User: "Search for dependency docs"
 
 **Problem**: Loading 8 tools when only need 1.
 
-**Fix**: Use CORE mode (965 tokens, 60% reduction) for documentation tasks.
+**Fix**: Use CORE mode (about 1,600 tokens, 57% reduction) for documentation tasks.
 
 ---
 
@@ -1184,10 +1184,10 @@ search_docs(mode="examples", advanced=true, limit=3)
 ```
 User Request
     │
-    ├─ Documentation lookup? ──→ CORE mode (965 tokens)
+    ├─ Documentation lookup? ──→ CORE mode (about 1,600 tokens)
     │   └─ Tools: search_docs, function_reference, cli_reference, get_hcl_config_reference
     │
-    ├─ Generate configuration? ──→ CONFIG mode (640 tokens)
+    ├─ Generate configuration? ──→ CONFIG mode (about 1,050 tokens)
     │   └─ Tools: build_config, get_hcl_config_reference
     │
     ├─ Fix error / get advice? ──→ GUIDANCE mode (683 tokens)

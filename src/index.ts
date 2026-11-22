@@ -1,13 +1,14 @@
 #!/usr/bin/env node
 
 /**
- * Terragrunt MCP Server - v0.5.0
+ * Terragrunt MCP Server
  * 
  * A Model Context Protocol server providing comprehensive Terragrunt documentation
- * and tooling integration for AI assistants.
+ * and tooling integration for AI assistants. The reported version comes from
+ * package.json (see src/version.ts).
  * 
- * Architecture: Tool-only (resources removed in v0.5.0)
- * Tools: 8 tools total (7 core tools + 1 observability tool), down from 11 in v0.4.x
+ * Architecture: Tool-only (no resources or prompts)
+ * Tools: 8 tools total (7 core tools + 1 observability tool), subsetted by server mode
  */
 
 // Must stay the first import: redirects console stdout methods before any other module loads
@@ -21,6 +22,7 @@ import {
 import { ToolHandler } from './handlers/tools.js';
 import { MetricsManager } from './terragrunt/metrics.js';
 import { parseModeFromArgs, ServerMode } from './modes/config.js';
+import { getServerVersion } from './version.js';
 
 class TerragruntMCPServer {
     private server: Server;
@@ -40,11 +42,11 @@ class TerragruntMCPServer {
         this.server = new Server(
             {
                 name: serverName,
-                version: '0.5.0',
+                version: getServerVersion(),
             },
             {
                 capabilities: {
-                    tools: {},  // v0.5.0: Tool-only architecture
+                    tools: {},  // Tool-only architecture
                 },
             }
         );

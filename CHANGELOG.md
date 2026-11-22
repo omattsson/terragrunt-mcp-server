@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### ✨ Improved
 
+- **Tool surface** (#296, part 1): the seven tools without annotations now declare them (`readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint`); `build_config` already did. `get_server_metrics` is marked not read-only because `reset: true` clears the metrics. Parameter descriptions that were a couple of words ("Error message", "File path") now say what the value means and give an example.
+  - Token cost, from `npm run measure-tokens`: full mode 3004 → 3700 tokens, core 1277 → 1596, config 887 → 1046, guidance 872 → 1084, observability 183 → 245. About 185 tokens of the full-mode increase are the annotations. `estimatedTokens` in `MODE_CONFIGS` now holds the measured values, and the core and config reduction targets in the mode tests are relaxed to match (57% and 72%).
+- **Hidden tools are refused before any handler runs** (#296): a call by name to a tool that the current server mode does not offer now returns a `MODE_RESTRICTION` error result (with `availableIn`) for every such tool. Before, only tools whose manager was missing did, with a different message, and the rest ran.
 - **Relevance-ranked `search_docs`** (#293): search used to match the whole query as one substring, so natural queries such as "remote state s3" or "how to use run --all" returned nothing, and single words returned unrelated pages first.
   - A new BM25 index (`src/terragrunt/search-index.ts`) ranks pages by their text, with bonuses for query terms in the title, URL, section headings and section.
   - Identifiers (`find_in_parent_folders`) and file names (`terragrunt.stack.hcl`) match whole and by their parts.
@@ -17,6 +20,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Results include a `score` and a snippet centred on the matched terms.
   - `examples` mode, related docs in `build_config`, and diagnosis enrichment use the same ranking. Diagnosis enrichment keeps the top 3 docs per search.
   - A golden-query test (42 queries against the offline fixture) guards ranking quality: an expected page is in the top 3 for all 42, against 15 with the old matcher.
+
+### 🐛 Fixed
+
+- **Server version** (#296): the server reported `0.5.0` to MCP clients regardless of the release. It now reports the `version` from `package.json`.
 
 ### ⚠️ BREAKING CHANGES
 
