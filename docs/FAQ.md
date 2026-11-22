@@ -168,7 +168,7 @@ The server has multiple fallback mechanisms:
 
 ### How much disk space does it use?
 
-- **Disk cache**: ~1.1MB (`.cache/terragrunt-docs/`)
+- **Disk cache**: ~1.1MB (`~/.cache/terragrunt-mcp/docs/`)
 - **Server code**: ~15MB (including dependencies)
 - **Total**: ~16-17MB
 
@@ -233,10 +233,10 @@ node dist/index.js
 
 ```bash
 # Find cache location
-ls -la .cache/terragrunt-docs/
+ls -la ~/.cache/terragrunt-mcp/docs/
 
 # Delete cache
-rm -rf .cache/terragrunt-docs/
+rm -rf ~/.cache/terragrunt-mcp/docs/
 
 # Next query will fetch fresh data
 ```
@@ -258,7 +258,7 @@ import { ResourceHandler } from './handlers/resources.js';
 **Check**:
 ```bash
 # Verify cache directory exists
-mkdir -p .cache/terragrunt-docs/
+mkdir -p ~/.cache/terragrunt-mcp/docs/
 
 # Fix permissions
 chmod -R 755 .cache/
@@ -396,7 +396,7 @@ Not currently exposed, but you can:
 node dist/index.js <<< '{"method":"initialize"}'
 ```
 
-Or manually download and place cache files in `.cache/terragrunt-docs/`.
+Or manually download and place cache files in `~/.cache/terragrunt-mcp/docs/`.
 
 ### What if multiple users share the same installation?
 
@@ -422,8 +422,8 @@ Yes! The server:
 ### What data is stored?
 
 Only cached documentation:
-- `.cache/terragrunt-docs/docs-cache.json` - Documentation content
-- `.cache/terragrunt-docs/metadata.json` - Cache metadata
+- `~/.cache/terragrunt-mcp/docs/docs-cache.json` - Documentation content
+- `~/.cache/terragrunt-mcp/docs/metadata.json` - Cache metadata
 
 No personal data or queries are stored.
 
@@ -440,7 +440,7 @@ You can work offline indefinitely with potentially outdated docs.
 Yes, with preparation:
 
 1. Run on internet-connected machine
-2. Copy `.cache/terragrunt-docs/` directory
+2. Copy `~/.cache/terragrunt-mcp/docs/` directory
 3. Transfer to air-gapped machine
 4. Server will use cached data
 
@@ -494,10 +494,10 @@ Check cache status:
 
 ```bash
 # Cache age
-stat .cache/terragrunt-docs/docs-cache.json
+stat ~/.cache/terragrunt-mcp/docs/docs-cache.json
 
 # Cache size
-du -sh .cache/terragrunt-docs/
+du -sh ~/.cache/terragrunt-mcp/docs/
 ```
 
 ## Future Plans

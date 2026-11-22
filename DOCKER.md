@@ -29,7 +29,7 @@ docker run -i terragrunt-mcp-server:latest
 For persistent cache:
 ```bash
 docker run -i \
-  -v mcp-cache:/app/.cache \
+  -v mcp-cache:/cache \
   terragrunt-mcp-server:latest
 ```
 
@@ -66,7 +66,7 @@ To use the Dockerized MCP server with VS Code, update your `.vscode/mcp.json`:
         "run",
         "-i",
         "--rm",
-        "-v", "mcp-cache:/app/.cache",
+        "-v", "mcp-cache:/cache",
         "terragrunt-mcp-server:latest"
       ]
     }
@@ -86,7 +86,7 @@ echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":
 - **Base Image**: `node:24-alpine`
 - **Working Directory**: `/app`
 - **User**: `node` (non-root for security)
-- **Cache Location**: `/app/.cache/terragrunt-docs/`
+- **Cache Location**: `/cache/docs/`
 - **Entry Point**: `node dist/index.js`
 
 ## Volume Management
@@ -100,6 +100,20 @@ docker volume inspect mcp-cache
 # Remove the cache (will be rebuilt on next run)
 docker volume rm mcp-cache
 ```
+
+## Read-only containers
+
+The image sets `TERRAGRUNT_MCP_CACHE_DIR=/cache/docs` and `TERRAGRUNT_MCP_METRICS_DIR=/cache/metrics`, and `/cache` is the only path the server writes to. A read-only root filesystem works with a tmpfs (cache is lost on exit) or a volume (cache persists):
+
+```bash
+# tmpfs
+docker run -i --rm --read-only --tmpfs /cache terragrunt-mcp-server:latest
+
+# named volume
+docker run -i --rm --read-only -v mcp-cache:/cache terragrunt-mcp-server:latest
+```
+
+Without a writable `/cache` the server still starts: it logs a warning to stderr and serves docs from the bundled fixture or the network, without a disk cache.
 
 ## Image Size
 
@@ -120,7 +134,7 @@ docker run -i -u node terragrunt-mcp-server:latest
 ### Cache Not Persisting
 Ensure you're using a volume:
 ```bash
-docker run -i -v mcp-cache:/app/.cache terragrunt-mcp-server:latest
+docker run -i -v mcp-cache:/cache terragrunt-mcp-server:latest
 ```
 
 ### Build Fails
@@ -137,7 +151,7 @@ For development with hot reload, mount your local source:
 docker run -i \
   -v $(pwd)/src:/app/src \
   -v $(pwd)/dist:/app/dist \
-  -v mcp-cache:/app/.cache \
+  -v mcp-cache:/cache \
   terragrunt-mcp-server:latest
 ```
 

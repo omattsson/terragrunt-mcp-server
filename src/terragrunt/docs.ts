@@ -6,6 +6,7 @@ import { promisify } from 'util';
 import { LRUCache } from 'lru-cache';
 import { DocSearchIndex, buildSnippet } from './search-index.js';
 import { TERRAGRUNT_DOC_MANIFEST } from './docs-manifest.js';
+import { resolveCacheDir } from './paths.js';
 
 const gzipAsync = promisify(gzip);
 const gunzipAsync = promisify(gunzip);
@@ -221,8 +222,8 @@ export class TerragruntDocsManager {
     // Enable compression by default (can disable with env var)
     this.useCompression = process.env.TERRAGRUNT_CACHE_COMPRESSION !== 'false';
     
-    // Store cache in project root under .cache/terragrunt-docs
-    this.cacheDir = path.join(__dirname, '..', '..', '.cache', 'terragrunt-docs');
+    // Per-user cache directory (TERRAGRUNT_MCP_CACHE_DIR overrides)
+    this.cacheDir = resolveCacheDir();
     this.cacheFile = path.join(this.cacheDir, this.useCompression ? 'docs-cache.json.gz' : 'docs-cache.json');
     this.metadataFile = path.join(this.cacheDir, 'metadata.json');
     this.fixtureFile = path.join(__dirname, '..', '..', 'fixtures', 'terragrunt-docs-fixture.json');

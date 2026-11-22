@@ -132,7 +132,7 @@ Validates caching mechanisms:
 
 - **Disk cache speedup**:
   - Fresh instance load: ~7ms
-  - Cache file: `.cache/terragrunt-docs/docs-cache.json`
+  - Cache file: `~/.cache/terragrunt-mcp/docs/docs-cache.json`
   - Size: ~1.1MB JSON file
   
 - **Repeated lookups**:

@@ -221,7 +221,7 @@ See [Caching System](Caching-System) for detailed information.
    - ~1.1MB RAM
 
 2. **Disk Cache** (Secondary)
-   - JSON files in `.cache/terragrunt-docs/`
+   - JSON files in `~/.cache/terragrunt-mcp/docs/`
    - Persists across restarts
    - Fast load time (~10ms)
    - ~1.1MB disk space

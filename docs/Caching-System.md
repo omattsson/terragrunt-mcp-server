@@ -89,7 +89,7 @@ Server Restart → L1 cleared → Repeat
 
 ### Implementation
 
-**Location**: `.cache/terragrunt-docs/`
+**Location**: `~/.cache/terragrunt-mcp/docs/`
 
 **Files**:
 - `docs-cache.json` - Serialized documentation (~1.1MB)
@@ -192,7 +192,7 @@ Force a refresh by deleting the cache:
 
 ```bash
 # Delete cache directory
-rm -rf .cache/terragrunt-docs/
+rm -rf ~/.cache/terragrunt-mcp/docs/
 
 # Next request will fetch fresh data
 ```
@@ -341,10 +341,10 @@ Typical production usage:
 rm -rf .cache/
 
 # Clear only docs cache
-rm -rf .cache/terragrunt-docs/
+rm -rf ~/.cache/terragrunt-mcp/docs/
 
 # Clear specific cache file
-rm .cache/terragrunt-docs/docs-cache.json
+rm ~/.cache/terragrunt-mcp/docs/docs-cache.json
 ```
 
 ### Programmatic Invalidation
@@ -358,14 +358,12 @@ rm .cache/terragrunt-docs/docs-cache.json
 
 ### Cache Directory
 
-**Default**: `.cache/terragrunt-docs/`
+**Default**: `$XDG_CACHE_HOME/terragrunt-mcp/docs/`, else `~/.cache/terragrunt-mcp/docs/`
 
-**Customization** (future):
-```typescript
-const manager = new TerragruntDocsManager({
-  cacheDir: '/custom/path/.cache'
-});
-```
+Override with `TERRAGRUNT_MCP_CACHE_DIR`. Persisted metrics follow the same rule
+with `TERRAGRUNT_MCP_METRICS_DIR` (default `.../terragrunt-mcp/metrics/`).
+Directories are created on first write. If a directory is not writable, the
+server logs a warning to stderr and runs without the disk cache.
 
 ### Cache Expiry
 
@@ -436,13 +434,13 @@ Available in logs:
 
 ```bash
 # Check cache status
-ls -lh .cache/terragrunt-docs/
+ls -lh ~/.cache/terragrunt-mcp/docs/
 
 # Check cache age
-stat -f "Modified: %Sm" .cache/terragrunt-docs/docs-cache.json
+stat -f "Modified: %Sm" ~/.cache/terragrunt-mcp/docs/docs-cache.json
 
 # Validate cache JSON
-jq '.docs | length' .cache/terragrunt-docs/docs-cache.json
+jq '.docs | length' ~/.cache/terragrunt-mcp/docs/docs-cache.json
 ```
 
 ## Advanced Topics
@@ -466,7 +464,7 @@ For multi-instance deployments:
 ```yaml
 # Docker Compose example
 volumes:
-  - shared-cache:/app/.cache
+  - shared-cache:/cache
 
 volumes:
   shared-cache:
@@ -494,16 +492,16 @@ await manager.preloadCache();
 **Check**:
 ```bash
 # Verify .cache directory exists
-ls -la .cache/terragrunt-docs/
+ls -la ~/.cache/terragrunt-mcp/docs/
 
 # Check file permissions
-ls -l .cache/terragrunt-docs/docs-cache.json
+ls -l ~/.cache/terragrunt-mcp/docs/docs-cache.json
 ```
 
 **Solution**:
 ```bash
 # Create cache directory
-mkdir -p .cache/terragrunt-docs/
+mkdir -p ~/.cache/terragrunt-mcp/docs/
 
 # Fix permissions
 chmod -R 755 .cache/
@@ -519,7 +517,7 @@ chmod -R 755 .cache/
 **Solution**:
 ```bash
 # Delete corrupted cache
-rm -rf .cache/terragrunt-docs/
+rm -rf ~/.cache/terragrunt-mcp/docs/
 
 # Server will fetch fresh data
 ```
@@ -541,13 +539,13 @@ rm -rf .cache/terragrunt-docs/
 
 **Check cache age**:
 ```bash
-stat .cache/terragrunt-docs/docs-cache.json
+stat ~/.cache/terragrunt-mcp/docs/docs-cache.json
 ```
 
 **Solution**:
 ```bash
 # Force refresh
-rm -rf .cache/terragrunt-docs/
+rm -rf ~/.cache/terragrunt-mcp/docs/
 ```
 
 ## Best Practices

@@ -19,7 +19,7 @@ This MCP server enables AI assistants to access and search the complete Terragru
 - **Multiple Fallbacks**: Network → Disk cache → Stale cache → Local fixture (for offline/CI use)
 - **Fast Search**: Metadata-first search (title/section/URL) with full-text content fallback
 - **Organized Sections**: Browse documentation by categories (getting-started, reference, features, etc.)
-- **Persistent Cache**: Cache survives server restarts (stored in `.cache/terragrunt-docs/`)
+- **Persistent Cache**: Cache survives server restarts (stored in `~/.cache/terragrunt-mcp/docs/`, or `$XDG_CACHE_HOME/terragrunt-mcp/docs/`; override with `TERRAGRUNT_MCP_CACHE_DIR`)
 
 See [Lazy Loading Documentation](docs/Lazy-Loading.md) for performance optimization details.
 
@@ -332,7 +332,7 @@ See the [Docker Deployment Guide](DOCKER.md) for detailed instructions.
         "run",
         "-i",
         "--rm",
-        "-v", "mcp-cache:/app/.cache",
+        "-v", "mcp-cache:/cache",
         "olofdevopsninja/terragrunt-mcp-server:latest"
       ]
     }
@@ -348,7 +348,7 @@ See the [Docker Deployment Guide](DOCKER.md) for detailed instructions.
       "command": "docker",
       "args": [
         "run", "-i", "--rm",
-        "-v", "mcp-cache:/app/.cache",
+        "-v", "mcp-cache:/cache",
         "olofdevopsninja/terragrunt-mcp-server:latest",
         "--mode", "core"
       ]
@@ -357,7 +357,7 @@ See the [Docker Deployment Guide](DOCKER.md) for detailed instructions.
       "command": "docker",
       "args": [
         "run", "-i", "--rm",
-        "-v", "mcp-cache:/app/.cache",
+        "-v", "mcp-cache:/cache",
         "olofdevopsninja/terragrunt-mcp-server:latest",
         "--mode", "config"
       ]
@@ -497,10 +497,6 @@ terragrunt-mcp-server/
 │   └── edge-cases/              # Edge case validation
 ├── fixtures/
 │   └── terragrunt-docs-fixture.json  # Offline documentation cache
-├── .cache/                      # Auto-generated cache (gitignored)
-│   └── terragrunt-docs/
-│       ├── docs-cache.json      # Cached documentation (~1.1MB)
-│       └── metadata.json        # Cache timestamps
 ├── docs/                        # Comprehensive documentation
 ├── schemas/                     # JSON schemas
 ├── package.json                 # Node.js dependencies
@@ -629,7 +625,7 @@ This server implements the [Model Context Protocol (MCP)](https://modelcontextpr
 The `TerragruntDocsManager` implements a sophisticated multi-tier caching strategy:
 
 1. **In-Memory Cache**: Fast access to frequently used documentation
-2. **Disk Cache**: Persistent storage in `.cache/terragrunt-docs/` (~1.1MB)
+2. **Disk Cache**: Persistent storage in `~/.cache/terragrunt-mcp/docs/` (~1.1MB)
 3. **24-Hour Expiry**: Automatic refresh to keep documentation current
 4. **Stale Cache Fallback**: Uses expired cache when network fails
 5. **Local Fixture**: Embedded documentation for complete offline support

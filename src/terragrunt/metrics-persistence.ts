@@ -4,7 +4,7 @@
 
 import fs from 'fs/promises';
 import path from 'path';
-import { fileURLToPath } from 'url';
+import { resolveMetricsDir } from './paths.js';
 import {
   IMetricsPersistence,
   MetricsPersistenceConfig,
@@ -12,8 +12,6 @@ import {
   MetricsHistory,
   MetricsSummary,
 } from '../types/metrics.js';
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export class MetricsPersistence implements IMetricsPersistence {
   private metricsDir: string;
@@ -23,8 +21,8 @@ export class MetricsPersistence implements IMetricsPersistence {
   private config: MetricsPersistenceConfig;
 
   constructor(baseDir?: string) {
-    // Default to .mcp-metrics in project root
-    this.metricsDir = baseDir || path.join(__dirname, '../../.mcp-metrics');
+    // Default to a per-user directory (TERRAGRUNT_MCP_METRICS_DIR overrides)
+    this.metricsDir = baseDir || resolveMetricsDir();
     this.snapshotsDir = path.join(this.metricsDir, 'snapshots');
     this.summaryFile = path.join(this.metricsDir, 'summary.json');
     this.configFile = path.join(this.metricsDir, 'config.json');
@@ -78,8 +76,8 @@ export class MetricsPersistence implements IMetricsPersistence {
       await fs.writeFile(filePath, JSON.stringify(serializable, null, 2), 'utf-8');
       console.error(`[MetricsPersistence] Saved snapshot: ${filePath}`);
     } catch (error) {
+      // Best effort: an unwritable metrics directory must not fail tool calls
       console.error('[MetricsPersistence] Failed to save snapshot:', error);
-      throw error;
     }
   }
 
@@ -189,7 +187,6 @@ export class MetricsPersistence implements IMetricsPersistence {
       console.error('[MetricsPersistence] Saved summary');
     } catch (error) {
       console.error('[MetricsPersistence] Failed to save summary:', error);
-      throw error;
     }
   }
 
@@ -241,7 +238,6 @@ export class MetricsPersistence implements IMetricsPersistence {
       console.error('[MetricsPersistence] Updated config');
     } catch (error) {
       console.error('[MetricsPersistence] Failed to update config:', error);
-      throw error;
     }
   }
 

@@ -20,8 +20,8 @@ The metrics system tracks the following for each operation:
 
 Metrics are automatically persisted to disk for long-term analysis:
 
-- **Automatic Snapshots**: Daily snapshots saved to `.mcp-metrics/snapshots/`
-- **Configuration**: Stored in `.mcp-metrics/config.json`
+- **Automatic Snapshots**: Daily snapshots saved to `~/.cache/terragrunt-mcp/metrics/snapshots/` (override with `TERRAGRUNT_MCP_METRICS_DIR`)
+- **Configuration**: Stored in `config.json` in the same directory
 - **Data Retention**: Configurable retention period (default: 90 days)
 - **Cleanup**: Automatic cleanup of old snapshots
 
@@ -293,12 +293,12 @@ TOP OPERATIONS (by calls)
 
 ### Persistence Configuration
 
-Located in `.mcp-metrics/config.json`:
+Located in `config.json` in the metrics directory:
 
 ```json
 {
   "enabled": true,
-  "directory": ".mcp-metrics",
+  "directory": "~/.cache/terragrunt-mcp/metrics",
   "retentionDays": 90,
   "autoSnapshot": true
 }
@@ -370,7 +370,7 @@ Located in `.mcp-metrics/config.json`:
 
 ### Snapshots Not Saving
 
-- Verify directory permissions for `.mcp-metrics/`
+- Verify directory permissions for the metrics directory
 - Check `autoSnapshot` is enabled in config
 - Ensure `createSnapshot()` is being called
 
