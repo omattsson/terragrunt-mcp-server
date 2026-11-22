@@ -314,7 +314,7 @@ npm run build
 
 **Solution:**
 1. Check you're using a specialized mode (not FULL)
-2. Clear cache: `rm -rf .cache/terragrunt-docs`
+2. Clear cache: `rm -rf ~/.cache/terragrunt-mcp/docs`
 3. Verify cache volume persists (Docker)
 4. Monitor memory with: `npm run measure-memory`
 

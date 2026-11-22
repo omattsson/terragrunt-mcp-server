@@ -370,7 +370,7 @@ rm -rf .cache/
 npm run dev
 
 # Check cache was created
-ls -la .cache/terragrunt-docs/
+ls -la ~/.cache/terragrunt-mcp/docs/
 
 # Run again - should use cache
 npm run dev
@@ -389,7 +389,7 @@ npm run update-fixture
 npm run update-fixture -- --check
 ```
 
-Do not copy `.cache/terragrunt-docs/docs-cache.json` over the fixture: that
+Do not copy `~/.cache/terragrunt-mcp/docs/docs-cache.json` over the fixture: that
 skips the page list check. When the manifest itself needs a new upstream
 revision, run `npm run update-docs-manifest` first. The full procedure is in
 [upstream-parity.md](upstream-parity.md).

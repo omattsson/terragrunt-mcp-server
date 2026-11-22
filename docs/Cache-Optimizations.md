@@ -79,12 +79,12 @@ Automatic gzip compression of disk cache reduces storage requirements:
 
 **Before:**
 ```
-.cache/terragrunt-docs/docs-cache.json (1.1 MB)
+~/.cache/terragrunt-mcp/docs/docs-cache.json (1.1 MB)
 ```
 
 **After (with compression enabled):**
 ```
-.cache/terragrunt-docs/docs-cache.json.gz (200-300 KB)
+~/.cache/terragrunt-mcp/docs/docs-cache.json.gz (200-300 KB)
 ```
 
 **Compression ratio**: ~70-80% size reduction
@@ -262,7 +262,7 @@ setInterval(() => {
 **Solutions**:
 1. Check if search index is built: Look for "Built search index" log
 2. Verify cache is loaded: Check `cacheSize > 0`
-3. Try clearing cache: `rm -rf .cache/terragrunt-docs/`
+3. Try clearing cache: `rm -rf ~/.cache/terragrunt-mcp/docs/`
 4. Check network latency if fetching docs
 
 ### Cache Not Updating
@@ -270,7 +270,7 @@ setInterval(() => {
 **Symptoms**: Old documentation even after TTL expiry
 
 **Solutions**:
-1. Clear disk cache: `rm -rf .cache/terragrunt-docs/`
+1. Clear disk cache: `rm -rf ~/.cache/terragrunt-mcp/docs/`
 2. Set shorter TTL: `export TERRAGRUNT_CACHE_TTL_HOURS=1`
 3. Check file permissions on cache directory
 4. Verify network connectivity for fetch
@@ -281,7 +281,7 @@ setInterval(() => {
 
 **Solutions**:
 1. Disable compression: `export TERRAGRUNT_CACHE_COMPRESSION=false`
-2. Delete corrupted cache: `rm .cache/terragrunt-docs/*.gz`
+2. Delete corrupted cache: `rm ~/.cache/terragrunt-mcp/docs/*.gz`
 3. Restart with fresh cache
 
 ## Migration Guide

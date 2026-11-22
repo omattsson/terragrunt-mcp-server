@@ -6,6 +6,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { MetricsPersistence } from '../../src/terragrunt/metrics-persistence.js';
 import { MetricsSnapshot, MetricsSummary } from '../../src/types/metrics.js';
 import fs from 'fs/promises';
+import os from 'os';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -470,5 +471,46 @@ describe('MetricsPersistence', () => {
       expect(metricsDir).toBe(true);
       expect(snapshotsDir).toBe(true);
     });
+  });
+});
+
+describe('MetricsPersistence directory handling', () => {
+  const saved = process.env.TERRAGRUNT_MCP_METRICS_DIR;
+  let tmp: string;
+
+  beforeEach(async () => {
+    tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'tg-metrics-'));
+  });
+
+  afterEach(async () => {
+    if (saved === undefined) delete process.env.TERRAGRUNT_MCP_METRICS_DIR;
+    else process.env.TERRAGRUNT_MCP_METRICS_DIR = saved;
+    await fs.rm(tmp, { recursive: true, force: true });
+  });
+
+  const snapshot = {
+    timestamp: new Date().toISOString(),
+    date: '2026-01-06',
+    metrics: {},
+    totalCalls: 0,
+    totalBytes: 0,
+    totalErrors: 0,
+    avgLatencyMs: 0,
+  } as unknown as MetricsSnapshot;
+
+  it('defaults to TERRAGRUNT_MCP_METRICS_DIR', async () => {
+    const dir = path.join(tmp, 'm');
+    process.env.TERRAGRUNT_MCP_METRICS_DIR = dir;
+    await new MetricsPersistence().saveSnapshot(snapshot);
+    expect(await fs.readdir(path.join(dir, 'snapshots'))).toContain('2026-01-06.json');
+  });
+
+  it('does not throw when the directory is unwritable', async () => {
+    const blocker = path.join(tmp, 'file');
+    await fs.writeFile(blocker, 'x');
+    const persistence = new MetricsPersistence(path.join(blocker, 'm'));
+    await expect(persistence.getConfig()).resolves.toBeDefined();
+    await expect(persistence.saveSnapshot(snapshot)).resolves.toBeUndefined();
+    await expect(persistence.saveSummary({} as MetricsSummary)).resolves.toBeUndefined();
   });
 });

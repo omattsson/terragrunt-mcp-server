@@ -98,7 +98,7 @@ docker build --build-arg WORKDIR=/opt/app -t terragrunt-mcp-server:local .
 docker run -i terragrunt-mcp-server:local
 
 # With volume mount for cache persistence
-docker run -i -v $(pwd)/.cache:/app/.cache terragrunt-mcp-server:local
+docker run -i -v $(pwd)/.cache:/cache terragrunt-mcp-server:local
 
 # With environment variables
 docker run -i -e LOG_LEVEL=debug terragrunt-mcp-server:local
@@ -127,7 +127,7 @@ services:
     stdin_open: true  # Required for MCP stdio
     tty: true
     volumes:
-      - ./.cache:/app/.cache  # Persist cache
+      - ./.cache:/cache  # Persist cache
     environment:
       - NODE_ENV=production
       - LOG_LEVEL=info
@@ -145,7 +145,7 @@ services:
 
 ```yaml
 volumes:
-  - ./.cache:/app/.cache           # Cache persistence
+  - ./.cache:/cache           # Cache persistence
   - ./fixtures:/app/fixtures:ro    # Custom fixtures (read-only)
   - ./logs:/app/logs              # Log output
 ```
@@ -156,7 +156,7 @@ volumes:
 environment:
   - NODE_ENV=production          # Production mode
   - LOG_LEVEL=info              # Logging level (debug|info|warn|error)
-  - CACHE_DIR=/app/.cache       # Cache directory
+  - TERRAGRUNT_MCP_CACHE_DIR=/cache/docs     # Cache directory
   - CACHE_EXPIRY_HOURS=24       # Cache expiry time
 ```
 
@@ -189,7 +189,7 @@ Configure VS Code `settings.json`:
         "-i",
         "--rm",
         "-v",
-        "${workspaceFolder}/.cache:/app/.cache",
+        "${workspaceFolder}/.cache:/cache",
         "terragrunt-mcp-server:latest"
       ]
     }
@@ -209,7 +209,7 @@ Register multiple Docker containers with different server modes for token effici
       "args": [
         "run", "-i", "--rm",
         "-e", "TERRAGRUNT_MCP_MODE=full",
-        "-v", "${workspaceFolder}/.cache:/app/.cache",
+        "-v", "${workspaceFolder}/.cache:/cache",
         "terragrunt-mcp-server:latest"
       ]
     },
@@ -218,7 +218,7 @@ Register multiple Docker containers with different server modes for token effici
       "args": [
         "run", "-i", "--rm",
         "-e", "TERRAGRUNT_MCP_MODE=core",
-        "-v", "${workspaceFolder}/.cache:/app/.cache",
+        "-v", "${workspaceFolder}/.cache:/cache",
         "terragrunt-mcp-server:latest"
       ]
     },
@@ -227,7 +227,7 @@ Register multiple Docker containers with different server modes for token effici
       "args": [
         "run", "-i", "--rm",
         "-e", "TERRAGRUNT_MCP_MODE=config",
-        "-v", "${workspaceFolder}/.cache:/app/.cache",
+        "-v", "${workspaceFolder}/.cache:/cache",
         "terragrunt-mcp-server:latest"
       ]
     },
@@ -236,7 +236,7 @@ Register multiple Docker containers with different server modes for token effici
       "args": [
         "run", "-i", "--rm",
         "-e", "TERRAGRUNT_MCP_MODE=guidance",
-        "-v", "${workspaceFolder}/.cache:/app/.cache",
+        "-v", "${workspaceFolder}/.cache:/cache",
         "terragrunt-mcp-server:latest"
       ]
     }
@@ -261,7 +261,7 @@ Create `scripts/docker-mcp.sh`:
 ```bash
 #!/bin/bash
 docker run -i --rm \
-  -v "$(pwd)/.cache:/app/.cache" \
+  -v "$(pwd)/.cache:/cache" \
   terragrunt-mcp-server:latest
 ```
 
@@ -295,7 +295,7 @@ services:
     environment:
       - TERRAGRUNT_MCP_MODE=full
     volumes:
-      - ./.cache:/app/.cache
+      - ./.cache:/cache
 
   terragrunt-mcp-docs:
     image: terragrunt-mcp-server:latest
@@ -304,7 +304,7 @@ services:
     environment:
       - TERRAGRUNT_MCP_MODE=core
     volumes:
-      - ./.cache:/app/.cache
+      - ./.cache:/cache
 
   terragrunt-mcp-config:
     image: terragrunt-mcp-server:latest
@@ -313,7 +313,7 @@ services:
     environment:
       - TERRAGRUNT_MCP_MODE=config
     volumes:
-      - ./.cache:/app/.cache
+      - ./.cache:/cache
 ```
 
 Start services separately:
@@ -419,17 +419,17 @@ Mount cache directory for performance:
 
 ```bash
 # Create cache directory
-mkdir -p .cache/terragrunt-docs
+mkdir -p .cache
 
 # Run with mounted cache
 docker run -i \
-  -v $(pwd)/.cache:/app/.cache \
+  -v $(pwd)/.cache:/cache \
   terragrunt-mcp-server:latest
 ```
 
 ### Cache Lifecycle
 
-1. **First run**: Fetches docs from web, saves to `/app/.cache`
+1. **First run**: Fetches docs from web, saves to `/cache`
 2. **Subsequent runs**: Loads from mounted cache (~10ms)
 3. **Cache refresh**: After 24 hours, automatic re-fetch
 
@@ -440,7 +440,7 @@ docker run -i \
 docker-compose down
 
 # Clear cache
-rm -rf .cache/terragrunt-docs/*
+rm -rf .cache/docs/*
 
 # Restart
 docker-compose up -d
@@ -480,7 +480,7 @@ docker buildx build \
 2. **Persist cache**:
    ```yaml
    volumes:
-     - terragrunt-cache:/app/.cache
+     - terragrunt-cache:/cache
    ```
 
 3. **Set resource limits**:
@@ -554,7 +554,7 @@ spec:
             cpu: "500m"
         volumeMounts:
         - name: cache
-          mountPath: /app/.cache
+          mountPath: /cache
       volumes:
       - name: cache
         persistentVolumeClaim:
@@ -595,7 +595,7 @@ docker run -i terragrunt-mcp-server:latest
 
 **Solution**: Mount cache volume:
 ```bash
-docker run -i -v $(pwd)/.cache:/app/.cache terragrunt-mcp-server:latest
+docker run -i -v $(pwd)/.cache:/cache terragrunt-mcp-server:latest
 ```
 
 ### Build Failures
@@ -641,7 +641,7 @@ sudo chown -R $(id -u):$(id -g) .cache/
 
 # Or run with user mapping
 docker run -i -u $(id -u):$(id -g) \
-  -v $(pwd)/.cache:/app/.cache \
+  -v $(pwd)/.cache:/cache \
   terragrunt-mcp-server:latest
 ```
 

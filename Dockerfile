@@ -1,40 +1,38 @@
-# Use Node.js 24 Alpine for smaller image size
-FROM node:26-alpine
+# syntax=docker/dockerfile:1
 
-# Set working directory
+# ---- Build stage: compile TypeScript with dev dependencies ----
+FROM node:26.13.1-alpine3.24 AS build
 WORKDIR /app
 
-# Copy package files
 COPY package*.json ./
+RUN npm ci
 
-# Install dependencies (production only)
-RUN npm ci --only=production
-
-# Copy TypeScript configuration and source code
 COPY tsconfig.json ./
 COPY src/ ./src/
-
-# Install dev dependencies temporarily for build
-RUN npm install --only=development
-
-# Build TypeScript to JavaScript
 RUN npm run build
 
-# Remove dev dependencies to reduce image size
-RUN npm prune --production
+# ---- Runtime stage: production dependencies plus runtime data ----
+FROM node:26.13.1-alpine3.24
+WORKDIR /app
 
-# Create cache directory for documentation
-RUN mkdir -p .cache/terragrunt-docs && \
-    chown -R node:node .cache
+COPY package*.json ./
+RUN npm ci --omit=dev && npm cache clean --force
 
-# Switch to non-root user for security
+COPY --from=build /app/dist ./dist
+# Read at runtime: backend schema templates and the offline docs fallback
+COPY schemas/ ./schemas/
+COPY fixtures/ ./fixtures/
+COPY bin/ ./bin/
+
+# Docs cache and metrics live outside the install directory so the image works
+# with --read-only plus a volume or tmpfs mounted at /cache.
+ENV NODE_ENV=production \
+    TERRAGRUNT_MCP_CACHE_DIR=/cache/docs \
+    TERRAGRUNT_MCP_METRICS_DIR=/cache/metrics
+RUN mkdir -p /cache && chown node:node /cache
+VOLUME ["/cache"]
+
+# Run as non-root
 USER node
 
-# Expose port if needed for future HTTP/SSE transport
-# EXPOSE 3000
-
-# Set environment variables
-ENV NODE_ENV=production
-
-# Run the MCP server
 CMD ["node", "dist/index.js"]
