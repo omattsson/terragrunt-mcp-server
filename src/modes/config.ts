@@ -57,7 +57,7 @@ export const MODE_CONFIGS: Record<ServerMode, ModeConfig> = {
     name: ServerMode.CORE,
     description: 'Essential documentation search and reference tools',
     tools: ['search_docs', 'cli_reference', 'function_reference', 'get_hcl_config_reference'],
-    estimatedTokens: 965,
+    estimatedTokens: 1596,
     // Note: 'hcl' dependency included via BASE_DEPS spread, enabling get_hcl_config_reference tool
     dependencies: [...BASE_DEPS, 'functions', 'cli', 'advancedExamples']
   },
@@ -65,14 +65,14 @@ export const MODE_CONFIGS: Record<ServerMode, ModeConfig> = {
     name: ServerMode.CONFIG,
     description: 'Configuration generation and file writing',
     tools: ['build_config', 'get_hcl_config_reference'],
-    estimatedTokens: 640,
+    estimatedTokens: 1046,
     dependencies: [...BASE_DEPS, 'templates', 'generator', 'fileWriter']
   },
   [ServerMode.GUIDANCE]: {
     name: ServerMode.GUIDANCE,
     description: 'Best practices and error diagnosis',
     tools: ['get_guidance', 'diagnose_terragrunt_error'],
-    estimatedTokens: 683,
+    estimatedTokens: 1084,
     dependencies: ['docs', 'bestPractices', 'errorPatterns', 'comparisons']
   },
   [ServerMode.FULL]: {
@@ -88,14 +88,14 @@ export const MODE_CONFIGS: Record<ServerMode, ModeConfig> = {
       'diagnose_terragrunt_error',
       'get_server_metrics'
     ],
-    estimatedTokens: 2441,
+    estimatedTokens: 3700,
     dependencies: ['all']
   },
   [ServerMode.OBSERVABILITY]: {
     name: ServerMode.OBSERVABILITY,
     description: 'Server metrics and monitoring',
     tools: ['get_server_metrics'],
-    estimatedTokens: 155,
+    estimatedTokens: 245,
     dependencies: []
   }
 };

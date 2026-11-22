@@ -156,10 +156,10 @@ The server supports different modes to optimize token usage:
 
 | Mode | Tools | Token Cost | Use Case |
 |------|-------|------------|----------|
-| `full` | All 8 tools | ~2,400 tokens | General assistance |
-| `core` | 4 docs tools | ~965 tokens | Documentation lookup |
-| `config` | 2 config tools | ~640 tokens | Config generation |
-| `guidance` | 2 guidance tools | ~680 tokens | Best practices |
+| `full` | All 8 tools | ~3,700 tokens | General assistance |
+| `core` | 4 docs tools | ~1,600 tokens | Documentation lookup |
+| `config` | 2 config tools | ~1,050 tokens | Config generation |
+| `guidance` | 2 guidance tools | ~1,100 tokens | Best practices |
 
 Configure via environment variable in `settings.json`:
 

@@ -15,6 +15,7 @@
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { execFileSync } from 'child_process';
+import { readFileSync } from 'fs';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
@@ -104,6 +105,11 @@ describe('stdio end-to-end', () => {
       expect(conn.client.getServerCapabilities()?.tools).toBeDefined();
     });
 
+    it('reports the version from package.json', () => {
+      const pkg = JSON.parse(readFileSync(path.join(ROOT, 'package.json'), 'utf-8'));
+      expect(conn.client.getServerVersion()?.version).toBe(pkg.version);
+    });
+
     it.each([
       ...Object.entries(SAMPLE_ARGS),
       ['search_docs', { mode: 'list' }],
@@ -157,6 +163,14 @@ describe('stdio end-to-end', () => {
       const result = await conn.client.callTool({ name: firstTool, arguments: SAMPLE_ARGS[firstTool] });
       expect(result.isError).toBeFalsy();
       expect(conn.transportErrors.map(e => e.message)).toEqual([]);
+    });
+
+    it('answers a call to a tool hidden in this mode with MODE_RESTRICTION', async () => {
+      const enabled = getModeConfig(mode).tools;
+      const hidden = getModeConfig(ServerMode.FULL).tools.find(name => !enabled.includes(name))!;
+      const result = await conn.client.callTool({ name: hidden, arguments: {} });
+      expect(result.isError).toBe(true);
+      expect(parseText(result).errorType).toBe('MODE_RESTRICTION');
     });
   });
 });

@@ -125,7 +125,7 @@ Version 0.5.0+ introduces a multi-mode architecture that reduces token overhead 
      │            │            │              │              │
      v            v            v              v              v
   3 tools     2 tools      2 tools       1 tool         8 tools
-  965 tok     640 tok      683 tok       155 tok       2441 tok
+  1596 tok    1046 tok     1084 tok      245 tok       3700 tok
 ```
 
 ### Decision Criteria
@@ -408,11 +408,11 @@ npm run measure-memory
 ```
 
 Expected results by mode:
-- CORE: 965 tokens, 5 managers, 0.19 MB
-- CONFIG: 640 tokens, 6 managers, 0.08 MB
-- GUIDANCE: 683 tokens, 4 managers, 0.13 MB
-- OBSERVABILITY: 155 tokens, 0 managers, 0.04 MB
-- FULL: 2,441 tokens, 12 managers, 0.20 MB
+- CORE: 1,596 tokens, 5 managers, 0.19 MB
+- CONFIG: 1,046 tokens, 6 managers, 0.08 MB
+- GUIDANCE: 1,084 tokens, 4 managers, 0.13 MB
+- OBSERVABILITY: 245 tokens, 0 managers, 0.04 MB
+- FULL: 3,700 tokens, 12 managers, 0.20 MB
 
 ## FAQ
 

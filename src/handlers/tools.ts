@@ -1,8 +1,8 @@
 /**
  * ToolHandler - MCP Tool Handler for Terragrunt Documentation Server
  * 
- * v0.5.0 - Consolidated Tool Architecture
- * ========================================
+ * Consolidated Tool Architecture
+ * ==============================
  * 
  * This handler implements 8 consolidated tools for comprehensive Terragrunt assistance:
  * 
@@ -15,13 +15,13 @@
  * 7. diagnose_terragrunt_error - Error diagnosis and troubleshooting
  * 8. get_server_metrics    - Server observability and performance monitoring
  * 
- * Architecture Changes in v0.5.0:
+ * History (consolidation done in v0.5.0):
  * - Consolidated 11 separate tools into 8 (7 core + 1 observability)
  * - Removed separate get/list tools in favor of mode-based routing
  * - Unified generate+write operations into single build_config tool
  * - Tool-only architecture (resources removed)
  * 
- * Migration from v0.4.x:
+ * Migration from the pre-0.5 tools:
  * - get_terragrunt_function + list_terragrunt_functions → function_reference
  * - get_cli_command_help + list_cli_commands → cli_reference  
  * - generate_terragrunt_config + write_terragrunt_config → build_config
@@ -518,6 +518,12 @@ export class ToolHandler {
             {
                 name: 'search_docs',
                 description: 'Search Terragrunt documentation for HCL blocks, CLI commands, functions, and IaC patterns. Modes: search, list sections, get section content, or find code examples.',
+                annotations: {
+                    readOnlyHint: true,
+                    destructiveHint: false,
+                    idempotentHint: true,
+                    openWorldHint: false
+                },
                 inputSchema: {
                     type: 'object',
                     properties: {
@@ -529,46 +535,46 @@ export class ToolHandler {
                         },
                         query: {
                             type: 'string',
-                            description: 'Search query'
+                            description: 'Search terms, e.g. "remote state s3"'
                         },
                         section: {
                             type: 'string',
-                            description: 'Section name'
+                            description: 'Section name from mode=list, e.g. "reference"'
                         },
                         detailLevel: {
                             type: 'string',
                             enum: ['summary', 'full'],
-                            description: 'Detail level',
+                            description: 'Section and examples modes only: summary for an overview, full for complete content or code (ignored in search mode)',
                             default: 'summary'
                         },
                         page: {
                             type: 'number',
-                            description: 'Page number',
+                            description: '1-based page number of results',
                             default: 1
                         },
                         pageSize: {
                             type: 'number',
-                            description: 'Results per page',
+                            description: 'Number of results per page',
                             default: 10
                         },
                         limit: {
                             type: 'number',
-                            description: 'Max results',
+                            description: 'Maximum examples to return in examples mode',
                             default: 5
                         },
                         advanced: {
                             type: 'boolean',
-                            description: 'Return advanced examples',
+                            description: 'Use curated advanced examples instead of docs code blocks',
                             default: false
                         },
                         category: {
                             type: 'string',
-                            description: 'Filter by category',
+                            description: 'With advanced=true, only examples from this category',
                             enum: ['hooks', 'generate', 'environment', 'dependencies', 'dry-patterns']
                         },
                         listCategories: {
                             type: 'boolean',
-                            description: 'List categories',
+                            description: 'List curated example categories instead of examples',
                             default: false
                         }
                     },
@@ -578,40 +584,46 @@ export class ToolHandler {
             {
                 name: 'function_reference',
                 description: 'Get Terragrunt built-in function details (find_in_parent_folders, dependency, read_terragrunt_config, etc.) or list all available functions by category.',
+                annotations: {
+                    readOnlyHint: true,
+                    destructiveHint: false,
+                    idempotentHint: true,
+                    openWorldHint: false
+                },
                 inputSchema: {
                     type: 'object',
                     properties: {
                         function_name: {
                             type: 'string',
-                            description: 'Function name'
+                            description: 'Exact function name, e.g. "find_in_parent_folders"'
                         },
                         mode: {
                             type: 'string',
                             enum: ['summary', 'full'],
-                            description: 'Detail level',
+                            description: 'summary: signature and short text | full: complete details',
                             default: 'summary'
                         },
                         include_examples: {
                             type: 'boolean',
-                            description: 'Include examples',
+                            description: 'Include usage examples in the result',
                             default: true
                         },
                         category: {
                             type: 'string',
-                            description: 'Category filter'
+                            description: 'Only list functions in this category'
                         },
                         search: {
                             type: 'string',
-                            description: 'Search query'
+                            description: 'Text to match when listing functions'
                         },
                         page: {
                             type: 'number',
-                            description: 'Page number',
+                            description: '1-based page number of results',
                             default: 1
                         },
                         pageSize: {
                             type: 'number',
-                            description: 'Results per page',
+                            description: 'Number of functions per page',
                             default: 20
                         }
                     },
@@ -621,30 +633,36 @@ export class ToolHandler {
             {
                 name: 'cli_reference',
                 description: 'Get current Terragrunt CLI command help (run --all, browse, plan, apply, hcl validate, etc.) or list commands by category.',
+                annotations: {
+                    readOnlyHint: true,
+                    destructiveHint: false,
+                    idempotentHint: true,
+                    openWorldHint: false
+                },
                 inputSchema: {
                     type: 'object',
                     properties: {
                         command: {
                             type: 'string',
-                            description: 'Command name'
+                            description: 'Command to get help for, e.g. "run --all"'
                         },
                         category: {
                             type: 'string',
-                            description: 'Category filter',
+                            description: 'Only list commands in this category',
                             enum: ['main', 'backend', 'stack', 'catalog', 'discovery', 'configuration', 'shortcut']
                         },
                         search: {
                             type: 'string',
-                            description: 'Search query'
+                            description: 'Text to match when listing commands'
                         },
                         page: {
                             type: 'number',
-                            description: 'Page number',
+                            description: '1-based page number of results',
                             default: 1
                         },
                         pageSize: {
                             type: 'number',
-                            description: 'Commands per page',
+                            description: 'Number of commands per page',
                             default: 20
                         }
                     },
@@ -654,21 +672,27 @@ export class ToolHandler {
             {
                 name: 'get_hcl_config_reference',
                 description: 'Get current Terragrunt HCL block and attribute documentation with syntax and examples, including stacks, feature flags, exclusions, error handling, catalogs, and engines.',
+                annotations: {
+                    readOnlyHint: true,
+                    destructiveHint: false,
+                    idempotentHint: true,
+                    openWorldHint: false
+                },
                 inputSchema: {
                     type: 'object',
                     properties: {
                         config: {
                             type: 'string',
-                            description: 'Block name'
+                            description: 'HCL block name, e.g. "remote_state"'
                         },
                         category: {
                             type: 'string',
-                            description: 'Category filter',
+                            description: 'Only list blocks in this category',
                             enum: ['core', 'modules', 'generation', 'execution', 'iam', 'terraform']
                         },
                         listBlocks: {
                             type: 'boolean',
-                            description: 'List all blocks',
+                            description: 'List all block names instead of one reference',
                             default: false
                         }
                     },
@@ -678,6 +702,12 @@ export class ToolHandler {
             {
                 name: 'get_guidance',
                 description: 'Get Terragrunt best practices, block comparisons (dependency vs dependencies), DRY patterns, or experiment status (type=experiments lists active/completed experiments and how to enable them) for infrastructure-as-code organization.',
+                annotations: {
+                    readOnlyHint: true,
+                    destructiveHint: false,
+                    idempotentHint: true,
+                    openWorldHint: false
+                },
                 inputSchema: {
                     type: 'object',
                     properties: {
@@ -688,22 +718,22 @@ export class ToolHandler {
                         type: {
                             type: 'string',
                             enum: ['best-practices', 'comparison', 'pattern', 'experiments'],
-                            description: 'Guidance type'
+                            description: 'best-practices | comparison (e.g. dependency vs dependencies) | pattern | experiments'
                         },
                         mode: {
                             type: 'string',
                             enum: ['summary', 'full'],
-                            description: 'Detail level',
+                            description: 'summary: key points | full: complete guidance with examples',
                             default: 'summary'
                         },
                         level: {
                             type: 'string',
                             enum: ['beginner', 'intermediate', 'advanced'],
-                            description: 'Experience level'
+                            description: 'Experience level for best-practices guidance'
                         },
                         listAll: {
                             type: 'boolean',
-                            description: 'List all available',
+                            description: 'List all topics, comparisons and patterns instead of answering a query',
                             default: false
                         }
                     },
@@ -725,11 +755,11 @@ export class ToolHandler {
                         useCase: {
                             type: 'string',
                             enum: ['remote_state', 'provider_generation', 'dependencies', 'hooks', 'inputs', 'cicd'],
-                            description: 'Use case'
+                            description: 'remote_state | provider_generation | dependencies | hooks | inputs | cicd (omit to write existing content)'
                         },
                         options: {
                             type: 'object',
-                            description: 'Template variables',
+                            description: 'Template variables, e.g. {"bucket":"b","key":"k","region":"eu-west-1"}',
                             additionalProperties: true
                         },
                         content: {
@@ -743,36 +773,36 @@ export class ToolHandler {
                         tier: {
                             type: 'string',
                             enum: ['essential', 'advanced', 'complete'],
-                            description: 'Template tier',
+                            description: 'essential: basics | advanced: common extras | complete: every attribute',
                             default: 'essential'
                         },
                         strictValidation: {
                             type: 'boolean',
-                            description: 'Strict validation',
+                            description: 'Validate with the Terragrunt CLI when installed and fail if invalid',
                             default: false
                         },
                         write: {
                             type: 'boolean',
-                            description: 'Write to disk',
+                            description: 'Write to path instead of only returning the config',
                             default: false
                         },
                         path: {
                             type: 'string',
-                            description: 'File path'
+                            description: 'Target .hcl file inside an allowed directory'
                         },
                         overwrite: {
                             type: 'boolean',
-                            description: 'Allow overwrite',
+                            description: 'Replace an existing file at path',
                             default: false
                         },
                         createBackup: {
                             type: 'boolean',
-                            description: 'Create backup',
+                            description: 'Back up an existing file before overwriting',
                             default: true
                         },
                         createParentDirs: {
                             type: 'boolean',
-                            description: 'Create parent dirs',
+                            description: 'Create missing parent directories of path',
                             default: true
                         },
                         preview: {
@@ -791,50 +821,56 @@ export class ToolHandler {
             {
                 name: 'diagnose_terragrunt_error',
                 description: 'Diagnose Terragrunt and Terraform error messages with root cause analysis and solutions. Handles dependency cycles, state lock errors, provider issues, and HCL syntax problems.',
+                annotations: {
+                    readOnlyHint: true,
+                    destructiveHint: false,
+                    idempotentHint: true,
+                    openWorldHint: false
+                },
                 inputSchema: {
                     type: 'object',
                     properties: {
                         error_message: {
                             type: 'string',
-                            description: 'Error message'
+                            description: 'Full error text from the failed command, e.g. "Error acquiring the state lock"'
                         },
                         command: {
                             type: 'string',
-                            description: 'Command run'
+                            description: 'Command that failed, e.g. "terragrunt run --all apply"'
                         },
                         version: {
                             type: 'string',
-                            description: 'Terragrunt version'
+                            description: 'Terragrunt version, e.g. "0.93.1"'
                         },
                         os: {
                             type: 'string',
-                            description: 'Operating system'
+                            description: 'Operating system, e.g. "linux" or "darwin"'
                         },
                         filePath: {
                             type: 'string',
-                            description: 'File path'
+                            description: 'Config file involved, e.g. "live/prod/vpc/terragrunt.hcl"'
                         },
                         module: {
                             type: 'string',
-                            description: 'Module name'
+                            description: 'Module or unit name, e.g. "vpc"'
                         },
                         backend: {
                             type: 'string',
-                            description: 'Backend type'
+                            description: 'Remote state backend, e.g. "s3" or "gcs"'
                         },
                         maxMatches: {
                             type: 'number',
-                            description: 'Max matches',
+                            description: 'Maximum causes to return, e.g. 5',
                             default: 3
                         },
                         minConfidence: {
                             type: 'number',
-                            description: 'Min confidence',
+                            description: 'Minimum confidence from 0 to 1, e.g. 0.7',
                             default: 0.5
                         },
                         enableFuzzyMatching: {
                             type: 'boolean',
-                            description: 'Fuzzy matching',
+                            description: 'Also match errors similar to known patterns',
                             default: true
                         },
                         detailLevel: {
@@ -851,7 +887,7 @@ export class ToolHandler {
                         },
                         includeDestructiveCommands: {
                             type: 'boolean',
-                            description: 'Include destructive',
+                            description: 'Include solutions marked destructive',
                             default: true
                         }
                     },
@@ -861,22 +897,29 @@ export class ToolHandler {
             {
                 name: 'get_server_metrics',
                 description: 'Get Terragrunt MCP server metrics: cache hit rates, tool invocation counts, response times, and memory usage for observability.',
+                // reset: true clears the collected metrics, so this tool is not read-only
+                annotations: {
+                    readOnlyHint: false,
+                    destructiveHint: false,
+                    idempotentHint: false,
+                    openWorldHint: false
+                },
                 inputSchema: {
                     type: 'object',
                     properties: {
                         filter: {
                             type: 'string',
-                            description: 'Filter pattern'
+                            description: 'Only metrics whose name contains this text, e.g. "search_docs"'
                         },
                         format: {
                             type: 'string',
                             enum: ['json', 'text'],
-                            description: 'Output format',
+                            description: 'json: structured | text: readable summary',
                             default: 'json'
                         },
                         reset: {
                             type: 'boolean',
-                            description: 'Reset after get',
+                            description: 'Clear all metrics after reading them',
                             default: false
                         }
                     },
@@ -908,6 +951,20 @@ export class ToolHandler {
         const recordMetrics = name !== 'get_server_metrics'
             && MODE_CONFIGS[ServerMode.FULL].tools.includes(name);
 
+        // A tool that exists but is hidden in this mode is refused before any
+        // handler runs. Names no mode knows fall through to the Unknown tool error.
+        if (MODE_CONFIGS[ServerMode.FULL].tools.includes(name) && !shouldEnableTool(name, this.mode)) {
+            const restriction = this.modeRestrictionResult(name);
+            if (recordMetrics) {
+                this.recordMetrics(() => this.metricsManager.logError(
+                    'tool',
+                    name,
+                    new Error(getResultErrorMessage(restriction))
+                ));
+            }
+            return { result: restriction, isError: true };
+        }
+
         try {
             const result = await this.executeToolInternal(name, args);
             const latencyMs = Math.round(performance.now() - startTime);
@@ -936,6 +993,18 @@ export class ToolHandler {
             }
             throw error;
         }
+    }
+
+    /** MODE_RESTRICTION payload for a tool that this server mode does not offer. */
+    private modeRestrictionResult(toolName: string): { error: string; errorType: string; availableIn?: string[] } {
+        const availableIn = Object.values(MODE_CONFIGS)
+            .filter(cfg => cfg.name !== this.mode && cfg.tools.includes(toolName))
+            .map(cfg => cfg.name);
+        return {
+            error: `${toolName} is not available in ${this.mode} mode. This tool is disabled.${availableIn.length > 0 ? ` Available in: ${availableIn.join(', ')} modes.` : ''}`,
+            errorType: 'MODE_RESTRICTION',
+            availableIn: availableIn.length > 0 ? availableIn : undefined
+        };
     }
 
     private recordMetrics(record: () => void): void {
