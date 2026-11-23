@@ -101,6 +101,24 @@ function toTerm(word: string): string | undefined {
 }
 
 /**
+ * Dotted identifiers (terragrunt.stack.hcl, root.hcl) in already lowercased text.
+ *
+ * The match may only start at the beginning of a run of word characters
+ * (lookbehind), after its leading digits and underscores. A bare
+ * /[a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*)+/g restarts at every letter of a long
+ * run that has no dot and rescans it to the end, which is quadratic: a 200 000
+ * character query blocked the event loop for about 24 s. Starting only at run
+ * starts returns the same matches and scans each run once.
+ */
+export function extractDottedIdentifiers(lower: string): string[] {
+  const identifiers: string[] = [];
+  for (const match of lower.matchAll(/(?<![a-z0-9_])[0-9_]*([a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*)+)/g)) {
+    identifiers.push(match[1]);
+  }
+  return identifiers;
+}
+
+/**
  * Tokenize text into normalized terms. Identifiers with underscores yield the
  * whole identifier plus each part, so "mock outputs" also matches mock_outputs.
  * Dotted file names (terragrunt.stack.hcl, root.hcl) are also kept whole, in
@@ -109,7 +127,7 @@ function toTerm(word: string): string | undefined {
 export function tokenize(text: string): string[] {
   const lower = text.toLowerCase();
   const words = lower.match(/[a-z0-9_]+/g) ?? [];
-  const terms: string[] = lower.match(/[a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*)+/g) ?? [];
+  const terms: string[] = extractDottedIdentifiers(lower);
   for (const raw of words) {
     const word = raw.replace(/^_+|_+$/g, '');
     if (!word) {
