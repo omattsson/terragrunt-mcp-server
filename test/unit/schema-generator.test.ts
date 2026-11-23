@@ -403,9 +403,9 @@ describe('SchemaToTemplateGenerator', () => {
 
       const lines = hcl.split('\n');
       expect(lines[0]).toBe('remote_state {');
-      expect(lines[1]).toMatch(/^  backend/); // 2 spaces
-      expect(lines[2]).toMatch(/^  config/); // 2 spaces
-      expect(lines[3]).toMatch(/^    \w+/); // 4 spaces for config content
+      expect(lines[1]).toMatch(/^ {2}backend/); // 2 spaces
+      expect(lines[2]).toMatch(/^ {2}config/); // 2 spaces
+      expect(lines[3]).toMatch(/^ {4}\w+/); // 4 spaces for config content
     });
 
     it('should exclude deprecated attributes by default', () => {

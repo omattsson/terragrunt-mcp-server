@@ -97,7 +97,6 @@ describe('Cache Optimizations', () => {
   describe('Search Index Optimization', () => {
     it('should search faster with pre-built index', async () => {
       // First search builds the index (if not already built)
-      const start1 = performance.now();
       await docsManager.searchDocs('dependencies');
       
       // Create a new manager to test index building from scratch
