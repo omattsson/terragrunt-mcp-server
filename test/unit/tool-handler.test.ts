@@ -1510,14 +1510,15 @@ inputs = {
       expect(Array.isArray(result.orderedDebuggingSteps)).toBe(true);
     });
 
-    it('should fall back to the summary for an unrecognised detailLevel', async () => {
+    it('should reject an unrecognised detailLevel at validation', async () => {
+      // Was: fell back to the summary. The enum is now validated before the handler.
       const result = await toolHandler.executeTool('diagnose_terragrunt_error', {
         error_message: 'Error acquiring the state lock',
         detailLevel: 'verbose'
       });
 
-      expect(result.matches[0].description).toBeUndefined();
-      expect(result.debuggingSteps).toBeUndefined();
+      expect(result.errorType).toBe('VALIDATION_ERROR');
+      expect(result.error).toContain('detailLevel');
     });
 
     it('should return full detail when enrichWithDocs is set without detailLevel', async () => {

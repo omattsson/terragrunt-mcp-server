@@ -680,7 +680,8 @@ describe('MCP Protocol Compliance', () => {
         });
 
         expect(result).toBeDefined();
-        expect(result.success).toBe(false);
+        // Rejected at validation: error and errorType, no `success`
+        expect(result.errorType).toBe('VALIDATION_ERROR');
         expect(result.error).toBeDefined();
         expect(typeof result.error).toBe('string');
         expect(result.error.length).toBeGreaterThan(0);

@@ -468,8 +468,9 @@ inputs = {
         content: 'content'
       });
 
-      expect(result.success).toBe(false);
-      expect(result.error).toBeDefined();
+      // Rejected at validation (no `success` field)
+      expect(result.errorType).toBe('VALIDATION_ERROR');
+      expect(result.error).toContain('path');
     });
 
     it('should handle write permission errors gracefully', async () => {

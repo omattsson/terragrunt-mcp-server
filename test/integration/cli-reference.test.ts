@@ -320,12 +320,9 @@ describe('cli_reference Unified Tool - Comprehensive Integration', () => {
       });
 
       expect(result).toBeDefined();
-      // Invalid category is treated as an empty filter (no matches)
-      expect(result.error).toBeUndefined();
-      expect(result.category).toBe('invalid-category');
-      expect(result.commands).toBeDefined();
-      expect(Array.isArray(result.commands)).toBe(true);
-      expect(result.commands.length).toBe(0);
+      // Was: treated as an empty filter. The category enum is now validated.
+      expect(result.errorType).toBe('VALIDATION_ERROR');
+      expect(result.error).toContain('category');
     });
 
     it('should handle negative page numbers', async () => {
