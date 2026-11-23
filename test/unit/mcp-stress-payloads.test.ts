@@ -79,7 +79,7 @@ describe('generateArgs', () => {
     expect(strings.some((s: string) => s.includes('\u0000'))).toBe(true);
     expect(strings.some((s: string) => s.includes('../'))).toBe(true);
     expect(strings.some((s: string) => s.length >= 1_000_000)).toBe(true);
-    expect(strings.some((s: string) => /[^\u0000-\u007f]/.test(s))).toBe(true);
+    expect(strings.some((s: string) => Array.from(s).some((ch) => (ch.codePointAt(0) ?? 0) > 0x7f))).toBe(true);
   });
 
   it('serialises __proto__ and constructor keys as own properties', () => {
