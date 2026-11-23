@@ -3,7 +3,6 @@ import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
-  ListPromptsRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
 import { ToolHandler } from '../../src/handlers/tools.js';
 import { TerragruntDocsManager } from '../../src/terragrunt/docs.js';

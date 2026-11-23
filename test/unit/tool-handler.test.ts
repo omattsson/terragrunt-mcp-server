@@ -767,7 +767,7 @@ inputs = {
       expect(lastLineBeforeTruncation).toBeDefined();
       expect(lastLineBeforeTruncation.trim()).not.toBe(''); // Should be a complete line
       // Verify it's not mid-word by checking it doesn't end with incomplete syntax
-      expect(lastLineBeforeTruncation).toMatch(/^\s*[\w\s"'={}\[\]\(\).,:\-\/]*$/); // Valid HCL line pattern
+      expect(lastLineBeforeTruncation).toMatch(/^\s*[\w\s"'={}[\]().,:\-/]*$/); // Valid HCL line pattern
     });
 
     it('should not truncate short code snippets', async () => {

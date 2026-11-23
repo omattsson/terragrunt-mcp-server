@@ -367,7 +367,7 @@ export class SchemaComparator {
     try {
       return JSON.parse(content);
     } catch (error) {
-      throw new Error(`Invalid JSON in schema file ${filename}: ${error instanceof Error ? error.message : String(error)}`);
+      throw new Error(`Invalid JSON in schema file ${filename}: ${error instanceof Error ? error.message : String(error)}`, { cause: error });
     }
   }
 

@@ -110,7 +110,7 @@ async function benchmarkMode(mode: ServerMode): Promise<PerformanceMetrics> {
         await handler.executeTool(sample.name, sample.args);
         const execTime = performance.now() - execStart;
         toolExecutionTime[sample.name] = execTime;
-      } catch (error) {
+      } catch {
         // Tool execution failed (expected for some modes)
         toolExecutionTime[sample.name] = -1;
       }
