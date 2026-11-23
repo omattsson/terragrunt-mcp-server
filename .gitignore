@@ -10,3 +10,6 @@ performance-results.txt
 performance-test-output.txt
 mode-verification-results.txt
 test-results/
+
+# MCP stress test reports
+stress-report/
