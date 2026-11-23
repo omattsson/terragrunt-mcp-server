@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import * as fs from 'fs/promises';
 import * as os from 'os';
 import * as path from 'path';
-import { ToolHandler } from '../../src/handlers/tools.js';
+import { MAX_SEARCH_QUERY_LENGTH, ToolHandler } from '../../src/handlers/tools.js';
 import { NullMetricsManager } from '../../src/terragrunt/metrics.js';
 import { ServerMode } from '../../src/modes/config.js';
 
@@ -60,9 +60,30 @@ describe('search_docs query length limit', () => {
     expect((result as { results: unknown[] }).results.length).toBeGreaterThan(0);
   }, 30_000);
 
-  it('accepts a query at the limit boundary', async () => {
-    const query = `${'dependency '.repeat(90)}`.trim(); // < 1000 characters
+  it('handles a real term plus a single word near the limit without a regex error', async () => {
+    const query = `terragrunt ${'a'.repeat(MAX_SEARCH_QUERY_LENGTH - 11)}`;
+    expect(query.length).toBe(MAX_SEARCH_QUERY_LENGTH);
+    const started = performance.now();
+    const { result } = await handler.callTool('search_docs', { query });
+    expect(performance.now() - started).toBeLessThan(2000);
+    expect(JSON.stringify(result)).not.toMatch(/regular expression/i);
+  }, 30_000);
+
+  it('accepts a query of about 1400 characters (existing edge-case expectation)', async () => {
+    const query = 'How to configure terragrunt dependencies with remote state '.repeat(24).trim();
+    expect(query.length).toBeGreaterThan(1000);
     const { isError } = await handler.callTool('search_docs', { query });
     expect(isError).toBe(false);
+  }, 30_000);
+
+  it('accepts a query of exactly the maximum length and rejects one more character', async () => {
+    const atLimit = `${'dependency '.repeat(400)}`.slice(0, MAX_SEARCH_QUERY_LENGTH);
+    expect(atLimit.length).toBe(MAX_SEARCH_QUERY_LENGTH);
+    expect((await handler.callTool('search_docs', { query: atLimit })).isError).toBe(false);
+
+    const overLimit = `${atLimit}x`;
+    const { result, isError } = await handler.callTool('search_docs', { query: overLimit });
+    expect(isError).toBe(true);
+    expect((result as { error: string }).error).toMatch(/too long/i);
   }, 30_000);
 });

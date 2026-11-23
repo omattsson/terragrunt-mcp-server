@@ -181,7 +181,7 @@ interface BuildConfigArgs {
 }
 
 /** Longest search_docs query accepted, in characters. */
-export const MAX_SEARCH_QUERY_LENGTH = 1000;
+export const MAX_SEARCH_QUERY_LENGTH = 4096;
 
 /**
  * Decide whether a tool result is a tool-level failure, which the server
