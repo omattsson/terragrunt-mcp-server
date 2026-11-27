@@ -765,20 +765,26 @@ terraform {
       expectContent('/features/stacks/explicit/', [
         'Add an `autoinclude` block to the `unit` block',
       ]);
-      expectContent('/reference/hcl/blocks/', [
-        'The `stack` block supports the following arguments',
-        'The `unit` block supports the following arguments',
-        '`no_dot_terragrunt_stack` (attribute, optional)',
-        '`no_validation` (attribute, optional)',
-        'Setting it to a file is deprecated',
-        'before any dependency has run',
+      // Upstream moved these blocks to per-item pages (`hcl/blocks/<name>/`).
+      for (const block of ['stack', 'unit']) {
+        expectContent(`/reference/hcl/blocks/${block}/`, [
+          '### `no_dot_terragrunt_stack`',
+          '### `no_validation`',
+        ]);
+      }
+      expectContent('/reference/hcl/blocks/dependency/', ['Setting it to a file is deprecated']);
+      expectContent('/reference/hcl/blocks/exclude/', ['before any dependency has run']);
+      // Functions moved to per-item pages too. llms-small.txt drops the
+      // "needs the experiment" Aside, so the gate is checked on the experiments page.
+      expectContent('/reference/hcl/functions/deep_merge/', [
+        'Merges maps and objects, including nested ones, into one object.',
+        'deep_merge(...maps: any) --> object',
+        'expand a list into arguments with `...`',
       ]);
-      expectContent('/reference/hcl/functions/', [
-        '`deep_merge(map1, map2, ...)` deeply merges maps/objects',
-        '`deep_merge` requires the [`deep-merge`](/reference/experiments/active#deep-merge) experiment',
-        '`mark_glob_as_read(pattern)` expands the given glob and marks every matching file as read',
-        '`...` expands a list into positional arguments',
+      expectContent('/reference/hcl/functions/mark_glob_as_read/', [
+        'Records every file that matches a glob as read by the unit',
       ]);
+      expectContent('/reference/experiments/active/', ['## `deep-merge`', '## `path-variable`']);
       expectContent('/reference/experiments/', [
         '[Active Experiments](/reference/experiments/active)',
         '[Completed Experiments](/reference/experiments/completed)',

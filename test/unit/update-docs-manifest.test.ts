@@ -1,4 +1,7 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, afterEach } from 'vitest';
+import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
 import {
   parseFrontmatter,
   isReleased,
@@ -6,6 +9,10 @@ import {
   hasRenderableBody,
   docsPages,
   hclPages,
+  variableFieldPages,
+  entryId,
+  isExperimental,
+  readSources,
   commandPages,
   statusPages,
   orderedEntryPages,
@@ -179,6 +186,136 @@ describe('hclPages', () => {
   });
 });
 
+describe('experiment-gated HCL items', () => {
+  const experiments = [
+    file('path-variable.mdx', 'name: path-variable'),
+    file('deep-merge.mdx', 'name: deep-merge\ncompletedSince: "v1.2.0"'),
+  ];
+
+  it('sorts items gated by an active experiment after the rest (upstream compareHclItems)', () => {
+    const pages = hclPages(
+      'blocks',
+      [
+        file('a_gated.mdx', 'name: a_gated\ndescription: Gated.\nexperiment: path-variable'),
+        file('z_plain.mdx', 'name: z_plain\ndescription: Plain.'),
+        file('b_done.mdx', 'name: b_done\ndescription: Completed gate.\nexperiment: deep-merge'),
+      ],
+      'v1.2.3',
+      experiments,
+    );
+    expect(pages.map(p => p.title)).toEqual(['b_done', 'z_plain', 'a_gated']);
+  });
+
+  it('treats an experiment as active until the latest release reaches completedSince', () => {
+    const item = file('x.mdx', 'name: x\nexperiment: deep-merge');
+    const { data } = parseFrontmatter(item.content);
+    expect(isExperimental(item, data, experiments, 'v1.1.9')).toBe(true);
+    expect(isExperimental(item, data, experiments, 'v1.2.0')).toBe(false);
+  });
+
+  it('throws on an unknown experiment, as upstream does', () => {
+    expect(() =>
+      hclPages('blocks', [file('x.mdx', 'name: x\nexperiment: nope')], 'v1.2.3', experiments),
+    ).toThrow(/experiment "nope"/);
+  });
+
+  it('throws when experiment is not a string', () => {
+    const item = file('x.mdx', 'name: x\nexperiment: 42');
+    const { data } = parseFrontmatter(item.content);
+    expect(() => isExperimental(item, data, experiments, 'v1.2.3')).toThrow(/x\.mdx.*"experiment" must be a string/);
+  });
+
+  it('throws when the experiment has a malformed completedSince', () => {
+    const item = file('x.mdx', 'name: x\nexperiment: bad');
+    const { data } = parseFrontmatter(item.content);
+    const bad = [file('bad.mdx', 'name: bad\ncompletedSince: "1.2.0"')];
+    expect(() => isExperimental(item, data, bad, 'v1.2.3')).toThrow(/bad\.mdx.*completedSince "1\.2\.0"/);
+  });
+});
+
+describe('variableFieldPages', () => {
+  it('titles a field <variable>.<name>, links it below the variable and honors since', () => {
+    const pages = variableFieldPages(
+      [
+        file('path/unit.mdx', 'name: unit\nvariable: path\ndescription: Unit dir.'),
+        file('path/download.mdx', 'name: download\nvariable: path\ndescription: Download dir.'),
+        file('path/later.mdx', 'name: later\nvariable: path\ndescription: Later.\nsince: v9.0.0'),
+      ],
+      'v1.2.3',
+    );
+    expect(pages).toEqual<ManifestPage[]>([
+      { title: 'path.download', path: '/reference/hcl/variables/path/download/', description: 'Download dir.' },
+      { title: 'path.unit', path: '/reference/hcl/variables/path/unit/', description: 'Unit dir.' },
+    ]);
+  });
+
+  it('sorts by entry id without the extension, like upstream (unit before unit_dir)', () => {
+    // With the extension, "unit_dir.mdx" < "unit.mdx" because "_" sorts before ".".
+    const pages = variableFieldPages(
+      [
+        file('path/unit_dir.mdx', 'name: unit_dir\nvariable: path'),
+        file('path/unit.mdx', 'name: unit\nvariable: path'),
+      ],
+      'v1.2.3',
+    );
+    expect(pages.map(p => p.title)).toEqual(['path.unit', 'path.unit_dir']);
+  });
+
+  it('entryId strips .md and .mdx only', () => {
+    expect(entryId('path/unit.mdx')).toBe('path/unit');
+    expect(entryId('faq/q.md')).toBe('faq/q');
+    expect(entryId('a.mdx.bak')).toBe('a.mdx.bak');
+  });
+});
+
+describe('readSources', () => {
+  let repo: string | undefined;
+  afterEach(() => {
+    if (repo) fs.rmSync(repo, { recursive: true, force: true });
+    repo = undefined;
+  });
+
+  const write = (rel: string, content: string): void => {
+    const full = path.join(repo!, 'docs', 'src', rel);
+    fs.mkdirSync(path.dirname(full), { recursive: true });
+    fs.writeFileSync(full, content);
+  };
+
+  it('splits variables from their fields and leaves out the faq and patterns README', () => {
+    repo = fs.mkdtempSync(path.join(os.tmpdir(), 'tg-manifest-sources-'));
+    for (const dir of ['content/docs', 'data/hcl/blocks', 'data/hcl/attributes', 'data/hcl/functions', 'data/commands', 'data/experiments']) {
+      fs.mkdirSync(path.join(repo, 'docs', 'src', dir), { recursive: true });
+    }
+    write('data/hcl/variables/path.mdx', '---\nname: path\n---\n');
+    write('data/hcl/variables/path/unit.mdx', '---\nname: unit\nvariable: path\n---\n');
+    write('data/faq/README.md', '# About this folder\n');
+    write('data/faq/q.mdx', '---\nquestion: Q?\n---\n');
+    write('data/patterns/README.md', '# About this folder\n');
+    write('data/patterns/sub/README.md', '---\ntitle: Nested\n---\n');
+
+    const sources = readSources(repo);
+    expect(sources.hclVariables.map(f => f.id)).toEqual(['path.mdx']);
+    expect(sources.hclVariableFields.map(f => f.id)).toEqual(['path/unit.mdx']);
+    expect(sources.faq.map(f => f.id)).toEqual(['q.mdx']);
+    // Upstream's `!README.md` matches the top-level file only.
+    expect(sources.patterns.map(f => f.id)).toEqual(['sub/README.md']);
+  });
+
+  it('ignores variable files nested deeper than */*.mdx, as upstream globs do', () => {
+    repo = fs.mkdtempSync(path.join(os.tmpdir(), 'tg-manifest-sources-'));
+    for (const dir of ['content/docs', 'data/hcl/blocks', 'data/hcl/attributes', 'data/hcl/functions', 'data/commands', 'data/experiments', 'data/faq', 'data/patterns']) {
+      fs.mkdirSync(path.join(repo, 'docs', 'src', dir), { recursive: true });
+    }
+    write('data/hcl/variables/path.mdx', '---\nname: path\n---\n');
+    write('data/hcl/variables/path/unit.mdx', '---\nname: unit\nvariable: path\n---\n');
+    write('data/hcl/variables/path/extra/deep.mdx', '---\nname: deep\nvariable: path\n---\n');
+
+    const sources = readSources(repo);
+    expect(sources.hclVariables.map(f => f.id)).toEqual(['path.mdx']);
+    expect(sources.hclVariableFields.map(f => f.id)).toEqual(['path/unit.mdx']);
+  });
+});
+
 describe('commandPages', () => {
   it('sorts by path and uses the path in the URL, the name as the title', () => {
     const pages = commandPages(
@@ -259,6 +396,9 @@ describe('deriveManifestPages', () => {
     hclBlocks: [file('catalog.mdx', 'name: catalog\ndescription: Block.')],
     hclAttributes: [file('prevent_destroy.mdx', 'name: prevent_destroy\ndescription: Attr.')],
     hclFunctions: [file('get_env.mdx', 'name: get_env\ndescription: Fn.')],
+    hclVariables: [file('path.mdx', 'name: path\ndescription: Var.')],
+    hclVariableFields: [file('path/unit.mdx', 'name: unit\nvariable: path\ndescription: Field.')],
+    experiments: [],
     commands: [file('catalog.mdx', 'name: catalog\ndescription: Cmd.\npath: catalog')],
     faq: [file('q.mdx', 'question: Q?\ndescription: Answer.')],
     patterns: [file('p.mdx', 'title: P\ndescription: Pattern.\nauthor: me')],
@@ -271,6 +411,8 @@ describe('deriveManifestPages', () => {
       '/reference/hcl/blocks/catalog/',
       '/reference/hcl/attributes/prevent_destroy/',
       '/reference/hcl/functions/get_env/',
+      '/reference/hcl/variables/path/',
+      '/reference/hcl/variables/path/unit/',
       '/reference/cli/commands/catalog/',
       '/reference/experiments/active/',
       '/reference/experiments/completed/',

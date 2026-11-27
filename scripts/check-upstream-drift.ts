@@ -50,6 +50,13 @@ export const WATCHED_PATHS: WatchedPath[] = [
   // scripts/update-docs-manifest.ts): the llms page order and the collections
   // other than docs/commands/hcl. A new, renamed or removed page changes the manifest.
   { path: 'docs/src/lib/generated-pages.ts', reason: 'llms-small.txt page order and sources (docs manifest order)' },
+  // The generator mirrors these: collection globs, HCL item order, the
+  // experiment-last rule, and the blank-body filter of the llms output.
+  { path: 'docs/src/content.config.ts', reason: 'collection globs, e.g. !README.md and the variables */*.mdx (docs manifest sources)' },
+  { path: 'docs/src/lib/hcl/index.ts', reason: 'HCL kinds and compareHclItems order (docs manifest order)' },
+  { path: 'docs/src/lib/hcl/published.ts', reason: 'published HCL items, variable fields and isExperimental (docs manifest)' },
+  { path: 'docs/src/lib/experiments.ts', reason: 'experiment completion rule used to sort gated HCL items (docs manifest order)' },
+  { path: 'docs/src/lib/markdown-document.ts', reason: 'llmsDocument drops blank pages (hasRenderableBody in the docs manifest generator)' },
   { path: 'docs/src/data/faq', reason: 'FAQ pages (docs manifest)' },
   { path: 'docs/src/data/patterns', reason: 'pattern pages (docs manifest)' },
   // Diagnosis pattern anchors (#253) — see docs/upstream-parity.md
@@ -63,11 +70,13 @@ export const WATCHED_PATHS: WatchedPath[] = [
   { path: 'internal/cli/commands/browse/errors.go', reason: 'experiment gate diagnosis pattern' },
   { path: 'internal/cli/commands/login/errors.go', reason: 'experiment gate diagnosis pattern' },
   { path: 'internal/cli/commands/mcp/errors.go', reason: 'experiment gate diagnosis pattern' },
+  { path: 'internal/cli/commands/hcl/validate/outputs.go', reason: 'outputs-block flag gate message' },
+  { path: 'pkg/config/path_variable.go', reason: 'path-variable gate message' },
   { path: 'internal/remotestate/backend/azurerm/errors.go', reason: 'managed azurerm diagnosis patterns' },
   { path: 'pkg/config/dependency_state_azurerm.go', reason: 'azurerm dependency-state diagnosis pattern' },
-  { path: 'internal/cli/commands/run/flags.go', reason: 'experiment-gated run flag messages' },
-  { path: 'internal/cli/flags/shared/filter.go', reason: 'bounded-discovery gate message' },
-  { path: 'internal/filter/filters.go', reason: 'inline (dir) bounded-discovery gate message' },
+  { path: 'internal/cli/flags/shared/errors.go', reason: 'offline-cas flag gate message (CASExperimentRequiredError)' },
+  { path: 'internal/runner/runcfg/util.go', reason: 'no-dot-terragrunt-cache gate message' },
+  { path: 'internal/cli/flags/shared/filter.go', reason: 'shared filter flags of run, render and info print (cli-commands.ts)' },
   { path: 'internal/cas/errors.go', reason: 'CAS (update_source_with_cas) diagnosis patterns' },
 ];
 

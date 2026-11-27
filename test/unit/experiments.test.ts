@@ -10,10 +10,10 @@ import {
 import { UPSTREAM_REVISION } from '../../src/terragrunt/docs-manifest.js';
 
 describe('EXPERIMENTS inventory', () => {
-  it('has 13 active and 23 completed, all with unique names and summaries', () => {
+  it('has 18 active and 23 completed, all with unique names and summaries', () => {
     const active = EXPERIMENTS.filter((e) => e.status === 'active');
     const completed = EXPERIMENTS.filter((e) => e.status === 'completed');
-    expect(active.length).toBe(13);
+    expect(active.length).toBe(18);
     expect(completed.length).toBe(23);
     const names = EXPERIMENTS.map((e) => e.name);
     expect(new Set(names).size).toBe(names.length);
@@ -28,6 +28,17 @@ describe('EXPERIMENTS inventory', () => {
     }
     expect(getExperiment('no-dot-terragrunt-cache')?.summary).toMatch(/no_dot_terragrunt_cache/);
     expect(getExperiment('variables-block')?.summary).toMatch(/variables/);
+  });
+
+  it('includes the experiments added at the 9f78f47 pin as active, with summaries', () => {
+    for (const name of ['auth-provider-cache', 'empty-dependency-outputs', 'outputs-block', 'path-variable', 'values-block']) {
+      const exp = getExperiment(name);
+      expect(exp?.status).toBe('active');
+      expect(exp?.summary.length).toBeGreaterThan(0);
+    }
+    expect(getExperiment('outputs-block')?.summary).toMatch(/outputs block/);
+    expect(getExperiment('values-block')?.summary).toMatch(/values block/);
+    expect(getExperiment('path-variable')?.summary).toMatch(/path\.unit/);
   });
 
   it('is pinned to the docs-manifest revision', () => {

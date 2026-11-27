@@ -87,17 +87,18 @@ fixtures together.
 
 ## Fixture Contents
 
-The fixture contains 147 Markdown documentation pages (the number of entries in
+The fixture contains 215 Markdown documentation pages (the number of entries in
 `TERRAGRUNT_DOC_MANIFEST`) sourced from `llms-small.txt`, covering:
 - Getting Started guides
 - Configuration reference
 - Features documentation
 - CLI commands
-- HCL blocks, attributes, and functions
+- HCL blocks, attributes, functions, and variables (one page per item)
 - Troubleshooting guides
 
-Snapshot generated: November 7, 2026
+Snapshot generated: November 26, 2026
 
 Upstream baseline (pin, `UPSTREAM_REVISION`): Terragrunt revision
-`0fa02c2575fa8256d1e6d12fc553381fb74f3dbb` from November 6, 2026. The
+`9f78f47697cff20bb159421ff2e54cd5e16caa04` from November 25, 2026 (latest
+release v1.2.3). The
 experiments fixture carries the same revision in `upstreamRevision`.

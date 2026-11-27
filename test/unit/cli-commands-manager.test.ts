@@ -593,6 +593,29 @@ describe('CLICommandsManager', () => {
                 expect(flagNames).toContain('--inputs');
                 expect(cmd?.examples.some(example => example.command.includes('--inputs'))).toBe(true);
             });
+
+            it('lists the --outputs flag, gated by the outputs-block experiment', () => {
+                const outputs = manager.getCommand('hcl validate')?.options.find(option => option.flag === '--outputs');
+                expect(outputs?.experiment).toBe('outputs-block');
+            });
+        });
+
+        // The flags the upstream command docs list at the pinned revision: the
+        // `flags:` lists of docs/src/data/commands/run.mdx, render.mdx and
+        // info/print.mdx. The filter subset is compared exactly, so a flag
+        // added to or dropped from getFilterOptions fails here.
+        describe('upstream flag parity', () => {
+            const filterFlags = ['--discovery-boundary', '--filter', '--filter-affected'];
+            it.each([
+                ['render', ['--format', '--json', '--write', '--out', '--with-metadata', '--all']],
+                ['info print', ['--all']],
+                ['run', ['--all']],
+            ])('%s lists its documented flags', (name, expected) => {
+                const flagNames = manager.getCommand(name)?.options.map(option => option.flag) ?? [];
+                expect(flagNames).toEqual(expect.arrayContaining(expected));
+                const filterSubset = flagNames.filter(flag => /^--(filter|discovery-boundary)/.test(flag)).sort();
+                expect(filterSubset).toEqual(filterFlags);
+            });
         });
 
         describe('catalog command', () => {

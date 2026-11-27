@@ -81,7 +81,7 @@ interface TokenizedMessage {
  * This class analyzes error messages from Terragrunt and matches them against
  * known error patterns to provide helpful solutions and debugging steps.
  * 
- * **Database contains 113 error patterns across 12 categories**
+ * **Database contains 122 error patterns across 12 categories**
  * (counts are computed by getPatternStats and guarded against drift by tests)
  * 
  * Features:
@@ -92,9 +92,9 @@ interface TokenizedMessage {
  * - Solution retrieval from documentation
  * 
  * Supported error categories (patterns are thematically organized within these):
- * - configuration: Syntax errors, missing blocks, invalid values, hooks, includes, locals, generate, block expansion (46 patterns)
+ * - configuration: Syntax errors, missing blocks, invalid values, hooks, includes, locals, generate, block expansion, values block (48 patterns)
  * - state: State locking, backend issues (3 patterns)
- * - dependency: Circular dependencies, dependency outputs, missing modules, module sources (15 patterns)
+ * - dependency: Circular dependencies, dependency outputs, missing modules, module sources, outputs block (17 patterns)
  * - backend: S3, GCS, Azure backend and managed azurerm state errors (8 patterns)
  * - terraform: Version mismatches, provider issues (3 patterns)
  * - authentication: AWS, Azure, GCP credential issues (3 patterns)
@@ -103,7 +103,7 @@ interface TokenizedMessage {
  * - oci: OCI source and credential errors (11 patterns)
  * - engine: IaC engine lifecycle failures (6 patterns)
  * - experiment: Experiment-not-enabled failures (1 pattern)
- * - cas: Content-addressable store (update_source_with_cas) failures (9 patterns)
+ * - cas: Content-addressable store (update_source_with_cas, --cas-offline) failures (14 patterns)
  */
 export class ErrorPatternMatcher {
   private readonly docsManager: TerragruntDocsManager;
@@ -190,6 +190,7 @@ export class ErrorPatternMatcher {
       ...this.getOCIErrorPatterns(),
       ...this.getEngineErrorPatterns(),
       ...this.getExperimentErrorPatterns(),
+      ...this.getComponentContractErrorPatterns(),
       ...this.getAzureManagedStateErrorPatterns(),
       ...this.getCASErrorPatterns()
     ];
@@ -726,7 +727,7 @@ export class ErrorPatternMatcher {
           { step: 3, explanation: 'Ensure the source URL is accessible and correct' }
         ],
         documentationRefs: [
-          'https://docs.terragrunt.com/reference/hcl/blocks/#terraform'
+          'https://docs.terragrunt.com/reference/hcl/blocks/terraform/'
         ]
       },
       {
@@ -766,7 +767,7 @@ export class ErrorPatternMatcher {
           { step: 3, explanation: 'Verify the variable is exported from parent if using dependency' }
         ],
         documentationRefs: [
-          'https://docs.terragrunt.com/reference/hcl/blocks/#inputs'
+          'https://docs.terragrunt.com/reference/hcl/attributes/inputs/'
         ]
       },
       {
@@ -866,7 +867,7 @@ export class ErrorPatternMatcher {
           { step: 3, explanation: 'Ensure ref parameter is properly formatted for Git sources' }
         ],
         documentationRefs: [
-          'https://docs.terragrunt.com/reference/hcl/blocks/#terraform'
+          'https://docs.terragrunt.com/reference/hcl/blocks/terraform/'
         ]
       },
       {
@@ -906,7 +907,7 @@ export class ErrorPatternMatcher {
           { step: 3, explanation: 'Use path functions like find_in_parent_folders() if needed' }
         ],
         documentationRefs: [
-          'https://docs.terragrunt.com/reference/hcl/functions/#find_in_parent_folders'
+          'https://docs.terragrunt.com/reference/hcl/functions/find_in_parent_folders/'
         ]
       },
       {
@@ -946,7 +947,7 @@ export class ErrorPatternMatcher {
           { step: 3, explanation: 'Configure required backend attributes' }
         ],
         documentationRefs: [
-          'https://docs.terragrunt.com/reference/hcl/blocks/#remote_state'
+          'https://docs.terragrunt.com/reference/hcl/blocks/remote_state/'
         ]
       },
       {
@@ -1085,7 +1086,7 @@ export class ErrorPatternMatcher {
           { step: 3, explanation: 'Consider using data sources instead of dependencies where appropriate' }
         ],
         documentationRefs: [
-          'https://docs.terragrunt.com/reference/hcl/blocks/#dependencies'
+          'https://docs.terragrunt.com/reference/hcl/blocks/dependencies/'
         ]
       },
       {
@@ -1107,7 +1108,7 @@ export class ErrorPatternMatcher {
           { step: 3, explanation: 'Use an include block instead where you only need to inherit configuration' }
         ],
         documentationRefs: [
-          'https://docs.terragrunt.com/reference/hcl/functions/#read_terragrunt_config'
+          'https://docs.terragrunt.com/reference/hcl/functions/read_terragrunt_config/'
         ]
       },
       {
@@ -1141,7 +1142,7 @@ export class ErrorPatternMatcher {
         ],
         documentationRefs: [
           'https://docs.terragrunt.com/features/stacks/#unapplied-dependency-and-mock-outputs',
-          'https://docs.terragrunt.com/reference/hcl/blocks/#dependency'
+          'https://docs.terragrunt.com/reference/hcl/blocks/dependency/'
         ]
       },
       {
@@ -1161,7 +1162,7 @@ export class ErrorPatternMatcher {
           { step: 3, explanation: 'Ensure Git repository is accessible if using Git source' }
         ],
         documentationRefs: [
-          'https://docs.terragrunt.com/reference/hcl/blocks/#terraform'
+          'https://docs.terragrunt.com/reference/hcl/blocks/terraform/'
         ]
       },
       {
@@ -1209,7 +1210,7 @@ export class ErrorPatternMatcher {
           { step: 3, explanation: 'Create the bucket if it does not exist or update configuration' }
         ],
         documentationRefs: [
-          'https://docs.terragrunt.com/reference/hcl/blocks/#remote_state'
+          'https://docs.terragrunt.com/reference/hcl/blocks/remote_state/'
         ]
       },
       {
@@ -1249,7 +1250,7 @@ export class ErrorPatternMatcher {
           { step: 3, explanation: 'Ensure you are using the correct GCP project' }
         ],
         documentationRefs: [
-          'https://docs.terragrunt.com/reference/hcl/blocks/#remote_state'
+          'https://docs.terragrunt.com/reference/hcl/blocks/remote_state/'
         ]
       },
       {
@@ -1269,7 +1270,7 @@ export class ErrorPatternMatcher {
           { step: 3, explanation: 'Ensure you are using the correct Azure subscription' }
         ],
         documentationRefs: [
-          'https://docs.terragrunt.com/reference/hcl/blocks/#remote_state'
+          'https://docs.terragrunt.com/reference/hcl/blocks/remote_state/'
         ]
       }
     ];
@@ -1641,7 +1642,7 @@ export class ErrorPatternMatcher {
           { step: 3, explanation: 'Use separate modules for shared components' }
         ],
         documentationRefs: [
-          'https://docs.terragrunt.com/reference/hcl/blocks/#terraform'
+          'https://docs.terragrunt.com/reference/hcl/blocks/terraform/'
         ]
       },
       {
@@ -1837,7 +1838,7 @@ export class ErrorPatternMatcher {
           { step: 3, explanation: 'Use find_in_parent_folders() if searching parent directories' }
         ],
         documentationRefs: [
-          'https://docs.terragrunt.com/reference/hcl/blocks/#include'
+          'https://docs.terragrunt.com/reference/hcl/blocks/include/'
         ]
       },
       {
@@ -1857,7 +1858,7 @@ export class ErrorPatternMatcher {
           { step: 3, explanation: 'Use inheritance hierarchy instead of circular includes' }
         ],
         documentationRefs: [
-          'https://docs.terragrunt.com/reference/hcl/blocks/#include'
+          'https://docs.terragrunt.com/reference/hcl/blocks/include/'
         ]
       },
       {
@@ -1877,7 +1878,7 @@ export class ErrorPatternMatcher {
           { step: 3, explanation: 'Resolve conflicting definitions in include files' }
         ],
         documentationRefs: [
-          'https://docs.terragrunt.com/reference/hcl/blocks/#include'
+          'https://docs.terragrunt.com/reference/hcl/blocks/include/'
         ]
       },
       {
@@ -1897,7 +1898,7 @@ export class ErrorPatternMatcher {
           { step: 3, explanation: 'Ensure file encoding is UTF-8' }
         ],
         documentationRefs: [
-          'https://docs.terragrunt.com/reference/hcl/blocks/#include'
+          'https://docs.terragrunt.com/reference/hcl/blocks/include/'
         ]
       },
       {
@@ -1917,7 +1918,7 @@ export class ErrorPatternMatcher {
           { step: 3, explanation: 'Use merge strategies to resolve conflicts' }
         ],
         documentationRefs: [
-          'https://docs.terragrunt.com/reference/hcl/blocks/#include'
+          'https://docs.terragrunt.com/reference/hcl/blocks/include/'
         ]
       },
       {
@@ -1937,7 +1938,7 @@ export class ErrorPatternMatcher {
           { step: 3, explanation: 'Configure fallback path in find_in_parent_folders()' }
         ],
         documentationRefs: [
-          'https://docs.terragrunt.com/reference/hcl/functions/#find_in_parent_folders'
+          'https://docs.terragrunt.com/reference/hcl/functions/find_in_parent_folders/'
         ]
       },
       {
@@ -1957,7 +1958,7 @@ export class ErrorPatternMatcher {
           { step: 3, explanation: 'Ensure dependency outputs are properly exposed' }
         ],
         documentationRefs: [
-          'https://docs.terragrunt.com/reference/hcl/blocks/#include'
+          'https://docs.terragrunt.com/reference/hcl/blocks/include/'
         ]
       }
     ];
@@ -1985,7 +1986,7 @@ export class ErrorPatternMatcher {
           { step: 3, explanation: 'Verify local is defined in accessible scope' }
         ],
         documentationRefs: [
-          'https://docs.terragrunt.com/reference/hcl/blocks/#locals'
+          'https://docs.terragrunt.com/reference/hcl/blocks/locals/'
         ]
       },
       {
@@ -2005,7 +2006,7 @@ export class ErrorPatternMatcher {
           { step: 3, explanation: 'Use intermediate locals to break dependency chain' }
         ],
         documentationRefs: [
-          'https://docs.terragrunt.com/reference/hcl/blocks/#locals'
+          'https://docs.terragrunt.com/reference/hcl/blocks/locals/'
         ]
       },
       {
@@ -2025,7 +2026,7 @@ export class ErrorPatternMatcher {
           { step: 3, explanation: 'Use try() or can() functions for defensive evaluation' }
         ],
         documentationRefs: [
-          'https://docs.terragrunt.com/reference/hcl/blocks/#locals'
+          'https://docs.terragrunt.com/reference/hcl/blocks/locals/'
         ]
       },
       {
@@ -2065,7 +2066,7 @@ export class ErrorPatternMatcher {
           { step: 3, explanation: 'Explicitly handle conflicts with conditional logic' }
         ],
         documentationRefs: [
-          'https://docs.terragrunt.com/reference/hcl/blocks/#locals'
+          'https://docs.terragrunt.com/reference/hcl/blocks/locals/'
         ]
       }
     ];
@@ -2093,7 +2094,7 @@ export class ErrorPatternMatcher {
           { step: 3, explanation: 'Change generate block path to avoid conflict' }
         ],
         documentationRefs: [
-          'https://docs.terragrunt.com/reference/hcl/blocks/#generate'
+          'https://docs.terragrunt.com/reference/hcl/blocks/generate/'
         ]
       },
       {
@@ -2113,7 +2114,7 @@ export class ErrorPatternMatcher {
           { step: 3, explanation: 'Use different path with appropriate permissions' }
         ],
         documentationRefs: [
-          'https://docs.terragrunt.com/reference/hcl/blocks/#generate'
+          'https://docs.terragrunt.com/reference/hcl/blocks/generate/'
         ]
       },
       {
@@ -2133,7 +2134,7 @@ export class ErrorPatternMatcher {
           { step: 3, explanation: 'Check path does not contain invalid characters' }
         ],
         documentationRefs: [
-          'https://docs.terragrunt.com/reference/hcl/blocks/#generate'
+          'https://docs.terragrunt.com/reference/hcl/blocks/generate/'
         ]
       },
       {
@@ -2153,7 +2154,7 @@ export class ErrorPatternMatcher {
           { step: 3, explanation: 'Test template with simple content first' }
         ],
         documentationRefs: [
-          'https://docs.terragrunt.com/reference/hcl/blocks/#generate'
+          'https://docs.terragrunt.com/reference/hcl/blocks/generate/'
         ]
       },
       {
@@ -2173,7 +2174,7 @@ export class ErrorPatternMatcher {
           { step: 3, explanation: 'Check documentation for strategy behavior' }
         ],
         documentationRefs: [
-          'https://docs.terragrunt.com/reference/hcl/blocks/#generate'
+          'https://docs.terragrunt.com/reference/hcl/blocks/generate/'
         ]
       }
     ];
@@ -2204,7 +2205,7 @@ export class ErrorPatternMatcher {
           { step: 3, explanation: 'Check for a parse error earlier in the stack file' }
         ],
         documentationRefs: [
-          'https://docs.terragrunt.com/reference/hcl/blocks/#stack'
+          'https://docs.terragrunt.com/reference/hcl/blocks/stack/'
         ]
       },
       {
@@ -2224,7 +2225,7 @@ export class ErrorPatternMatcher {
           { step: 3, command: 'terragrunt stack generate', explanation: 'Regenerate the stack to see resolved fields' }
         ],
         documentationRefs: [
-          'https://docs.terragrunt.com/reference/hcl/blocks/#unit'
+          'https://docs.terragrunt.com/reference/hcl/blocks/unit/'
         ]
       },
       {
@@ -2244,7 +2245,7 @@ export class ErrorPatternMatcher {
           { step: 3, command: 'terragrunt stack generate', explanation: 'Regenerate the stack to see resolved addresses' }
         ],
         documentationRefs: [
-          'https://docs.terragrunt.com/reference/hcl/blocks/#stack'
+          'https://docs.terragrunt.com/reference/hcl/blocks/stack/'
         ]
       },
       {
@@ -2264,7 +2265,7 @@ export class ErrorPatternMatcher {
           { step: 3, command: 'terragrunt stack generate', explanation: 'Regenerate the stack to see generated paths' }
         ],
         documentationRefs: [
-          'https://docs.terragrunt.com/reference/hcl/blocks/#stack'
+          'https://docs.terragrunt.com/reference/hcl/blocks/stack/'
         ]
       },
       {
@@ -2284,7 +2285,7 @@ export class ErrorPatternMatcher {
           { step: 3, command: 'terragrunt stack generate', explanation: 'Regenerate the stack to confirm paths no longer overlap' }
         ],
         documentationRefs: [
-          'https://docs.terragrunt.com/reference/hcl/blocks/#stack'
+          'https://docs.terragrunt.com/reference/hcl/blocks/stack/'
         ]
       },
       {
@@ -2304,7 +2305,7 @@ export class ErrorPatternMatcher {
           { step: 3, explanation: 'Check that the unit state backend is reachable' }
         ],
         documentationRefs: [
-          'https://docs.terragrunt.com/reference/hcl/blocks/#dependency'
+          'https://docs.terragrunt.com/reference/hcl/blocks/dependency/'
         ]
       }
     ];
@@ -2490,7 +2491,7 @@ export class ErrorPatternMatcher {
           { step: 2, explanation: 'Check the registry host is not empty' }
         ],
         documentationRefs: [
-          'https://docs.terragrunt.com/reference/hcl/blocks/#terraform'
+          'https://docs.terragrunt.com/reference/hcl/blocks/terraform/'
         ]
       },
       {
@@ -2508,7 +2509,7 @@ export class ErrorPatternMatcher {
           { step: 2, explanation: 'Add the repository path after the registry host' }
         ],
         documentationRefs: [
-          'https://docs.terragrunt.com/reference/hcl/blocks/#terraform'
+          'https://docs.terragrunt.com/reference/hcl/blocks/terraform/'
         ]
       },
       {
@@ -2526,7 +2527,7 @@ export class ErrorPatternMatcher {
           { step: 2, explanation: 'Check the registry documentation for allowed characters' }
         ],
         documentationRefs: [
-          'https://docs.terragrunt.com/reference/hcl/blocks/#terraform'
+          'https://docs.terragrunt.com/reference/hcl/blocks/terraform/'
         ]
       },
       {
@@ -2544,7 +2545,7 @@ export class ErrorPatternMatcher {
           { step: 2, explanation: 'Copy the digest from the registry rather than typing it' }
         ],
         documentationRefs: [
-          'https://docs.terragrunt.com/reference/hcl/blocks/#terraform'
+          'https://docs.terragrunt.com/reference/hcl/blocks/terraform/'
         ]
       },
       {
@@ -2562,7 +2563,7 @@ export class ErrorPatternMatcher {
           { step: 2, explanation: 'Reference the artifact by a digest instead of a tag for immutability' }
         ],
         documentationRefs: [
-          'https://docs.terragrunt.com/reference/hcl/blocks/#terraform'
+          'https://docs.terragrunt.com/reference/hcl/blocks/terraform/'
         ]
       },
       {
@@ -2580,7 +2581,7 @@ export class ErrorPatternMatcher {
           { step: 2, explanation: 'Prefer a digest for an immutable, reproducible reference' }
         ],
         documentationRefs: [
-          'https://docs.terragrunt.com/reference/hcl/blocks/#terraform'
+          'https://docs.terragrunt.com/reference/hcl/blocks/terraform/'
         ]
       },
       {
@@ -2598,7 +2599,7 @@ export class ErrorPatternMatcher {
           { step: 2, explanation: 'Run the helper by hand to inspect its output; do not share the result' }
         ],
         documentationRefs: [
-          'https://docs.terragrunt.com/reference/hcl/blocks/#terraform'
+          'https://docs.terragrunt.com/reference/hcl/blocks/terraform/'
         ]
       },
       {
@@ -2618,7 +2619,7 @@ export class ErrorPatternMatcher {
           { step: 3, explanation: 'Check the helper configuration; keep any secret values out of logs' }
         ],
         documentationRefs: [
-          'https://docs.terragrunt.com/reference/hcl/blocks/#terraform'
+          'https://docs.terragrunt.com/reference/hcl/blocks/terraform/'
         ]
       },
       {
@@ -2636,7 +2637,7 @@ export class ErrorPatternMatcher {
           { step: 2, explanation: 'Provide the values through environment variables and confirm they resolve' }
         ],
         documentationRefs: [
-          'https://docs.terragrunt.com/reference/hcl/blocks/#terraform'
+          'https://docs.terragrunt.com/reference/hcl/blocks/terraform/'
         ]
       },
       {
@@ -2654,7 +2655,7 @@ export class ErrorPatternMatcher {
           { step: 2, explanation: 'Split styles into separate blocks scoped to different registries' }
         ],
         documentationRefs: [
-          'https://docs.terragrunt.com/reference/hcl/blocks/#terraform'
+          'https://docs.terragrunt.com/reference/hcl/blocks/terraform/'
         ]
       },
       {
@@ -2673,7 +2674,7 @@ export class ErrorPatternMatcher {
           { step: 2, explanation: 'Rebuild the artifact with a single module zip layer' }
         ],
         documentationRefs: [
-          'https://docs.terragrunt.com/reference/hcl/blocks/#terraform'
+          'https://docs.terragrunt.com/reference/hcl/blocks/terraform/'
         ]
       }
     ];
@@ -2704,7 +2705,7 @@ export class ErrorPatternMatcher {
           { step: 3, explanation: 'Read the engine log lines that precede the failure' }
         ],
         documentationRefs: [
-          'https://docs.terragrunt.com/reference/hcl/blocks/#engine'
+          'https://docs.terragrunt.com/reference/hcl/blocks/engine/'
         ]
       },
       {
@@ -2724,7 +2725,7 @@ export class ErrorPatternMatcher {
           { step: 3, explanation: 'Report a reproducible shutdown failure to the engine maintainer' }
         ],
         documentationRefs: [
-          'https://docs.terragrunt.com/reference/hcl/blocks/#engine'
+          'https://docs.terragrunt.com/reference/hcl/blocks/engine/'
         ]
       },
       {
@@ -2742,7 +2743,7 @@ export class ErrorPatternMatcher {
           { step: 2, explanation: 'Confirm any interpolated source resolves to a concrete value' }
         ],
         documentationRefs: [
-          'https://docs.terragrunt.com/reference/hcl/blocks/#engine'
+          'https://docs.terragrunt.com/reference/hcl/blocks/engine/'
         ]
       },
       {
@@ -2762,7 +2763,7 @@ export class ErrorPatternMatcher {
           { step: 3, explanation: 'Provide credentials for a private engine registry if required' }
         ],
         documentationRefs: [
-          'https://docs.terragrunt.com/reference/hcl/blocks/#engine'
+          'https://docs.terragrunt.com/reference/hcl/blocks/engine/'
         ]
       },
       {
@@ -2782,7 +2783,7 @@ export class ErrorPatternMatcher {
           { step: 3, explanation: 'Do not disable verification; investigate the mismatch instead' }
         ],
         documentationRefs: [
-          'https://docs.terragrunt.com/reference/hcl/blocks/#engine'
+          'https://docs.terragrunt.com/reference/hcl/blocks/engine/'
         ]
       },
       {
@@ -2802,41 +2803,146 @@ export class ErrorPatternMatcher {
           { step: 3, explanation: 'Review any sandbox or security policy that blocks child processes' }
         ],
         documentationRefs: [
-          'https://docs.terragrunt.com/reference/hcl/blocks/#engine'
+          'https://docs.terragrunt.com/reference/hcl/blocks/engine/'
         ]
       }
     ];
   }
 
   /**
-   * Experiment-gate error patterns (category: experiment, 1 pattern)
+   * Experiment-gate error patterns (category: experiment, 1 pattern; plus one
+   * configuration pattern that must rank ahead of it)
    *
-   * Every gate in Terragrunt uses the same phrasing, so one pattern matches
-   * them all and separates experiment-not-enabled failures from malformed
-   * configuration. Names cited in tests are cross-checked against the #252
-   * EXPERIMENTS inventory. Anchored to internal/cli/commands/browse/errors.go,
-   * pkg/config/errors.go, and internal/remotestate/backend/azurerm/errors.go.
+   * Terragrunt words its gates in two ways: "requires the '<name>' experiment"
+   * (commands, flags, deep_merge, base64gzip_compat) and "needs the <name>
+   * experiment. Enable it with --experiment <name>" (the values and outputs
+   * blocks and the path variable). One pattern matches both and separates
+   * experiment-not-enabled failures from malformed configuration. Names cited
+   * in tests are cross-checked against the #252 EXPERIMENTS inventory. Anchored
+   * to internal/cli/commands/browse/errors.go, pkg/config/errors.go,
+   * pkg/config/path_variable.go, internal/cli/commands/hcl/validate/outputs.go,
+   * internal/cli/flags/shared/errors.go, internal/runner/runcfg/util.go and
+   * internal/remotestate/backend/azurerm/errors.go.
+   *
+   * Upstream adds the path-variable hint to every reference to an unknown
+   * `path` root (hintUnknownPath in pkg/config/path_variable.go), including
+   * Terraform's path.module, path.root and path.cwd. Enabling the experiment
+   * does not fix those: Terragrunt's `path` has no such attributes. The
+   * path-terraform-attribute pattern matches only when the pasted output has
+   * both the hint and the Terraform reference, and comes first so that it wins
+   * the tie with experiment-required at 0.95.
    */
   private getExperimentErrorPatterns(): ErrorPattern[] {
     return [
       {
+        id: 'path-terraform-attribute',
+        name: 'Terraform path attribute used in Terragrunt configuration',
+        category: 'configuration',
+        // Both the upstream hint and the Terraform attribute must be present:
+        // path.module alone is valid in .tf code and shows up in OpenTofu errors.
+        regex: /path\W+variable\s+needs\s+the\s+path-variable\s+experiment[\s\S]*\bpath\.(?:module|root|cwd)\b|\bpath\.(?:module|root|cwd)\b[\s\S]*path\W+variable\s+needs\s+the\s+path-variable\s+experiment/,
+        description: 'A Terragrunt file references path.module, path.root or path.cwd, which exist only in OpenTofu/Terraform',
+        likelyCauses: [
+          'An expression was copied from an OpenTofu/Terraform module into terragrunt.hcl',
+          'Terragrunt reports the reference as an unknown path variable and suggests the path-variable experiment, but its path variable has no module, root or cwd attribute'
+        ],
+        solutions: [
+          { step: 1, explanation: 'Replace path.module with get_terragrunt_dir(), the directory of the current Terragrunt file' },
+          { step: 2, explanation: 'Replace path.root with get_repo_root() or the directory of the root include (get_parent_terragrunt_dir())' },
+          { step: 3, explanation: 'Replace path.cwd with get_original_terragrunt_dir() or get_working_dir(), depending on whether you need the unit directory or the download directory' },
+          { step: 4, explanation: 'Enabling --experiment path-variable does not help here: it adds path.unit, path.stack, path.download, path.include and path.read only' }
+        ],
+        documentationRefs: [
+          'https://docs.terragrunt.com/reference/hcl/functions/get_terragrunt_dir/',
+          'https://docs.terragrunt.com/reference/hcl/variables/path/'
+        ]
+      },
+      {
         id: 'experiment-required',
         name: 'Feature requires an experiment',
         category: 'experiment',
-        regex: /requires\s+the\s+'[\w-]+'\s+experiment/i,
+        regex: /requires\s+the\s+'[\w-]+'\s+experiment|needs\s+the\s+[\w-]+\s+experiment\.\s+Enable\s+it\s+with\s+--experiment\s/i,
         description: 'A command, block, or attribute is gated behind a Terragrunt experiment that is not enabled',
         likelyCauses: [
           'The feature is still experimental and off by default',
           'The experiment name is not in the --experiment list',
-          'TG_EXPERIMENT does not include the required experiment'
+          'TG_EXPERIMENT does not include the required experiment',
+          'For the path variable hint: the reference may be a Terraform attribute (path.module, path.root, path.cwd), which no experiment provides'
         ],
         solutions: [
-          { step: 1, explanation: 'Read the experiment name in single quotes from the error message' },
+          { step: 1, explanation: 'Read the experiment name from the error message: it follows "requires the" (in single quotes) or "needs the"' },
           { step: 2, command: 'terragrunt <cmd> --experiment <name>', explanation: 'Enable the experiment on the command line' },
           { step: 3, command: 'export TG_EXPERIMENT=<name>', explanation: 'Or enable it through the environment for the session' }
         ],
         documentationRefs: [
           'https://docs.terragrunt.com/reference/experiments/'
+        ]
+      }
+    ];
+  }
+
+  /**
+   * Component contract error patterns: the values and outputs blocks and the
+   * dependency block (category: configuration 1, dependency 2). Anchored to
+   * ValuesBlockInIncludeError, DeclaredOutputMissingError and
+   * DependencyNullConfigPathError in pkg/config/errors.go at the pinned
+   * upstream revision.
+   */
+  private getComponentContractErrorPatterns(): ErrorPattern[] {
+    return [
+      {
+        id: 'values-block-in-include',
+        name: 'values block declared in an included file',
+        category: 'configuration',
+        regex: /declares\s+a\s+values\s+block,\s+but\s+it\s+is\s+included\s+by\s+another\s+config/i,
+        description: 'A values block is declared in a file that is included by another config or generated as an autoinclude',
+        likelyCauses: [
+          'The values block was put in a shared root or env include instead of the component',
+          'An autoinclude generates a file that declares a values block'
+        ],
+        solutions: [
+          { step: 1, explanation: 'Move the values block to the terragrunt.hcl or terragrunt.stack.hcl of the component that accepts the values' },
+          { step: 2, explanation: 'Keep shared defaults in the include as locals or inputs, not as a values block' }
+        ],
+        documentationRefs: [
+          'https://docs.terragrunt.com/reference/hcl/blocks/values/'
+        ]
+      },
+      {
+        id: 'dep-declared-output-missing',
+        name: 'Declared output missing from dependency state',
+        category: 'dependency',
+        regex: /declares\s+output\s+"[^"]*"\s+in\s+its\s+outputs\s+block,\s+but\s+its\s+state\s+has\s+no\s+output/i,
+        description: 'A dependency declares an output in its outputs block, but its applied state does not have that output',
+        likelyCauses: [
+          'The output was added to the outputs block and the module, but the dependency has not been applied since',
+          'The outputs block declares an output the module never defines'
+        ],
+        solutions: [
+          { step: 1, explanation: 'Apply the dependency after adding the output to its module' },
+          { step: 2, explanation: 'Or remove the output from the outputs block if the module does not produce it' },
+          { step: 3, explanation: 'Or set merge_with_state = "shallow" in its mock_strategy block, with the command in allowed_commands, to fill the output from mock_value' }
+        ],
+        documentationRefs: [
+          'https://docs.terragrunt.com/reference/hcl/blocks/outputs/'
+        ]
+      },
+      {
+        id: 'dep-config-path-null',
+        name: 'Dependency config_path is null',
+        category: 'dependency',
+        regex: /dependency\s+\S.*?\s+sets\s+config_path\s+to\s+null/i,
+        description: 'A dependency block sets config_path to null',
+        likelyCauses: [
+          'A conditional expression returns null to turn the dependency off',
+          'A local or value used for config_path is unset'
+        ],
+        solutions: [
+          { step: 1, explanation: 'Set config_path to the path of the dependency' },
+          { step: 2, explanation: 'To turn the dependency off, set enabled = false instead of a null config_path' }
+        ],
+        documentationRefs: [
+          'https://docs.terragrunt.com/reference/hcl/blocks/dependency/'
         ]
       }
     ];
@@ -2933,13 +3039,38 @@ export class ErrorPatternMatcher {
   }
 
   /**
-   * CAS (content-addressable store) error patterns (category: cas, 9 patterns)
+   * CAS (content-addressable store) error patterns (category: cas, 14 patterns)
    *
    * Anchored to verbatim upstream Error() strings in internal/cas/errors.go at
    * the pinned revision. CAS backs update_source_with_cas and the cas:: getter.
    */
   private getCASErrorPatterns(): ErrorPattern[] {
     return [
+      {
+        // CASRewriteRequiredError (pkg/config/errors.go), returned by
+        // pkg/config/stack.go when a CAS fetch fails with a non-final error
+        // (such as ErrGitClone) for a component that needs the rewrite. First
+        // in the group: it is the outer error and names the component, so it
+        // must win the tie with the pattern of the error it wraps.
+        id: 'cas-rewrite-fetch-failed',
+        name: 'update_source_with_cas fetch through CAS failed',
+        category: 'cas',
+        regex: /sets\s+update_source_with_cas,\s+which\s+only\s+the\s+CAS\s+can\s+rewrite/i,
+        description: 'A component sets update_source_with_cas, and fetching its source through CAS failed, so Terragrunt cannot rewrite it',
+        likelyCauses: [
+          'The source cannot be reached or the ref does not exist',
+          'Credentials for the source repository are missing',
+          'The source is not one CAS can fetch'
+        ],
+        solutions: [
+          { step: 1, explanation: 'Read the wrapped error after the colon for the fetch failure' },
+          { step: 2, explanation: 'Check that the source URL and ref exist and that the credentials can read them' },
+          { step: 3, explanation: 'If the source must not go through CAS, remove update_source_with_cas from the component' }
+        ],
+        documentationRefs: [
+          'https://docs.terragrunt.com/features/caching/cas/'
+        ]
+      },
       {
         id: 'cas-update-source-requires-cas',
         name: 'update_source_with_cas requires CAS to be enabled',
@@ -3105,6 +3236,85 @@ export class ErrorPatternMatcher {
         ],
         documentationRefs: [
           'https://docs.terragrunt.com/features/caching/cas/git/'
+        ]
+      },
+      {
+        // ErrRewriteTooDeep (internal/cas/errors.go). Listed before
+        // cas-rewrite-incomplete: upstream raises it only from a nested
+        // processDirectory call, which wraps it in ErrRewriteIncomplete, so
+        // both match and the specific advice must win the tie.
+        id: 'cas-rewrite-too-deep',
+        name: 'update_source_with_cas sources nest too deep',
+        category: 'cas',
+        regex: /update_source_with_cas\s+sources\s+nest\s+too\s+deep/i,
+        description: 'Sources marked update_source_with_cas nest past the rewrite depth limit',
+        likelyCauses: [
+          'A stack source points back at its own stack, so the rewrite never ends',
+          'The stack nesting really is deeper than the limit'
+        ],
+        solutions: [
+          { step: 1, explanation: 'Look for a source that points back at its own stack and break the loop' },
+          { step: 2, explanation: 'Flatten the stack nesting if it is not a loop' }
+        ],
+        documentationRefs: [
+          'https://docs.terragrunt.com/features/caching/cas/'
+        ]
+      },
+      {
+        // ErrRewriteIncomplete (internal/cas/errors.go)
+        id: 'cas-rewrite-incomplete',
+        name: 'update_source_with_cas rewrite incomplete',
+        category: 'cas',
+        regex: /update_source_with_cas\s+rewrite\s+could\s+not\s+be\s+completed/i,
+        description: 'Terragrunt could not finish rewriting a source that update_source_with_cas marked',
+        likelyCauses: [
+          'A stack file under the fetched source could not be read or rewritten',
+          'A nested source failed to fetch through CAS'
+        ],
+        solutions: [
+          { step: 1, explanation: 'Read the wrapped error for the stack file or source that failed' },
+          { step: 2, explanation: 'Fix or remove that nested source, then re-run' }
+        ],
+        documentationRefs: [
+          'https://docs.terragrunt.com/features/caching/cas/'
+        ]
+      },
+      {
+        // StackPackageFetchError (pkg/config/errors.go)
+        id: 'cas-stack-package-fetch-failed',
+        name: 'Stack package fetch through CAS failed',
+        category: 'cas',
+        regex: /failed\s+to\s+fetch\s+\S+\s+through\s+CAS/i,
+        description: 'Terragrunt could not fetch a stack package through CAS',
+        likelyCauses: [
+          'The source cannot be reached or the ref does not exist',
+          'Credentials for the source repository are missing'
+        ],
+        solutions: [
+          { step: 1, explanation: 'Read the wrapped error after the colon for the fetch failure' },
+          { step: 2, explanation: 'Check the stack source URL, ref and credentials' }
+        ],
+        documentationRefs: [
+          'https://docs.terragrunt.com/features/caching/cas/'
+        ]
+      },
+      {
+        // OfflineUnrecordableError (internal/cas/errors.go)
+        id: 'cas-offline-unrecordable',
+        name: 'Source cannot be resolved with --cas-offline',
+        category: 'cas',
+        regex: /has\s+no\s+key\s+an\s+online\s+run\s+could\s+record\s+for\s+--cas-offline/i,
+        description: 'With --cas-offline, a source whose key only a fetch can learn cannot be resolved',
+        likelyCauses: [
+          'The source is not pinned, so only a network fetch can learn its content key',
+          '--cas-offline is set for a run that includes an unpinned source'
+        ],
+        solutions: [
+          { step: 1, explanation: 'Pin the source, for example with a literal checksum=sha256:<hex>' },
+          { step: 2, explanation: 'Or drop --cas-offline for this run' }
+        ],
+        documentationRefs: [
+          'https://docs.terragrunt.com/features/caching/cas/'
         ]
       }
     ];

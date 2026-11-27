@@ -8,11 +8,11 @@ const matcher = new ErrorPatternMatcher(new TerragruntDocsManager());
 describe('getPatternStats', () => {
   it('reports the total and a per-category breakdown computed from the array', async () => {
     const stats = await matcher.getPatternStats();
-    expect(stats.total).toBe(113);
+    expect(stats.total).toBe(122);
     expect(stats.byCategory).toMatchObject({
-      configuration: 46,
+      configuration: 48,
       state: 3,
-      dependency: 15,
+      dependency: 17,
       backend: 8,
       terraform: 3,
       authentication: 3,
@@ -21,7 +21,7 @@ describe('getPatternStats', () => {
       oci: 11,
       engine: 6,
       experiment: 1,
-      cas: 9,
+      cas: 14,
     });
   });
 
@@ -57,5 +57,16 @@ describe('getPatternStats', () => {
       expect(Number(match![1]), `documented total in ${file}`).toBe(stats.total);
       expect(Number(match![2]), `documented category count in ${file}`).toBe(categories);
     }
+  });
+
+  it('keeps the per-category counts in the class JSDoc in sync', async () => {
+    const stats = await matcher.getPatternStats();
+    const text = await readFile(new URL('../../src/terragrunt/error-patterns.ts', import.meta.url), 'utf-8');
+    // Lines such as " * - configuration: Syntax errors, ... (48 patterns)".
+    const documented: Record<string, number> = {};
+    for (const m of text.matchAll(/^ \* - (\w+): .*\((\d+) patterns?\)$/gm)) {
+      documented[m[1]] = Number(m[2]);
+    }
+    expect(documented).toEqual(stats.byCategory);
   });
 });

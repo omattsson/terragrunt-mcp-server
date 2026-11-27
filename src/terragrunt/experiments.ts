@@ -39,6 +39,11 @@ export const EXPERIMENTS: readonly Experiment[] = [
   { name: 'mcp-command', status: 'active', summary: 'Add the terragrunt mcp command, which serves Terragrunt operations to AI agents over the Model Context Protocol.' },
   { name: 'no-dot-terragrunt-cache', status: 'active', summary: 'Support the terraform.no_dot_terragrunt_cache attribute, which runs a unit from its own directory instead of a copy in .terragrunt-cache.' },
   { name: 'variables-block', status: 'active', summary: 'Support the variables block, which sets OpenTofu/Terraform variables like inputs and also chooses how Terragrunt passes them.' },
+  { name: 'auth-provider-cache', status: 'active', summary: 'Reuse one --auth-provider-cmd response across the units that share its credentials, using the cache object (globs and ttl) in the response.' },
+  { name: 'empty-dependency-outputs', status: 'active', summary: 'Let a dependency block point at a unit that has no outputs; dependency.<name>.outputs is then an empty object.' },
+  { name: 'outputs-block', status: 'active', summary: 'Support the outputs block on units, which declares the outputs a unit emits and the mock values and mocking strategy its dependents use.' },
+  { name: 'path-variable', status: 'active', summary: 'Support the path variable (path.unit, path.stack, path.download, path.include, path.read), which names the paths of the unit, the stack and the files Terragrunt evaluates.' },
+  { name: 'values-block', status: 'active', summary: 'Support the values block on units and stacks, which declares the values they accept, each with an optional type, default, description and nullable setting.' },
   // Completed experiments — now stable and enabled by default.
   { name: 'cli-redesign', status: 'completed', summary: 'The redesigned Terragrunt CLI.' },
   { name: 'stacks', status: 'completed', summary: 'Terragrunt stacks (terragrunt.stack.hcl).' },

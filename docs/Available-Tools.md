@@ -1036,7 +1036,7 @@ additional documentation-sourced solutions:
   ],
   "documentationLinks": [
     {
-      "url": "https://docs.terragrunt.com/reference/hcl/blocks/#remote_state",
+      "url": "https://docs.terragrunt.com/reference/hcl/blocks/remote_state/",
       "title": "Remote State Configuration",
       "excerpt": "Configure your backend with the remote_state block...",
       "relevanceScore": 0.9

@@ -401,6 +401,40 @@ dependencies defined in terragrunt.hcl files.`,
     };
   }
 
+
+  /**
+   * The filter flags that the upstream command docs list for run, render and
+   * info print (the `flags:` lists of docs/src/data/commands/run.mdx,
+   * render.mdx and info/print.mdx). shared.NewFilterFlags registers three more
+   * (--filter-allow-destroy, --filters-file, --no-filters-file) that those
+   * pages do not document.
+   */
+  private getFilterOptions(): CLIOption[] {
+    return [
+      {
+        flag: '--filter',
+        description: 'Filter units and stacks using Terragrunt filter expressions. Repeat the flag to form a union.',
+        type: 'list',
+        envVar: 'TG_FILTER',
+        example: '--filter "./prod/** | name=app"',
+      },
+      {
+        flag: '--filter-affected',
+        description: 'Select the components changed between the default branch and HEAD. Equivalent to --filter=[main...HEAD].',
+        type: 'boolean',
+        defaultValue: 'false',
+        envVar: 'TG_FILTER_AFFECTED',
+      },
+      {
+        flag: '--discovery-boundary',
+        description: 'Bound --filter discovery to a directory instead of the git root.',
+        type: 'path',
+        envVar: 'TG_DISCOVERY_BOUNDARY',
+        example: '--discovery-boundary ./prod',
+      },
+    ];
+  }
+
   private getRunCommandOptions(): CLIOption[] {
     return [
       {
@@ -409,6 +443,7 @@ dependencies defined in terragrunt.hcl files.`,
         description: 'Run the command against all modules in the stack (directory tree)',
         type: 'boolean',
         defaultValue: 'false',
+        envVar: 'TG_ALL',
       },
       {
         flag: '--graph',
@@ -422,19 +457,7 @@ dependencies defined in terragrunt.hcl files.`,
         type: 'path',
         envVar: 'TG_GRAPH_ROOT',
       },
-      {
-        flag: '--filter',
-        description: 'Filter units and stacks using Terragrunt filter expressions. Repeat the flag to form a union.',
-        type: 'list',
-        example: '--filter "./prod/** | name=app"',
-      },
-      {
-        flag: '--discovery-boundary',
-        description: 'Bound graph discovery to a directory.',
-        type: 'path',
-        envVar: 'TG_DISCOVERY_BOUNDARY',
-        example: '--discovery-boundary ./prod',
-      },
+      ...this.getFilterOptions(),
       {
         flag: '--parallelism',
         description: 'Maximum number of modules to process in parallel',
@@ -1411,6 +1434,14 @@ Does not validate Terraform configurations.`,
           defaultValue: 'false',
           envVar: 'TG_SHOW_CONFIG_PATH',
         },
+        {
+          flag: '--outputs',
+          experiment: 'outputs-block',
+          description: 'Check that each output a unit declares in its outputs block exists in its OpenTofu/Terraform module, and that its dependents read only declared outputs. Requires the outputs-block experiment.',
+          type: 'boolean',
+          defaultValue: 'false',
+          envVar: 'TG_OUTPUTS',
+        },
       ],
       examples: [
         {
@@ -1443,17 +1474,50 @@ includes, dependencies, and function calls. This is useful for debugging
 configuration issues and understanding the effective configuration.`,
       options: [
         {
+          flag: '--format',
+          description: 'Output format: hcl or json.',
+          type: 'string',
+          defaultValue: 'hcl',
+          envVar: 'TG_FORMAT',
+          example: '--format json',
+        },
+        {
           flag: '--json',
-          description: 'Output as JSON (default is HCL)',
+          description: 'Output as JSON. Equivalent to --format=json.',
           type: 'boolean',
           defaultValue: 'false',
+          envVar: 'TG_JSON',
+        },
+        {
+          flag: '--write',
+          shortFlag: '-w',
+          description: 'Write the rendered config to a file next to the unit configuration.',
+          type: 'boolean',
+          defaultValue: 'false',
+          envVar: 'TG_WRITE',
+        },
+        {
+          flag: '--out',
+          description: 'File name --write writes to, next to the unit configuration. Replaces the deprecated --json-out.',
+          type: 'string',
+          envVar: 'TG_OUT',
         },
         {
           flag: '--with-metadata',
           description: 'Include metadata about where values came from',
           type: 'boolean',
           defaultValue: 'false',
+          envVar: 'TG_WITH_METADATA',
         },
+        {
+          flag: '--all',
+          shortFlag: '-a',
+          description: 'Render every unit in the directory tree',
+          type: 'boolean',
+          defaultValue: 'false',
+          envVar: 'TG_ALL',
+        },
+        ...this.getFilterOptions(),
       ],
       examples: [
         {

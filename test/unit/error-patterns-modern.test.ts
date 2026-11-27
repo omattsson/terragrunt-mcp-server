@@ -12,7 +12,7 @@ async function topMatch(errorText: string, fuzzy = true) {
 }
 
 // Each anchor is verbatim upstream error text, re-checked at the revision in
-// UPSTREAM_REVISION (0fa02c2575fa8256d1e6d12fc553381fb74f3dbb). Every case asserts the exact regex
+// UPSTREAM_REVISION (9f78f47697cff20bb159421ff2e54cd5e16caa04). Every case asserts the exact regex
 // pattern wins at 0.95, which is above the fuzzy ceiling of 0.85.
 
 describe('modern diagnosis: stack validation', () => {
@@ -118,6 +118,15 @@ describe('modern diagnosis: CAS', () => {
     ['failed to complete git clone', 'cas-git-clone-failed'],
     ['tree not found in CAS store', 'cas-tree-not-found'],
     ['object abc123 not present in central git store after fetching v1 from https://example.invalid/r.git', 'cas-git-store-object-missing'],
+    // internal/cas/errors.go and pkg/config/errors.go at the pinned revision
+    // CASRewriteRequiredError wraps only non-final CAS errors (casFailureIsFinal in pkg/config/stack.go), such as ErrGitClone.
+    ['unit "app" sets update_source_with_cas, which only the CAS can rewrite, and fetching it through the CAS failed: failed to complete git clone', 'cas-rewrite-fetch-failed'],
+    ['update_source_with_cas rewrite could not be completed: failed to rewrite stack file /s/terragrunt.stack.hcl: boom', 'cas-rewrite-incomplete'],
+    ['update_source_with_cas sources nest too deep; look for a source that points back at its own stack (16 levels): /s', 'cas-rewrite-too-deep'],
+    // As upstream emits it: a nested processDirectory call wraps it in ErrRewriteIncomplete.
+    ['failed to fetch stack "app" via CAS: update_source_with_cas rewrite could not be completed: failed to process stack "net" source: update_source_with_cas sources nest too deep; look for a source that points back at its own stack (64 levels): /tmp/x', 'cas-rewrite-too-deep'],
+    ['failed to fetch git::https://example.invalid/r.git through CAS: boom', 'cas-stack-package-fetch-failed'],
+    ['git::https://example.invalid/r.git has no key an online run could record for --cas-offline; pin the source, for example with a literal checksum=sha256:<hex>, or drop the flag', 'cas-offline-unrecordable'],
   ];
   it.each(cases)('matches %s -> %s at 0.95', async (text, id) => {
     const m = await topMatch(text);
@@ -143,18 +152,87 @@ describe('modern diagnosis: dependency cycles and outputs', () => {
   });
 });
 
+describe('modern diagnosis: component contracts', () => {
+  // pkg/config/errors.go: ValuesBlockInIncludeError, DeclaredOutputMissingError,
+  // DependencyNullConfigPathError
+  const cases: Array<[string, string, string]> = [
+    ['/repo/root.hcl declares a values block, but it is included by another config or generated as an autoinclude. Move the block to the terragrunt.hcl or terragrunt.stack.hcl of the component.', 'values-block-in-include', 'configuration'],
+    ['/repo/vpc/terragrunt.hcl declares output "vpc_id" in its outputs block, but its state has no output "vpc_id". Apply /repo/vpc/terragrunt.hcl after adding the output to its module, remove the declaration, or set merge_with_state = "shallow" in its mock_strategy block, with the command in allowed_commands, to fill it from mock_value.', 'dep-declared-output-missing', 'dependency'],
+    ['/repo/app/terragrunt.hcl: dependency vpc sets config_path to null; set it to a path, or set enabled to false', 'dep-config-path-null', 'dependency'],
+    // Address() prints an expanded instance as name[key], unquoted, so the key can hold spaces.
+    ['/repo/app/terragrunt.hcl: dependency vpc[us east] sets config_path to null; set it to a path, or set enabled to false', 'dep-config-path-null', 'dependency'],
+  ];
+  it.each(cases)('matches %s -> %s at 0.95', async (text, id, category) => {
+    const m = await topMatch(text, false);
+    expect(m.pattern.id).toBe(id);
+    expect(m.pattern.category).toBe(category);
+    expect(m.confidence).toBe(0.95);
+  });
+});
+
 describe('modern diagnosis: experiment gates', () => {
   const gated = [
     "the 'browse' command requires the 'browse-tui' experiment to be enabled (set --experiment browse-tui or TG_EXPERIMENT=browse-tui)",
     "the 'login' command requires the 'tg-login' experiment to be enabled (set --experiment tg-login or TG_EXPERIMENT=tg-login)",
     "the 'mcp' command requires the 'mcp-command' experiment to be enabled (set --experiment mcp-command or TG_EXPERIMENT=mcp-command)",
     "base64gzip_compat in x requires the 'base64gzip-compat' experiment; enable it with --experiment base64gzip-compat",
-    "flag --cas-offline requires the 'offline-cas' experiment; enable it with --experiment offline-cas",
+    "--cas-offline requires the 'offline-cas' experiment to be enabled (e.g., --experiment=offline-cas)",
+    "terraform.no_dot_terragrunt_cache in /repo/app/terragrunt.hcl requires the 'no-dot-terragrunt-cache' experiment; enable it with --experiment no-dot-terragrunt-cache",
+    "the '--outputs' flag requires the 'outputs-block' experiment to be enabled (set --experiment outputs-block or TG_EXPERIMENT=outputs-block)",
+    // The "needs the <name> experiment. Enable it with --experiment" wording.
+    '/repo/app/terragrunt.hcl declares a values block, which needs the values-block experiment. Enable it with --experiment values-block or TG_EXPERIMENT=values-block, or remove the block.',
+    '/repo/vpc/terragrunt.hcl declares an outputs block, which needs the outputs-block experiment. Enable it with --experiment outputs-block or TG_EXPERIMENT=outputs-block, or remove the block.',
+    'Unknown variable; There is no variable named "path". The `path` variable needs the path-variable experiment. Enable it with --experiment path-variable or TG_EXPERIMENT=path-variable.',
   ];
   it.each(gated)('flags experiment-not-enabled distinctly', async (text) => {
     const m = await topMatch(text, false);
     expect(m.pattern.id).toBe('experiment-required');
     expect(m.pattern.category).toBe('experiment');
+  });
+
+  it('diagnoses a Terraform path attribute ahead of the path-variable hint', async () => {
+    // hintUnknownPath adds the hint to any unknown `path` root, so path.module
+    // gets it too, but the experiment does not define path.module.
+    for (const attr of ['module', 'root', 'cwd']) {
+      const text = `/repo/app/terragrunt.hcl:3,12-16: Unknown variable; There is no variable named "path". The \`path\` variable needs the path-variable experiment. Enable it with --experiment path-variable or TG_EXPERIMENT=path-variable.\n  3:   source = "\${path.${attr}}/modules/vpc"`;
+      const m = await topMatch(text, false);
+      expect(m.pattern.id).toBe('path-terraform-attribute');
+      expect(m.confidence).toBe(0.95);
+    }
+  });
+
+  it('does not diagnose path.module in OpenTofu output without the Terragrunt hint', async () => {
+    // path.module is valid in .tf code; OpenTofu prints it in source snippets.
+    const texts = [
+      'Error: Invalid for_each argument\n  on main.tf line 8, in resource "aws_s3_object" "this":\n   8:   for_each = fileset("${path.module}/assets", "**")\nThe "for_each" set includes values derived from resource attributes that cannot be determined until apply',
+      'Error: Error in function call\n  on main.tf line 3:\n   3:   source = file("${path.module}/src/handler.py")\n    │ path.module is "."\nCall to function "file" failed: no file exists at "./src/handler.py".',
+    ];
+    for (const text of texts) {
+      const result = await matcher.diagnoseError(text, {}, { enableFuzzyMatching: false });
+      expect(result.matches.every((m) => m.pattern.id !== 'path-terraform-attribute')).toBe(true);
+    }
+  });
+
+  it('does not treat path.unit or a path_relative function as a Terraform path attribute', async () => {
+    for (const text of ['source = "${path.unit}/x"', 'path_relative_to_include() returned x', 'path.modules is not set']) {
+      const result = await matcher.diagnoseError(text, {}, { enableFuzzyMatching: false });
+      expect(result.matches.every((m) => m.pattern.id !== 'path-terraform-attribute')).toBe(true);
+    }
+  });
+
+  it('names both gate wordings in the first solution step', async () => {
+    const m = await topMatch(gated[0], false);
+    expect(m.solutions[0].explanation).toMatch(/requires the/);
+    expect(m.solutions[0].explanation).toMatch(/needs the/);
+  });
+
+  it('does not treat a plain "needs the ... experiment" sentence as a gate', async () => {
+    const result = await matcher.diagnoseError(
+      'this setup needs the latest experiment results before it runs',
+      {},
+      { enableFuzzyMatching: false },
+    );
+    expect(result.matches.every((m) => m.pattern.id !== 'experiment-required')).toBe(true);
   });
 
   it('does not flag malformed configuration as an experiment gate', async () => {
@@ -167,6 +245,7 @@ describe('modern diagnosis: experiment gates', () => {
     const known = new Set(EXPERIMENTS.map((e) => e.name));
     const cited = [
       'browse-tui', 'tg-login', 'mcp-command', 'deep-merge', 'base64gzip-compat', 'offline-cas',
+      'outputs-block', 'values-block', 'path-variable',
     ];
     for (const name of cited) {
       expect(known.has(name), name).toBe(true);
