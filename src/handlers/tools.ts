@@ -53,6 +53,13 @@ import type { AdvancedExampleCategory } from '../types/advanced-examples.js';
 import type { IMetricsManager, MetricsResponse } from '../types/metrics.js';
 import type { PaginationMetadata } from '../types/mcp.js';
 import { NullMetricsManager } from '../terragrunt/metrics.js';
+import {
+    TOOL_DEFINITIONS,
+    MAX_SEARCH_QUERY_LENGTH,
+    getToolDefinition,
+    toInputJsonSchema,
+    formatValidationIssues
+} from './tool-definitions.js';
 import { ServerMode, MODE_CONFIGS, shouldLoadDependency, shouldEnableTool, DependencyType } from '../modes/config.js';
 
 export interface Tool {
@@ -180,8 +187,7 @@ interface BuildConfigArgs {
     compareWith?: string;
 }
 
-/** Longest search_docs query accepted, in characters. */
-export const MAX_SEARCH_QUERY_LENGTH = 4096;
+export { MAX_SEARCH_QUERY_LENGTH };
 
 /**
  * Decide whether a tool result is a tool-level failure, which the server
@@ -517,422 +523,14 @@ export class ToolHandler {
     }
 
     getAvailableTools(): Tool[] {
-        const allTools = [
-            {
-                name: 'search_docs',
-                description: 'Search Terragrunt documentation for HCL blocks, CLI commands, functions, and IaC patterns. Modes: search, list sections, get section content, or find code examples.',
-                annotations: {
-                    readOnlyHint: true,
-                    destructiveHint: false,
-                    idempotentHint: true,
-                    openWorldHint: false
-                },
-                inputSchema: {
-                    type: 'object',
-                    properties: {
-                        mode: {
-                            type: 'string',
-                            enum: ['search', 'list', 'section', 'examples'],
-                            description: 'search: full-text query | list: browse sections | section: get content by name | examples: code samples',
-                            default: 'search'
-                        },
-                        query: {
-                            type: 'string',
-                            description: 'Search terms, e.g. "remote state s3"'
-                        },
-                        section: {
-                            type: 'string',
-                            description: 'Section name from mode=list, e.g. "reference"'
-                        },
-                        detailLevel: {
-                            type: 'string',
-                            enum: ['summary', 'full'],
-                            description: 'Section and examples modes only: summary for an overview, full for complete content or code (ignored in search mode)',
-                            default: 'summary'
-                        },
-                        page: {
-                            type: 'number',
-                            description: '1-based page number of results',
-                            default: 1
-                        },
-                        pageSize: {
-                            type: 'number',
-                            description: 'Number of results per page',
-                            default: 10
-                        },
-                        limit: {
-                            type: 'number',
-                            description: 'Maximum examples to return in examples mode',
-                            default: 5
-                        },
-                        advanced: {
-                            type: 'boolean',
-                            description: 'Use curated advanced examples instead of docs code blocks',
-                            default: false
-                        },
-                        category: {
-                            type: 'string',
-                            description: 'With advanced=true, only examples from this category',
-                            enum: ['hooks', 'generate', 'environment', 'dependencies', 'dry-patterns']
-                        },
-                        listCategories: {
-                            type: 'boolean',
-                            description: 'List curated example categories instead of examples',
-                            default: false
-                        }
-                    },
-                    required: []
-                }
-            },
-            {
-                name: 'function_reference',
-                description: 'Get Terragrunt built-in function details (find_in_parent_folders, dependency, read_terragrunt_config, etc.) or list all available functions by category.',
-                annotations: {
-                    readOnlyHint: true,
-                    destructiveHint: false,
-                    idempotentHint: true,
-                    openWorldHint: false
-                },
-                inputSchema: {
-                    type: 'object',
-                    properties: {
-                        function_name: {
-                            type: 'string',
-                            description: 'Exact function name, e.g. "find_in_parent_folders"'
-                        },
-                        mode: {
-                            type: 'string',
-                            enum: ['summary', 'full'],
-                            description: 'summary: signature and short text | full: complete details',
-                            default: 'summary'
-                        },
-                        include_examples: {
-                            type: 'boolean',
-                            description: 'Include usage examples in the result',
-                            default: true
-                        },
-                        category: {
-                            type: 'string',
-                            description: 'Only list functions in this category'
-                        },
-                        search: {
-                            type: 'string',
-                            description: 'Text to match when listing functions'
-                        },
-                        page: {
-                            type: 'number',
-                            description: '1-based page number of results',
-                            default: 1
-                        },
-                        pageSize: {
-                            type: 'number',
-                            description: 'Number of functions per page',
-                            default: 20
-                        }
-                    },
-                    required: []
-                }
-            },
-            {
-                name: 'cli_reference',
-                description: 'Get current Terragrunt CLI command help (run --all, browse, plan, apply, hcl validate, etc.) or list commands by category.',
-                annotations: {
-                    readOnlyHint: true,
-                    destructiveHint: false,
-                    idempotentHint: true,
-                    openWorldHint: false
-                },
-                inputSchema: {
-                    type: 'object',
-                    properties: {
-                        command: {
-                            type: 'string',
-                            description: 'Command to get help for, e.g. "run --all"'
-                        },
-                        category: {
-                            type: 'string',
-                            description: 'Only list commands in this category',
-                            enum: ['main', 'backend', 'stack', 'catalog', 'discovery', 'configuration', 'shortcut']
-                        },
-                        search: {
-                            type: 'string',
-                            description: 'Text to match when listing commands'
-                        },
-                        page: {
-                            type: 'number',
-                            description: '1-based page number of results',
-                            default: 1
-                        },
-                        pageSize: {
-                            type: 'number',
-                            description: 'Number of commands per page',
-                            default: 20
-                        }
-                    },
-                    required: []
-                }
-            },
-            {
-                name: 'get_hcl_config_reference',
-                description: 'Get current Terragrunt HCL block and attribute documentation with syntax and examples, including stacks, feature flags, exclusions, error handling, catalogs, and engines.',
-                annotations: {
-                    readOnlyHint: true,
-                    destructiveHint: false,
-                    idempotentHint: true,
-                    openWorldHint: false
-                },
-                inputSchema: {
-                    type: 'object',
-                    properties: {
-                        config: {
-                            type: 'string',
-                            description: 'HCL block name, e.g. "remote_state"'
-                        },
-                        category: {
-                            type: 'string',
-                            description: 'Only list blocks in this category',
-                            enum: ['core', 'modules', 'generation', 'execution', 'iam', 'terraform']
-                        },
-                        listBlocks: {
-                            type: 'boolean',
-                            description: 'List all block names instead of one reference',
-                            default: false
-                        }
-                    },
-                    required: []
-                }
-            },
-            {
-                name: 'get_guidance',
-                description: 'Get Terragrunt best practices, block comparisons (dependency vs dependencies), DRY patterns, or experiment status (type=experiments lists active/completed experiments and how to enable them) for infrastructure-as-code organization.',
-                annotations: {
-                    readOnlyHint: true,
-                    destructiveHint: false,
-                    idempotentHint: true,
-                    openWorldHint: false
-                },
-                inputSchema: {
-                    type: 'object',
-                    properties: {
-                        query: {
-                            type: 'string',
-                            description: 'Topic, comparison, or scenario'
-                        },
-                        type: {
-                            type: 'string',
-                            enum: ['best-practices', 'comparison', 'pattern', 'experiments'],
-                            description: 'best-practices | comparison (e.g. dependency vs dependencies) | pattern | experiments'
-                        },
-                        mode: {
-                            type: 'string',
-                            enum: ['summary', 'full'],
-                            description: 'summary: key points | full: complete guidance with examples',
-                            default: 'summary'
-                        },
-                        level: {
-                            type: 'string',
-                            enum: ['beginner', 'intermediate', 'advanced'],
-                            description: 'Experience level for best-practices guidance'
-                        },
-                        listAll: {
-                            type: 'boolean',
-                            description: 'List all topics, comparisons and patterns instead of answering a query',
-                            default: false
-                        }
-                    },
-                    required: []
-                }
-            },
-            {
-                name: 'build_config',
-                description: 'Generate or write Terragrunt HCL configuration files (terragrunt.hcl). Use cases: remote_state backends (S3, GCS, Azure), provider generation, dependency blocks, hooks, inputs, and cicd (CI/CD-ready config for GitHub Actions, GitLab, Azure DevOps).',
-                annotations: {
-                    readOnlyHint: false,
-                    destructiveHint: true,
-                    idempotentHint: false,
-                    openWorldHint: false
-                },
-                inputSchema: {
-                    type: 'object',
-                    properties: {
-                        useCase: {
-                            type: 'string',
-                            enum: ['remote_state', 'provider_generation', 'dependencies', 'hooks', 'inputs', 'cicd'],
-                            description: 'remote_state | provider_generation | dependencies | hooks | inputs | cicd (omit to write existing content)'
-                        },
-                        options: {
-                            type: 'object',
-                            description: 'Template variables, e.g. {"bucket":"b","key":"k","region":"eu-west-1"}',
-                            additionalProperties: true
-                        },
-                        content: {
-                            type: 'string',
-                            description: 'HCL content to write'
-                        },
-                        backend: {
-                            type: 'string',
-                            description: 'For remote_state, the backend type (s3, azurerm, gcs). For cicd, the platform (github-actions, gitlab, azure-devops).'
-                        },
-                        tier: {
-                            type: 'string',
-                            enum: ['essential', 'advanced', 'complete'],
-                            description: 'essential: basics | advanced: common extras | complete: every attribute',
-                            default: 'essential'
-                        },
-                        strictValidation: {
-                            type: 'boolean',
-                            description: 'Validate with the Terragrunt CLI when installed and fail if invalid',
-                            default: false
-                        },
-                        write: {
-                            type: 'boolean',
-                            description: 'Write to path instead of only returning the config',
-                            default: false
-                        },
-                        path: {
-                            type: 'string',
-                            description: 'Target .hcl file inside an allowed directory'
-                        },
-                        overwrite: {
-                            type: 'boolean',
-                            description: 'Replace an existing file at path',
-                            default: false
-                        },
-                        createBackup: {
-                            type: 'boolean',
-                            description: 'Back up an existing file before overwriting',
-                            default: true
-                        },
-                        createParentDirs: {
-                            type: 'boolean',
-                            description: 'Create missing parent directories of path',
-                            default: true
-                        },
-                        preview: {
-                            type: 'boolean',
-                            description: 'Dry-run: never write; return what would be written plus a diff and overwrite/backup info',
-                            default: false
-                        },
-                        compareWith: {
-                            type: 'string',
-                            description: 'Path of an existing file to diff the result against (defaults to path in preview mode)'
-                        }
-                    },
-                    required: []
-                }
-            },
-            {
-                name: 'diagnose_terragrunt_error',
-                description: 'Diagnose Terragrunt and Terraform error messages with root cause analysis and solutions. Handles dependency cycles, state lock errors, provider issues, and HCL syntax problems.',
-                annotations: {
-                    readOnlyHint: true,
-                    destructiveHint: false,
-                    idempotentHint: true,
-                    openWorldHint: false
-                },
-                inputSchema: {
-                    type: 'object',
-                    properties: {
-                        error_message: {
-                            type: 'string',
-                            description: 'Full error text from the failed command, e.g. "Error acquiring the state lock"'
-                        },
-                        command: {
-                            type: 'string',
-                            description: 'Command that failed, e.g. "terragrunt run --all apply"'
-                        },
-                        version: {
-                            type: 'string',
-                            description: 'Terragrunt version, e.g. "0.93.1"'
-                        },
-                        os: {
-                            type: 'string',
-                            description: 'Operating system, e.g. "linux" or "darwin"'
-                        },
-                        filePath: {
-                            type: 'string',
-                            description: 'Config file involved, e.g. "live/prod/vpc/terragrunt.hcl"'
-                        },
-                        module: {
-                            type: 'string',
-                            description: 'Module or unit name, e.g. "vpc"'
-                        },
-                        backend: {
-                            type: 'string',
-                            description: 'Remote state backend, e.g. "s3" or "gcs"'
-                        },
-                        maxMatches: {
-                            type: 'number',
-                            description: 'Maximum causes to return, e.g. 5',
-                            default: 3
-                        },
-                        minConfidence: {
-                            type: 'number',
-                            description: 'Minimum confidence from 0 to 1, e.g. 0.7',
-                            default: 0.5
-                        },
-                        enableFuzzyMatching: {
-                            type: 'boolean',
-                            description: 'Also match errors similar to known patterns',
-                            default: true
-                        },
-                        detailLevel: {
-                            type: 'string',
-                            enum: ['summary', 'full'],
-                            description: 'summary: matches with causes and solutions | full: adds debugging steps, related errors, and documentation links',
-                            default: 'summary'
-                        },
-                        enrichWithDocs: {
-                            // No schema default: clients that fill in defaults would
-                            // send true and always select full detail
-                            type: 'boolean',
-                            description: 'Full detail only: add documentation-sourced solutions and links (on by default in full; true selects full detail when detailLevel is unset)'
-                        },
-                        includeDestructiveCommands: {
-                            type: 'boolean',
-                            description: 'Include solutions marked destructive',
-                            default: true
-                        }
-                    },
-                    required: ['error_message']
-                }
-            },
-            {
-                name: 'get_server_metrics',
-                description: 'Get Terragrunt MCP server metrics: cache hit rates, tool invocation counts, response times, and memory usage for observability.',
-                // reset: true clears the collected metrics, so this tool is not read-only
-                annotations: {
-                    readOnlyHint: false,
-                    destructiveHint: false,
-                    idempotentHint: false,
-                    openWorldHint: false
-                },
-                inputSchema: {
-                    type: 'object',
-                    properties: {
-                        filter: {
-                            type: 'string',
-                            description: 'Only metrics whose name contains this text, e.g. "search_docs"'
-                        },
-                        format: {
-                            type: 'string',
-                            enum: ['json', 'text'],
-                            description: 'json: structured | text: readable summary',
-                            default: 'json'
-                        },
-                        reset: {
-                            type: 'boolean',
-                            description: 'Clear all metrics after reading them',
-                            default: false
-                        }
-                    },
-                    required: []
-                }
-            }
-        ];
-        
-        // Filter tools based on server mode
-        return allTools.filter(tool => shouldEnableTool(tool.name, this.mode));
+        return TOOL_DEFINITIONS
+            .filter(def => shouldEnableTool(def.name, this.mode))
+            .map(def => ({
+                name: def.name,
+                description: def.description,
+                annotations: def.annotations,
+                inputSchema: toInputJsonSchema(def)
+            }));
     }
 
     async executeTool(name: string, args?: any): Promise<any> {
@@ -966,6 +564,24 @@ export class ToolHandler {
                 ));
             }
             return { result: restriction, isError: true };
+        }
+
+        // Validate arguments before any handler runs. Unknown tool names have no
+        // definition and keep falling through to the Unknown tool error.
+        const definition = getToolDefinition(name);
+        if (definition) {
+            const parsed = definition.input.safeParse(args ?? {});
+            if (!parsed.success) {
+                const result = {
+                    error: `Invalid arguments for tool ${name}: ${formatValidationIssues(parsed.error.issues)}`,
+                    errorType: 'VALIDATION_ERROR'
+                };
+                if (recordMetrics) {
+                    this.recordMetrics(() => this.metricsManager.logError('tool', name, new Error(result.error)));
+                }
+                return { result, isError: true };
+            }
+            args = parsed.data;
         }
 
         try {

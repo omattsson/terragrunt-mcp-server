@@ -120,7 +120,9 @@ describe('stdio end-to-end', () => {
     });
 
     it.each([
-      ['build_config', { useCase: 'nope' }, /No template found/],
+      ['build_config', { useCase: 'remote_state', backend: 'nope' }, /No template found/],
+      ['build_config', { useCase: 'nope' }, /Invalid arguments for tool build_config: useCase/],
+      ['diagnose_terragrunt_error', { error_message: 42 }, /Invalid arguments for tool diagnose_terragrunt_error: error_message/],
       ['build_config', { useCase: 'remote_state', backend: 's3', options: { bucket: 'b' } }, /Missing required variables/],
       ['function_reference', { function_name: 'no_such_function' }, /No Terragrunt function found/],
       ['no_such_tool', {}, /Unknown tool/],

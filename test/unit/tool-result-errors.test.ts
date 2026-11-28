@@ -57,7 +57,7 @@ describe('ToolHandler error metrics', () => {
     const metrics = new RecordingMetricsManager();
     const handler = new ToolHandler(metrics, ServerMode.FULL);
 
-    const result = await handler.executeTool('build_config', { useCase: 'nope' });
+    const result = await handler.executeTool('build_config', { useCase: 'remote_state', backend: 'nope' });
 
     expect(isErrorResult(result)).toBe(true);
     expect(metrics.errors).toEqual([

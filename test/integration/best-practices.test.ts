@@ -147,9 +147,11 @@ describe('Best Practices Integration Tests', () => {
         level: 'invalid_level' as any
       });
       
-      // Should return a result, not throw
+      // Should return a result, not throw. An invalid enum value is now
+      // rejected at validation instead of being ignored by the handler.
       expect(result).toBeDefined();
-      expect(result.recommendations).toBeDefined();
+      expect(result.errorType).toBe('VALIDATION_ERROR');
+      expect(result.error).toContain('level');
     }, 30000);
   });
 

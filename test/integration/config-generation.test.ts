@@ -291,10 +291,11 @@ describe('Config Generation Integration Tests', () => {
         options: {}
       });
 
-      validateResponseSchema(result);
-      expect(result.success).toBe(false);
+      // Unknown useCase is now rejected at validation (no `success` field)
+      expect(result.errorType).toBe('VALIDATION_ERROR');
       expect(result.error).toBeDefined();
       expect(typeof result.error).toBe('string');
+      expect(result.error).toContain('useCase');
     }, 10000);
 
     it('should return error for missing required useCase parameter', async () => {
@@ -491,9 +492,9 @@ describe('Config Generation Integration Tests', () => {
       });
 
       // MCP-compliant error response
-      expect(result).toHaveProperty('success');
-      expect(result.success).toBe(false);
+      // Rejected at validation: error and errorType, no `success`
       expect(result).toHaveProperty('error');
+      expect(result.errorType).toBe('VALIDATION_ERROR');
       expect(typeof result.error).toBe('string');
       expect(result.error.length).toBeGreaterThan(0);
     }, 10000);

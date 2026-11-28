@@ -791,11 +791,9 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
         });
 
         expect(result).toBeDefined();
-        expect(result.query).toBe('state_management');
-        expect(result.recommendations).toBeDefined();
-        expect(Array.isArray(result.recommendations)).toBe(true);
-        // Should either ignore invalid level or return error
-        // Either way, should not crash
+        // Was: ignored by the handler. The level enum is now validated.
+        expect(result.errorType).toBe('VALIDATION_ERROR');
+        expect(result.error).toContain('level');
       });
 
       it('should handle case variations in experience level', async () => {
@@ -806,10 +804,9 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
         });
 
         expect(result).toBeDefined();
-        expect(result.query).toBe('state_management');
-        expect(result.recommendations).toBeDefined();
-        expect(Array.isArray(result.recommendations)).toBe(true);
-        // Should either normalize or handle gracefully
+        // Was: ignored by the handler. The level enum is now validated.
+        expect(result.errorType).toBe('VALIDATION_ERROR');
+        expect(result.error).toContain('level');
       });
 
       it('should handle null/undefined experience level', async () => {
@@ -838,10 +835,9 @@ describe('Specific Edge Cases - Tools & Input Validation', () => {
         });
 
         expect(result).toBeDefined();
-        expect(result.query).toBe('state_management');
-        expect(result.recommendations).toBeDefined();
-        expect(Array.isArray(result.recommendations)).toBe(true);
-        // Should either ignore empty string or return all recommendations
+        // Was: ignored by the handler. The level enum is now validated.
+        expect(result.errorType).toBe('VALIDATION_ERROR');
+        expect(result.error).toContain('level');
       });
     });
 

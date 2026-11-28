@@ -333,7 +333,9 @@ describe('search_docs Unified Tool - Comprehensive Integration', () => {
       });
 
       expect(result.error).toBeDefined();
-      expect(result.error).toContain('Unknown mode');
+      // Was 'Unknown mode' from the handler; the mode enum is now validated first
+      expect(result.errorType).toBe('VALIDATION_ERROR');
+      expect(result.error).toContain('mode');
     });
 
     it('should handle missing mode gracefully (default to search)', async () => {
