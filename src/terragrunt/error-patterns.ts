@@ -173,7 +173,7 @@ export class ErrorPatternMatcher {
 
     // Initialize patterns array with all error types
     this.patterns = [
-      ...this.getCASWrapperErrorPatterns(),
+      ...this.getCASErrorPatterns(),
       ...this.getConfigurationErrorPatterns(),
       ...this.getStateErrorPatterns(),
       ...this.getDependencyErrorPatterns(),
@@ -193,7 +193,7 @@ export class ErrorPatternMatcher {
       ...this.getExperimentErrorPatterns(),
       ...this.getComponentContractErrorPatterns(),
       ...this.getAzureManagedStateErrorPatterns(),
-      ...this.getCASErrorPatterns()
+      ...this.getGitCloneErrorPatterns()
     ];
 
     const documentFrequency = new Map<string, number>();
@@ -2829,9 +2829,9 @@ export class ErrorPatternMatcher {
    * `path` root (hintUnknownPath in pkg/config/path_variable.go), including
    * Terraform's path.module, path.root and path.cwd. Enabling the experiment
    * does not fix those: Terragrunt's `path` has no such attributes. The
-   * path-terraform-attribute pattern matches only when the pasted output has
-   * both the hint and the Terraform reference, and comes first so that it wins
-   * the tie with experiment-required at 0.95.
+   * path-terraform-attribute pattern matches only when the hint and the
+   * Terraform reference are in the same diagnostic (see its regex), and comes
+   * first so that it wins the tie with experiment-required at 0.95.
    */
   private getExperimentErrorPatterns(): ErrorPattern[] {
     return [
@@ -2839,11 +2839,18 @@ export class ErrorPatternMatcher {
         id: 'path-terraform-attribute',
         name: 'Terraform path attribute used in Terragrunt configuration',
         category: 'configuration',
-        // Both the upstream hint and the Terraform attribute must be present, in
-        // either order: path.module alone is valid in .tf code and shows up in
-        // OpenTofu errors. Two lookaheads anchored at the start scan the input
-        // once each, so a long log cannot make the match quadratic.
-        regex: /^(?=[\s\S]*?path\W+variable\s+needs\s+the\s+path-variable\s+experiment)(?=[\s\S]*?\bpath\.(?:module|root|cwd)\b)/i,
+        // The upstream hint and the Terraform attribute must be in the same
+        // diagnostic: within 400 characters, in either order, with no other
+        // diagnostic starting between them ("Error:", an OpenTofu location
+        // such as "on main.tf line 2" or "on main.tofu line 2", or a
+        // Terragrunt one such as "terragrunt.hcl:3,20"). Upstream prints the
+        // source line before the
+        // hint, so the rest of that line (say "/provider.tf") may sit between
+        // them. path.module alone is valid in .tf code and shows up in OpenTofu
+        // errors, and a log can hold the hint for path.unit next to an
+        // unrelated OpenTofu path.module. Each match attempt scans at most 400
+        // characters, so a long log stays linear.
+        regex: /path\W+variable\s+needs\s+the\s+path-variable\s+experiment(?:(?!error:|\bon\s+\S+\.(?:tf|tofu)(?:\.json)?\s+line\s+\d|\S\.hcl:\d+[,:]\d)[\s\S]){0,400}?\bpath\.(?:module|root|cwd)\b|\bpath\.(?:module|root|cwd)\b(?:(?!error:|\bon\s+\S+\.(?:tf|tofu)(?:\.json)?\s+line\s+\d|\S\.hcl:\d+[,:]\d)[\s\S]){0,400}?path\W+variable\s+needs\s+the\s+path-variable\s+experiment/i,
         description: 'A Terragrunt file references path.module, path.root or path.cwd, which exist only in OpenTofu/Terraform',
         likelyCauses: [
           'An expression was copied from an OpenTofu/Terraform module into terragrunt.hcl',
@@ -3042,18 +3049,64 @@ export class ErrorPatternMatcher {
   }
 
   /**
-   * Outer CAS errors that wrap an error from any group (category: cas, 1 pattern).
+   * The git clone error (category: cas, 1 pattern), listed last in
+   * this.patterns.
    *
-   * Regex matches all score the same and ties keep list order, so these come
-   * first in this.patterns: the wrapper names the component and the fix, and
-   * must win over the pattern of the error it wraps (git auth, network, ...).
+   * Upstream raises "failed to complete git clone" from internal/git, which
+   * both CAS and the standard git getter (internal/getter/git.go) use, so it
+   * is not a CAS-only message. A clone that fails on credentials or a missing
+   * repository is better told by the pattern for that cause, and a CAS
+   * wrapper around it names the component.
    */
-  private getCASWrapperErrorPatterns(): ErrorPattern[] {
+  private getGitCloneErrorPatterns(): ErrorPattern[] {
+    return [
+      {
+        id: 'cas-git-clone-failed',
+        name: 'CAS git clone failed',
+        category: 'cas',
+        regex: /failed\s+to\s+complete\s+git\s+clone/i,
+        description: 'CAS could not complete the git clone of the source repository',
+        likelyCauses: [
+          'Network connectivity to the git remote failed',
+          'Authentication to a private repository is missing',
+          'The ref or repository URL is wrong'
+        ],
+        solutions: [
+          { step: 1, explanation: 'Check network access to the git remote' },
+          { step: 2, explanation: 'Confirm credentials for a private repository are configured' },
+          { step: 3, explanation: 'Verify the repository URL and ref are correct' }
+        ],
+        documentationRefs: [
+          'https://docs.terragrunt.com/features/caching/cas/git/'
+        ]
+      }
+    ];
+  }
+
+  /**
+   * CAS (content-addressable store) error patterns (category: cas, 13 patterns)
+   *
+   * Anchored to verbatim upstream Error() strings in internal/cas/errors.go and
+   * pkg/config/errors.go at the pinned revision. CAS backs
+   * update_source_with_cas and the cas:: getter.
+   *
+   * Listed first in this.patterns. Every regex match scores 0.95 and ties keep
+   * list order, so a CAS error that wraps another error (git auth, access
+   * denied, network, ...) wins over the pattern of the error it wraps. Within
+   * the group, order decides between a CAS wrapper and the CAS error inside
+   * it: cas-rewrite-fetch-failed comes first because it names the fix, and
+   * cas-rewrite-incomplete and cas-stack-package-fetch-failed come after the
+   * specific CAS errors they wrap (source, tree, too-deep). The git clone
+   * error is not CAS-only and is in getGitCloneErrorPatterns, listed last.
+   */
+  private getCASErrorPatterns(): ErrorPattern[] {
     return [
       {
         // CASRewriteRequiredError (pkg/config/errors.go), returned by
         // pkg/config/stack.go when a CAS fetch fails with a non-final error
-        // (such as ErrGitClone) for a component that needs the rewrite.
+        // (such as ErrGitClone) for a component that needs the rewrite. First
+        // in the group: it names the component and the fix, so it wins the tie
+        // with the CAS error it wraps.
         id: 'cas-rewrite-fetch-failed',
         name: 'update_source_with_cas fetch through CAS failed',
         category: 'cas',
@@ -3072,18 +3125,7 @@ export class ErrorPatternMatcher {
         documentationRefs: [
           'https://docs.terragrunt.com/features/caching/cas/'
         ]
-      }
-    ];
-  }
-
-  /**
-   * CAS (content-addressable store) error patterns (category: cas, 13 patterns; the wrapper is in getCASWrapperErrorPatterns)
-   *
-   * Anchored to verbatim upstream Error() strings in internal/cas/errors.go at
-   * the pinned revision. CAS backs update_source_with_cas and the cas:: getter.
-   */
-  private getCASErrorPatterns(): ErrorPattern[] {
-    return [
+      },
       {
         id: 'cas-update-source-requires-cas',
         name: 'update_source_with_cas requires CAS to be enabled',
@@ -3191,26 +3233,6 @@ export class ErrorPatternMatcher {
         ],
         documentationRefs: [
           'https://docs.terragrunt.com/features/caching/cas/'
-        ]
-      },
-      {
-        id: 'cas-git-clone-failed',
-        name: 'CAS git clone failed',
-        category: 'cas',
-        regex: /failed\s+to\s+complete\s+git\s+clone/i,
-        description: 'CAS could not complete the git clone of the source repository',
-        likelyCauses: [
-          'Network connectivity to the git remote failed',
-          'Authentication to a private repository is missing',
-          'The ref or repository URL is wrong'
-        ],
-        solutions: [
-          { step: 1, explanation: 'Check network access to the git remote' },
-          { step: 2, explanation: 'Confirm credentials for a private repository are configured' },
-          { step: 3, explanation: 'Verify the repository URL and ref are correct' }
-        ],
-        documentationRefs: [
-          'https://docs.terragrunt.com/features/caching/cas/git/'
         ]
       },
       {

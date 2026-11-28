@@ -163,6 +163,11 @@ function byText(a: string, b: string): number {
  * which leaves out a page whose rendered body is blank. Placeholder pages, such
  * as content/docs/04-reference/01-hcl/blocks/dependency.md, hold only HTML or
  * MDX comments, which render to nothing; a dedicated route renders their URL.
+ *
+ * Only docsPages needs it. Upstream builds HCL and variable-field pages
+ * (`hclPage`, `variableFieldPage` in lib/generated-pages.ts) with a fixed
+ * `## Usage` heading and sections built from frontmatter, so their body is
+ * never blank, even when the .mdx body is.
  */
 export function hasRenderableBody(body: string | undefined): boolean {
   if (!body) return false;

@@ -68,7 +68,9 @@ revision, in these files:
   experiment. Enable it with --experiment <name>")
 - `pkg/config/dependency_state_azurerm.go`,
   `internal/remotestate/backend/azurerm/errors.go`
-- `internal/cas/errors.go` (CAS / update_source_with_cas)
+- `internal/cas/errors.go`, and the CAS errors in `pkg/config/errors.go`
+  (`CASRewriteRequiredError`, `StackPackageFetchError`) (CAS /
+  update_source_with_cas)
 
 A Terraform `path.module`, `path.root` or `path.cwd` reference also gets the
 path-variable hint upstream (`hintUnknownPath` adds it to every unknown `path`

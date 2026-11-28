@@ -670,6 +670,15 @@ describe('TerragruntFunctionsManager with per-item function pages', () => {
     expect(fn?.returnType).toBe('string');
   });
 
+  it('does not read a call inside an HTML comment as a signature', async () => {
+    const page = { ...perItemPage, content: `${perItemPage.content} <!-- see quoted_fn(bar) --> More text.` };
+    const mgr = new TerragruntFunctionsManager(new MockDocsManager([page]) as any);
+    await mgr.loadFunctions();
+    const names = mgr.listFunctions().map((f) => f.name);
+    expect(names).toContain('brand_new_fn');
+    expect(names).not.toContain('quoted_fn');
+  });
+
   it('finds a function on its per-item page', async () => {
     const mgr = new TerragruntFunctionsManager(new MockDocsManager([perItemPage]) as any);
     const fn = await mgr.extractFunctionFromDocs('brand_new_fn');

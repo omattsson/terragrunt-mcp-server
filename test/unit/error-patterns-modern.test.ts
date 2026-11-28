@@ -138,6 +138,56 @@ describe('modern diagnosis: CAS', () => {
     expect(ids).toContain('module-git-auth-failed');
   });
 
+  it.each([
+    ['failed to fetch git::https://example.invalid/r.git through CAS: Permission denied (publickey)', 'cas-stack-package-fetch-failed'],
+    ['update_source_with_cas rewrite could not be completed: failed to rewrite stack file /s/terragrunt.stack.hcl: permission denied', 'cas-rewrite-incomplete'],
+  ])('ranks the CAS wrapper first when it wraps an access error: %s', async (text, id) => {
+    // "permission denied" alone also matches backend-access-denied, which
+    // would give S3/IAM advice for a CAS fetch.
+    const result = await matcher.diagnoseError(text, {}, { enableFuzzyMatching: false });
+    const ids = result.matches.map((m) => m.pattern.id);
+    expect(ids[0]).toBe(id);
+    expect(ids).toContain('backend-access-denied');
+  });
+
+  it('ranks the CAS wrapper ahead of the git clone error it wraps', async () => {
+    const text = 'failed to fetch git::https://example.invalid/stacks.git?ref=v1 through CAS: failed to complete git clone: exit status 128';
+    const result = await matcher.diagnoseError(text, {}, { enableFuzzyMatching: false });
+    const ids = result.matches.map((m) => m.pattern.id);
+    expect(ids[0]).toBe('cas-stack-package-fetch-failed');
+    expect(ids).toContain('cas-git-clone-failed');
+  });
+
+  it('does not put the git clone error ahead of the cause when the standard getter fails', async () => {
+    // internal/getter/git.go clones with the same internal/git runner as CAS,
+    // so the message is not CAS-only; the auth failure in it is the cause.
+    const text = [
+      "error downloading 'git::ssh://git@github.com/acme/private.git?ref=v1.0.0': git_clone: Cloning into '/tmp/x'...",
+      'git@github.com: Permission denied (publickey).',
+      'fatal: Could not read from remote repository.',
+      ': failed to complete git clone',
+      'exit status 128',
+    ].join('\n');
+    const result = await matcher.diagnoseError(text, {}, { enableFuzzyMatching: false });
+    const ids = result.matches.map((m) => m.pattern.id);
+    expect(ids).toContain('module-git-auth-failed');
+    expect(ids[0]).not.toBe('cas-git-clone-failed');
+  });
+
+  it.each([
+    ['update_source_with_cas rewrite could not be completed: failed to resolve source for unit "app": update_source_with_cas source escapes repository root: "../../x"', 'cas-source-escapes-repo', 'cas-rewrite-incomplete'],
+    ['update_source_with_cas rewrite could not be completed: failed to resolve terraform source "/abs/mod": update_source_with_cas does not support absolute sources: "/abs/mod"', 'cas-source-absolute', 'cas-rewrite-incomplete'],
+    ['failed to fetch cas::sha1:abc through CAS: tree not found in CAS store', 'cas-tree-not-found', 'cas-stack-package-fetch-failed'],
+  ])('ranks the specific CAS error ahead of the CAS wrapper around it: %s', async (text, inner, wrapper) => {
+    // These wrappers only say "read the wrapped error", so the inner CAS
+    // diagnosis is the useful one (upstream internal/cas/stacks.go,
+    // pkg/config/stack.go StackPackageFetchError).
+    const result = await matcher.diagnoseError(text, {}, { enableFuzzyMatching: false });
+    const ids = result.matches.map((m) => m.pattern.id);
+    expect(ids[0]).toBe(inner);
+    expect(ids).toContain(wrapper);
+  });
+
   it.each(cases)('matches %s -> %s at 0.95', async (text, id) => {
     const m = await topMatch(text);
     expect(m.pattern.id).toBe(id);
@@ -211,20 +261,66 @@ describe('modern diagnosis: experiment gates', () => {
     }
   });
 
-  it('diagnoses a Terraform path attribute quoted before the hint', async () => {
-    const text = '  3:   source = "${path.root}/modules/vpc"\n/repo/app/terragrunt.hcl:3,12-16: Unknown variable; There is no variable named "path". The `path` variable needs the path-variable experiment. Enable it with --experiment path-variable or TG_EXPERIMENT=path-variable.';
-    const m = await topMatch(text, false);
-    expect(m.pattern.id).toBe('path-terraform-attribute');
-  });
-
   it('checks a long log with many path.module lines in linear time', async () => {
     // diagnoseError trims long input to 5000 characters, so test the regex
-    // itself. An unanchored [\s\S]* regex rescans the rest of the log from
-    // every path.module: about 11 s for these 20000 lines.
+    // itself. An unbounded [\s\S]* between the two parts rescans the rest of
+    // the log from every path.module: about 11 s for these 20000 lines.
     await matcher.loadPatterns();
     const { patterns } = matcher as unknown as { patterns: Array<{ id: string; regex: RegExp }> };
     const { regex } = patterns.find((p) => p.id === 'path-terraform-attribute')!;
     const log = '  for_each = fileset("${path.module}/assets", "**")\n'.repeat(20000);
+    const started = performance.now();
+    expect(regex.test(log)).toBe(false);
+    expect(performance.now() - started).toBeLessThan(250);
+  });
+
+  it('does not pair the hint for path.unit with an unrelated OpenTofu path.module', async () => {
+    const text = [
+      '/repo/app/terragrunt.hcl:3,20-29: Unknown variable; There is no variable named "path". The `path` variable needs the path-variable experiment. Enable it with --experiment path-variable or TG_EXPERIMENT=path-variable.',
+      '  3:   inputs = { dir = path.unit }',
+      'Error: Error in function call',
+      '  on main.tf line 2:',
+      '   2:   f = file("${path.module}/a")',
+    ].join('\n');
+    const result = await matcher.diagnoseError(text, {}, { enableFuzzyMatching: false });
+    const ids = result.matches.map((m) => m.pattern.id);
+    expect(ids[0]).toBe('experiment-required');
+    expect(ids).not.toContain('path-terraform-attribute');
+  });
+
+  // Upstream (hclparse/parser.go, internal/view/human_render.go) prints the
+  // source line before the detail that carries the hint.
+  const pathHint = 'There is no variable named "path". The `path` variable needs the path-variable experiment. Enable it with --experiment path-variable or TG_EXPERIMENT=path-variable.';
+
+  it.each([
+    ['HCL diagnostic writer', ['Error: Unknown variable', '', '  on terragrunt.hcl line 5, in generate "provider":', '   5:   contents = file("${path.module}/provider.tf")', '', pathHint]],
+    ['human renderer', ['Error: Unknown variable', ' --> terragrunt.hcl:5:20', '5 |   contents = file("${path.module}/provider.tf")', `  = ${pathHint}`]],
+  ])('diagnoses a Terraform path attribute in the %s layout, even with a .tf file on the line', async (_layout, lines) => {
+    const m = await topMatch((lines as string[]).join('\n'), false);
+    expect(m.pattern.id).toBe('path-terraform-attribute');
+  });
+
+  it.each([
+    ['an OpenTofu error printed before the hint', ['Error: Error in function call', '  on main.tf line 2:', '   2:   f = file("${path.module}/a")', `/repo/app/terragrunt.hcl:3,20-29: Unknown variable; ${pathHint}`, '  3:   inputs = { dir = path.unit }']],
+    ['only an Error: line between them', [`/repo/app/terragrunt.hcl:3,20-29: Unknown variable; ${pathHint}`, '  3:   inputs = { dir = path.unit }', 'Error: Invalid function argument', '   2:   f = file("${path.module}/a")']],
+    ['a second Terragrunt diagnostic after the hint', [`/repo/app/terragrunt.hcl:3,20-29: Unknown variable; ${pathHint}`, '  3:   inputs = { dir = path.unit }', '/repo/b/terragrunt.hcl:7,3-9: Unsupported attribute; x = path.module']],
+    ['a Terragrunt location in human-render form after the hint', [`/repo/app/terragrunt.hcl:3,20-29: Unknown variable; ${pathHint}`, '  3:   inputs = { dir = path.unit }', ' --> b/terragrunt.hcl:7:3', '7 |   x = path.module']],
+    ['only an OpenTofu .tf.json location between them', [`/repo/app/terragrunt.hcl:3,20-29: Unknown variable; ${pathHint}`, '  3:   inputs = { dir = path.unit }', '  on main.tf.json line 2:', '   2:   "src": "${path.module}"']],
+    ['only an Error: line before the hint', ['   2:   f = file("${path.module}/a")', 'Error: Unknown variable', `  ${pathHint}`]],
+    ['only an OpenTofu location before the hint', ['   2:   f = file("${path.module}/a")', '  on main.tf line 9:', `  ${pathHint}`]],
+    ['more than 400 characters apart', [`/repo/app/terragrunt.hcl:3,20-29: Unknown variable; ${pathHint}`, ...Array(10).fill('  # ' + 'x'.repeat(60)), '   2:   f = file("${path.module}/a")']],
+    ['only an OpenTofu .tofu location between them', [`/repo/app/terragrunt.hcl:3,20-29: Unknown variable; ${pathHint}`, '  3:   inputs = { dir = path.unit }', '│ Warning: Deprecated attribute', '│   on main.tofu line 2:', '│    2:   src = path.module']],
+    ['only an OpenTofu location between them', [`/repo/app/terragrunt.hcl:3,20-29: Unknown variable; ${pathHint}`, '  3:   inputs = { dir = path.unit }', '  on main.tf line 2:', '   2:   f = file("${path.module}/a")']],
+  ])('does not pair the hint with a path.module from another diagnostic: %s', async (_case, lines) => {
+    const result = await matcher.diagnoseError((lines as string[]).join('\n'), {}, { enableFuzzyMatching: false });
+    expect(result.matches.map((m) => m.pattern.id)).not.toContain('path-terraform-attribute');
+  });
+
+  it('checks a long log with many hint lines in linear time', async () => {
+    await matcher.loadPatterns();
+    const { patterns } = matcher as unknown as { patterns: Array<{ id: string; regex: RegExp }> };
+    const { regex } = patterns.find((p) => p.id === 'path-terraform-attribute')!;
+    const log = `${pathHint}\n`.repeat(10000);
     const started = performance.now();
     expect(regex.test(log)).toBe(false);
     expect(performance.now() - started).toBeLessThan(250);

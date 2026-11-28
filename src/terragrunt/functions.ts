@@ -809,7 +809,9 @@ export class TerragruntFunctionsManager {
     if (!content) return results;
 
     // Content is flattened by docs.cleanContent(); use global regex to scan across text
-    const text = content.replace(/\r/g, ' ');
+    // HTML comments are dropped first: `-->` would otherwise read as a signature
+    // arrow after a call quoted in a comment (`<!-- see foo(bar) -->`).
+    const text = content.replace(/<!--[\s\S]*?-->/g, ' ').replace(/\r/g, ' ');
 
     // Match signature patterns: name(params) -> ReturnType or name(params)
     // Use non-capturing negative lookbehind to avoid matching mid-identifier
