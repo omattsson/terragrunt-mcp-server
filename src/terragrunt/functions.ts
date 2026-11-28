@@ -591,7 +591,7 @@ export class TerragruntFunctionsManager {
       // Prefer the canonical HCL functions reference page(s)
       const functionDocs = allDocs.filter(d =>
         d.section === 'reference' && (
-          d.url.includes('/docs/reference/hcl/functions/') ||
+          d.url.includes('/reference/hcl/functions/') ||
           d.title.toLowerCase().includes('built-in function') ||
           d.title.toLowerCase().includes('function')
         )
@@ -749,7 +749,7 @@ export class TerragruntFunctionsManager {
     // Prefer the canonical HCL functions reference page(s)
     const functionDocs = allDocs.filter(d =>
       d.section === 'reference' && (
-        d.url.includes('/docs/reference/hcl/functions/') ||
+        d.url.includes('/reference/hcl/functions/') ||
         d.title.toLowerCase().includes('built-in function') ||
         d.title.toLowerCase().includes('function')
       )
@@ -813,7 +813,7 @@ export class TerragruntFunctionsManager {
 
     // Match signature patterns: name(params) -> ReturnType or name(params)
     // Use non-capturing negative lookbehind to avoid matching mid-identifier
-  const signatureRegex = /(?:^|[^a-zA-Z0-9_])(?<name>[a-zA-Z_][a-zA-Z0-9_]*)\s*\((?<params>[^)]*)\)\s*(?:->|→)\s*(?<ret>[^\s.,;:(){}[\]]+)?/g;
+  const signatureRegex = /(?:^|[^a-zA-Z0-9_])(?<name>[a-zA-Z_][a-zA-Z0-9_]*)\s*\((?<params>[^)]*)\)\s*(?:-{1,2}>|→)\s*(?<ret>[^\s.,;:(){}[\]]+)?/g;
   // Alternate: name(params) [ -|—|–|:] (returns|return type) Type
   const altSignatureRegex = /(?:^|[^a-zA-Z0-9_])(?<name>[a-zA-Z_][a-zA-Z0-9_]*)\s*\((?<params>[^)]*)\)\s*(?:[-–—,:])?\s*(?:returns?|return\s+type)\s+(?<ret2>[A-Za-z0-9_<>|[\]{}]+)/gi;
     

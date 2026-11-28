@@ -230,7 +230,8 @@ export function hclPages(
   kind: string,
   files: SourceFile[],
   latest: string,
-  experiments: SourceFile[] = [],
+  // Required: an item gated by an experiment that is not in this list throws.
+  experiments: SourceFile[],
 ): ManifestPage[] {
   const pages: Array<ManifestPage & { experimental: boolean }> = [];
   for (const file of files) {

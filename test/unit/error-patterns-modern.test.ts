@@ -128,6 +128,16 @@ describe('modern diagnosis: CAS', () => {
     ['failed to fetch git::https://example.invalid/r.git through CAS: boom', 'cas-stack-package-fetch-failed'],
     ['git::https://example.invalid/r.git has no key an online run could record for --cas-offline; pin the source, for example with a literal checksum=sha256:<hex>, or drop the flag', 'cas-offline-unrecordable'],
   ];
+  it('puts the CAS wrapper ahead of the pattern of a non-CAS error it wraps', async () => {
+    // Every regex match scores 0.95 and ties keep list order, so the wrapper
+    // must come before module-git-auth-failed (module source group).
+    const text = 'unit "app" sets update_source_with_cas, which only the CAS can rewrite, and fetching it through the CAS failed: fatal: could not read from remote repository';
+    const result = await matcher.diagnoseError(text, {}, { enableFuzzyMatching: false });
+    const ids = result.matches.map((m) => m.pattern.id);
+    expect(ids[0]).toBe('cas-rewrite-fetch-failed');
+    expect(ids).toContain('module-git-auth-failed');
+  });
+
   it.each(cases)('matches %s -> %s at 0.95', async (text, id) => {
     const m = await topMatch(text);
     expect(m.pattern.id).toBe(id);
@@ -199,6 +209,31 @@ describe('modern diagnosis: experiment gates', () => {
       expect(m.pattern.id).toBe('path-terraform-attribute');
       expect(m.confidence).toBe(0.95);
     }
+  });
+
+  it('diagnoses a Terraform path attribute quoted before the hint', async () => {
+    const text = '  3:   source = "${path.root}/modules/vpc"\n/repo/app/terragrunt.hcl:3,12-16: Unknown variable; There is no variable named "path". The `path` variable needs the path-variable experiment. Enable it with --experiment path-variable or TG_EXPERIMENT=path-variable.';
+    const m = await topMatch(text, false);
+    expect(m.pattern.id).toBe('path-terraform-attribute');
+  });
+
+  it('checks a long log with many path.module lines in linear time', async () => {
+    // diagnoseError trims long input to 5000 characters, so test the regex
+    // itself. An unanchored [\s\S]* regex rescans the rest of the log from
+    // every path.module: about 11 s for these 20000 lines.
+    await matcher.loadPatterns();
+    const { patterns } = matcher as unknown as { patterns: Array<{ id: string; regex: RegExp }> };
+    const { regex } = patterns.find((p) => p.id === 'path-terraform-attribute')!;
+    const log = '  for_each = fileset("${path.module}/assets", "**")\n'.repeat(20000);
+    const started = performance.now();
+    expect(regex.test(log)).toBe(false);
+    expect(performance.now() - started).toBeLessThan(250);
+  });
+
+  it('matches the path-variable hint whatever its case', async () => {
+    const text = 'The PATH variable needs the Path-Variable experiment.\n  3:   source = "${path.module}/x"';
+    const m = await topMatch(text, false);
+    expect(m.pattern.id).toBe('path-terraform-attribute');
   });
 
   it('does not diagnose path.module in OpenTofu output without the Terragrunt hint', async () => {

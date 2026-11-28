@@ -173,6 +173,7 @@ export class ErrorPatternMatcher {
 
     // Initialize patterns array with all error types
     this.patterns = [
+      ...this.getCASWrapperErrorPatterns(),
       ...this.getConfigurationErrorPatterns(),
       ...this.getStateErrorPatterns(),
       ...this.getDependencyErrorPatterns(),
@@ -2838,9 +2839,11 @@ export class ErrorPatternMatcher {
         id: 'path-terraform-attribute',
         name: 'Terraform path attribute used in Terragrunt configuration',
         category: 'configuration',
-        // Both the upstream hint and the Terraform attribute must be present:
-        // path.module alone is valid in .tf code and shows up in OpenTofu errors.
-        regex: /path\W+variable\s+needs\s+the\s+path-variable\s+experiment[\s\S]*\bpath\.(?:module|root|cwd)\b|\bpath\.(?:module|root|cwd)\b[\s\S]*path\W+variable\s+needs\s+the\s+path-variable\s+experiment/,
+        // Both the upstream hint and the Terraform attribute must be present, in
+        // either order: path.module alone is valid in .tf code and shows up in
+        // OpenTofu errors. Two lookaheads anchored at the start scan the input
+        // once each, so a long log cannot make the match quadratic.
+        regex: /^(?=[\s\S]*?path\W+variable\s+needs\s+the\s+path-variable\s+experiment)(?=[\s\S]*?\bpath\.(?:module|root|cwd)\b)/i,
         description: 'A Terragrunt file references path.module, path.root or path.cwd, which exist only in OpenTofu/Terraform',
         likelyCauses: [
           'An expression was copied from an OpenTofu/Terraform module into terragrunt.hcl',
@@ -3039,19 +3042,18 @@ export class ErrorPatternMatcher {
   }
 
   /**
-   * CAS (content-addressable store) error patterns (category: cas, 14 patterns)
+   * Outer CAS errors that wrap an error from any group (category: cas, 1 pattern).
    *
-   * Anchored to verbatim upstream Error() strings in internal/cas/errors.go at
-   * the pinned revision. CAS backs update_source_with_cas and the cas:: getter.
+   * Regex matches all score the same and ties keep list order, so these come
+   * first in this.patterns: the wrapper names the component and the fix, and
+   * must win over the pattern of the error it wraps (git auth, network, ...).
    */
-  private getCASErrorPatterns(): ErrorPattern[] {
+  private getCASWrapperErrorPatterns(): ErrorPattern[] {
     return [
       {
         // CASRewriteRequiredError (pkg/config/errors.go), returned by
         // pkg/config/stack.go when a CAS fetch fails with a non-final error
-        // (such as ErrGitClone) for a component that needs the rewrite. First
-        // in the group: it is the outer error and names the component, so it
-        // must win the tie with the pattern of the error it wraps.
+        // (such as ErrGitClone) for a component that needs the rewrite.
         id: 'cas-rewrite-fetch-failed',
         name: 'update_source_with_cas fetch through CAS failed',
         category: 'cas',
@@ -3070,7 +3072,18 @@ export class ErrorPatternMatcher {
         documentationRefs: [
           'https://docs.terragrunt.com/features/caching/cas/'
         ]
-      },
+      }
+    ];
+  }
+
+  /**
+   * CAS (content-addressable store) error patterns (category: cas, 13 patterns; the wrapper is in getCASWrapperErrorPatterns)
+   *
+   * Anchored to verbatim upstream Error() strings in internal/cas/errors.go at
+   * the pinned revision. CAS backs update_source_with_cas and the cas:: getter.
+   */
+  private getCASErrorPatterns(): ErrorPattern[] {
+    return [
       {
         id: 'cas-update-source-requires-cas',
         name: 'update_source_with_cas requires CAS to be enabled',

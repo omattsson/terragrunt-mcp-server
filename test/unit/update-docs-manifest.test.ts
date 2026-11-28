@@ -155,6 +155,7 @@ describe('descriptions as the llms parser sees them', () => {
       'blocks',
       [file('x.mdx', 'name: x\ndescription: |\n  First line.\n  Second line.')],
       'v1.2.1',
+      [],
     );
     expect(pages[0].description).toBe('First line.');
   });
@@ -178,6 +179,7 @@ describe('hclPages', () => {
         file('find_in_parent_folders.mdx', 'name: find_in_parent_folders\ndescription: Walk up.'),
       ],
       'v1.2.1',
+      [],
     );
     expect(pages).toEqual<ManifestPage[]>([
       { title: 'find_in_parent_folders', path: '/reference/hcl/functions/find_in_parent_folders/', description: 'Walk up.' },

@@ -368,6 +368,20 @@ describe('TerragruntDocsManager', () => {
       const results = await docsManager.getHclConfigReference('DEPENDENCY');
       expect(results.length).toBeGreaterThan(0);
     });
+
+    it('should search the per-item HCL variable pages', async () => {
+      populateCaches(docsManager as any, [
+        ...mockDocs,
+        {
+          title: 'download',
+          url: 'https://docs.terragrunt.com/reference/hcl/variables/path/download/',
+          content: 'path.download is the directory Terragrunt downloads the unit source into',
+          section: 'reference'
+        }
+      ]);
+      const results = await docsManager.getHclConfigReference('path.download');
+      expect(results.map(doc => doc.url)).toEqual(['https://docs.terragrunt.com/reference/hcl/variables/path/download/']);
+    });
   });
 
   describe('Code Example Extraction', () => {
