@@ -139,7 +139,7 @@ describe('modern diagnosis: CAS', () => {
   });
 
   it.each([
-    ['failed to fetch git::https://example.invalid/r.git through CAS: Permission denied (publickey)', 'cas-stack-package-fetch-failed'],
+    ['failed to fetch s3::https://s3.amazonaws.com/acme/stack.zip through CAS: AccessDenied: Access Denied', 'cas-stack-package-fetch-failed'],
     ['update_source_with_cas rewrite could not be completed: failed to rewrite stack file /s/terragrunt.stack.hcl: permission denied', 'cas-rewrite-incomplete'],
   ])('ranks the CAS wrapper first when it wraps an access error: %s', async (text, id) => {
     // "permission denied" alone also matches backend-access-denied, which
@@ -156,6 +156,32 @@ describe('modern diagnosis: CAS', () => {
     const ids = result.matches.map((m) => m.pattern.id);
     expect(ids[0]).toBe('cas-stack-package-fetch-failed');
     expect(ids).toContain('cas-git-clone-failed');
+  });
+
+  it.each([
+    'failed to complete git clone: git@github.com: Permission denied (publickey).',
+    'failed to fetch git::ssh://git@github.com/acme/r.git through CAS: failed to complete git clone: git@github.com: Permission denied (publickey).',
+    'failed to complete git clone: Host key verification failed.',
+    'failed to complete git clone: git@git.example.internal: Permission denied (password,publickey).',
+    'failed to complete git clone: git@git.example.internal: Permission denied (keyboard-interactive).',
+  ])('diagnoses an SSH git failure as git auth, not backend access: %s', async (text) => {
+    const result = await matcher.diagnoseError(text, {}, { enableFuzzyMatching: false });
+    const ids = result.matches.map((m) => m.pattern.id);
+    expect(ids).toContain('module-git-auth-failed');
+    expect(ids).not.toContain('backend-access-denied');
+    if (!text.includes('through CAS')) expect(ids[0]).toBe('module-git-auth-failed');
+  });
+
+  it('keeps a filesystem permission error with the backend pattern', async () => {
+    const result = await matcher.diagnoseError('Error acquiring the state lock: permission denied (os error 13)', {}, { enableFuzzyMatching: false });
+    expect(result.matches.map((m) => m.pattern.id)).toContain('backend-access-denied');
+  });
+
+  it('describes the git clone error without assuming CAS', async () => {
+    const m = await topMatch('failed to complete git clone: exit status 128', false);
+    expect(m.pattern.id).toBe('cas-git-clone-failed');
+    expect(m.pattern.name).toBe('Git clone failed');
+    expect(m.pattern.description).toMatch(/standard git getter/);
   });
 
   it('does not put the git clone error ahead of the cause when the standard getter fails', async () => {
@@ -178,6 +204,8 @@ describe('modern diagnosis: CAS', () => {
     ['update_source_with_cas rewrite could not be completed: failed to resolve source for unit "app": update_source_with_cas source escapes repository root: "../../x"', 'cas-source-escapes-repo', 'cas-rewrite-incomplete'],
     ['update_source_with_cas rewrite could not be completed: failed to resolve terraform source "/abs/mod": update_source_with_cas does not support absolute sources: "/abs/mod"', 'cas-source-absolute', 'cas-rewrite-incomplete'],
     ['failed to fetch cas::sha1:abc through CAS: tree not found in CAS store', 'cas-tree-not-found', 'cas-stack-package-fetch-failed'],
+    ['failed to fetch git::https://example.invalid/r.git through CAS: git::https://example.invalid/r.git has no key an online run could record for --cas-offline; pin the source, for example with a literal checksum=sha256:<hex>, or drop the flag', 'cas-offline-unrecordable', 'cas-stack-package-fetch-failed'],
+    ['update_source_with_cas rewrite could not be completed: git::https://example.invalid/r.git has no key an online run could record for --cas-offline; pin the source, for example with a literal checksum=sha256:<hex>, or drop the flag', 'cas-offline-unrecordable', 'cas-rewrite-incomplete'],
   ])('ranks the specific CAS error ahead of the CAS wrapper around it: %s', async (text, inner, wrapper) => {
     // These wrappers only say "read the wrapped error", so the inner CAS
     // diagnosis is the useful one (upstream internal/cas/stacks.go,

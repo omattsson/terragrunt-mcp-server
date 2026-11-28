@@ -235,7 +235,7 @@ Stack trace:
       expect(duration).toBeLessThan(1000);
     });
 
-    it('should maintain performance with 66+ patterns loaded', async () => {
+    it('should maintain performance with all patterns loaded', async () => {
       const errorMessage = 'Error: configuration problem with terragrunt setup';
 
       const start = Date.now();

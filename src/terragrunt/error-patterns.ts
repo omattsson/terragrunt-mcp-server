@@ -1218,7 +1218,8 @@ export class ErrorPatternMatcher {
         id: 'backend-access-denied',
         name: 'Access denied to backend',
         category: 'backend',
-        regex: /AccessDenied|access\s+denied|permission\s+denied|forbidden/i,
+        // Not an SSH "Permission denied (publickey,...)" method list: module-git-auth-failed.
+        regex: /AccessDenied|access\s+denied|permission\s+denied(?!\s*\(\s*(?:[\w-]+,)*(?:publickey|password|keyboard-interactive|gssapi[\w-]*|hostbased)\b)|forbidden/i,
         description: 'Insufficient permissions to access the backend storage',
         likelyCauses: [
           'AWS/Azure/GCP credentials are invalid',
@@ -1470,7 +1471,7 @@ export class ErrorPatternMatcher {
         id: 'module-git-auth-failed',
         name: 'Git authentication failed',
         category: 'dependency',
-        regex: /authentication\s+failed|git.*credentials|could\s+not\s+read\s+from\s+remote/i,
+        regex: /authentication\s+failed|git.*credentials|could\s+not\s+read\s+from\s+remote|permission\s+denied\s*\(\s*(?:[\w-]+,)*(?:publickey|password|keyboard-interactive|gssapi[\w-]*|hostbased)\b|host\s+key\s+verification\s+failed/i,
         description: 'Failed to authenticate with Git repository',
         likelyCauses: [
           'SSH key not configured',
@@ -3062,10 +3063,10 @@ export class ErrorPatternMatcher {
     return [
       {
         id: 'cas-git-clone-failed',
-        name: 'CAS git clone failed',
+        name: 'Git clone failed',
         category: 'cas',
         regex: /failed\s+to\s+complete\s+git\s+clone/i,
-        description: 'CAS could not complete the git clone of the source repository',
+        description: 'Terragrunt could not complete a git clone of the source repository, through CAS or the standard git getter',
         likelyCauses: [
           'Network connectivity to the git remote failed',
           'Authentication to a private repository is missing',
@@ -3077,6 +3078,7 @@ export class ErrorPatternMatcher {
           { step: 3, explanation: 'Verify the repository URL and ref are correct' }
         ],
         documentationRefs: [
+          'https://docs.terragrunt.com/features/units/',
           'https://docs.terragrunt.com/features/caching/cas/git/'
         ]
       }
@@ -3096,8 +3098,9 @@ export class ErrorPatternMatcher {
    * the group, order decides between a CAS wrapper and the CAS error inside
    * it: cas-rewrite-fetch-failed comes first because it names the fix, and
    * cas-rewrite-incomplete and cas-stack-package-fetch-failed come after the
-   * specific CAS errors they wrap (source, tree, too-deep). The git clone
-   * error is not CAS-only and is in getGitCloneErrorPatterns, listed last.
+   * specific CAS errors they wrap (source, tree, offline, too-deep). The git
+   * clone error is not CAS-only and is in getGitCloneErrorPatterns, listed
+   * last.
    */
   private getCASErrorPatterns(): ErrorPattern[] {
     return [
@@ -3274,6 +3277,25 @@ export class ErrorPatternMatcher {
         ]
       },
       {
+        // OfflineUnrecordableError (internal/cas/errors.go)
+        id: 'cas-offline-unrecordable',
+        name: 'Source cannot be resolved with --cas-offline',
+        category: 'cas',
+        regex: /has\s+no\s+key\s+an\s+online\s+run\s+could\s+record\s+for\s+--cas-offline/i,
+        description: 'With --cas-offline, a source whose key only a fetch can learn cannot be resolved',
+        likelyCauses: [
+          'The source is not pinned, so only a network fetch can learn its content key',
+          '--cas-offline is set for a run that includes an unpinned source'
+        ],
+        solutions: [
+          { step: 1, explanation: 'Pin the source, for example with a literal checksum=sha256:<hex>' },
+          { step: 2, explanation: 'Or drop --cas-offline for this run' }
+        ],
+        documentationRefs: [
+          'https://docs.terragrunt.com/features/caching/cas/'
+        ]
+      },
+      {
         // ErrRewriteTooDeep (internal/cas/errors.go). Listed before
         // cas-rewrite-incomplete: upstream raises it only from a nested
         // processDirectory call, which wraps it in ErrRewriteIncomplete, so
@@ -3328,25 +3350,6 @@ export class ErrorPatternMatcher {
         solutions: [
           { step: 1, explanation: 'Read the wrapped error after the colon for the fetch failure' },
           { step: 2, explanation: 'Check the stack source URL, ref and credentials' }
-        ],
-        documentationRefs: [
-          'https://docs.terragrunt.com/features/caching/cas/'
-        ]
-      },
-      {
-        // OfflineUnrecordableError (internal/cas/errors.go)
-        id: 'cas-offline-unrecordable',
-        name: 'Source cannot be resolved with --cas-offline',
-        category: 'cas',
-        regex: /has\s+no\s+key\s+an\s+online\s+run\s+could\s+record\s+for\s+--cas-offline/i,
-        description: 'With --cas-offline, a source whose key only a fetch can learn cannot be resolved',
-        likelyCauses: [
-          'The source is not pinned, so only a network fetch can learn its content key',
-          '--cas-offline is set for a run that includes an unpinned source'
-        ],
-        solutions: [
-          { step: 1, explanation: 'Pin the source, for example with a literal checksum=sha256:<hex>' },
-          { step: 2, explanation: 'Or drop --cas-offline for this run' }
         ],
         documentationRefs: [
           'https://docs.terragrunt.com/features/caching/cas/'
