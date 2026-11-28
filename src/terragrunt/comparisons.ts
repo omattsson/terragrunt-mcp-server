@@ -112,8 +112,8 @@ inputs = {
       'Circular dependency references between modules',
     ],
     relatedDocs: [
-      'https://docs.terragrunt.com/reference/hcl/blocks/#dependency',
-      'https://docs.terragrunt.com/reference/hcl/blocks/#dependencies',
+      'https://docs.terragrunt.com/reference/hcl/blocks/dependency/',
+      'https://docs.terragrunt.com/reference/hcl/blocks/dependencies/',
     ],
   },
 
@@ -211,7 +211,7 @@ include "region" {
       'Over-engineering with too many includes when one would suffice',
     ],
     relatedDocs: [
-      'https://docs.terragrunt.com/reference/hcl/blocks/#include',
+      'https://docs.terragrunt.com/reference/hcl/blocks/include/',
       'https://docs.terragrunt.com/features/units/includes/',
     ],
   },
@@ -307,8 +307,8 @@ inputs = {
       'Not using expose = true in includes when sharing locals',
     ],
     relatedDocs: [
-      'https://docs.terragrunt.com/reference/hcl/blocks/#inputs',
-      'https://docs.terragrunt.com/reference/hcl/blocks/#locals',
+      'https://docs.terragrunt.com/reference/hcl/attributes/inputs/',
+      'https://docs.terragrunt.com/reference/hcl/blocks/locals/',
     ],
   },
 
@@ -425,8 +425,8 @@ terraform {
       'Forgetting the double-slash in terraform.source for subdirectories',
     ],
     relatedDocs: [
-      'https://docs.terragrunt.com/reference/hcl/blocks/#generate',
-      'https://docs.terragrunt.com/reference/hcl/blocks/#terraform',
+      'https://docs.terragrunt.com/reference/hcl/blocks/generate/',
+      'https://docs.terragrunt.com/reference/hcl/blocks/terraform/',
     ],
   },
 
@@ -531,7 +531,7 @@ terraform {
       'Ignoring hook failures that should abort the operation',
     ],
     relatedDocs: [
-      'https://docs.terragrunt.com/reference/hcl/blocks/#terraform',
+      'https://docs.terragrunt.com/reference/hcl/blocks/terraform/',
       'https://docs.terragrunt.com/features/units/hooks/',
     ],
   },
@@ -638,8 +638,8 @@ inputs = {
       'Forgetting that remote_state is about YOUR state, dependency is about OTHERS\' state',
     ],
     relatedDocs: [
-      'https://docs.terragrunt.com/reference/hcl/blocks/#remote_state',
-      'https://docs.terragrunt.com/reference/hcl/blocks/#dependency',
+      'https://docs.terragrunt.com/reference/hcl/blocks/remote_state/',
+      'https://docs.terragrunt.com/reference/hcl/blocks/dependency/',
     ],
   },
 ];

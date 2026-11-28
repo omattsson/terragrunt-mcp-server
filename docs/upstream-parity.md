@@ -4,7 +4,8 @@ These tests guard the curated Terragrunt data in `src/terragrunt/*` against a
 pinned upstream revision, so upstream drift fails a test instead of silently
 rotting.
 
-- Pinned revision: `0fa02c2575fa8256d1e6d12fc553381fb74f3dbb` (2026-11-06).
+- Pinned revision: `9f78f47697cff20bb159421ff2e54cd5e16caa04` (2026-11-25),
+  latest release v1.2.3.
 - Single source of truth for the revision string: `UPSTREAM_REVISION` in
   `src/terragrunt/docs-manifest.ts`.
 
@@ -14,7 +15,10 @@ rotting.
 | --- | --- | --- |
 | Docs page list | `TERRAGRUNT_DOC_MANIFEST` (generated from the upstream docs tree) | `test/unit/docs-manager.test.ts`, `test/unit/update-docs-manifest.test.ts`, `test/unit/update-fixture.test.ts` |
 | CLI commands | `TERRAGRUNT_DOC_MANIFEST` command pages | `test/unit/cli-commands-manager.test.ts` |
+| CLI flags of run, render, info print | the `flags:` lists of the upstream command docs, copied into the test | `test/unit/cli-commands-manager.test.ts` (upstream flag parity) |
 | HCL blocks | `## <name>` headings of the `hcl/blocks` page plus the per-item pages `hcl/blocks/<name>/` in the docs fixture | `test/unit/hcl-blocks-manager.test.ts` |
+| HCL variables and their fields | the per-item pages `hcl/variables/<name>/` and `hcl/variables/<name>/<field>/` in the docs fixture | `test/unit/hcl-blocks-manager.test.ts` (variable parity) |
+| Curated HCL docs links | `TERRAGRUNT_DOC_MANIFEST` per-item pages | `test/unit/docs-url-per-item.test.ts` |
 | Built-in functions | `## <name>` headings of the `hcl/functions` page plus the per-item pages `hcl/functions/<name>/` in the docs fixture | `test/unit/static-builtin-functions.test.ts` |
 | Experiments (active/completed) | `fixtures/terragrunt-experiments.json` | `test/unit/experiments-fixture.test.ts`, function cross-check |
 | Error diagnosis (Azure/unit/stack) | in-code patterns | `test/unit/error-patterns.test.ts` |
@@ -23,19 +27,26 @@ rotting.
 
 ### HCL names: two page shapes
 
-Upstream is moving the HCL reference to one page per item (a block, an
-attribute or a function gets its own page, `hcl/<kind>/<name>/`). While the
-move is under way a documented name lives in one of two shapes: an `## <name>`
-heading on the combined reference page (`hcl/<kind>/`) for items not yet moved,
-or its own per-item page for moved items. At the pin, `catalog` (block),
-`prevent_destroy` (attribute) and `get_env` (function) have per-item pages.
+Upstream has moved the HCL reference to one page per item (a block, an
+attribute or a function gets its own page, `hcl/<kind>/<name>/`). A documented
+name can live in one of two shapes: an `## <name>` heading on the combined
+reference page (`hcl/<kind>/`), or its own per-item page. At the pin, every
+block, attribute and function has a per-item page, and the combined pages are
+indexes. HCL variables (`path`, behind the
+`path-variable` experiment) are a fourth kind: a page per variable
+(`hcl/variables/<name>/`) and a page per field
+(`hcl/variables/<variable>/<field>/`, titled `<variable>.<field>`). Upstream
+lists items gated by an active experiment after the rest of their kind, and the
+manifest generator does the same.
 The shared helper `documentedHclNames()` in `test/unit/upstream-hcl-names.ts`
 returns the union of both shapes, and the block and function parity tests use
 it, so they keep working as items move. Per-item pages are listed in the docs
 manifest, and their data lives in `docs/src/data/hcl/<kind>/<name>.mdx`
 upstream. Curated entries for moved items link to the per-item page (for
-example `catalog` links to `/reference/hcl/blocks/catalog/`). Items without a
-per-item page keep an anchor on the combined page.
+example `catalog` links to `/reference/hcl/blocks/catalog/`), and
+`test/unit/docs-url-per-item.test.ts` fails on a link to an item's anchor on
+a combined page, or to an HCL page not in the manifest, anywhere in `src/`,
+`docs/*.md` or `README.md`.
 
 The modern diagnosis patterns (#253) cover typed stack validation, block
 expansion, OCI sources and credentials, the IaC engine, experiment gates,
@@ -49,10 +60,23 @@ revision, in these files:
 - `internal/engine/engine.go`, `internal/engine/verification.go`
 - `internal/cli/commands/browse/errors.go`,
   `internal/cli/commands/login/errors.go`,
-  `internal/cli/commands/mcp/errors.go`, and the other experiment gates
+  `internal/cli/commands/mcp/errors.go`,
+  `internal/cli/commands/hcl/validate/outputs.go`,
+  `pkg/config/path_variable.go`, `internal/cli/flags/shared/errors.go`,
+  `internal/runner/runcfg/util.go`, and the other experiment gates (two
+  wordings: "requires the '<name>' experiment" and "needs the <name>
+  experiment. Enable it with --experiment <name>")
 - `pkg/config/dependency_state_azurerm.go`,
   `internal/remotestate/backend/azurerm/errors.go`
-- `internal/cas/errors.go` (CAS / update_source_with_cas)
+- `internal/cas/errors.go`, and the CAS errors in `pkg/config/errors.go`
+  (`CASRewriteRequiredError`, `StackPackageFetchError`) (CAS /
+  update_source_with_cas)
+
+A Terraform `path.module`, `path.root` or `path.cwd` reference also gets the
+path-variable hint upstream (`hintUnknownPath` adds it to every unknown `path`
+root), but the experiment does not define those attributes. The
+`path-terraform-attribute` pattern ranks ahead of `experiment-required` so the
+diagnosis names the real fix.
 
 The same test also anchors the dependency patterns (#294) on
 `pkg/config/errors.go`: `DependencyCycleError` ("Found a dependency cycle
@@ -62,12 +86,13 @@ between modules: "), `ReadTerragruntConfigCycleError`
 
 The documented pattern and category counts come from one source of truth:
 `ErrorPatternMatcher.getPatternStats()` computes them from the pattern array,
-and `test/unit/error-pattern-stats.test.ts` fails if the counts quoted in
-`README.md`, the blog post, or the class JSDoc drift from it.
+and `test/unit/error-pattern-stats.test.ts` fails if the total and category
+count quoted in `README.md`, the blog post, or the class JSDoc drift from it,
+or if a per-category count in the class JSDoc does.
 
 ## Experiment inventory
 
-`src/terragrunt/experiments.ts` is the typed experiment inventory (13 active,
+`src/terragrunt/experiments.ts` is the typed experiment inventory (18 active,
 23 completed at the pin) used to surface experiment gates. It is pinned to
 `UPSTREAM_REVISION` (`EXPERIMENT_REVISION`), and its names and active/completed
 split are cross-checked against `fixtures/terragrunt-experiments.json`
@@ -103,7 +128,15 @@ the curated data anchors on:
   (combined pages and migration placeholders);
 - the docs manifest sources that are small and change when a page is added,
   renamed or removed: `docs/src/lib/generated-pages.ts` (the llms page order),
-  `docs/src/data/faq` and `docs/src/data/patterns`.
+  `docs/src/data/faq` and `docs/src/data/patterns`;
+- the upstream logic the manifest generator mirrors:
+  `docs/src/content.config.ts` (collection globs), `docs/src/lib/hcl/index.ts`
+  and `docs/src/lib/hcl/published.ts` (item order, variable fields, the
+  experiment-last rule), `docs/src/lib/experiments.ts` (when an experiment is
+  completed) and `docs/src/lib/markdown-document.ts` (blank pages are left
+  out);
+- `internal/cli/flags/shared/filter.go`, which registers the filter flags of
+  run, render and info print (`src/terragrunt/cli-commands.ts`).
 
 Upstream moving ahead by itself is not drift; that would flag forever.
 

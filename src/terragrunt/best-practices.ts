@@ -369,7 +369,7 @@ inputs = {
       'Requires consistent file naming across environments',
       'Changes to structure affect all child modules'
     ],
-    relatedDocs: ['https://docs.terragrunt.com/reference/hcl/functions/#read_terragrunt_config']
+    relatedDocs: ['https://docs.terragrunt.com/reference/hcl/functions/read_terragrunt_config/']
   },
   {
     id: 'ec-003',
@@ -423,7 +423,7 @@ inputs = {
       'deep merge can produce unexpected results with complex nested structures',
       'no_merge requires more explicit configuration'
     ],
-    relatedDocs: ['https://docs.terragrunt.com/reference/hcl/blocks/#include']
+    relatedDocs: ['https://docs.terragrunt.com/reference/hcl/blocks/include/']
   },
   {
     id: 'ec-004',
@@ -472,7 +472,7 @@ inputs = {
       'More lines of code in locals block',
       'Must scroll to find actual input values'
     ],
-    relatedDocs: ['https://docs.terragrunt.com/reference/hcl/blocks/#locals']
+    relatedDocs: ['https://docs.terragrunt.com/reference/hcl/blocks/locals/']
   },
   {
     id: 'ec-005',
@@ -518,7 +518,7 @@ inputs = {
       'Creates implicit ordering requirements',
       'Mock values may not reflect real resource behavior'
     ],
-    relatedDocs: ['https://docs.terragrunt.com/reference/hcl/blocks/#dependency']
+    relatedDocs: ['https://docs.terragrunt.com/reference/hcl/blocks/dependency/']
   },
   {
     id: 'ec-006',
@@ -560,7 +560,7 @@ inputs = {
       'Additional complexity for simple on/off decisions',
       'Must track which features are enabled where'
     ],
-    relatedDocs: ['https://docs.terragrunt.com/reference/hcl/blocks/#feature']
+    relatedDocs: ['https://docs.terragrunt.com/reference/hcl/blocks/feature/']
   },
 
   // ============ MODULE ORGANIZATION ============
@@ -765,7 +765,7 @@ remote_state {
       'State key structure mirrors directory structure',
       'Renaming directories requires state migration'
     ],
-    relatedDocs: ['https://docs.terragrunt.com/reference/hcl/functions/#path_relative_to_include']
+    relatedDocs: ['https://docs.terragrunt.com/reference/hcl/functions/path_relative_to_include/']
   },
 
   // ============ DEPENDENCIES ============
@@ -800,7 +800,7 @@ remote_state {
       'Must keep mock outputs in sync with module outputs',
       'Mocks may not catch type/structure mismatches'
     ],
-    relatedDocs: ['https://docs.terragrunt.com/reference/hcl/blocks/#dependency']
+    relatedDocs: ['https://docs.terragrunt.com/reference/hcl/blocks/dependency/']
   },
   {
     id: 'dp-002',
@@ -1072,7 +1072,7 @@ terraform {
       'Adds time to each operation',
       'Must maintain validation tooling and configs'
     ],
-    relatedDocs: ['https://docs.terragrunt.com/reference/hcl/blocks/#terraform']
+    relatedDocs: ['https://docs.terragrunt.com/reference/hcl/blocks/terraform/']
   },
   {
     id: 'ts-002',

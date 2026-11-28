@@ -168,7 +168,7 @@ const HCL_BLOCKS: HCLBlock[] = [
       },
     ],
     relatedBlocks: ['remote_state', 'include', 'dependency'],
-    docsUrl: 'https://docs.terragrunt.com/reference/hcl/blocks/#terraform',
+    docsUrl: 'https://docs.terragrunt.com/reference/hcl/blocks/terraform/',
   },
   {
     name: 'remote_state',
@@ -255,7 +255,7 @@ const HCL_BLOCKS: HCLBlock[] = [
       },
     ],
     relatedBlocks: ['terraform', 'generate'],
-    docsUrl: 'https://docs.terragrunt.com/reference/hcl/blocks/#remote_state',
+    docsUrl: 'https://docs.terragrunt.com/reference/hcl/blocks/remote_state/',
   },
   {
     name: 'locals',
@@ -302,7 +302,7 @@ const HCL_BLOCKS: HCLBlock[] = [
       },
     ],
     relatedBlocks: ['inputs', 'include'],
-    docsUrl: 'https://docs.terragrunt.com/reference/hcl/blocks/#locals',
+    docsUrl: 'https://docs.terragrunt.com/reference/hcl/blocks/locals/',
   },
   {
     name: 'inputs',
@@ -340,13 +340,13 @@ const HCL_BLOCKS: HCLBlock[] = [
       },
     ],
     relatedBlocks: ['locals', 'dependency'],
-    docsUrl: 'https://docs.terragrunt.com/reference/hcl/blocks/#inputs',
+    docsUrl: 'https://docs.terragrunt.com/reference/hcl/attributes/inputs/',
   },
   {
     name: 'variables',
     experiment: 'variables-block',
     displayName: 'Variables Block',
-    description: 'Sets OpenTofu/Terraform variables like the inputs attribute, and chooses how Terragrunt passes them: as TF_VAR_ environment variables, in a terragrunt.auto.tfvars file, or in a terragrunt.auto.tfvars.json file. Only in the unreleased Terragrunt v1.2.2, behind the variables-block experiment. A configuration can have any number of variables blocks, and one file cannot set the same input twice.',
+    description: 'Sets OpenTofu/Terraform variables like the inputs attribute, and chooses how Terragrunt passes them: as TF_VAR_ environment variables, in a terragrunt.auto.tfvars file, or in a terragrunt.auto.tfvars.json file. Since Terragrunt v1.2.2, behind the variables-block experiment. A configuration can have any number of variables blocks, and one file cannot set the same input twice.',
     category: 'core',
     syntax: 'variables { ... }',
     allowMultiple: true,
@@ -397,7 +397,136 @@ const HCL_BLOCKS: HCLBlock[] = [
       },
     ],
     relatedBlocks: ['inputs', 'locals', 'dependency'],
-    docsUrl: 'https://docs.terragrunt.com/reference/hcl/blocks/#variables',
+    docsUrl: 'https://docs.terragrunt.com/reference/hcl/blocks/variables/',
+  },
+  {
+    name: 'values',
+    experiment: 'values-block',
+    displayName: 'Values Block',
+    description: 'Declares the values a unit (terragrunt.hcl) or stack (terragrunt.stack.hcl) reads as values.<name>, each with an optional type, default, description and nullable setting. Terragrunt then reports an undeclared key, a value of the wrong type and a required value that nothing sets, during stack generate and when it reads the config. A config can have one values block; one in an included file (such as root.hcl) or in an autoinclude block is an error. Since Terragrunt v1.2.3, behind the values-block experiment.',
+    category: 'core',
+    syntax: 'values { value "<name>" { ... } }',
+    attributes: [
+      {
+        name: 'value',
+        type: 'block',
+        required: false,
+        description: 'Declares one value, labeled with the name the config reads it by (values.<name>). Declaring the same name twice is an error. A value without a default is required.',
+        nestedAttributes: [
+          { name: 'type', type: 'any', required: false, description: 'The type constraint, written as for an OpenTofu variable and without quotes, e.g. map(string).', defaultValue: 'any', example: 'map(string)' },
+          { name: 'default', type: 'any', required: false, description: 'The value used when nothing sets it, or when it is null and nullable is false. Must be a constant: no local, values or dependency reads and no function calls. A null default needs nullable = true.', example: '{}' },
+          { name: 'description', type: 'string', required: false, description: 'Describes the value for readers of the config.' },
+          { name: 'nullable', type: 'boolean', required: false, description: 'When true, a null value stays null. Otherwise Terragrunt replaces null with the default, and reports an error for a value without one.', defaultValue: false },
+        ],
+      },
+    ],
+    examples: [
+      {
+        description: 'A catalog unit declares the values it reads',
+        code: `values {
+  value "name" {
+    type        = string
+    description = "The name of the service."
+  }
+
+  value "tags" {
+    type    = map(string)
+    default = {}
+  }
+}
+
+inputs = {
+  name = values.name
+  tags = values.tags
+}`,
+      },
+    ],
+    relatedBlocks: ['unit', 'stack', 'inputs'],
+    docsUrl: 'https://docs.terragrunt.com/reference/hcl/blocks/values/',
+  },
+  {
+    name: 'outputs',
+    experiment: 'outputs-block',
+    displayName: 'Outputs Block',
+    description: "Declares a unit's outputs and the mock values its dependents read while the unit's state has no outputs (for example before its first apply), so dependents need no mock_outputs of their own. mock_outputs on a dependency block still overrides a mock_value key by key. Since Terragrunt v1.2.3, behind the outputs-block experiment. terragrunt hcl validate --outputs checks that declared outputs exist in the module and that dependency output reads name declared outputs.",
+    category: 'modules',
+    syntax: 'outputs { output "<name>" { ... } }',
+    attributes: [
+      {
+        name: 'mock_strategy',
+        type: 'block',
+        required: false,
+        description: 'Controls which commands may use the mock values and how they merge with state.',
+        nestedAttributes: [
+          { name: 'allowed_commands', type: 'list', required: false, description: 'The OpenTofu/Terraform commands that may use the mock values. Unset or empty means every command. Works like mock_outputs_allowed_terraform_commands on a dependency block.', example: '["validate", "plan"]' },
+          { name: 'merge_with_state', type: 'string', required: false, description: 'How outputs in state merge with the mock values. Works like mock_outputs_merge_strategy_with_state on a dependency block.', defaultValue: 'no_merge', validValues: ['no_merge', 'shallow', 'deep_map_only'], example: '"shallow"' },
+        ],
+      },
+      {
+        name: 'output',
+        type: 'block',
+        required: false,
+        description: "Declares one output of the unit, labeled with its name in the unit's OpenTofu/Terraform module. Declaring the same name twice is an error.",
+        nestedAttributes: [
+          { name: 'mock_value', type: 'any', required: false, description: 'The value dependents read until the unit has a real one. It can use local values and functions, but not dependency outputs.', example: '"vpc-mock-id"' },
+        ],
+      },
+    ],
+    examples: [
+      {
+        description: 'Declare mock values once in the unit that produces the outputs',
+        code: `outputs {
+  mock_strategy {
+    allowed_commands = ["validate", "plan"]
+    merge_with_state = "shallow"
+  }
+
+  output "vpc_id" {
+    mock_value = "vpc-mock-id"
+  }
+}`,
+      },
+    ],
+    relatedBlocks: ['dependency'],
+    docsUrl: 'https://docs.terragrunt.com/reference/hcl/blocks/outputs/',
+  },
+  {
+    // An HCL variable, not a block: upstream documents it under
+    // /reference/hcl/variables/ with one page per field. Modelled here like the
+    // attribute entries so get_hcl_config_reference can serve it.
+    name: 'path',
+    experiment: 'path-variable',
+    displayName: 'path Variable',
+    description: 'A read-only variable that holds the absolute paths of the unit, the stack and the files Terragrunt evaluates (path.unit, path.stack, path.download, path.include, path.read). A field is defined only where its location exists; a reference to an undefined field is an error, so use try() for a fallback. It has no module, root or cwd field: those are OpenTofu/Terraform. Since Terragrunt v1.2.3, behind the path-variable experiment.',
+    category: 'core',
+    syntax: 'path.<field>',
+    attributes: [
+      { name: 'unit', type: 'string', required: false, description: 'The absolute path of the directory of the unit, which holds its terragrunt.hcl. Defined in unit configuration.' },
+      { name: 'stack', type: 'string', required: false, description: 'The absolute path of the directory of the terragrunt.stack.hcl that Terragrunt evaluates. Defined in stack configuration, including its autoinclude blocks.' },
+      { name: 'download', type: 'string', required: false, description: 'The absolute path of the directory in which Terragrunt runs OpenTofu/Terraform for the unit. Defined in unit configuration.' },
+      { name: 'include', type: 'string', required: false, description: 'The absolute path of the included file, e.g. /path/to/root.hcl. Defined while Terragrunt evaluates an included file.' },
+      { name: 'read', type: 'string', required: false, description: 'The absolute path of the file that read_terragrunt_config reads, e.g. /path/to/env.hcl. Defined while Terragrunt evaluates that file.' },
+    ],
+    examples: [
+      {
+        description: 'Find the directory of a file that is either included or read',
+        code: `# common.hcl, which a unit includes or reads
+locals {
+  common_dir = dirname(try(path.include, path.read))
+}`,
+      },
+      {
+        description: 'List the download directory in a hook',
+        code: `terraform {
+  before_hook "list" {
+    commands = ["plan"]
+    execute  = ["ls", path.download]
+  }
+}`,
+      },
+    ],
+    relatedBlocks: ['include', 'terraform', 'unit', 'stack'],
+    docsUrl: 'https://docs.terragrunt.com/reference/hcl/variables/path/',
   },
 
   // ============================================================================
@@ -469,7 +598,7 @@ include "env" {
       },
     ],
     relatedBlocks: ['locals', 'terraform', 'remote_state'],
-    docsUrl: 'https://docs.terragrunt.com/reference/hcl/blocks/#include',
+    docsUrl: 'https://docs.terragrunt.com/reference/hcl/blocks/include/',
   },
   {
     name: 'dependency',
@@ -569,7 +698,7 @@ inputs = {
       },
     ],
     relatedBlocks: ['dependencies', 'inputs'],
-    docsUrl: 'https://docs.terragrunt.com/reference/hcl/blocks/#dependency',
+    docsUrl: 'https://docs.terragrunt.com/reference/hcl/blocks/dependency/',
   },
   {
     name: 'dependencies',
@@ -611,7 +740,7 @@ inputs = {
       },
     ],
     relatedBlocks: ['dependency'],
-    docsUrl: 'https://docs.terragrunt.com/reference/hcl/blocks/#dependencies',
+    docsUrl: 'https://docs.terragrunt.com/reference/hcl/blocks/dependencies/',
   },
   {
     name: 'catalog',
@@ -759,7 +888,7 @@ inputs = {
       },
     ],
     relatedBlocks: ['stack'],
-    docsUrl: 'https://docs.terragrunt.com/reference/hcl/blocks/#unit',
+    docsUrl: 'https://docs.terragrunt.com/reference/hcl/blocks/unit/',
   },
   {
     name: 'stack',
@@ -855,7 +984,7 @@ inputs = {
       },
     ],
     relatedBlocks: ['unit'],
-    docsUrl: 'https://docs.terragrunt.com/reference/hcl/blocks/#stack',
+    docsUrl: 'https://docs.terragrunt.com/reference/hcl/blocks/stack/',
   },
 
   // ============================================================================
@@ -977,7 +1106,7 @@ EOF
       },
     ],
     relatedBlocks: ['terraform', 'remote_state'],
-    docsUrl: 'https://docs.terragrunt.com/reference/hcl/blocks/#generate',
+    docsUrl: 'https://docs.terragrunt.com/reference/hcl/blocks/generate/',
   },
 
   // ============================================================================
@@ -1014,7 +1143,7 @@ exclude {
       },
     ],
     relatedBlocks: ['exclude', 'terraform'],
-    docsUrl: 'https://docs.terragrunt.com/reference/hcl/blocks/#feature',
+    docsUrl: 'https://docs.terragrunt.com/reference/hcl/blocks/feature/',
   },
   {
     name: 'exclude',
@@ -1063,7 +1192,7 @@ exclude {
       },
     ],
     relatedBlocks: ['feature', 'prevent_destroy'],
-    docsUrl: 'https://docs.terragrunt.com/reference/hcl/blocks/#exclude',
+    docsUrl: 'https://docs.terragrunt.com/reference/hcl/blocks/exclude/',
   },
   {
     name: 'prevent_destroy',
@@ -1142,7 +1271,7 @@ prevent_destroy = true`,
       },
     ],
     relatedBlocks: ['terraform'],
-    docsUrl: 'https://docs.terragrunt.com/reference/hcl/blocks/#errors',
+    docsUrl: 'https://docs.terragrunt.com/reference/hcl/blocks/errors/',
   },
 
   // ============================================================================
@@ -1170,7 +1299,7 @@ prevent_destroy = true`,
       },
     ],
     relatedBlocks: ['iam_assume_role_duration', 'iam_assume_role_session_name'],
-    docsUrl: 'https://docs.terragrunt.com/reference/hcl/blocks/#iam_role',
+    docsUrl: 'https://docs.terragrunt.com/reference/hcl/attributes/iam_role/',
   },
   {
     name: 'iam_assume_role_duration',
@@ -1194,7 +1323,7 @@ prevent_destroy = true`,
       },
     ],
     relatedBlocks: ['iam_role', 'iam_assume_role_session_name'],
-    docsUrl: 'https://docs.terragrunt.com/reference/hcl/blocks/#iam_assume_role_duration',
+    docsUrl: 'https://docs.terragrunt.com/reference/hcl/attributes/iam_assume_role_duration/',
   },
   {
     name: 'iam_assume_role_session_name',
@@ -1218,7 +1347,7 @@ prevent_destroy = true`,
       },
     ],
     relatedBlocks: ['iam_role', 'iam_assume_role_duration'],
-    docsUrl: 'https://docs.terragrunt.com/reference/hcl/blocks/#iam_assume_role_session_name',
+    docsUrl: 'https://docs.terragrunt.com/reference/hcl/attributes/iam_assume_role_session_name/',
   },
   {
     name: 'iam_web_identity_token',
@@ -1242,7 +1371,7 @@ prevent_destroy = true`,
       },
     ],
     relatedBlocks: ['iam_role'],
-    docsUrl: 'https://docs.terragrunt.com/reference/hcl/blocks/#iam_web_identity_token',
+    docsUrl: 'https://docs.terragrunt.com/reference/hcl/attributes/iam_web_identity_token/',
   },
 
   // ============================================================================
@@ -1293,7 +1422,7 @@ prevent_destroy = true`,
       },
     ],
     relatedBlocks: ['terraform'],
-    docsUrl: 'https://docs.terragrunt.com/reference/hcl/blocks/#engine',
+    docsUrl: 'https://docs.terragrunt.com/reference/hcl/blocks/engine/',
   },
   {
     name: 'terraform_binary',
@@ -1322,7 +1451,7 @@ prevent_destroy = true`,
       },
     ],
     relatedBlocks: ['terraform_version_constraint'],
-    docsUrl: 'https://docs.terragrunt.com/reference/hcl/blocks/#terraform_binary',
+    docsUrl: 'https://docs.terragrunt.com/reference/hcl/attributes/terraform_binary/',
   },
   {
     name: 'terraform_version_constraint',
@@ -1350,7 +1479,7 @@ prevent_destroy = true`,
       },
     ],
     relatedBlocks: ['terraform_binary'],
-    docsUrl: 'https://docs.terragrunt.com/reference/hcl/blocks/#terraform_version_constraint',
+    docsUrl: 'https://docs.terragrunt.com/reference/hcl/attributes/terraform_version_constraint/',
   },
   {
     name: 'terragrunt_version_constraint',
@@ -1374,7 +1503,7 @@ prevent_destroy = true`,
       },
     ],
     relatedBlocks: ['terraform_version_constraint'],
-    docsUrl: 'https://docs.terragrunt.com/reference/hcl/attributes/#terragrunt_version_constraint',
+    docsUrl: 'https://docs.terragrunt.com/reference/hcl/attributes/terragrunt_version_constraint/',
   },
   {
     name: 'download_dir',
@@ -1398,7 +1527,7 @@ prevent_destroy = true`,
       },
     ],
     relatedBlocks: ['terraform'],
-    docsUrl: 'https://docs.terragrunt.com/reference/hcl/blocks/#download_dir',
+    docsUrl: 'https://docs.terragrunt.com/reference/hcl/attributes/download_dir/',
   },
 ];
 

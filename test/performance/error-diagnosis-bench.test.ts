@@ -176,7 +176,7 @@ Additional debug information:
       console.log(`  ✓ Single fuzzy comparison: ${duration.toFixed(2)}ms`);
     });
 
-    it('should compare against all 66 patterns in <100ms', async () => {
+    it('should compare against all patterns in <100ms', async () => {
       // Error that may match multiple patterns through fuzzy matching
       const errorMessage = 'Error: configuration syntax invalid block terraform';
 
@@ -191,7 +191,7 @@ Additional debug information:
       expect(result).toBeDefined();
       expect(duration).toBeLessThan(100);
 
-      console.log(`  ✓ Full pattern scan (66 patterns): ${duration.toFixed(2)}ms, found ${result.matches.length} matches`);
+      console.log(`  ✓ Full pattern scan (all patterns): ${duration.toFixed(2)}ms, found ${result.matches.length} matches`);
     });
 
     it('should handle typos/variations efficiently in <50ms', async () => {

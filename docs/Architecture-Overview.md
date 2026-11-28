@@ -113,11 +113,13 @@ This page provides a comprehensive overview of the Terragrunt MCP Server's archi
 ┌─────────────────────────────────────────────────────────────┐
 │                   ErrorPatternMatcher                        │
 │  ┌─────────────────────────────────────────────────────┐    │
-│  │  Pattern Database (66 patterns, 7 categories)       │    │
-│  │  • configuration (38)  • dependency (13)            │    │
-│  │  • backend (4)         • state (3)                  │    │
+│  │  Pattern Database (122 patterns, 12 categories)     │    │
+│  │  • configuration (48)  • dependency (17)            │    │
+│  │  • cas (14)            • oci (11)                   │    │
+│  │  • backend (8)         • stack (6)                  │    │
+│  │  • engine (6)          • state (3)                  │    │
 │  │  • terraform (3)       • authentication (3)         │    │
-│  │  • network (2)                                      │    │
+│  │  • network (2)         • experiment (1)             │    │
 │  └─────────────────────────────────────────────────────┘    │
 │                           │                                  │
 │  ┌────────────────────────▼────────────────────────────┐    │

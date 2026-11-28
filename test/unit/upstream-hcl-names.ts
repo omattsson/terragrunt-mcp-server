@@ -1,19 +1,20 @@
 /**
- * Shared extraction of the documented HCL block, attribute and function names
- * from the pinned docs fixture (fixtures/terragrunt-docs-fixture.json).
+ * Shared extraction of the documented HCL block, attribute, function and
+ * variable names from the pinned docs fixture (fixtures/terragrunt-docs-fixture.json).
  *
- * Upstream is migrating the HCL reference to one page per item (#7237), so a
- * name can live in two shapes at the same time:
- *   - a line-start `## <name>` heading on the reference page
- *     (/reference/hcl/<kind>/), for items not yet migrated;
- *   - its own page /reference/hcl/<kind>/<name>/, for migrated items.
- * The documented set is the union of both, so the parity tests keep working
- * while items move from the first shape to the second.
+ * A name can be documented in two shapes:
+ *   - a line-start `## <name>` heading on the combined reference page
+ *     (/reference/hcl/<kind>/), the shape before upstream moved the reference
+ *     to per-item pages (#7237);
+ *   - its own page /reference/hcl/<kind>/<name>/.
+ * At the pinned revision every item has its own page and the combined pages
+ * are indexes, but the documented set stays the union of both, so the parity
+ * tests also work against an older fixture.
  *
  * This file is not a test (no `.test.ts` suffix); the parity tests import it.
  */
 
-export type HclKind = 'blocks' | 'attributes' | 'functions';
+export type HclKind = 'blocks' | 'attributes' | 'functions' | 'variables';
 
 export interface UpstreamDocPage {
   url: string;

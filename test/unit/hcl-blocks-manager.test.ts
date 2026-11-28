@@ -376,6 +376,9 @@ describe('HCLBlocksManager', () => {
                 'stack',
                 'inputs',
                 'variables',
+                'values',
+                'outputs',
+                'path',
                 'download_dir',
                 'prevent_destroy',
                 'iam_role',
@@ -695,7 +698,7 @@ describe('HCLBlocksManager', () => {
         });
     });
 
-    describe('variables block (experiment, unreleased Terragrunt v1.2.2)', () => {
+    describe('variables block (experiment, Terragrunt v1.2.2)', () => {
         it('should expose variables gated by the variables-block experiment', () => {
             const block = manager.getBlock('variables')!;
 
@@ -706,11 +709,11 @@ describe('HCLBlocksManager', () => {
             expect(block.allowMultiple).toBe(true);
         });
 
-        it('should say in the description that the block is only in unreleased v1.2.2', () => {
+        it('should say in the description that the block ships since v1.2.2', () => {
             const block = manager.getBlock('variables')!;
 
-            expect(block.description).toContain('v1.2.2');
-            expect(block.description).toMatch(/unreleased/i);
+            expect(block.description).toContain('Since Terragrunt v1.2.2');
+            expect(block.description).not.toMatch(/unreleased/i);
         });
 
         it('should document inputs, kind, nullable and validate', () => {
@@ -730,12 +733,38 @@ describe('HCLBlocksManager', () => {
             expect(block.examples.length).toBeGreaterThan(0);
             expect(block.examples[0].code).toContain('variables {');
             expect(block.relatedBlocks).toContain('inputs');
-            expect(block.docsUrl).toMatch(/^https:\/\/docs\.terragrunt\.com\/reference\/hcl\/blocks\/#variables$/);
+            expect(block.docsUrl).toMatch(/^https:\/\/docs\.terragrunt\.com\/reference\/hcl\/blocks\/variables\/$/);
         });
 
         it('should be found by search and listed in the core category', () => {
             expect(manager.searchBlocks('variables').some(result => result.block.name === 'variables')).toBe(true);
             expect(manager.listBlocks('core').some(block => block.name === 'variables')).toBe(true);
+        });
+    });
+
+    describe('values and outputs blocks (experiments, Terragrunt v1.2.3)', () => {
+        it('should expose values gated by the values-block experiment, with the value attributes', () => {
+            const block = manager.getBlock('values')!;
+
+            expect(block).not.toBeNull();
+            expect(block.experiment).toBe('values-block');
+            expect(block.description).toContain('v1.2.3');
+            expect(block.docsUrl).toBe('https://docs.terragrunt.com/reference/hcl/blocks/values/');
+            const value = block.attributes.find(attribute => attribute.name === 'value')!;
+            expect(value.type).toBe('block');
+            expect(value.nestedAttributes!.map(attribute => attribute.name)).toEqual(['type', 'default', 'description', 'nullable']);
+        });
+
+        it('should expose outputs gated by the outputs-block experiment, with mock_strategy and output', () => {
+            const block = manager.getBlock('outputs')!;
+
+            expect(block).not.toBeNull();
+            expect(block.experiment).toBe('outputs-block');
+            expect(block.docsUrl).toBe('https://docs.terragrunt.com/reference/hcl/blocks/outputs/');
+            expect(block.attributes.map(attribute => attribute.name)).toEqual(['mock_strategy', 'output']);
+            const strategy = block.attributes[0].nestedAttributes!;
+            expect(strategy.find(attribute => attribute.name === 'merge_with_state')!.validValues)
+                .toEqual(['no_merge', 'shallow', 'deep_map_only']);
         });
     });
 
@@ -791,9 +820,10 @@ describe('upstream HCL block parity', () => {
   const NESTED_NOT_TOPLEVEL = new Set(['autoinclude', 'expansion']);
 
   // In-code entries modeled as blocks for reference convenience but documented
-  // upstream as attributes (/reference/hcl/attributes/), not top-level blocks on
-  // the blocks page. They are excluded from the reverse (removal-drift) check.
-  const ATTRIBUTE_MODELS = new Set([
+  // upstream as attributes (/reference/hcl/attributes/) or variables
+  // (/reference/hcl/variables/), not top-level blocks on the blocks page. They
+  // are excluded from the reverse (removal-drift) check.
+  const NON_BLOCK_MODELS = new Set([
     'inputs',
     'prevent_destroy',
     'iam_role',
@@ -804,6 +834,8 @@ describe('upstream HCL block parity', () => {
     'terraform_version_constraint',
     'terragrunt_version_constraint',
     'download_dir',
+    // An HCL variable (/reference/hcl/variables/), checked by the variable parity tests below.
+    'path',
   ]);
 
   // Documented top-level block names, extracted from the pinned docs fixture
@@ -833,9 +865,47 @@ describe('upstream HCL block parity', () => {
   it('does not retain top-level blocks upstream no longer documents', async () => {
     const documented = await documentedTopLevelBlocks();
     const extra = new HCLBlocksManager().listBlocks().map((b) => b.name)
-      .filter((name) => !ATTRIBUTE_MODELS.has(name) && !documented.has(name))
+      .filter((name) => !NON_BLOCK_MODELS.has(name) && !documented.has(name))
       .sort();
-    expect(extra, `In-code top-level blocks not documented upstream (removal/rename drift, or add to ATTRIBUTE_MODELS): ${extra.join(', ')}`).toEqual([]);
+    expect(extra, `In-code top-level blocks not documented upstream (removal/rename drift, or add to NON_BLOCK_MODELS): ${extra.join(', ')}`).toEqual([]);
+  });
+});
+
+describe('upstream HCL variable parity', () => {
+  // Variables are a fourth HCL kind: /reference/hcl/variables/<name>/, with one
+  // page per field at /reference/hcl/variables/<name>/<field>/.
+  async function fixtureDocs(): Promise<UpstreamDocPage[]> {
+    const raw = await readFile(new URL('../../fixtures/terragrunt-docs-fixture.json', import.meta.url), 'utf-8');
+    return JSON.parse(raw);
+  }
+
+  it('covers every documented HCL variable', async () => {
+    const documented = documentedHclNames(await fixtureDocs(), 'variables');
+    expect(documented.size, 'no HCL variables extracted: docs fixture format may have changed').toBeGreaterThan(0);
+    const manager = new HCLBlocksManager();
+    const missing = [...documented].filter((name) => !manager.getBlock(name)).sort();
+    expect(missing, `Documented upstream variables missing from HCL_BLOCKS: ${missing.join(', ')}`).toEqual([]);
+  });
+
+  it('models exactly the documented fields of each variable', async () => {
+    const docs = await fixtureDocs();
+    const manager = new HCLBlocksManager();
+    for (const variable of documentedHclNames(docs, 'variables')) {
+      const fieldPattern = new RegExp(`/reference/hcl/variables/${variable}/([a-z][a-z0-9_]*)/$`);
+      const documentedFields = docs
+        .map((d) => fieldPattern.exec(d.url)?.[1])
+        .filter((name): name is string => name !== undefined)
+        .sort();
+      expect(documentedFields.length, `${variable}: no field pages in the fixture`).toBeGreaterThan(0);
+      const modelled = (manager.getBlock(variable)?.attributes ?? []).map((a) => a.name).sort();
+      expect(modelled, `${variable} fields`).toEqual(documentedFields);
+    }
+  });
+
+  it('gates path behind the path-variable experiment and links its page', () => {
+    const block = new HCLBlocksManager().getBlock('path')!;
+    expect(block.experiment).toBe('path-variable');
+    expect(block.docsUrl).toBe('https://docs.terragrunt.com/reference/hcl/variables/path/');
   });
 });
 
