@@ -29,6 +29,11 @@ describe('WATCHED_PATHS', () => {
       'docs/src/data/faq', // FAQ pages (docs manifest)
       'docs/src/data/patterns', // pattern pages (docs manifest)
       'docs/src/lib/generated-pages.ts', // upstream llms page order and sources
+      'docs/src/content.config.ts', // collection globs the generator mirrors
+      'docs/src/lib/hcl/index.ts', // compareHclItems order
+      'docs/src/lib/hcl/published.ts', // isExperimental, variable field order
+      'docs/src/lib/experiments.ts', // experiment completion rule
+      'docs/src/lib/markdown-document.ts', // blank-body filter of the llms output
     ]) {
       expect(watched.has(path), `${path} must be watched`).toBe(true);
     }

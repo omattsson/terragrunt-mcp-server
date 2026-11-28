@@ -591,7 +591,7 @@ export class TerragruntFunctionsManager {
       // Prefer the canonical HCL functions reference page(s)
       const functionDocs = allDocs.filter(d =>
         d.section === 'reference' && (
-          d.url.includes('/docs/reference/hcl/functions/') ||
+          d.url.includes('/reference/hcl/functions/') ||
           d.title.toLowerCase().includes('built-in function') ||
           d.title.toLowerCase().includes('function')
         )
@@ -749,7 +749,7 @@ export class TerragruntFunctionsManager {
     // Prefer the canonical HCL functions reference page(s)
     const functionDocs = allDocs.filter(d =>
       d.section === 'reference' && (
-        d.url.includes('/docs/reference/hcl/functions/') ||
+        d.url.includes('/reference/hcl/functions/') ||
         d.title.toLowerCase().includes('built-in function') ||
         d.title.toLowerCase().includes('function')
       )
@@ -809,11 +809,13 @@ export class TerragruntFunctionsManager {
     if (!content) return results;
 
     // Content is flattened by docs.cleanContent(); use global regex to scan across text
-    const text = content.replace(/\r/g, ' ');
+    // HTML comments are dropped first: `-->` would otherwise read as a signature
+    // arrow after a call quoted in a comment (`<!-- see foo(bar) -->`).
+    const text = content.replace(/<!--[\s\S]*?-->/g, ' ').replace(/\r/g, ' ');
 
     // Match signature patterns: name(params) -> ReturnType or name(params)
     // Use non-capturing negative lookbehind to avoid matching mid-identifier
-  const signatureRegex = /(?:^|[^a-zA-Z0-9_])(?<name>[a-zA-Z_][a-zA-Z0-9_]*)\s*\((?<params>[^)]*)\)\s*(?:->|→)\s*(?<ret>[^\s.,;:(){}[\]]+)?/g;
+  const signatureRegex = /(?:^|[^a-zA-Z0-9_])(?<name>[a-zA-Z_][a-zA-Z0-9_]*)\s*\((?<params>[^)]*)\)\s*(?:-{1,2}>|→)\s*(?<ret>[^\s.,;:(){}[\]]+)?/g;
   // Alternate: name(params) [ -|—|–|:] (returns|return type) Type
   const altSignatureRegex = /(?:^|[^a-zA-Z0-9_])(?<name>[a-zA-Z_][a-zA-Z0-9_]*)\s*\((?<params>[^)]*)\)\s*(?:[-–—,:])?\s*(?:returns?|return\s+type)\s+(?<ret2>[A-Za-z0-9_<>|[\]{}]+)/gi;
     

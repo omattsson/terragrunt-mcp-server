@@ -856,6 +856,7 @@ export class TerragruntDocsManager {
         doc.url.includes('/hcl/blocks') ||
         doc.url.includes('/hcl/attributes') ||
         doc.url.includes('/hcl/functions') ||
+        doc.url.includes('/hcl/variables') ||
         doc.url.includes('/config-blocks-and-attributes')
       )
     );

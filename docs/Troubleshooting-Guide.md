@@ -4,7 +4,7 @@ This guide provides comprehensive information about the `diagnose_terragrunt_err
 
 ## Overview
 
-The Terragrunt MCP Server includes a powerful error diagnosis system that can analyze error messages and provide actionable solutions. It uses pattern matching against a database of **66 known error patterns** across **7 categories** to identify issues and suggest fixes.
+The Terragrunt MCP Server includes a powerful error diagnosis system that can analyze error messages and provide actionable solutions. It uses pattern matching against a database of **122 known error patterns** across **12 categories** to identify issues and suggest fixes.
 
 **Mode Availability:** Error diagnosis is available in **GUIDANCE** and **FULL** modes only. If you need troubleshooting capabilities, ensure you're using one of these modes. See [Mode Selection](#mode-specific-troubleshooting) below.
 
@@ -44,7 +44,7 @@ When you submit an error message, the system:
 │              ErrorPatternMatcher.diagnoseError()             │
 │  ┌─────────────────────────────────────────────────────┐    │
 │  │  1. Check LRU Cache for cached results              │    │
-│  │  2. Run regex matching against 66 patterns          │    │
+│  │  2. Run regex matching against 122 patterns         │    │
 │  │  3. Run fuzzy matching for partial matches          │    │
 │  │  4. Score and rank matches by confidence            │    │
 │  │  5. Extract context from error message              │    │

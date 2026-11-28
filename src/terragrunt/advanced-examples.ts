@@ -87,7 +87,7 @@ const ADVANCED_EXAMPLES: AdvancedExample[] = [
       { id: 'hook-error-handling', relationship: 'Add error handling for robustness' },
     ],
     tags: ['hooks', 'validation', 'before_hook', 'apply', 'plan'],
-    docsUrl: 'https://docs.terragrunt.com/reference/hcl/blocks/#terraform',
+    docsUrl: 'https://docs.terragrunt.com/reference/hcl/blocks/terraform/',
   },
   {
     id: 'after-hook-notification',
@@ -133,7 +133,7 @@ const ADVANCED_EXAMPLES: AdvancedExample[] = [
       { id: 'hook-error-handling', relationship: 'Handle errors gracefully' },
     ],
     tags: ['hooks', 'notification', 'after_hook', 'slack', 'apply'],
-    docsUrl: 'https://docs.terragrunt.com/reference/hcl/blocks/#terraform',
+    docsUrl: 'https://docs.terragrunt.com/reference/hcl/blocks/terraform/',
   },
   {
     id: 'hook-error-handling',
@@ -182,7 +182,7 @@ const ADVANCED_EXAMPLES: AdvancedExample[] = [
       { id: 'after-hook-notification', relationship: 'Complement with success notifications' },
     ],
     tags: ['hooks', 'error-handling', 'cleanup', 'run_on_error', 'alerting'],
-    docsUrl: 'https://docs.terragrunt.com/reference/hcl/blocks/#terraform',
+    docsUrl: 'https://docs.terragrunt.com/reference/hcl/blocks/terraform/',
   },
   {
     id: 'hook-multi-command',
@@ -296,7 +296,7 @@ locals {
       { id: 'env-hierarchy', relationship: 'Load backend config from hierarchy' },
     ],
     tags: ['generate', 'backend', 's3', 'state', 'dynamodb'],
-    docsUrl: 'https://docs.terragrunt.com/reference/hcl/blocks/#generate',
+    docsUrl: 'https://docs.terragrunt.com/reference/hcl/blocks/generate/',
   },
   {
     id: 'generate-provider',
@@ -357,7 +357,7 @@ locals {
       { id: 'generate-versions', relationship: 'Pin provider versions' },
     ],
     tags: ['generate', 'provider', 'aws', 'assume-role', 'tags'],
-    docsUrl: 'https://docs.terragrunt.com/reference/hcl/blocks/#generate',
+    docsUrl: 'https://docs.terragrunt.com/reference/hcl/blocks/generate/',
   },
   {
     id: 'generate-versions',
@@ -412,7 +412,7 @@ generate "tfversion" {
       { id: 'generate-provider', relationship: 'Generate provider with version constraints' },
     ],
     tags: ['generate', 'versions', 'terraform', 'providers', 'tfenv'],
-    docsUrl: 'https://docs.terragrunt.com/reference/hcl/blocks/#generate',
+    docsUrl: 'https://docs.terragrunt.com/reference/hcl/blocks/generate/',
   },
   {
     id: 'generate-conditional',
@@ -485,7 +485,7 @@ EOF
       { id: 'generate-provider', relationship: 'Environment-specific providers' },
     ],
     tags: ['generate', 'conditional', 'environment', 'disable'],
-    docsUrl: 'https://docs.terragrunt.com/reference/hcl/blocks/#generate',
+    docsUrl: 'https://docs.terragrunt.com/reference/hcl/blocks/generate/',
   },
 
   // =============================================================================
@@ -794,7 +794,7 @@ inputs = {
       { id: 'dependency-skip', relationship: 'Skip dependencies in certain scenarios' },
     ],
     tags: ['dependency', 'outputs', 'cross-module', 'vpc'],
-    docsUrl: 'https://docs.terragrunt.com/reference/hcl/blocks/#dependency',
+    docsUrl: 'https://docs.terragrunt.com/reference/hcl/blocks/dependency/',
   },
   {
     id: 'dependency-mock-outputs',
@@ -855,7 +855,7 @@ inputs = {
       { id: 'dependency-skip', relationship: 'Skip dependencies entirely' },
     ],
     tags: ['dependency', 'mock', 'outputs', 'plan', 'development'],
-    docsUrl: 'https://docs.terragrunt.com/reference/hcl/blocks/#dependency',
+    docsUrl: 'https://docs.terragrunt.com/reference/hcl/blocks/dependency/',
   },
   {
     id: 'dependency-skip',
@@ -915,7 +915,7 @@ inputs = {
       { id: 'dependency-basic', relationship: 'Basic dependency pattern' },
     ],
     tags: ['dependency', 'skip', 'destroy', 'conditional'],
-    docsUrl: 'https://docs.terragrunt.com/reference/hcl/blocks/#dependency',
+    docsUrl: 'https://docs.terragrunt.com/reference/hcl/blocks/dependency/',
   },
   {
     id: 'dependency-graph',
@@ -1066,7 +1066,7 @@ inputs = {
       { id: 'include-expose', relationship: 'Expose include for advanced usage' },
     ],
     tags: ['include', 'root', 'DRY', 'remote-state', 'common'],
-    docsUrl: 'https://docs.terragrunt.com/reference/hcl/blocks/#include',
+    docsUrl: 'https://docs.terragrunt.com/reference/hcl/blocks/include/',
   },
   {
     id: 'include-multiple',
@@ -1138,7 +1138,7 @@ inputs = {
       { id: 'include-expose', relationship: 'Expose include details' },
     ],
     tags: ['include', 'multiple', 'compose', 'DRY', 'merge'],
-    docsUrl: 'https://docs.terragrunt.com/reference/hcl/blocks/#include',
+    docsUrl: 'https://docs.terragrunt.com/reference/hcl/blocks/include/',
   },
   {
     id: 'include-expose',
@@ -1217,7 +1217,7 @@ inputs = {
       { id: 'dry-read-config', relationship: 'Alternative with read_terragrunt_config' },
     ],
     tags: ['include', 'expose', 'override', 'defaults', 'template'],
-    docsUrl: 'https://docs.terragrunt.com/reference/hcl/blocks/#include',
+    docsUrl: 'https://docs.terragrunt.com/reference/hcl/blocks/include/',
   },
   {
     id: 'dry-read-config',
@@ -1300,7 +1300,7 @@ inputs = {
       { id: 'dry-locals', relationship: 'Combining with locals patterns' },
     ],
     tags: ['read_terragrunt_config', 'lookup', 'shared', 'data', 'DRY'],
-    docsUrl: 'https://docs.terragrunt.com/reference/hcl/functions/#read_terragrunt_config',
+    docsUrl: 'https://docs.terragrunt.com/reference/hcl/functions/read_terragrunt_config/',
   },
   {
     id: 'dry-locals',

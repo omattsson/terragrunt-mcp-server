@@ -652,3 +652,36 @@ describe('TerragruntFunctionsManager', () => {
   });
 });
 
+// At the pinned revision every function has its own page, titled with the bare
+// function name, and the combined Functions page is only an index.
+describe('TerragruntFunctionsManager with per-item function pages', () => {
+  const perItemPage: TerragruntDoc = {
+    title: 'brand_new_fn',
+    url: 'https://docs.terragrunt.com/reference/hcl/functions/brand_new_fn/',
+    content: '> Returns a value. **Returns:** `string` ## Usage ```hcl brand_new_fn(name) --> string ```',
+    section: 'reference',
+    lastUpdated: new Date().toISOString(),
+  };
+
+  it('loads functions from a per-item page with a --> signature', async () => {
+    const mgr = new TerragruntFunctionsManager(new MockDocsManager([perItemPage]) as any);
+    await mgr.loadFunctions();
+    const fn = mgr.listFunctions().find((f) => f.name === 'brand_new_fn');
+    expect(fn?.returnType).toBe('string');
+  });
+
+  it('does not read a call inside an HTML comment as a signature', async () => {
+    const page = { ...perItemPage, content: `${perItemPage.content} <!-- see quoted_fn(bar) --> More text.` };
+    const mgr = new TerragruntFunctionsManager(new MockDocsManager([page]) as any);
+    await mgr.loadFunctions();
+    const names = mgr.listFunctions().map((f) => f.name);
+    expect(names).toContain('brand_new_fn');
+    expect(names).not.toContain('quoted_fn');
+  });
+
+  it('finds a function on its per-item page', async () => {
+    const mgr = new TerragruntFunctionsManager(new MockDocsManager([perItemPage]) as any);
+    const fn = await mgr.extractFunctionFromDocs('brand_new_fn');
+    expect(fn?.name).toBe('brand_new_fn');
+  });
+});

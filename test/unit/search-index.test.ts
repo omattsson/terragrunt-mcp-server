@@ -18,12 +18,15 @@ const FIXTURE = path.resolve(
 const BASE = 'https://docs.terragrunt.com';
 
 /** [query, acceptable top-3 paths] */
+// Every HCL block, attribute and function has its own page upstream
+// (hcl/<kind>/<name>/); the combined index page holds no reference content,
+// so only the per-item page is accepted.
 const GOLDEN_QUERIES: Array<[string, string[]]> = [
   ['remote state s3', ['/features/units/state-backend/s3/']],
-  ['dependency mock_outputs', ['/reference/hcl/blocks/']],
+  ['dependency mock_outputs', ['/reference/hcl/blocks/dependency/']],
   ['how to use run --all', ['/reference/cli/commands/run/']],
-  ['find_in_parent_folders', ['/reference/hcl/functions/']],
-  ['dependency', ['/reference/hcl/blocks/']],
+  ['find_in_parent_folders', ['/reference/hcl/functions/find_in_parent_folders/']],
+  ['dependency', ['/reference/hcl/blocks/dependency/']],
   ['install terragrunt', ['/getting-started/install/']],
   ['provider cache server', ['/features/caching/provider-cache-server/']],
   ['before_hook after_hook', ['/features/units/hooks/']],
@@ -33,7 +36,7 @@ const GOLDEN_QUERIES: Array<[string, string[]]> = [
   ['stack generate', ['/reference/cli/commands/stack/generate/']],
   ['terragrunt.stack.hcl', ['/features/stacks/explicit/']],
   ['include expose', ['/features/units/includes/']],
-  ['run_cmd', ['/reference/hcl/functions/']],
+  ['run_cmd', ['/reference/hcl/functions/run_cmd/']],
   ['strict controls', ['/reference/strict-controls/']],
   ['experiments', ['/reference/experiments/']],
   ['drift detection', ['/terragrunt-scale/drift-detection/']],
@@ -48,10 +51,10 @@ const GOLDEN_QUERIES: Array<[string, string[]]> = [
   ['auto init', ['/features/units/auto-init/']],
   ['extra_arguments', ['/features/units/extra-arguments/']],
   ['backend bootstrap', ['/reference/cli/commands/backend/bootstrap/']],
-  ['generate block', ['/reference/hcl/blocks/']],
+  ['generate block', ['/reference/hcl/blocks/generate/']],
   // Held out while tuning the ranking
-  ['get_terragrunt_dir', ['/reference/hcl/functions/']],
-  ['remote_state block', ['/reference/hcl/blocks/']],
+  ['get_terragrunt_dir', ['/reference/hcl/functions/get_terragrunt_dir/']],
+  ['remote_state block', ['/reference/hcl/blocks/remote_state/']],
   ['gcp authentication', ['/features/units/authentication/gcp/']],
   ['terragrunt cache directory', ['/features/units/terragrunt-cache/']],
   ['import existing resources', ['/features/units/importing/']],

@@ -177,7 +177,7 @@ Diagnose Terragrunt error messages and get actionable solutions, debugging steps
   - `enableFuzzyMatching` (boolean, optional): Enable fuzzy matching (default: true)
   - `detailLevel` (string, optional): `summary` (matches, causes, and solutions) or `full` (adds debugging steps, related errors, and documentation links) (default: `summary`)
   - `enrichWithDocs` (boolean, optional): In `full` detail, enrich with documentation-sourced solutions (on unless set to `false`)
-- **Returns**: Matches with confidence scores and solutions, or an explicit `noConfidentMatch` result with generic debugging steps (113 error patterns across 12 categories)
+- **Returns**: Matches with confidence scores and solutions, or an explicit `noConfidentMatch` result with generic debugging steps (122 error patterns across 12 categories)
 - **Use cases**: Troubleshooting errors, getting actionable solutions, finding relevant documentation
 
 **Example prompts:**
